@@ -1,24 +1,39 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ProfileProvider, useProfile } from "@/lib/profile-store";
+import { SplashScreen } from "@/components/onboarding/splash";
+import { DisclaimerScreen, DisclaimerBlockedScreen } from "@/components/onboarding/disclaimer";
+import { IdentityScreen } from "@/components/onboarding/identity";
+import {
+  FacultyScreen,
+  DepartmentScreen,
+  LevelScreen,
+  CoursesScreen,
+} from "@/components/onboarding/profile-setup";
+import { DashboardScreen } from "@/components/dashboard";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <ProfileProvider>
+      <Router />
+    </ProfileProvider>
   );
+}
+
+function Router() {
+  const { step } = useProfile();
+  switch (step) {
+    case "splash": return <SplashScreen />;
+    case "disclaimer": return <DisclaimerScreen />;
+    case "disclaimer-blocked": return <DisclaimerBlockedScreen />;
+    case "identity": return <IdentityScreen />;
+    case "faculty": return <FacultyScreen />;
+    case "department": return <DepartmentScreen />;
+    case "level": return <LevelScreen />;
+    case "courses": return <CoursesScreen />;
+    case "dashboard": return <DashboardScreen />;
+  }
 }
