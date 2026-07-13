@@ -4,12 +4,15 @@ import { SplashScreen } from "@/components/onboarding/splash";
 import { DisclaimerScreen, DisclaimerBlockedScreen } from "@/components/onboarding/disclaimer";
 import { IdentityScreen } from "@/components/onboarding/identity";
 import {
-  FacultyScreen,
-  DepartmentScreen,
-  LevelScreen,
-  CoursesScreen,
+  FacultyScreen, DepartmentScreen, LevelScreen, CoursesScreen,
 } from "@/components/onboarding/profile-setup";
 import { DashboardScreen } from "@/components/dashboard";
+import { CourseDetailScreen } from "@/components/course-detail";
+import {
+  MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen,
+} from "@/components/mock-test-flow";
+import { SettingsScreen } from "@/components/settings";
+import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -24,16 +27,29 @@ function Index() {
 }
 
 function Router() {
-  const { step } = useProfile();
-  switch (step) {
-    case "splash": return <SplashScreen />;
-    case "disclaimer": return <DisclaimerScreen />;
-    case "disclaimer-blocked": return <DisclaimerBlockedScreen />;
-    case "identity": return <IdentityScreen />;
-    case "faculty": return <FacultyScreen />;
-    case "department": return <DepartmentScreen />;
-    case "level": return <LevelScreen />;
-    case "courses": return <CoursesScreen />;
+  const { step, view } = useProfile();
+  if (step !== "dashboard") {
+    switch (step) {
+      case "splash": return <SplashScreen />;
+      case "disclaimer": return <DisclaimerScreen />;
+      case "disclaimer-blocked": return <DisclaimerBlockedScreen />;
+      case "identity": return <IdentityScreen />;
+      case "faculty": return <FacultyScreen />;
+      case "department": return <DepartmentScreen />;
+      case "level": return <LevelScreen />;
+      case "courses": return <CoursesScreen />;
+    }
+  }
+  switch (view) {
     case "dashboard": return <DashboardScreen />;
+    case "course-detail": return <CourseDetailScreen />;
+    case "mock-gen": return <MockGenerationScreen />;
+    case "mock-config": return <MockConfigScreen />;
+    case "mock-run": return <MockRunScreen />;
+    case "mock-result": return <MockResultScreen />;
+    case "settings": return <SettingsScreen />;
+    case "flashcards-soon": return <FlashcardsSoonScreen />;
+    case "add-course": return <AddCourseScreen />;
+    default: return <DashboardScreen />;
   }
 }

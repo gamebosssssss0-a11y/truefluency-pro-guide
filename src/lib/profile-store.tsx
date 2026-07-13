@@ -1,5 +1,41 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Course, Level } from "./uni-data";
+import type { CatalogEntry, Level } from "./uni-data";
+
+/* ---------- Domain types ---------- */
+
+/**
+ * A course as stored on the user's profile. Extends CatalogEntry with a
+ * `source` tag: "verified" (from the catalog) or "manual" (self-reported).
+ */
+export type UserCourse = CatalogEntry & {
+  source: "verified" | "manual";
+};
+
+export type MockAttempt = {
+  id: string;
+  courseCode: string;
+  courseTitle: string;
+  score: number; // 0..100
+  correct: number;
+  total: number;
+  submittedAt: number;
+  topics: { topic: string; score: number }[];
+};
+
+export type InProgressTest = {
+  courseCode: string;
+  courseTitle: string;
+  questionCount: number;
+  durationSec: number;
+  startedAt: number;
+  answers: (number | null)[];
+  currentIndex: number;
+  questionIds: number[];
+} | null;
+
+export type TopicScore = { course: string; topic: string; score: number };
+
+/* ---------- View router ---------- */
 
 export type OnboardingStep =
   | "splash"
@@ -9,8 +45,20 @@ export type OnboardingStep =
   | "faculty"
   | "department"
   | "level"
-  | "courses"
-  | "dashboard";
+  | "courses";
+
+export type AppView =
+  | "dashboard"
+  | "course-detail"
+  | "mock-gen"
+  | "mock-config"
+  | "mock-run"
+  | "mock-result"
+  | "settings"
+  | "flashcards-soon"
+  | "add-course";
+
+/* ---------- Profile ---------- */
 
 export type Profile = {
   identity: { kind: "email" | "guest"; name: string; email?: string } | null;
@@ -18,8 +66,22 @@ export type Profile = {
   faculty: string | null;
   department: string | null;
   level: Level | null;
-  courses: Course[];
+  courses: UserCourse[];
   setupComplete: boolean;
+
+  // Mock test state
+  attempts: MockAttempt[];
+  topicScores: TopicScore[];
+  inProgressTest: InProgressTest;
+  lastResultId: string | null;
+
+  // Streak
+  streakDays: number;
+  lastQualifyingDay: string | null; // YYYY-MM-DD
+
+  // Milestones (one-time celebrations)
+  hasCompletedFirstMock: boolean;
+  masteredCourses: string[]; // course codes that have crossed 70% average once
 };
 
 const emptyProfile: Profile = {
@@ -30,22 +92,35 @@ const emptyProfile: Profile = {
   level: null,
   courses: [],
   setupComplete: false,
+  attempts: [],
+  topicScores: [],
+  inProgressTest: null,
+  lastResultId: null,
+  streakDays: 0,
+  lastQualifyingDay: null,
+  hasCompletedFirstMock: false,
+  masteredCourses: [],
 };
 
 type Ctx = {
   profile: Profile;
-  step: OnboardingStep;
+  step: OnboardingStep | "dashboard";
+  view: AppView;
+  activeCourseCode: string | null;
   update: (p: Partial<Profile>) => void;
-  go: (s: OnboardingStep) => void;
+  go: (s: OnboardingStep | "dashboard") => void;
+  navigate: (v: AppView, opts?: { courseCode?: string | null }) => void;
   resetSetup: () => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "truefluency-profile-v1";
+const KEY = "truefluency-profile-v2";
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile>(emptyProfile);
-  const [step, setStep] = useState<OnboardingStep>("splash");
+  const [step, setStep] = useState<OnboardingStep | "dashboard">("splash");
+  const [view, setView] = useState<AppView>("dashboard");
+  const [activeCourseCode, setActiveCourseCode] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -53,7 +128,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Profile;
-        setProfile(parsed);
+        setProfile({ ...emptyProfile, ...parsed });
         if (parsed.setupComplete) setStep("dashboard");
       }
     } catch { /* ignore */ }
@@ -67,15 +142,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [profile, hydrated]);
 
   const update = (p: Partial<Profile>) => setProfile((cur) => ({ ...cur, ...p }));
-  const go = (s: OnboardingStep) => setStep(s);
+  const go = (s: OnboardingStep | "dashboard") => {
+    setStep(s);
+    if (s === "dashboard") setView("dashboard");
+  };
+  const navigate = (v: AppView, opts?: { courseCode?: string | null }) => {
+    setView(v);
+    if (opts && "courseCode" in opts) setActiveCourseCode(opts.courseCode ?? null);
+  };
   const resetSetup = () => {
     setProfile(emptyProfile);
     setStep("splash");
+    setView("dashboard");
+    setActiveCourseCode(null);
     try { localStorage.removeItem(KEY); } catch { /* ignore */ }
   };
 
   return (
-    <StoreCtx.Provider value={{ profile, step, update, go, resetSetup }}>
+    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, update, go, navigate, resetSetup }}>
       {hydrated ? children : null}
     </StoreCtx.Provider>
   );
@@ -85,4 +169,41 @@ export function useProfile() {
   const ctx = useContext(StoreCtx);
   if (!ctx) throw new Error("useProfile must be used inside ProfileProvider");
   return ctx;
+}
+
+/* ---------- Streak + milestone helpers ---------- */
+
+function today(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function yesterday(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Update the streak after a qualifying activity (currently: mock test completion).
+ * Structured so flashcards etc. can call this later without a rewrite.
+ */
+export function bumpStreak(p: Profile): Pick<Profile, "streakDays" | "lastQualifyingDay"> {
+  const t = today();
+  if (p.lastQualifyingDay === t) {
+    return { streakDays: p.streakDays, lastQualifyingDay: t };
+  }
+  if (p.lastQualifyingDay === yesterday()) {
+    return { streakDays: p.streakDays + 1, lastQualifyingDay: t };
+  }
+  return { streakDays: 1, lastQualifyingDay: t };
+}
+
+export function hasQualifyingActivityToday(p: Profile): boolean {
+  return p.lastQualifyingDay === today();
+}
+
+export function averageForCourse(p: Profile, code: string): number | null {
+  const rel = p.attempts.filter((a) => a.courseCode === code);
+  if (!rel.length) return null;
+  return Math.round(rel.reduce((s, a) => s + a.score, 0) / rel.length);
 }

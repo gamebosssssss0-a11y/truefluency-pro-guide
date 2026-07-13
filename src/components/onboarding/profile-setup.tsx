@@ -3,8 +3,19 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProfile } from "@/lib/profile-store";
-import { facultyData, gesCoursesByLevel, getDepartmentCourses, type Course, type Level } from "@/lib/uni-data";
-import { ChevronRight, Search, Info, Check, GraduationCap, BookOpen, Lock } from "lucide-react";
+import {
+  facultyData,
+  gesCoursesByLevel,
+  getDepartmentEntries,
+  isUnverifiedEntries,
+  type CatalogEntry,
+  type Level,
+} from "@/lib/uni-data";
+import { AddCourseFlow, StatusBadge } from "@/components/add-course-flow";
+import type { UserCourse } from "@/lib/profile-store";
+import {
+  BookOpen, Check, ChevronRight, GraduationCap, Info, Lock, Search,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* -------- Faculty -------- */
@@ -28,7 +39,7 @@ export function FacultyScreen() {
               className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-                <GraduationCap className="h-4.5 w-4.5" />
+                <GraduationCap className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-foreground">{f}</div>
@@ -82,13 +93,7 @@ export function DepartmentScreen() {
           }}
           className="space-y-4"
         >
-          <Input
-            autoFocus
-            placeholder="e.g. Data Science"
-            value={customDept}
-            onChange={(e) => setCustomDept(e.target.value)}
-            className="h-12 text-base"
-          />
+          <Input autoFocus placeholder="e.g. Data Science" value={customDept} onChange={(e) => setCustomDept(e.target.value)} className="h-12 text-base" />
           <div className="flex gap-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => go("faculty")}>Back</Button>
             <Button type="submit" className="flex-1">Continue</Button>
@@ -99,22 +104,11 @@ export function DepartmentScreen() {
   }
 
   return (
-    <AppShell
-      step={2}
-      total={4}
-      title="Your department"
-      subtitle={faculty}
-    >
+    <AppShell step={2} total={4} title="Your department" subtitle={faculty}>
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search your department…"
-          className="h-12 pl-10 text-base"
-        />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your department…" className="h-12 pl-10 text-base" />
       </div>
-
       <div className="space-y-2">
         {filtered.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No matches. Try another term.</p>
@@ -129,7 +123,6 @@ export function DepartmentScreen() {
           </button>
         ))}
       </div>
-
       <div className="mt-4">
         <Button variant="ghost" size="sm" onClick={() => go("faculty")}>← Change faculty</Button>
       </div>
@@ -164,45 +157,44 @@ export function LevelScreen() {
   );
 }
 
-/* -------- Course confirmation -------- */
+/* -------- Course confirmation (Screen 4) -------- */
 export function CoursesScreen() {
   const { profile, update, go } = useProfile();
   const level = profile.level!;
   const dept = profile.department!;
 
   const ges = gesCoursesByLevel[level];
-  const deptCourses = useMemo(() => getDepartmentCourses(dept, level), [dept, level]);
+  const rawDept = getDepartmentEntries(dept, level);
+  const deptUnverified = isUnverifiedEntries(rawDept);
+  const deptEntries: CatalogEntry[] = deptUnverified ? [] : rawDept!;
 
-  // GES compulsory are always locked in.
-  const [selectedDept, setSelectedDept] = useState<string[]>(deptCourses.map((c) => c.code));
+  // Selected department courses (verified ones, toggled by user).
+  const [selectedDept, setSelectedDept] = useState<string[]>(deptEntries.map((c) => c.code));
+  // Manually / browse-added courses (used when catalog is missing or user wants extras).
+  const [manualCourses, setManualCourses] = useState<UserCourse[]>([]);
 
   const toggleDept = (code: string) => {
-    setSelectedDept((cur) =>
-      cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]
-    );
+    setSelectedDept((cur) => cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]);
   };
 
   const finish = () => {
-    const chosenDept = deptCourses.filter((c) => selectedDept.includes(c.code));
-    const all: Course[] = [...ges, ...chosenDept];
+    const gesCourses: UserCourse[] = ges.map((c) => ({ ...c, source: "verified" }));
+    const chosenDept: UserCourse[] = deptEntries
+      .filter((c) => selectedDept.includes(c.code))
+      .map((c) => ({ ...c, source: "verified" }));
+    const all: UserCourse[] = [...gesCourses, ...chosenDept, ...manualCourses];
     update({ courses: all, setupComplete: true });
     go("dashboard");
   };
 
+  const totalPicked = ges.length + selectedDept.length + manualCourses.length;
+
   return (
-    <AppShell
-      step={4}
-      total={4}
-      title="Confirm your courses"
-      subtitle={`${dept} · ${level}L`}
-      compact
-    >
-      {/* GES section */}
+    <AppShell step={4} total={4} title="Confirm your courses" subtitle={`${dept} · ${level}L`} compact>
+      {/* GES */}
       <section className="mb-6">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            General Studies
-          </h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">General Studies</h2>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
             Compulsory for all students
           </span>
@@ -215,65 +207,88 @@ export function CoursesScreen() {
         ) : (
           <div className="space-y-2">
             {ges.map((c) => (
-              <div
-                key={c.code}
-                className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm"
-              >
+              <div key={c.code} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
                   <Lock className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-foreground">{c.code}</div>
-                  <div className="truncate text-xs text-muted-foreground">{c.title}</div>
+                  <div className="truncate text-xs text-muted-foreground">{c.name}</div>
                 </div>
-                <span className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                  c.kind === "compulsory" ? "bg-accent/15 text-accent" : "bg-muted text-muted-foreground"
-                )}>
-                  {c.kind === "compulsory" ? "Compulsory" : "Required"}
-                </span>
+                <StatusBadge status={c.status} />
               </div>
             ))}
           </div>
         )}
       </section>
 
-      {/* Department courses */}
+      {/* Department courses OR manual-entry fallback */}
       <section className="mb-6">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Your department courses
         </h2>
-        <div className="space-y-2">
-          {deptCourses.map((c) => {
-            const on = selectedDept.includes(c.code);
-            return (
-              <button
-                key={c.code}
-                onClick={() => toggleDept(c.code)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition",
-                  on ? "border-accent bg-accent/5" : "border-border bg-card hover:border-accent/50"
-                )}
-              >
-                <div className={cn(
-                  "grid h-9 w-9 shrink-0 place-items-center rounded-lg transition",
-                  on ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"
-                )}>
-                  {on ? <Check className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-foreground">{c.code}</div>
-                  <div className="truncate text-xs text-muted-foreground">{c.title}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+
+        {deptUnverified ? (
+          <AddCourseFlow
+            existing={manualCourses}
+            onAdd={(c) => setManualCourses((cur) => [...cur, c])}
+            onRemove={(code) => setManualCourses((cur) => cur.filter((c) => c.code !== code))}
+            level={level}
+            emptyStateMessage={`We don't have a verified course list for ${dept} at ${level} Level yet. Add your courses manually below — search our catalogue first, then free-text as a fallback.`}
+          />
+        ) : (
+          <>
+            <div className="space-y-2">
+              {deptEntries.map((c) => {
+                const on = selectedDept.includes(c.code);
+                return (
+                  <button
+                    key={c.code}
+                    onClick={() => toggleDept(c.code)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition",
+                      on ? "border-accent bg-accent/5" : "border-border bg-card hover:border-accent/50"
+                    )}
+                  >
+                    <div className={cn(
+                      "grid h-9 w-9 shrink-0 place-items-center rounded-lg transition",
+                      on ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"
+                    )}>
+                      {on ? <Check className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-foreground">{c.code}</span>
+                        <StatusBadge status={c.status} />
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">{c.name}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Add-more area, also using the browse-first flow */}
+            <details className="mt-4 rounded-2xl border border-border bg-card p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-foreground">
+                Add a course not shown above
+              </summary>
+              <div className="mt-4">
+                <AddCourseFlow
+                  existing={manualCourses}
+                  onAdd={(c) => setManualCourses((cur) => [...cur, c])}
+                  onRemove={(code) => setManualCourses((cur) => cur.filter((c) => c.code !== code))}
+                  level={level}
+                />
+              </div>
+            </details>
+          </>
+        )}
       </section>
 
       <div className="sticky bottom-0 -mx-5 border-t border-border bg-background/95 px-5 py-4 backdrop-blur">
-        <Button size="lg" className="w-full" onClick={finish} disabled={selectedDept.length === 0 && ges.length === 0}>
-          Finish Setup
+        <Button size="lg" className="w-full" onClick={finish} disabled={totalPicked === 0}>
+          Finish Setup {totalPicked > 0 ? `· ${totalPicked} course${totalPicked === 1 ? "" : "s"}` : ""}
         </Button>
       </div>
     </AppShell>
