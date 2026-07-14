@@ -6,6 +6,7 @@ import { IdentityScreen } from "@/components/onboarding/identity";
 import {
   FacultyScreen, DepartmentScreen, LevelScreen, CoursesScreen,
 } from "@/components/onboarding/profile-setup";
+import { GoalScreen, TimelineScreen, StudyPreferenceScreen } from "@/components/onboarding/personalization";
 import { DashboardScreen } from "@/components/dashboard";
 import { CourseDetailScreen } from "@/components/course-detail";
 import {
