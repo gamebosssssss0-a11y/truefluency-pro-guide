@@ -42,10 +42,19 @@ export type OnboardingStep =
   | "disclaimer"
   | "disclaimer-blocked"
   | "identity"
+  | "goal"
+  | "timeline"
+  | "study-pref"
   | "faculty"
   | "department"
   | "level"
   | "courses";
+
+export type Goal = "pass" | "top-grades" | "catch-up";
+export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
+export type StudyPreference = "practice" | "flashcards" | "reading";
+
+export type LocalAccount = { name: string; email: string; password: string };
 
 export type AppView =
   | "dashboard"
