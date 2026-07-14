@@ -35,6 +35,9 @@ function Router() {
       case "disclaimer": return <DisclaimerScreen />;
       case "disclaimer-blocked": return <DisclaimerBlockedScreen />;
       case "identity": return <IdentityScreen />;
+      case "goal": return <GoalScreen />;
+      case "timeline": return <TimelineScreen />;
+      case "study-pref": return <StudyPreferenceScreen />;
       case "faculty": return <FacultyScreen />;
       case "department": return <DepartmentScreen />;
       case "level": return <LevelScreen />;
