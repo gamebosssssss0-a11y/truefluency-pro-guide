@@ -42,10 +42,19 @@ export type OnboardingStep =
   | "disclaimer"
   | "disclaimer-blocked"
   | "identity"
+  | "goal"
+  | "timeline"
+  | "study-pref"
   | "faculty"
   | "department"
   | "level"
   | "courses";
+
+export type Goal = "pass" | "top-grades" | "catch-up";
+export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
+export type StudyPreference = "practice" | "flashcards" | "reading";
+
+export type LocalAccount = { name: string; email: string; password: string };
 
 export type AppView =
   | "dashboard"
@@ -62,7 +71,11 @@ export type AppView =
 
 export type Profile = {
   identity: { kind: "email" | "guest"; name: string; email?: string } | null;
+  accounts: LocalAccount[];
   disclaimerAccepted: boolean;
+  goal: Goal | null;
+  timeline: Timeline | null;
+  studyPreference: StudyPreference | null;
   faculty: string | null;
   department: string | null;
   level: Level | null;
@@ -86,7 +99,11 @@ export type Profile = {
 
 const emptyProfile: Profile = {
   identity: null,
+  accounts: [],
   disclaimerAccepted: false,
+  goal: null,
+  timeline: null,
+  studyPreference: null,
   faculty: null,
   department: null,
   level: null,
