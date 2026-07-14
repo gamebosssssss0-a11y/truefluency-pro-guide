@@ -120,7 +120,7 @@ export function GoalScreen() {
   const [value, setValue] = useState<Goal | null>(profile.goal);
   return (
     <PersonalizationScreen
-      step={2}
+      step={1}
       stepIndex={0}
       title="What's your main goal right now?"
       subtitle="We'll tune your dashboard around this."
@@ -138,7 +138,7 @@ export function TimelineScreen() {
   const [value, setValue] = useState<Timeline | null>(profile.timeline);
   return (
     <PersonalizationScreen
-      step={3}
+      step={2}
       stepIndex={1}
       title="How much time until your next exam?"
       subtitle="This helps us pace your study sessions."
@@ -156,7 +156,7 @@ export function StudyPreferenceScreen() {
   const [value, setValue] = useState<StudyPreference | null>(profile.studyPreference);
   return (
     <PersonalizationScreen
-      step={4}
+      step={3}
       stepIndex={2}
       title="How do you prefer to study?"
       subtitle="We'll surface this style first on your dashboard."
