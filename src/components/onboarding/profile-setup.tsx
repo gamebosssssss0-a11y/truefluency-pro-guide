@@ -24,8 +24,8 @@ export function FacultyScreen() {
   const faculties = Object.keys(facultyData);
   return (
     <AppShell
-      step={1}
-      total={4}
+      step={4}
+      total={7}
       title="Pick your faculty"
       subtitle="Tap the one you belong to. You can change this later in Settings."
     >
@@ -79,8 +79,8 @@ export function DepartmentScreen() {
   if (depts.length === 0) {
     return (
       <AppShell
-        step={2}
-        total={4}
+        step={5}
+        total={7}
         title="Type your department"
         subtitle={`We don't have departments for ${faculty} listed yet — type yours in and we'll add it.`}
       >
@@ -104,7 +104,7 @@ export function DepartmentScreen() {
   }
 
   return (
-    <AppShell step={6} total={7} title="Your department" subtitle={faculty}>
+    <AppShell step={5} total={7} title="Your department" subtitle={faculty}>
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your department…" className="h-12 pl-10 text-base" />
@@ -135,7 +135,7 @@ export function LevelScreen() {
   const { update, go } = useProfile();
   const levels: Level[] = ["100", "200", "300", "400", "500"];
   return (
-    <AppShell step={7} total={7} title="What level are you in?" subtitle="Pick your current academic level.">
+    <AppShell step={6} total={7} title="What level are you in?" subtitle="Pick your current academic level.">
       <div className="grid grid-cols-2 gap-3">
         {levels.map((l) => (
           <button
