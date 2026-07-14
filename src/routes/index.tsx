@@ -30,7 +30,10 @@ function Index() {
 }
 
 function Router() {
-  const { step, view } = useProfile();
+  const { step, view, profile } = useProfile();
+  useEffect(() => {
+    if (profile.identity) void ensureSupabaseSession(profile);
+  }, [profile.identity?.kind, profile.identity?.email]);
   if (step !== "dashboard") {
     switch (step) {
       case "splash": return <SplashScreen />;
