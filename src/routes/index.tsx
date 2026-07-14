@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile } from "@/lib/profile-store";
+import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { SplashScreen } from "@/components/onboarding/splash";
 import { DisclaimerScreen, DisclaimerBlockedScreen } from "@/components/onboarding/disclaimer";
 import { IdentityScreen } from "@/components/onboarding/identity";
@@ -28,7 +30,10 @@ function Index() {
 }
 
 function Router() {
-  const { step, view } = useProfile();
+  const { step, view, profile } = useProfile();
+  useEffect(() => {
+    if (profile.identity) void ensureSupabaseSession(profile);
+  }, [profile.identity?.kind, profile.identity?.email]);
   if (step !== "dashboard") {
     switch (step) {
       case "splash": return <SplashScreen />;
