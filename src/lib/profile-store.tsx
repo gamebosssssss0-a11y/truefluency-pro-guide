@@ -65,7 +65,9 @@ export type AppView =
   | "mock-result"
   | "settings"
   | "flashcards-soon"
-  | "add-course";
+  | "add-course"
+  | "all-uploads";
+
 
 /* ---------- Profile ---------- */
 

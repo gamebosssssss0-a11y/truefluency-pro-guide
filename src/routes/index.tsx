@@ -14,7 +14,7 @@ import { CourseDetailScreen } from "@/components/course-detail";
 import {
   MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen,
 } from "@/components/mock-test-flow";
-import { SettingsScreen } from "@/components/settings";
+import { SettingsScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
 
 export const Route = createFileRoute("/")({
@@ -57,8 +57,10 @@ function Router() {
     case "mock-run": return <MockRunScreen />;
     case "mock-result": return <MockResultScreen />;
     case "settings": return <SettingsScreen />;
+    case "all-uploads": return <AllUploadsScreen />;
     case "flashcards-soon": return <FlashcardsSoonScreen />;
     case "add-course": return <AddCourseScreen />;
     default: return <DashboardScreen />;
+
   }
 }
