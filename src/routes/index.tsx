@@ -57,8 +57,10 @@ function Router() {
     case "mock-run": return <MockRunScreen />;
     case "mock-result": return <MockResultScreen />;
     case "settings": return <SettingsScreen />;
+    case "all-uploads": return <AllUploadsScreen />;
     case "flashcards-soon": return <FlashcardsSoonScreen />;
     case "add-course": return <AddCourseScreen />;
     default: return <DashboardScreen />;
+
   }
 }
