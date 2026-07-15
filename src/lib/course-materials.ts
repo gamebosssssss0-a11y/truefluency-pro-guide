@@ -1,11 +1,11 @@
 /**
  * Shared upload logic for course materials.
  *
- * ONE function, called with a different course_code each time — this is what
- * keeps every course's upload button working identically.
+ * Handles: transactional upload (storage+DB rollback on failure), duplicate
+ * detection, image compression with fallback, PDF text extraction with a
+ * 30s timeout, and cross-course listing for the "All My Uploads" view.
  *
  * Path: course-materials/{user_id}/{course_code}/{timestamp}-{filename}
- * DB:   public.course_materials row with user_id + course_code + file_path
  */
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ export type CourseMaterial = {
     | "pending"
     | "success"
     | "failed"
+    | "timeout"
     | "scanned_pdf";
   extraction_error: string | null;
   created_at: string;
@@ -39,6 +40,7 @@ export type CourseMaterial = {
 
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
+const EXTRACTION_TIMEOUT_MS = 30_000;
 
 function safeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
@@ -46,7 +48,6 @@ function safeName(name: string) {
 
 function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    // Conservative: keep enough detail for AI OCR later.
     new Compressor(file, {
       quality: 0.85,
       maxWidth: 1800,
@@ -57,6 +58,25 @@ function compressImage(file: File): Promise<Blob> {
       error: (err) => reject(err),
     });
   });
+}
+
+/** Check whether the same filename already exists for this user+course. */
+export async function findDuplicateMaterial(opts: {
+  courseCode: string;
+  fileName: string;
+}): Promise<CourseMaterial | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) return null;
+  const { data } = await supabase
+    .from("course_materials")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("course_code", opts.courseCode)
+    .eq("file_name", opts.fileName)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return (data?.[0] as CourseMaterial) ?? null;
 }
 
 export async function uploadCourseMaterial(opts: {
@@ -76,7 +96,7 @@ export async function uploadCourseMaterial(opts: {
     throw new Error(msg);
   }
 
-  // 2) Classify + (image only) compress.
+  // 2) Classify.
   const isImage = IMAGE_TYPES.includes(file.type);
   const isPdf = file.type === PDF_TYPE;
   if (!isImage && !isPdf) {
@@ -85,38 +105,47 @@ export async function uploadCourseMaterial(opts: {
     throw new Error(msg);
   }
 
+  // 3) (Image only) compress with graceful fallback.
   let payload: Blob = file;
+  let didCompress = false;
   const originalKB = Math.round(file.size / 1024);
 
   if (isImage) {
     emit({ kind: "compressing", originalKB });
     try {
-      payload = await compressImage(file);
+      const compressed = await compressImage(file);
+      payload = compressed;
+      didCompress = true;
+      const compressedKB = Math.round(payload.size / 1024);
+      emit({ kind: "compressing", originalKB, compressedKB });
     } catch {
-      payload = file; // fall back to original
+      // Compression failed — silently fall back to original. Do NOT show the
+      // "X → Y" compression banner since no compression happened.
+      payload = file;
+      didCompress = false;
     }
-    const compressedKB = Math.round(payload.size / 1024);
-    emit({ kind: "compressing", originalKB, compressedKB });
   }
 
-  // 3) Upload to storage.
   const path = `${userId}/${courseCode}/${Date.now()}-${safeName(file.name)}`;
-  emit({ kind: "uploading", pct: 10 });
 
+  // 4) Upload to storage.
+  emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
   const { error: upErr } = await supabase.storage
     .from("course-materials")
-    .upload(path, payload, {
-      contentType: file.type,
-      upsert: false,
-    });
+    .upload(path, payload, { contentType: file.type, upsert: false });
 
   if (upErr) {
-    emit({ kind: "error", message: upErr.message });
+    emit({
+      kind: "error",
+      message:
+        "Upload didn't go through — try a smaller file or check your connection",
+    });
     throw upErr;
   }
   emit({ kind: "uploading", pct: 80 });
 
-  // 4) Insert DB row linking file → user + course.
+  // 5) Insert DB row. If this fails, roll back the storage object so we
+  //    never leave an orphan on either side.
   const { data: row, error: insErr } = await supabase
     .from("course_materials")
     .insert({
@@ -133,42 +162,65 @@ export async function uploadCourseMaterial(opts: {
     .single();
 
   if (insErr || !row) {
-    emit({ kind: "error", message: insErr?.message ?? "Insert failed" });
-    // Best-effort cleanup of the orphaned storage object.
     await supabase.storage.from("course-materials").remove([path]);
+    emit({
+      kind: "error",
+      message:
+        "Upload didn't go through — try a smaller file or check your connection",
+    });
     throw insErr ?? new Error("Insert failed");
   }
 
-  // 5) For PDFs, kick off extraction.
+  // 6) For PDFs, kick off extraction with a 30s timeout. The file upload
+  //    itself is already successful — extraction failing/timing out just
+  //    updates status, it never removes the file.
   if (isPdf) {
     emit({ kind: "extracting" });
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "extract-pdf-text",
-        { body: { materialId: row.id } },
+      await withTimeout(
+        supabase.functions.invoke("extract-pdf-text", {
+          body: { materialId: row.id },
+        }),
+        EXTRACTION_TIMEOUT_MS,
       );
-      if (error) throw error;
-      // Refresh row so caller sees final status.
-      const { data: fresh } = await supabase
-        .from("course_materials")
-        .select("*")
-        .eq("id", row.id)
-        .maybeSingle();
-      emit({ kind: "done" });
-      return (fresh ?? row) as CourseMaterial;
     } catch (e) {
-      emit({
-        kind: "error",
-        message:
-          "We couldn't read the PDF's text. If it's a scanned document, try uploading it as an image instead.",
-      });
-      // Row still exists with status pending/failed — return it so UI can show state.
-      return row as CourseMaterial;
+      const isTimeout = (e as Error).message === "__timeout__";
+      await supabase
+        .from("course_materials")
+        .update({
+          extraction_status: isTimeout ? "timeout" : "failed",
+          extraction_error: isTimeout ? "timed out" : (e as Error).message,
+        })
+        .eq("id", row.id);
     }
+
+    const { data: fresh } = await supabase
+      .from("course_materials")
+      .select("*")
+      .eq("id", row.id)
+      .maybeSingle();
+    emit({ kind: "done" });
+    return (fresh ?? row) as CourseMaterial;
   }
 
   emit({ kind: "done" });
   return row as CourseMaterial;
+}
+
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("__timeout__")), ms);
+    Promise.resolve(p).then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (err) => {
+        clearTimeout(t);
+        reject(err);
+      },
+    );
+  });
 }
 
 export async function listMaterialsForCourse(courseCode: string) {
@@ -181,7 +233,32 @@ export async function listMaterialsForCourse(courseCode: string) {
   return (data ?? []) as CourseMaterial[];
 }
 
+/** All materials the signed-in user has ever uploaded, across every course. */
+export async function listAllUserMaterials() {
+  const { data, error } = await supabase
+    .from("course_materials")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as CourseMaterial[];
+}
+
 export async function deleteMaterial(m: CourseMaterial) {
   await supabase.storage.from("course-materials").remove([m.file_path]);
   await supabase.from("course_materials").delete().eq("id", m.id);
+}
+
+/** Wipe every uploaded file (storage + DB) for the signed-in user. */
+export async function deleteAllUserMaterials() {
+  const all = await listAllUserMaterials();
+  if (all.length === 0) return;
+  const paths = all.map((m) => m.file_path);
+  // Storage bucket delete first, then DB rows. RLS scopes both to auth.uid().
+  for (let i = 0; i < paths.length; i += 100) {
+    await supabase.storage.from("course-materials").remove(paths.slice(i, i + 100));
+  }
+  await supabase
+    .from("course_materials")
+    .delete()
+    .in("id", all.map((m) => m.id));
 }
