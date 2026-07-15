@@ -14,7 +14,7 @@ import { CourseDetailScreen } from "@/components/course-detail";
 import {
   MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen,
 } from "@/components/mock-test-flow";
-import { SettingsScreen } from "@/components/settings";
+import { SettingsScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
 
 export const Route = createFileRoute("/")({
