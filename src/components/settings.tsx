@@ -110,7 +110,7 @@ export function SettingsScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Review the disclaimer</div>
-            <div className="text-[11px] text-muted-foreground">Study aid — not a substitute for lectures.</div>
+            <div className="text-[11px] text-muted-foreground">Study aid, not a substitute for lectures.</div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
