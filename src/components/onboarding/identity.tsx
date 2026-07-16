@@ -124,7 +124,7 @@ export function IdentityScreen() {
         </div>
         <div>
           <div className="font-semibold text-foreground">Continue as Guest</div>
-          <div className="text-xs text-muted-foreground">Skip ahead — you can add an account later.</div>
+          <div className="text-xs text-muted-foreground">Skip ahead. You can add an account later.</div>
         </div>
       </button>
     </AppShell>
