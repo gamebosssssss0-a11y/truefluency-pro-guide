@@ -235,7 +235,7 @@ export function AllUploadsScreen() {
         </button>
         <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Everything you've uploaded stays with you — even if you change department or level later.
+          Everything you've uploaded stays with you, even if you change department or level later.
         </p>
 
         {items === null ? (
