@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Settings as SettingsIcon, Sparkles, Upload, ChevronRight, TrendingUp,
-  BookOpen, Flame, Target, PlayCircle, Zap,
+  BookOpen, Flame, Target, PlayCircle, Zap, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { focusCardCopy, greetingSubline, timelineDefaults, courseFeatureOrder } from "@/lib/personalization";
 
 export function DashboardScreen() {
   const { profile, navigate } = useProfile();
@@ -25,6 +26,9 @@ export function DashboardScreen() {
   }, [profile.topicScores]);
 
   const resume = profile.inProgressTest;
+  const timeline = timelineDefaults(profile.timeline);
+  const subline = greetingSubline(profile.goal);
+  const focusCopy = focusCardCopy(profile.goal, focus?.topic ?? "");
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,6 +45,22 @@ export function DashboardScreen() {
             <p className="mt-1 text-sm text-muted-foreground">
               {profile.department} · {profile.level}L
             </p>
+            {subline ? (
+              <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p>
+            ) : null}
+            {timeline.urgency ? (
+              <span
+                className={cn(
+                  "mt-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                  timeline.urgency.tone === "urgent"
+                    ? "bg-destructive/15 text-destructive"
+                    : "bg-primary/10 text-primary"
+                )}
+              >
+                {timeline.urgency.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                {timeline.urgency.badge}
+              </span>
+            ) : null}
           </div>
           <button
             onClick={() => navigate("settings")}
@@ -99,11 +119,11 @@ export function DashboardScreen() {
         {focus ? (
           <div className="mb-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Target className="h-3.5 w-3.5" /> Focus on this
+              <Target className="h-3.5 w-3.5" /> {focusCopy.label}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="text-sm font-semibold text-foreground">{focusCopy.heading}</div>
+            <div className="mt-2 flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground">{focus.topic}</div>
                 <div className="text-[11px] text-muted-foreground">{focus.course}</div>
               </div>
               <TopicPill label={`${focus.score}%`} strength={scoreToStrength(focus.score)} big />
@@ -136,7 +156,38 @@ export function DashboardScreen() {
 }
 
 function FeaturedCourseCard({ course }: { course: UserCourse }) {
-  const { navigate } = useProfile();
+  const { navigate, profile } = useProfile();
+  const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
+
+  const mockBtn = (
+    <Button key="mock" className="mt-2 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+      <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
+    </Button>
+  );
+  const materialsBtn = (
+    <Button key="materials" className="mt-2 w-full" size="lg" variant="outline" onClick={() => navigate("course-detail", { courseCode: course.code })}>
+      <Upload className="mr-1.5 h-4 w-4" /> Upload past paper
+    </Button>
+  );
+  const openBtn = (
+    <Button key="open" className="mt-2 w-full" size="lg" variant="ghost" onClick={() => navigate("course-detail", { courseCode: course.code })}>
+      Open course <ChevronRight className="ml-1 h-4 w-4" />
+    </Button>
+  );
+
+  // First button in the ordered list is the primary (solid); render others below.
+  const primaryKey = order[0];
+  const primaryBtn = primaryKey === "materials" ? (
+    <Button key="materials-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("course-detail", { courseCode: course.code })}>
+      <Upload className="mr-1.5 h-4 w-4" /> Upload past paper
+    </Button>
+  ) : (
+    <Button key="mock-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+      <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
+    </Button>
+  );
+  const secondaryBtn = primaryKey === "materials" ? mockBtn : materialsBtn;
+
   return (
     <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
       <div className="bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
@@ -170,12 +221,14 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
 
         <AiGeneratedLabel className="mt-4" />
 
-        <Button className="mt-4 w-full" size="lg" onClick={() => navigate("course-detail", { courseCode: course.code })}>
-          Open course <ChevronRight className="ml-1 h-4 w-4" />
-        </Button>
-        <Button className="mt-2 w-full" size="lg" variant="outline" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
-          <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
-        </Button>
+        {primaryBtn}
+        {secondaryBtn}
+        {openBtn}
+        {flashcardsPlaceholderNote ? (
+          <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
+            Flashcards coming soon, your preferred study method.
+          </p>
+        ) : null}
       </div>
     </div>
   );

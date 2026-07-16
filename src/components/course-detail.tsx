@@ -18,6 +18,7 @@ import {
 } from "@/lib/course-materials";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { courseFeatureOrder } from "@/lib/personalization";
 
 export function CourseDetailScreen() {
   const { profile, navigate, activeCourseCode } = useProfile();
@@ -55,14 +56,9 @@ export function CourseDetailScreen() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <Button size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
-            <Zap className="mr-1.5 h-4 w-4" /> Mock test
-          </Button>
-          <UploadButton courseCode={course.code} />
-        </div>
+        <CoursePrimaryActions courseCode={course.code} />
 
-        <MaterialsList courseCode={course.code} />
+
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -112,6 +108,48 @@ export function CourseDetailScreen() {
         </div>
       </div>
     </div>
+  );
+}
+
+/* -------- Personalization-aware action section -------- */
+
+function CoursePrimaryActions({ courseCode }: { courseCode: string }) {
+  const { navigate, profile } = useProfile();
+  const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
+
+  const mockButton = (
+    <Button size="lg" onClick={() => navigate("mock-gen", { courseCode })}>
+      <Zap className="mr-1.5 h-4 w-4" /> Mock test
+    </Button>
+  );
+
+  const readingFirst = order[0] === "materials";
+
+  return (
+    <>
+      {readingFirst ? (
+        <>
+          <MaterialsList courseCode={courseCode} />
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <UploadButton courseCode={courseCode} />
+            {mockButton}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            {mockButton}
+            <UploadButton courseCode={courseCode} />
+          </div>
+          <MaterialsList courseCode={courseCode} />
+        </>
+      )}
+      {flashcardsPlaceholderNote ? (
+        <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
+          Flashcards coming soon, your preferred study method.
+        </p>
+      ) : null}
+    </>
   );
 }
 

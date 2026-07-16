@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
+import { timelineDefaults } from "@/lib/personalization";
 
 /* ---------- helpers ---------- */
 
@@ -72,8 +73,9 @@ export function MockGenerationScreen() {
 export function MockConfigScreen() {
   const course = useActiveCourse();
   const { navigate, update, profile } = useProfile();
-  const [count, setCount] = useState(10);
-  const [minutes, setMinutes] = useState(15);
+  const defaults = useMemo(() => timelineDefaults(profile.timeline), [profile.timeline]);
+  const [count, setCount] = useState(defaults.questionCount);
+  const [minutes, setMinutes] = useState(defaults.minutes);
 
   if (!course) return null;
 
@@ -106,6 +108,9 @@ export function MockConfigScreen() {
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Configure your test</h1>
         <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
+        {defaults.toneLine ? (
+          <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
+        ) : null}
 
         <div className="mt-6 space-y-5">
           <Slider label="Questions" unit={count === 1 ? "question" : "questions"} value={count} min={5} max={20} step={5} onChange={setCount} />
