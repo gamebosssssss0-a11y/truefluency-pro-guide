@@ -82,7 +82,7 @@ export function DepartmentScreen() {
         step={5}
         total={7}
         title="Type your department"
-        subtitle={`We don't have departments for ${faculty} listed yet — type yours in and we'll add it.`}
+        subtitle={`We don't have departments for ${faculty} listed yet. Type yours in and we'll add it.`}
       >
         <form
           onSubmit={(e) => {
