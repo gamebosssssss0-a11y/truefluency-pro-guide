@@ -119,11 +119,11 @@ export function DashboardScreen() {
         {focus ? (
           <div className="mb-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Target className="h-3.5 w-3.5" /> Focus on this
+              <Target className="h-3.5 w-3.5" /> {focusCopy.label}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="text-sm font-semibold text-foreground">{focusCopy.heading}</div>
+            <div className="mt-2 flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground">{focus.topic}</div>
                 <div className="text-[11px] text-muted-foreground">{focus.course}</div>
               </div>
               <TopicPill label={`${focus.score}%`} strength={scoreToStrength(focus.score)} big />
