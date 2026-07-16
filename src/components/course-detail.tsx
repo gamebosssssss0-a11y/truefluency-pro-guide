@@ -137,7 +137,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       // Extraction status feedback for PDFs.
       if (result.file_type === "pdf") {
         if (result.extraction_status === "success") {
-          toast.success(`Added to ${courseCode} — text ready`);
+          toast.success(`Added to ${courseCode}. Text ready.`);
         } else if (result.extraction_status === "scanned_pdf" || result.extraction_status === "failed" || result.extraction_status === "timeout") {
           toast.message(`Added to ${courseCode}`, {
             description: "This looks like a scanned document. For best results, upload it as an image instead so we can process it accurately.",
@@ -371,7 +371,7 @@ export function MaterialRow({
 function ExtractionBadge({ status }: { status: CourseMaterial["extraction_status"] }) {
   if (status === "success") return <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Text ready</span>;
   if (status === "pending") return <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Extracting…</span>;
-  if (status === "scanned_pdf") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">Scanned — upload as image</span>;
+  if (status === "scanned_pdf") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">Scanned, upload as image</span>;
   if (status === "timeout" || status === "failed") return <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive">Couldn't read content</span>;
   return null;
 }

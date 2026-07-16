@@ -5,17 +5,17 @@ import { useProfile } from "@/lib/profile-store";
 import { AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, XCircle } from "lucide-react";
 
 const summary =
-  "TrueFluency Pro is a study aid — not a substitute for lectures or coursework. Predictions are statistical estimates based on past papers, not confirmed exam content, and are not endorsed by any lecturer or the University. Only past, concluded exam material may be uploaded — never live or in-progress exams. AI-generated content may contain errors — always cross-check against your official material.";
+  "TrueFluency Pro is a study aid. It is not a substitute for lectures or coursework. Predictions are statistical estimates based on past papers, not confirmed exam content, and are not endorsed by any lecturer or the University. Only past, concluded exam material may be uploaded. Never upload live or in-progress exams. AI-generated content may contain errors, so always cross-check against your official material.";
 
 const fullSections: { title: string; body: string }[] = [
   { title: "1. Study Aid Only", body: "Not a substitute for lectures, textbooks, or coursework; results are not a guarantee of actual exam performance." },
   { title: "2. Predictions Are Not Guarantees", body: "Statistical estimates from past-paper pattern analysis, subject to error, not endorsed by any lecturer, department, or the University of Ibadan examinations office." },
-  { title: "3. Past Papers Only — Never Live Exams", body: "Only processes concluded past exams; uploading live or in-progress exam content is strictly prohibited." },
+  { title: "3. Past Papers Only, Never Live Exams", body: "Only processes concluded past exams; uploading live or in-progress exam content is strictly prohibited." },
   { title: "4. Academic Integrity", body: "Legitimate study practice consistent with past-question compilations; does not enable examination malpractice." },
   { title: "5. User-Uploaded Content", body: "Users confirm they have rights to uploaded material and won't share copyrighted content beyond personal use." },
   { title: "6. AI-Generated Content", body: "Mock tests, flashcards, and predictions use AI and may contain errors; always cross-check against official material." },
   { title: "7. No Liability for Academic Outcomes", body: "App and creators not liable for exam performance, grades, or academic standing." },
-  { title: "8. Data & Privacy", body: "Uploaded material may be used anonymized/aggregated to improve predictions; personal performance data stays private to the account. [Placeholder note: finalize retention/deletion policy once backend is built.]" },
+  { title: "8. Data & Privacy", body: "Your uploaded past papers and slides are stored securely and are only accessible to your own account. We do not share your uploaded files with other students or make them public. Extracted text content from your uploads may be used to improve mock test predictions for your own courses. Your personal performance data (scores, streaks, test history) stays private to your account and is never shared with other users, including on the opt-in leaderboard, where only your relative standing (not raw scores or personal data) is shown. You can delete your account and all associated data at any time from Settings." },
   { title: "9. Eligibility", body: "Intended for university students' personal academic study." },
   { title: "10. Changes to This Disclaimer", body: "May be updated as the app evolves; continued use after an update means acceptance of revised terms." },
 ];

@@ -94,9 +94,9 @@ export function SettingsScreen() {
 
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your profile</h2>
         <div className="space-y-2">
-          <Row icon={User} label="Identity" value={profile.identity?.name ?? "—"} sub={profile.identity?.email} />
-          <Row icon={GraduationCap} label="Faculty" value={profile.faculty ?? "—"} />
-          <Row icon={GraduationCap} label="Department · Level" value={`${profile.department ?? "—"} · ${profile.level ?? "—"}L`} />
+          <Row icon={User} label="Identity" value={profile.identity?.name ?? "Not set"} sub={profile.identity?.email} />
+          <Row icon={GraduationCap} label="Faculty" value={profile.faculty ?? "Not set"} />
+          <Row icon={GraduationCap} label="Department · Level" value={`${profile.department ?? "Not set"} · ${profile.level ?? "?"}L`} />
           <Row icon={BookOpen} label="Courses" value={`${profile.courses.length} on file`} />
         </div>
 
@@ -110,7 +110,7 @@ export function SettingsScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Review the disclaimer</div>
-            <div className="text-[11px] text-muted-foreground">Study aid — not a substitute for lectures.</div>
+            <div className="text-[11px] text-muted-foreground">Study aid, not a substitute for lectures.</div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
@@ -121,7 +121,7 @@ export function SettingsScreen() {
           variant="outline"
           className="w-full"
           onClick={() => {
-            if (confirm("Reset your profile? This clears your faculty, department, level, confirmed courses, streak, and mock test history. Your uploaded past papers and slides are kept — you can find them under 'All my uploads'.")) {
+            if (confirm("Reset your profile? This clears your faculty, department, level, confirmed courses, streak, and mock test history. Your uploaded past papers and slides are kept. You can find them under 'All my uploads'.")) {
               resetSetup();
             }
           }}
@@ -235,7 +235,7 @@ export function AllUploadsScreen() {
         </button>
         <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Everything you've uploaded stays with you — even if you change department or level later.
+          Everything you've uploaded stays with you, even if you change department or level later.
         </p>
 
         {items === null ? (

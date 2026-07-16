@@ -46,7 +46,7 @@ export function FacultyScreen() {
                 {incomplete ? (
                   <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                     <Info className="h-3 w-3" />
-                    List may be incomplete — verify your department with your faculty.
+                    List may be incomplete. Verify your department with your faculty.
                   </div>
                 ) : (
                   <div className="mt-0.5 text-[11px] text-muted-foreground">
@@ -82,7 +82,7 @@ export function DepartmentScreen() {
         step={5}
         total={7}
         title="Type your department"
-        subtitle={`We don't have departments for ${faculty} listed yet — type yours in and we'll add it.`}
+        subtitle={`We don't have departments for ${faculty} listed yet. Type yours in and we'll add it.`}
       >
         <form
           onSubmit={(e) => {
@@ -234,7 +234,7 @@ export function CoursesScreen() {
             onAdd={(c) => setManualCourses((cur) => [...cur, c])}
             onRemove={(code) => setManualCourses((cur) => cur.filter((c) => c.code !== code))}
             level={level}
-            emptyStateMessage={`We don't have a verified course list for ${dept} at ${level} Level yet. Add your courses manually below — search our catalogue first, then free-text as a fallback.`}
+            emptyStateMessage={`We don't have a verified course list for ${dept} at ${level} Level yet. Add your courses manually below. Search our catalogue first, then free-text as a fallback.`}
           />
         ) : (
           <>

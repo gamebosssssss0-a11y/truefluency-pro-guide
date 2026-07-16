@@ -16,7 +16,7 @@ export function AddCourseScreen() {
         </button>
         <h1 className="font-display text-3xl font-semibold text-foreground">Add a course</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Search the catalogue first — if it's not there, add it manually.
+          Search the catalogue first. If it's not there, add it manually.
         </p>
 
         <div className="mt-6">

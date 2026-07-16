@@ -65,7 +65,7 @@ export function DashboardScreen() {
             </div>
             <div className="text-[11px] text-muted-foreground">
               {activeToday
-                ? "Nice — you've qualified for today."
+                ? "Nice, you've qualified for today."
                 : "Take a mock test today to keep it going."}
             </div>
           </div>

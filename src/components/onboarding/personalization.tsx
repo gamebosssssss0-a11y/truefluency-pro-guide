@@ -21,7 +21,7 @@ const goals: Option<Goal>[] = [
 
 const timelines: Option<Timeline>[] = [
   { value: "lt-week", label: "Less than a week", icon: AlarmClock },
-  { value: "2-4-weeks", label: "2 – 4 weeks", icon: CalendarDays },
+  { value: "2-4-weeks", label: "2 to 4 weeks", icon: CalendarDays },
   { value: "gt-month", label: "More than a month", icon: CalendarRange },
   { value: "unsure", label: "Not sure yet", icon: HelpCircle },
 ];
