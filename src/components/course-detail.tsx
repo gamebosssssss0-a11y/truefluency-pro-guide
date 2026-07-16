@@ -111,6 +111,48 @@ export function CourseDetailScreen() {
   );
 }
 
+/* -------- Personalization-aware action section -------- */
+
+function CoursePrimaryActions({ courseCode }: { courseCode: string }) {
+  const { navigate, profile } = useProfile();
+  const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
+
+  const mockButton = (
+    <Button size="lg" onClick={() => navigate("mock-gen", { courseCode })}>
+      <Zap className="mr-1.5 h-4 w-4" /> Mock test
+    </Button>
+  );
+
+  const readingFirst = order[0] === "materials";
+
+  return (
+    <>
+      {readingFirst ? (
+        <>
+          <MaterialsList courseCode={courseCode} />
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <UploadButton courseCode={courseCode} />
+            {mockButton}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            {mockButton}
+            <UploadButton courseCode={courseCode} />
+          </div>
+          <MaterialsList courseCode={courseCode} />
+        </>
+      )}
+      {flashcardsPlaceholderNote ? (
+        <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
+          Flashcards coming soon, your preferred study method.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 /* -------- Upload button + duplicate dialog -------- */
 
 function UploadButton({ courseCode }: { courseCode: string }) {
