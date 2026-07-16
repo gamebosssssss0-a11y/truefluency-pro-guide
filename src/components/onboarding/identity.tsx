@@ -60,7 +60,7 @@ export function IdentityScreen() {
   return (
     <AppShell
       title={tab === "signup" ? "Create your account" : "Welcome back"}
-      subtitle="Saved locally on this device — no cloud sync yet. Clearing storage removes it."
+      subtitle="Saved locally on this device. No cloud sync yet. Clearing storage removes it."
     >
       {/* Tabs */}
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
