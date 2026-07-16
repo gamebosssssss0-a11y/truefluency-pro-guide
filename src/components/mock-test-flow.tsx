@@ -72,8 +72,13 @@ export function MockGenerationScreen() {
 export function MockConfigScreen() {
   const course = useActiveCourse();
   const { navigate, update, profile } = useProfile();
-  const [count, setCount] = useState(10);
-  const [minutes, setMinutes] = useState(15);
+  const defaults = useMemo(() => {
+    // Inline import avoids a circular dep at module load.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return timelineDefaultsFn(profile.timeline);
+  }, [profile.timeline]);
+  const [count, setCount] = useState(defaults.questionCount);
+  const [minutes, setMinutes] = useState(defaults.minutes);
 
   if (!course) return null;
 
