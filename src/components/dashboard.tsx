@@ -156,7 +156,38 @@ export function DashboardScreen() {
 }
 
 function FeaturedCourseCard({ course }: { course: UserCourse }) {
-  const { navigate } = useProfile();
+  const { navigate, profile } = useProfile();
+  const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
+
+  const mockBtn = (
+    <Button key="mock" className="mt-2 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+      <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
+    </Button>
+  );
+  const materialsBtn = (
+    <Button key="materials" className="mt-2 w-full" size="lg" variant="outline" onClick={() => navigate("course-detail", { courseCode: course.code })}>
+      <Upload className="mr-1.5 h-4 w-4" /> Upload past paper
+    </Button>
+  );
+  const openBtn = (
+    <Button key="open" className="mt-2 w-full" size="lg" variant="ghost" onClick={() => navigate("course-detail", { courseCode: course.code })}>
+      Open course <ChevronRight className="ml-1 h-4 w-4" />
+    </Button>
+  );
+
+  // First button in the ordered list is the primary (solid); render others below.
+  const primaryKey = order[0];
+  const primaryBtn = primaryKey === "materials" ? (
+    <Button key="materials-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("course-detail", { courseCode: course.code })}>
+      <Upload className="mr-1.5 h-4 w-4" /> Upload past paper
+    </Button>
+  ) : (
+    <Button key="mock-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+      <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
+    </Button>
+  );
+  const secondaryBtn = primaryKey === "materials" ? mockBtn : materialsBtn;
+
   return (
     <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
       <div className="bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
@@ -190,12 +221,14 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
 
         <AiGeneratedLabel className="mt-4" />
 
-        <Button className="mt-4 w-full" size="lg" onClick={() => navigate("course-detail", { courseCode: course.code })}>
-          Open course <ChevronRight className="ml-1 h-4 w-4" />
-        </Button>
-        <Button className="mt-2 w-full" size="lg" variant="outline" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
-          <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
-        </Button>
+        {primaryBtn}
+        {secondaryBtn}
+        {openBtn}
+        {flashcardsPlaceholderNote ? (
+          <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
+            Flashcards coming soon, your preferred study method.
+          </p>
+        ) : null}
       </div>
     </div>
   );
