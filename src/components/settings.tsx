@@ -94,9 +94,9 @@ export function SettingsScreen() {
 
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your profile</h2>
         <div className="space-y-2">
-          <Row icon={User} label="Identity" value={profile.identity?.name ?? "—"} sub={profile.identity?.email} />
-          <Row icon={GraduationCap} label="Faculty" value={profile.faculty ?? "—"} />
-          <Row icon={GraduationCap} label="Department · Level" value={`${profile.department ?? "—"} · ${profile.level ?? "—"}L`} />
+          <Row icon={User} label="Identity" value={profile.identity?.name ?? "Not set"} sub={profile.identity?.email} />
+          <Row icon={GraduationCap} label="Faculty" value={profile.faculty ?? "Not set"} />
+          <Row icon={GraduationCap} label="Department · Level" value={`${profile.department ?? "Not set"} · ${profile.level ?? "?"}L`} />
           <Row icon={BookOpen} label="Courses" value={`${profile.courses.length} on file`} />
         </div>
 
