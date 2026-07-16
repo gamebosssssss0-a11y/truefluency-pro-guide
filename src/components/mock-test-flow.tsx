@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
+import { timelineDefaults } from "@/lib/personalization";
 
 /* ---------- helpers ---------- */
 
