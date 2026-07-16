@@ -58,7 +58,6 @@ export function CourseDetailScreen() {
 
         <CoursePrimaryActions courseCode={course.code} />
 
-        <MaterialsList courseCode={course.code} />
 
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
