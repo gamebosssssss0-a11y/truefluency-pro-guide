@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Settings as SettingsIcon, Sparkles, Upload, ChevronRight, TrendingUp,
-  BookOpen, Flame, Target, PlayCircle, Zap,
+  BookOpen, Flame, Target, PlayCircle, Zap, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { focusCardCopy, greetingSubline, timelineDefaults, courseFeatureOrder } from "@/lib/personalization";
 
 export function DashboardScreen() {
   const { profile, navigate } = useProfile();
