@@ -46,7 +46,7 @@ export function FacultyScreen() {
                 {incomplete ? (
                   <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                     <Info className="h-3 w-3" />
-                    List may be incomplete — verify your department with your faculty.
+                    List may be incomplete. Verify your department with your faculty.
                   </div>
                 ) : (
                   <div className="mt-0.5 text-[11px] text-muted-foreground">
