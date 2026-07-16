@@ -45,6 +45,22 @@ export function DashboardScreen() {
             <p className="mt-1 text-sm text-muted-foreground">
               {profile.department} · {profile.level}L
             </p>
+            {subline ? (
+              <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p>
+            ) : null}
+            {timeline.urgency ? (
+              <span
+                className={cn(
+                  "mt-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                  timeline.urgency.tone === "urgent"
+                    ? "bg-destructive/15 text-destructive"
+                    : "bg-primary/10 text-primary"
+                )}
+              >
+                {timeline.urgency.tone === "urgent" ? <AlertTriangle className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                {timeline.urgency.badge}
+              </span>
+            ) : null}
           </div>
           <button
             onClick={() => navigate("settings")}
