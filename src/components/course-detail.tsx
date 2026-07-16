@@ -137,7 +137,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       // Extraction status feedback for PDFs.
       if (result.file_type === "pdf") {
         if (result.extraction_status === "success") {
-          toast.success(`Added to ${courseCode} — text ready`);
+          toast.success(`Added to ${courseCode}. Text ready.`);
         } else if (result.extraction_status === "scanned_pdf" || result.extraction_status === "failed" || result.extraction_status === "timeout") {
           toast.message(`Added to ${courseCode}`, {
             description: "This looks like a scanned document. For best results, upload it as an image instead so we can process it accurately.",
