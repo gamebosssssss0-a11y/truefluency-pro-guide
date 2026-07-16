@@ -371,7 +371,7 @@ export function MaterialRow({
 function ExtractionBadge({ status }: { status: CourseMaterial["extraction_status"] }) {
   if (status === "success") return <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Text ready</span>;
   if (status === "pending") return <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Extracting…</span>;
-  if (status === "scanned_pdf") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">Scanned — upload as image</span>;
+  if (status === "scanned_pdf") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">Scanned, upload as image</span>;
   if (status === "timeout" || status === "failed") return <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive">Couldn't read content</span>;
   return null;
 }
