@@ -121,7 +121,7 @@ export function SettingsScreen() {
           variant="outline"
           className="w-full"
           onClick={() => {
-            if (confirm("Reset your profile? This clears your faculty, department, level, confirmed courses, streak, and mock test history. Your uploaded past papers and slides are kept — you can find them under 'All my uploads'.")) {
+            if (confirm("Reset your profile? This clears your faculty, department, level, confirmed courses, streak, and mock test history. Your uploaded past papers and slides are kept. You can find them under 'All my uploads'.")) {
               resetSetup();
             }
           }}
