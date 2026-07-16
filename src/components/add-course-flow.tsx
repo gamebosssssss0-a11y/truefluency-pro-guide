@@ -102,7 +102,7 @@ export function AddCourseFlow({
           />
         </div>
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          We search across every department and level in the catalogue — this isn't live
+          We search across every department and level in the catalogue. This isn't live
           verification against UI's records, just our local list.
         </p>
       </div>
