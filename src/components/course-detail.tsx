@@ -56,14 +56,10 @@ export function CourseDetailScreen() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <Button size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
-            <Zap className="mr-1.5 h-4 w-4" /> Mock test
-          </Button>
-          <UploadButton courseCode={course.code} />
-        </div>
+        <CoursePrimaryActions courseCode={course.code} />
 
         <MaterialsList courseCode={course.code} />
+
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
