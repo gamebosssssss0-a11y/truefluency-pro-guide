@@ -108,6 +108,9 @@ export function MockConfigScreen() {
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Configure your test</h1>
         <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
+        {defaults.toneLine ? (
+          <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
+        ) : null}
 
         <div className="mt-6 space-y-5">
           <Slider label="Questions" unit={count === 1 ? "question" : "questions"} value={count} min={5} max={20} step={5} onChange={setCount} />
