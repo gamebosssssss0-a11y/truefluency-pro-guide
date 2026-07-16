@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TrueFluency Pro — Smarter Exam Prep for UI Students" },
+      { title: "TrueFluency Pro: Smarter Exam Prep for UI Students" },
       { name: "description", content: "Personalized past-paper predictions, mock tests and study plans for University of Ibadan students." },
       { property: "og:title", content: "TrueFluency Pro" },
       { property: "og:description", content: "Personalized past-paper predictions and mock tests for University of Ibadan students." },
