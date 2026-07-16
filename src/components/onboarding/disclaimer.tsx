@@ -10,7 +10,7 @@ const summary =
 const fullSections: { title: string; body: string }[] = [
   { title: "1. Study Aid Only", body: "Not a substitute for lectures, textbooks, or coursework; results are not a guarantee of actual exam performance." },
   { title: "2. Predictions Are Not Guarantees", body: "Statistical estimates from past-paper pattern analysis, subject to error, not endorsed by any lecturer, department, or the University of Ibadan examinations office." },
-  { title: "3. Past Papers Only — Never Live Exams", body: "Only processes concluded past exams; uploading live or in-progress exam content is strictly prohibited." },
+  { title: "3. Past Papers Only, Never Live Exams", body: "Only processes concluded past exams; uploading live or in-progress exam content is strictly prohibited." },
   { title: "4. Academic Integrity", body: "Legitimate study practice consistent with past-question compilations; does not enable examination malpractice." },
   { title: "5. User-Uploaded Content", body: "Users confirm they have rights to uploaded material and won't share copyrighted content beyond personal use." },
   { title: "6. AI-Generated Content", body: "Mock tests, flashcards, and predictions use AI and may contain errors; always cross-check against official material." },
