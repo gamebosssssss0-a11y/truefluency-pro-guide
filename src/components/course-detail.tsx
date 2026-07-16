@@ -18,6 +18,7 @@ import {
 } from "@/lib/course-materials";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { courseFeatureOrder } from "@/lib/personalization";
 
 export function CourseDetailScreen() {
   const { profile, navigate, activeCourseCode } = useProfile();
