@@ -15,7 +15,7 @@ const fullSections: { title: string; body: string }[] = [
   { title: "5. User-Uploaded Content", body: "Users confirm they have rights to uploaded material and won't share copyrighted content beyond personal use." },
   { title: "6. AI-Generated Content", body: "Mock tests, flashcards, and predictions use AI and may contain errors; always cross-check against official material." },
   { title: "7. No Liability for Academic Outcomes", body: "App and creators not liable for exam performance, grades, or academic standing." },
-  { title: "8. Data & Privacy", body: "Uploaded material may be used anonymized/aggregated to improve predictions; personal performance data stays private to the account. [Placeholder note: finalize retention/deletion policy once backend is built.]" },
+  { title: "8. Data & Privacy", body: "Your uploaded past papers and slides are stored securely and are only accessible to your own account. We do not share your uploaded files with other students or make them public. Extracted text content from your uploads may be used to improve mock test predictions for your own courses. Your personal performance data (scores, streaks, test history) stays private to your account and is never shared with other users, including on the opt-in leaderboard, where only your relative standing (not raw scores or personal data) is shown. You can delete your account and all associated data at any time from Settings." },
   { title: "9. Eligibility", body: "Intended for university students' personal academic study." },
   { title: "10. Changes to This Disclaimer", body: "May be updated as the app evolves; continued use after an update means acceptance of revised terms." },
 ];
