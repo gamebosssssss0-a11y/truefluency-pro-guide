@@ -26,6 +26,9 @@ export function DashboardScreen() {
   }, [profile.topicScores]);
 
   const resume = profile.inProgressTest;
+  const timeline = timelineDefaults(profile.timeline);
+  const subline = greetingSubline(profile.goal);
+  const focusCopy = focusCardCopy(profile.goal, focus?.topic ?? "");
 
   return (
     <div className="min-h-screen bg-background">
