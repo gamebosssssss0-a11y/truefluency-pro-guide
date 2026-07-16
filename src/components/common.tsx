@@ -14,7 +14,7 @@ export function AiGeneratedLabel({ className }: { className?: string }) {
       }
     >
       <Info className="h-3 w-3" />
-      AI-generated — verify against your material.
+      AI-generated. Verify against your material.
     </p>
   );
 }
