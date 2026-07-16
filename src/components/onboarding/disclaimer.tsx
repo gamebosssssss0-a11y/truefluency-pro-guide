@@ -5,7 +5,7 @@ import { useProfile } from "@/lib/profile-store";
 import { AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, XCircle } from "lucide-react";
 
 const summary =
-  "TrueFluency Pro is a study aid — not a substitute for lectures or coursework. Predictions are statistical estimates based on past papers, not confirmed exam content, and are not endorsed by any lecturer or the University. Only past, concluded exam material may be uploaded — never live or in-progress exams. AI-generated content may contain errors — always cross-check against your official material.";
+  "TrueFluency Pro is a study aid. It is not a substitute for lectures or coursework. Predictions are statistical estimates based on past papers, not confirmed exam content, and are not endorsed by any lecturer or the University. Only past, concluded exam material may be uploaded. Never upload live or in-progress exams. AI-generated content may contain errors, so always cross-check against your official material.";
 
 const fullSections: { title: string; body: string }[] = [
   { title: "1. Study Aid Only", body: "Not a substitute for lectures, textbooks, or coursework; results are not a guarantee of actual exam performance." },
