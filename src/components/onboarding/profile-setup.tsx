@@ -234,7 +234,7 @@ export function CoursesScreen() {
             onAdd={(c) => setManualCourses((cur) => [...cur, c])}
             onRemove={(code) => setManualCourses((cur) => cur.filter((c) => c.code !== code))}
             level={level}
-            emptyStateMessage={`We don't have a verified course list for ${dept} at ${level} Level yet. Add your courses manually below — search our catalogue first, then free-text as a fallback.`}
+            emptyStateMessage={`We don't have a verified course list for ${dept} at ${level} Level yet. Add your courses manually below. Search our catalogue first, then free-text as a fallback.`}
           />
         ) : (
           <>
