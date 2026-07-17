@@ -35,6 +35,15 @@ export type InProgressTest = {
 
 export type TopicScore = { course: string; topic: string; score: number };
 
+export type Difficulty = "gentle" | "balanced" | "challenging" | "exam";
+
+export type CourseTestSettings = {
+  questionCount: number;
+  minutes: number;
+  difficulty: Difficulty;
+  topicFocus: string[];
+};
+
 /* ---------- View router ---------- */
 
 export type OnboardingStep =
