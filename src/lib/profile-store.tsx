@@ -131,6 +131,7 @@ const emptyProfile: Profile = {
   lastQualifyingDay: null,
   hasCompletedFirstMock: false,
   masteredCourses: [],
+  courseTestSettings: {},
 };
 
 type Ctx = {
