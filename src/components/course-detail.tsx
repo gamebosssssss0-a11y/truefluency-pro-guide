@@ -225,7 +225,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,application/pdf"
+        accept={ACCEPTED_UPLOAD_MIME}
         className="hidden"
         onChange={onFile}
       />
