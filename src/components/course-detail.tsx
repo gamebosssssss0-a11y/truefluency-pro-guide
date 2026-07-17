@@ -172,13 +172,18 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         courseCode,
         onStage: (s) => setStage(s),
       });
-      // Extraction status feedback for PDFs.
-      if (result.file_type === "pdf") {
+      // Extraction status feedback for extractable types (pdf, docx, pptx).
+      const t = result.file_type;
+      if (t === "pdf" || t === "docx" || t === "pptx") {
         if (result.extraction_status === "success") {
           toast.success(`Added to ${courseCode}. Text ready.`);
-        } else if (result.extraction_status === "scanned_pdf" || result.extraction_status === "failed" || result.extraction_status === "timeout") {
+        } else if (t === "pdf" && result.extraction_status === "scanned_pdf") {
           toast.message(`Added to ${courseCode}`, {
             description: "This looks like a scanned document. For best results, upload it as an image instead so we can process it accurately.",
+          });
+        } else if (result.extraction_status === "failed" || result.extraction_status === "timeout") {
+          toast.message(`Added to ${courseCode}`, {
+            description: "We've saved your file, but couldn't process its content automatically yet.",
           });
         } else {
           toast.success(`Added to ${courseCode}`);
