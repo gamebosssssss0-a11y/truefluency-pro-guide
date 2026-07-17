@@ -23,7 +23,7 @@ export type CourseMaterial = {
   course_code: string;
   file_path: string;
   file_name: string;
-  file_type: "image" | "pdf";
+  file_type: "image" | "pdf" | "docx" | "pptx";
   mime_type: string;
   size_bytes: number;
   extracted_content: string | null;
@@ -40,7 +40,31 @@ export type CourseMaterial = {
 
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
+const DOCX_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const PPTX_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const EXTRACTION_TIMEOUT_MS = 30_000;
+
+function classifyFile(file: File): CourseMaterial["file_type"] | null {
+  if (IMAGE_TYPES.includes(file.type)) return "image";
+  if (file.type === PDF_TYPE) return "pdf";
+  if (file.type === DOCX_TYPE || /\.docx$/i.test(file.name)) return "docx";
+  if (file.type === PPTX_TYPE || /\.pptx$/i.test(file.name)) return "pptx";
+  return null;
+}
+
+/** File-type → edge function name for text extraction. */
+const EXTRACTION_FN: Partial<Record<CourseMaterial["file_type"], string>> = {
+  pdf: "extract-pdf-text",
+  docx: "extract-docx-text",
+  pptx: "extract-pptx-text",
+};
+
+export const ACCEPTED_UPLOAD_MIME =
+  "image/jpeg,image/jpg,image/png,application/pdf," +
+  ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document," +
+  ".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
 function safeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
