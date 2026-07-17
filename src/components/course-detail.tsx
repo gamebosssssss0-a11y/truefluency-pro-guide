@@ -375,26 +375,34 @@ export function MaterialRow({
   showCourse?: boolean;
   isFromInactiveCourse?: boolean;
 }) {
-  const isPdf = m.file_type === "pdf";
+  const t = m.file_type;
+  const isImage = t === "image";
+  const hasExtraction = t === "pdf" || t === "docx" || t === "pptx";
   const kb = Math.round(m.size_bytes / 1024);
+
+  const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
+    if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
+    if (t === "docx") return { Icon: FileType2, tone: "bg-[hsl(215_70%_45%)] text-white" };
+    if (t === "pptx") return { Icon: Presentation, tone: "bg-[hsl(20_85%_50%)] text-white" };
+    return { Icon: FileImage, tone: "bg-accent text-accent-foreground" };
+  })();
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-      <div className={cn(
-        "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
-        isPdf ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
-      )}>
-        {isPdf ? <FileText className="h-4 w-4" /> : <FileImage className="h-4 w-4" />}
+      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
+        <iconMeta.Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
           {showCourse ? <span>·</span> : null}
+          <span className="uppercase">{isImage ? "IMG" : t}</span>
+          <span>·</span>
           <span>{kb}KB</span>
           <span>·</span>
           <span>{new Date(m.created_at).toLocaleDateString()}</span>
-          {isPdf ? <ExtractionBadge status={m.extraction_status} /> : null}
+          {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
         </div>
         {isFromInactiveCourse ? (
           <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
