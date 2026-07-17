@@ -23,7 +23,7 @@ export type CourseMaterial = {
   course_code: string;
   file_path: string;
   file_name: string;
-  file_type: "image" | "pdf";
+  file_type: "image" | "pdf" | "docx" | "pptx";
   mime_type: string;
   size_bytes: number;
   extracted_content: string | null;
@@ -40,7 +40,31 @@ export type CourseMaterial = {
 
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
+const DOCX_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const PPTX_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const EXTRACTION_TIMEOUT_MS = 30_000;
+
+function classifyFile(file: File): CourseMaterial["file_type"] | null {
+  if (IMAGE_TYPES.includes(file.type)) return "image";
+  if (file.type === PDF_TYPE) return "pdf";
+  if (file.type === DOCX_TYPE || /\.docx$/i.test(file.name)) return "docx";
+  if (file.type === PPTX_TYPE || /\.pptx$/i.test(file.name)) return "pptx";
+  return null;
+}
+
+/** File-type → edge function name for text extraction. */
+const EXTRACTION_FN: Partial<Record<CourseMaterial["file_type"], string>> = {
+  pdf: "extract-pdf-text",
+  docx: "extract-docx-text",
+  pptx: "extract-pptx-text",
+};
+
+export const ACCEPTED_UPLOAD_MIME =
+  "image/jpeg,image/jpg,image/png,application/pdf," +
+  ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document," +
+  ".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
 function safeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
@@ -97,15 +121,17 @@ export async function uploadCourseMaterial(opts: {
   }
 
   // 2) Classify.
-  const isImage = IMAGE_TYPES.includes(file.type);
-  const isPdf = file.type === PDF_TYPE;
-  if (!isImage && !isPdf) {
-    const msg = "Only JPG, PNG or PDF files are supported.";
+  const fileType = classifyFile(file);
+  if (!fileType) {
+    const msg = "Only JPG, PNG, PDF, DOCX or PPTX files are supported.";
     emit({ kind: "error", message: msg });
     throw new Error(msg);
   }
+  const isImage = fileType === "image";
+  const extractionFn = EXTRACTION_FN[fileType];
 
-  // 3) (Image only) compress with graceful fallback.
+  // 3) (Image only) compress with graceful fallback. DOCX/PPTX/PDF are
+  //    uploaded as-is.
   let payload: Blob = file;
   let didCompress = false;
   const originalKB = Math.round(file.size / 1024);
@@ -130,9 +156,11 @@ export async function uploadCourseMaterial(opts: {
 
   // 4) Upload to storage.
   emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
+  const contentType = file.type ||
+    (fileType === "docx" ? DOCX_TYPE : fileType === "pptx" ? PPTX_TYPE : "application/octet-stream");
   const { error: upErr } = await supabase.storage
     .from("course-materials")
-    .upload(path, payload, { contentType: file.type, upsert: false });
+    .upload(path, payload, { contentType, upsert: false });
 
   if (upErr) {
     emit({
@@ -153,10 +181,10 @@ export async function uploadCourseMaterial(opts: {
       course_code: courseCode,
       file_path: path,
       file_name: file.name,
-      file_type: isImage ? "image" : "pdf",
-      mime_type: file.type,
+      file_type: fileType,
+      mime_type: contentType,
       size_bytes: payload.size,
-      extraction_status: isPdf ? "pending" : "not_applicable",
+      extraction_status: extractionFn ? "pending" : "not_applicable",
     })
     .select("*")
     .single();
@@ -171,14 +199,14 @@ export async function uploadCourseMaterial(opts: {
     throw insErr ?? new Error("Insert failed");
   }
 
-  // 6) For PDFs, kick off extraction with a 30s timeout. The file upload
-  //    itself is already successful — extraction failing/timing out just
-  //    updates status, it never removes the file.
-  if (isPdf) {
+  // 6) For PDF/DOCX/PPTX, kick off extraction with a 30s timeout. The file
+  //    upload itself is already successful — extraction failing/timing out
+  //    just updates status, it never removes the file.
+  if (extractionFn) {
     emit({ kind: "extracting" });
     try {
       await withTimeout(
-        supabase.functions.invoke("extract-pdf-text", {
+        supabase.functions.invoke(extractionFn, {
           body: { materialId: row.id },
         }),
         EXTRACTION_TIMEOUT_MS,

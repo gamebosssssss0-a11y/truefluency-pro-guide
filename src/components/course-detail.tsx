@@ -8,12 +8,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Zap, Upload, Sparkles, ChevronRight,
-  FileImage, FileText, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
+  FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
-  findDuplicateMaterial,
+  findDuplicateMaterial, ACCEPTED_UPLOAD_MIME,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
 import { toast } from "sonner";
@@ -172,13 +172,18 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         courseCode,
         onStage: (s) => setStage(s),
       });
-      // Extraction status feedback for PDFs.
-      if (result.file_type === "pdf") {
+      // Extraction status feedback for extractable types (pdf, docx, pptx).
+      const t = result.file_type;
+      if (t === "pdf" || t === "docx" || t === "pptx") {
         if (result.extraction_status === "success") {
           toast.success(`Added to ${courseCode}. Text ready.`);
-        } else if (result.extraction_status === "scanned_pdf" || result.extraction_status === "failed" || result.extraction_status === "timeout") {
+        } else if (t === "pdf" && result.extraction_status === "scanned_pdf") {
           toast.message(`Added to ${courseCode}`, {
             description: "This looks like a scanned document. For best results, upload it as an image instead so we can process it accurately.",
+          });
+        } else if (result.extraction_status === "failed" || result.extraction_status === "timeout") {
+          toast.message(`Added to ${courseCode}`, {
+            description: "We've saved your file, but couldn't process its content automatically yet.",
           });
         } else {
           toast.success(`Added to ${courseCode}`);
@@ -220,7 +225,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,application/pdf"
+        accept={ACCEPTED_UPLOAD_MIME}
         className="hidden"
         onChange={onFile}
       />
@@ -370,26 +375,34 @@ export function MaterialRow({
   showCourse?: boolean;
   isFromInactiveCourse?: boolean;
 }) {
-  const isPdf = m.file_type === "pdf";
+  const t = m.file_type;
+  const isImage = t === "image";
+  const hasExtraction = t === "pdf" || t === "docx" || t === "pptx";
   const kb = Math.round(m.size_bytes / 1024);
+
+  const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
+    if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
+    if (t === "docx") return { Icon: FileType2, tone: "bg-[hsl(215_70%_45%)] text-white" };
+    if (t === "pptx") return { Icon: Presentation, tone: "bg-[hsl(20_85%_50%)] text-white" };
+    return { Icon: FileImage, tone: "bg-accent text-accent-foreground" };
+  })();
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-      <div className={cn(
-        "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
-        isPdf ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground",
-      )}>
-        {isPdf ? <FileText className="h-4 w-4" /> : <FileImage className="h-4 w-4" />}
+      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
+        <iconMeta.Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
           {showCourse ? <span>·</span> : null}
+          <span className="uppercase">{isImage ? "IMG" : t}</span>
+          <span>·</span>
           <span>{kb}KB</span>
           <span>·</span>
           <span>{new Date(m.created_at).toLocaleDateString()}</span>
-          {isPdf ? <ExtractionBadge status={m.extraction_status} /> : null}
+          {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
         </div>
         {isFromInactiveCourse ? (
           <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
