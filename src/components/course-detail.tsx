@@ -8,12 +8,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Zap, Upload, Sparkles, ChevronRight,
-  FileImage, FileText, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
+  FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
-  findDuplicateMaterial,
+  findDuplicateMaterial, ACCEPTED_UPLOAD_MIME,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
 import { toast } from "sonner";
