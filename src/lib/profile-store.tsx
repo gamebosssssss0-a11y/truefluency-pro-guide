@@ -106,6 +106,9 @@ export type Profile = {
   // Milestones (one-time celebrations)
   hasCompletedFirstMock: boolean;
   masteredCourses: string[]; // course codes that have crossed 70% average once
+
+  // Per-course last-used mock test settings
+  courseTestSettings: Record<string, CourseTestSettings>;
 };
 
 const emptyProfile: Profile = {
