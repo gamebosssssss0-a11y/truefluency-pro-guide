@@ -162,17 +162,22 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   const [dupOpen, setDupOpen] = useState(false);
   const [lastError, setLastError] = useState<{ file: File } | null>(null);
 
-  const onPick = () => inputRef.current?.click();
+  const onPick = () => {
+    try { inputRef.current?.click(); } catch (e) { console.error("[upload] file picker click failed", e); }
+  };
 
   const runUpload = async (file: File) => {
+    console.info("[upload] runUpload start", { name: file.name, courseCode });
     setLastError(null);
     try {
       const result = await uploadCourseMaterial({
         file,
         courseCode,
-        onStage: (s) => setStage(s),
+        onStage: (s) => {
+          try { setStage(s); } catch (e) { console.error("[upload] setStage failed", e); }
+        },
       });
-      // Extraction status feedback for extractable types (pdf, docx, pptx).
+      console.info("[upload] runUpload success", { id: result.id, status: result.extraction_status });
       const t = result.file_type;
       if (t === "pdf" || t === "docx" || t === "pptx") {
         if (result.extraction_status === "success") {
@@ -191,31 +196,46 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       } else {
         toast.success(`Added to ${courseCode}`);
       }
-      window.dispatchEvent(new Event("course-materials-refresh"));
+      try { window.dispatchEvent(new Event("course-materials-refresh")); } catch (e) {
+        console.error("[upload] refresh event dispatch failed", e);
+      }
     } catch (err) {
+      console.error("[upload] runUpload caught error", err);
       setLastError({ file });
-      toast.error((err as Error).message || "Upload failed");
+      try {
+        toast.error((err as Error)?.message || "Upload failed");
+      } catch (toastErr) {
+        console.error("[upload] toast.error failed", toastErr);
+      }
     } finally {
       setTimeout(() => setStage(null), 1500);
     }
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    // Duplicate check (same user + course + filename).
     try {
-      const dup = await findDuplicateMaterial({ courseCode, fileName: file.name });
-      if (dup) {
-        setPendingFile(file);
-        setDupOpen(true);
-        return;
-      }
-    } catch { /* ignore, fall through to upload */ }
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      console.info("[upload] file selected", { name: file.name, size: file.size, type: file.type });
 
-    void runUpload(file);
+      // Duplicate check (same user + course + filename).
+      try {
+        const dup = await findDuplicateMaterial({ courseCode, fileName: file.name });
+        if (dup) {
+          setPendingFile(file);
+          setDupOpen(true);
+          return;
+        }
+      } catch (dupErr) {
+        console.error("[upload] duplicate check failed, proceeding with upload", dupErr);
+      }
+
+      void runUpload(file);
+    } catch (outer) {
+      console.error("[upload] onFile outer catch", outer);
+      try { toast.error("Couldn't start the upload. Please try again."); } catch { /* ignore */ }
+    }
   };
 
   const busy = stage !== null && stage.kind !== "done" && stage.kind !== "error";
