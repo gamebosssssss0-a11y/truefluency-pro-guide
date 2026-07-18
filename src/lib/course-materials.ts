@@ -109,11 +109,20 @@ export async function uploadCourseMaterial(opts: {
   onStage?: (s: UploadStage) => void;
 }): Promise<CourseMaterial> {
   const { file, courseCode, onStage } = opts;
-  const emit = (s: UploadStage) => onStage?.(s);
+  const emit = (s: UploadStage) => {
+    try { onStage?.(s); } catch (e) { console.error("[upload] onStage handler threw", e); }
+  };
+
+  console.info("[upload] start", { name: file.name, size: file.size, type: file.type, courseCode });
 
   // 1) Auth check — RLS needs a real Supabase session.
-  const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user.id;
+  let userId: string | undefined;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    userId = sessionData.session?.user.id;
+  } catch (e) {
+    console.error("[upload] getSession failed", e);
+  }
   if (!userId) {
     const msg = "You need to be signed in to upload files.";
     emit({ kind: "error", message: msg });
@@ -122,6 +131,7 @@ export async function uploadCourseMaterial(opts: {
 
   // 2) Classify.
   const fileType = classifyFile(file);
+  console.info("[upload] classified", { fileType });
   if (!fileType) {
     const msg = "Only JPG, PNG, PDF, DOCX or PPTX files are supported.";
     emit({ kind: "error", message: msg });
@@ -130,8 +140,7 @@ export async function uploadCourseMaterial(opts: {
   const isImage = fileType === "image";
   const extractionFn = EXTRACTION_FN[fileType];
 
-  // 3) (Image only) compress with graceful fallback. DOCX/PPTX/PDF are
-  //    uploaded as-is.
+  // 3) (Image only) compress with graceful fallback.
   let payload: Blob = file;
   let didCompress = false;
   const originalKB = Math.round(file.size / 1024);
@@ -144,9 +153,8 @@ export async function uploadCourseMaterial(opts: {
       didCompress = true;
       const compressedKB = Math.round(payload.size / 1024);
       emit({ kind: "compressing", originalKB, compressedKB });
-    } catch {
-      // Compression failed — silently fall back to original. Do NOT show the
-      // "X → Y" compression banner since no compression happened.
+    } catch (e) {
+      console.error("[upload] compression failed, using original", e);
       payload = file;
       didCompress = false;
     }
@@ -158,81 +166,127 @@ export async function uploadCourseMaterial(opts: {
   emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
   const contentType = file.type ||
     (fileType === "docx" ? DOCX_TYPE : fileType === "pptx" ? PPTX_TYPE : "application/octet-stream");
-  const { error: upErr } = await supabase.storage
-    .from("course-materials")
-    .upload(path, payload, { contentType, upsert: false });
 
+  let upErr: unknown = null;
+  try {
+    const res = await supabase.storage
+      .from("course-materials")
+      .upload(path, payload, { contentType, upsert: false });
+    upErr = res.error;
+  } catch (e) {
+    upErr = e;
+  }
   if (upErr) {
+    console.error("[upload] storage upload failed", upErr);
     emit({
       kind: "error",
-      message:
-        "Upload didn't go through — try a smaller file or check your connection",
+      message: "Upload didn't go through. Try a smaller file or check your connection.",
     });
-    throw upErr;
+    throw upErr instanceof Error ? upErr : new Error("Storage upload failed");
   }
   emit({ kind: "uploading", pct: 80 });
 
-  // 5) Insert DB row. If this fails, roll back the storage object so we
-  //    never leave an orphan on either side.
-  const { data: row, error: insErr } = await supabase
-    .from("course_materials")
-    .insert({
-      user_id: userId,
-      course_code: courseCode,
-      file_path: path,
-      file_name: file.name,
-      file_type: fileType,
-      mime_type: contentType,
-      size_bytes: payload.size,
-      extraction_status: extractionFn ? "pending" : "not_applicable",
-    })
-    .select("*")
-    .single();
-
-  if (insErr || !row) {
-    await supabase.storage.from("course-materials").remove([path]);
+  // 5) Insert DB row. Roll back the storage object on failure.
+  let row: CourseMaterial | null = null;
+  try {
+    const { data, error } = await supabase
+      .from("course_materials")
+      .insert({
+        user_id: userId,
+        course_code: courseCode,
+        file_path: path,
+        file_name: file.name,
+        file_type: fileType,
+        mime_type: contentType,
+        size_bytes: payload.size,
+        extraction_status: extractionFn ? "pending" : "not_applicable",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    row = data as CourseMaterial;
+  } catch (e) {
+    console.error("[upload] db insert failed, rolling back storage", e);
+    try {
+      await supabase.storage.from("course-materials").remove([path]);
+    } catch (rollbackErr) {
+      console.error("[upload] storage rollback also failed", rollbackErr);
+    }
     emit({
       kind: "error",
-      message:
-        "Upload didn't go through — try a smaller file or check your connection",
+      message: "Upload didn't go through. Try a smaller file or check your connection.",
     });
-    throw insErr ?? new Error("Insert failed");
+    throw e instanceof Error ? e : new Error("Insert failed");
   }
 
-  // 6) For PDF/DOCX/PPTX, kick off extraction with a 30s timeout. The file
-  //    upload itself is already successful — extraction failing/timing out
-  //    just updates status, it never removes the file.
+  console.info("[upload] db row created", { id: row.id });
+
+  // 6) File upload SUCCEEDED. From here nothing may throw. Extraction is
+  //    best-effort; failures are recorded as row status only.
   if (extractionFn) {
     emit({ kind: "extracting" });
+    console.info("[upload] invoking extraction fn", extractionFn);
     try {
-      await withTimeout(
-        supabase.functions.invoke(extractionFn, {
-          body: { materialId: row.id },
-        }),
-        EXTRACTION_TIMEOUT_MS,
+      const invokePromise = supabase.functions.invoke(extractionFn, {
+        body: { materialId: row.id },
+      });
+      // Swallow any late rejection so it doesn't become an unhandled
+      // rejection after the timeout race resolves.
+      Promise.resolve(invokePromise).catch((e) =>
+        console.error("[upload] extraction invoke late-rejected", e),
       );
+      const res = (await withTimeout(invokePromise, EXTRACTION_TIMEOUT_MS)) as {
+        error?: { message?: string } | null;
+      };
+      if (res?.error) {
+        console.error("[upload] extraction invoke returned error", res.error);
+        try {
+          await supabase
+            .from("course_materials")
+            .update({
+              extraction_status: "failed",
+              extraction_error: res.error.message ?? "extraction failed",
+            })
+            .eq("id", row.id);
+        } catch (updErr) {
+          console.error("[upload] persist extraction failure status failed", updErr);
+        }
+      } else {
+        console.info("[upload] extraction invoke ok");
+      }
     } catch (e) {
-      const isTimeout = (e as Error).message === "__timeout__";
-      await supabase
-        .from("course_materials")
-        .update({
-          extraction_status: isTimeout ? "timeout" : "failed",
-          extraction_error: isTimeout ? "timed out" : (e as Error).message,
-        })
-        .eq("id", row.id);
+      const isTimeout = (e as Error)?.message === "__timeout__";
+      console.error("[upload] extraction threw", { isTimeout, err: e });
+      try {
+        await supabase
+          .from("course_materials")
+          .update({
+            extraction_status: isTimeout ? "timeout" : "failed",
+            extraction_error: isTimeout ? "timed out" : ((e as Error)?.message ?? "extraction failed"),
+          })
+          .eq("id", row.id);
+      } catch (updErr) {
+        console.error("[upload] persist extraction failure status failed", updErr);
+      }
     }
 
-    const { data: fresh } = await supabase
-      .from("course_materials")
-      .select("*")
-      .eq("id", row.id)
-      .maybeSingle();
+    let fresh: CourseMaterial | null = null;
+    try {
+      const { data } = await supabase
+        .from("course_materials")
+        .select("*")
+        .eq("id", row.id)
+        .maybeSingle();
+      fresh = (data as CourseMaterial | null) ?? null;
+    } catch (e) {
+      console.error("[upload] refetch after extraction failed", e);
+    }
     emit({ kind: "done" });
     return (fresh ?? row) as CourseMaterial;
   }
 
   emit({ kind: "done" });
-  return row as CourseMaterial;
+  return row;
 }
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
