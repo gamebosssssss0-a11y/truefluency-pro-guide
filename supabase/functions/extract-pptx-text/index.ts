@@ -2,14 +2,11 @@
 // "course-materials" bucket and writes it back onto the matching
 // course_materials row.
 //
-// PPTX slide text lives in /ppt/slides/slideN.xml as <a:t>…</a:t> runs.
-// We unzip with fflate, iterate slide XML files in numeric order, pull the
-// text of every <a:t> run, and concatenate per slide with a "[Slide N]"
-// tag so later features can reference specific slides.
-//
-// Mirrors extract-pdf-text semantics: success | failed | timeout are
-// persisted on the row and the uploaded file itself is never removed on
-// extraction failure.
+// IMPORTANT: this function ALWAYS returns HTTP 200 with a JSON status
+// payload so that the calling client's `supabase.functions.invoke` never
+// rejects. All internal failures (download, unzip, XML parse, DB update)
+// are caught, persisted as extraction_status: "failed" on the row, and
+// returned as { status: "failed", error }.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unzipSync, strFromU8 } from "https://esm.sh/fflate@0.8.2";
@@ -23,14 +20,18 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let supabase: ReturnType<typeof createClient> | null = null;
+  let materialId: string | null = null;
+
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Missing authorization" }, 401);
+    if (!authHeader) return ok({ status: "failed", error: "missing authorization" });
 
-    const { materialId } = await req.json();
-    if (!materialId) return json({ error: "materialId required" }, 400);
+    const body = await req.json().catch(() => ({}));
+    materialId = body?.materialId ?? null;
+    if (!materialId) return ok({ status: "failed", error: "materialId required" });
 
-    const supabase = createClient(
+    supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
@@ -42,8 +43,12 @@ Deno.serve(async (req) => {
       .eq("id", materialId)
       .maybeSingle();
 
-    if (matErr || !mat) return json({ error: matErr?.message ?? "Not found" }, 404);
-    if (mat.file_type !== "pptx") return json({ error: "Not a PPTX" }, 400);
+    if (matErr || !mat) {
+      return ok({ status: "failed", error: matErr?.message ?? "not found" });
+    }
+    if (mat.file_type !== "pptx") {
+      return ok({ status: "failed", error: "not a pptx" });
+    }
 
     await supabase
       .from("course_materials")
@@ -55,14 +60,8 @@ Deno.serve(async (req) => {
       .download(mat.file_path);
 
     if (dlErr || !blob) {
-      await supabase
-        .from("course_materials")
-        .update({
-          extraction_status: "failed",
-          extraction_error: dlErr?.message ?? "download failed",
-        })
-        .eq("id", materialId);
-      return json({ error: dlErr?.message ?? "download failed" }, 500);
+      await persistFailure(supabase, materialId, dlErr?.message ?? "download failed");
+      return ok({ status: "failed", error: dlErr?.message ?? "download failed" });
     }
 
     let extracted = "";
@@ -72,7 +71,6 @@ Deno.serve(async (req) => {
         filter: (f) => /^ppt\/slides\/slide\d+\.xml$/.test(f.name),
       });
 
-      // Sort slide files by numeric slide index (slide1, slide2, slide10, ...).
       const entries = Object.entries(unzipped).sort((a, b) => {
         const na = parseInt(a[0].match(/slide(\d+)\.xml$/)?.[1] ?? "0", 10);
         const nb = parseInt(b[0].match(/slide(\d+)\.xml$/)?.[1] ?? "0", 10);
@@ -81,43 +79,66 @@ Deno.serve(async (req) => {
 
       const parts: string[] = [];
       for (const [name, data] of entries) {
-        const slideNum = parseInt(name.match(/slide(\d+)\.xml$/)?.[1] ?? "0", 10);
-        const xml = strFromU8(data);
-        // Pull every <a:t>…</a:t> run. Simple regex — slide text is plain
-        // text inside these runs, no nested tags to worry about.
-        const runs = [...xml.matchAll(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g)]
-          .map((m) => decodeXmlEntities(m[1]))
-          .join(" ")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (runs) parts.push(`[Slide ${slideNum}]\n${runs}`);
+        try {
+          const slideNum = parseInt(name.match(/slide(\d+)\.xml$/)?.[1] ?? "0", 10);
+          const xml = strFromU8(data);
+          const runs = [...xml.matchAll(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g)]
+            .map((m) => decodeXmlEntities(m[1]))
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (runs) parts.push(`[Slide ${slideNum}]\n${runs}`);
+        } catch (slideErr) {
+          console.error("[extract-pptx] slide parse failed", name, slideErr);
+        }
       }
       extracted = parts.join("\n\n").trim();
     } catch (e) {
-      await supabase
-        .from("course_materials")
-        .update({
-          extraction_status: "failed",
-          extraction_error: (e as Error).message,
-        })
-        .eq("id", materialId);
-      return json({ error: "extraction failed", detail: (e as Error).message }, 500);
+      const msg = (e as Error)?.message ?? "unzip crash";
+      console.error("[extract-pptx] unzip threw", msg);
+      await persistFailure(supabase, materialId, msg);
+      return ok({ status: "failed", error: msg });
+    }
+
+    if (!extracted) {
+      await persistFailure(supabase, materialId, "no slide text found");
+      return ok({ status: "failed", error: "no slide text found" });
     }
 
     await supabase
       .from("course_materials")
       .update({
-        extraction_status: extracted ? "success" : "failed",
-        extracted_content: extracted || null,
-        extraction_error: extracted ? null : "no slide text found",
+        extraction_status: "success",
+        extracted_content: extracted,
+        extraction_error: null,
       })
       .eq("id", materialId);
 
-    return json({ status: extracted ? "success" : "failed", chars: extracted.length });
+    return ok({ status: "success", chars: extracted.length });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    const msg = (e as Error)?.message ?? "unknown error";
+    console.error("[extract-pptx] top-level catch", msg);
+    if (supabase && materialId) {
+      try { await persistFailure(supabase, materialId, msg); } catch { /* ignore */ }
+    }
+    return ok({ status: "failed", error: msg });
   }
 });
+
+async function persistFailure(
+  supabase: ReturnType<typeof createClient>,
+  materialId: string,
+  error: string,
+) {
+  try {
+    await supabase
+      .from("course_materials")
+      .update({ extraction_status: "failed", extraction_error: error })
+      .eq("id", materialId);
+  } catch (e) {
+    console.error("[extract-pptx] failed to persist failure", e);
+  }
+}
 
 function decodeXmlEntities(s: string) {
   return s
@@ -128,9 +149,9 @@ function decodeXmlEntities(s: string) {
     .replace(/&amp;/g, "&");
 }
 
-function json(body: unknown, status = 200) {
+function ok(body: unknown) {
   return new Response(JSON.stringify(body), {
-    status,
+    status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
