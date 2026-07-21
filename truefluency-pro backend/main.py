@@ -1,11 +1,11 @@
 """
-StudySprint Backend — FastAPI
-Render server that connects the TrueFluency Pro frontend to Gemini Flash.
+truefluency Backend — FastAPI
+Render server that connects the TrueFluency Pro frontend to nvidia nemotron.
 
 Flow:
   Frontend uploads file → Supabase stores it + calls extract edge fn
   Frontend calls /generate-mock → this backend fetches extracted text
-  from Supabase → sends to Gemini → returns real questions to frontend
+  from Supabase → sends to nvidia nemotron → returns real questions to frontend
 """
 
 from fastapi import FastAPI, HTTPException
@@ -124,7 +124,7 @@ async def fetch_extracted_text(material_id: str) -> str:
 
 async def call_gemini(prompt: str) -> str:
     """
-    Call Gemini Flash via OpenRouter and return the raw text response.
+    Call Ai Api via OpenRouter and return the raw text response.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
 
