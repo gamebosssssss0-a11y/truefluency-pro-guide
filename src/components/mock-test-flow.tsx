@@ -159,7 +159,7 @@ const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = 
 
 const ALL_TOPICS = Array.from(new Set(sampleQuestions.map((q) => q.topic)));
 
-function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProfile>["profile"]): CourseTestSettings {
+export function smartDefaultsFor(courseCode: string, profile: Profile): CourseTestSettings {
   const timeline = timelineDefaults(profile.timeline);
   // Weak topics only if the student has taken a mock in this course before.
   const hasHistory = profile.attempts.some((a) => a.courseCode === courseCode);
@@ -213,24 +213,14 @@ export function MockConfigScreen() {
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
 
+  // Settings are confirmed HERE, then generation runs on the next screen.
   const start = () => {
-    const ids = pickQuestionIds(count);
-    // Persist per-course settings for next time.
     const nextSettings: CourseTestSettings = { questionCount: count, minutes, difficulty, topicFocus };
     update({
       courseTestSettings: { ...profile.courseTestSettings, [course.code]: nextSettings },
-      inProgressTest: {
-        courseCode: course.code,
-        courseTitle: course.name,
-        questionCount: ids.length,
-        durationSec: minutes * 60,
-        startedAt: Date.now(),
-        answers: Array(ids.length).fill(null),
-        currentIndex: 0,
-        questionIds: ids,
-      },
+      inProgressTest: null,
     });
-    navigate("mock-run", { courseCode: course.code });
+    navigate("mock-gen", { courseCode: course.code });
   };
 
   return (
