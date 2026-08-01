@@ -213,6 +213,9 @@ export function MockConfigScreen() {
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
 
+  // Real analyzed topics for this course when available; no fake fallbacks.
+  const topicOptions: string[] = (profile.courseTopicAnalysis[course.code]?.topics ?? []).map((t) => t.topic);
+
   // Settings are confirmed HERE, then generation runs on the next screen.
   const start = () => {
     const nextSettings: CourseTestSettings = { questionCount: count, minutes, difficulty, topicFocus };
