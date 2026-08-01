@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings, type Profile } from "@/lib/profile-store";
 import { sampleQuestions } from "@/lib/questions";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, AlertCircle, RotateCw } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
+import { generateMock, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
+import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
 
 /* ---------- helpers ---------- */
 
@@ -15,54 +17,132 @@ function useActiveCourse(): UserCourse | undefined {
   return profile.courses.find((c) => c.code === activeCourseCode);
 }
 
-function pickQuestionIds(count: number) {
-  const shuffled = [...sampleQuestions].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, sampleQuestions.length)).map((q) => q.id);
-}
-
-/* ---------- 1. Generation screen (status rotation) ---------- */
+/* ---------- 1. Generation screen (real backend call) ---------- */
 
 const genSteps = [
-  "Scanning predicted topics…",
+  "Reading your material…",
   "Balancing difficulty…",
-  "Sampling from past papers…",
-  "Compiling your questions…",
+  "Writing your questions…",
+  "Almost there…",
 ];
 
 export function MockGenerationScreen() {
   const course = useActiveCourse();
-  const { navigate } = useProfile();
-  const [pct, setPct] = useState(0);
+  const { navigate, update, profile } = useProfile();
   const [statusIdx, setStatusIdx] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const runningRef = useRef(false);
+
+  const settings = useMemo<CourseTestSettings | null>(() => {
+    if (!course) return null;
+    return profile.courseTestSettings[course.code] ?? smartDefaultsFor(course.code, profile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course?.code]);
+
+  const run = useCallback(async () => {
+    if (!course || !settings || runningRef.current) return;
+    runningRef.current = true;
+    setError(null);
+    try {
+      if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+
+      const materials = await listMaterialsForCourse(course.code);
+      const material = pickAnalyzableMaterial(materials);
+      if (!material) throw new Error("Upload a past paper for this course first.");
+
+      const questions = await generateMock({
+        materialId: material.id,
+        courseCode: course.code,
+        courseName: course.name,
+        questionCount: settings.questionCount,
+        difficulty: settings.difficulty,
+        topicFocus: settings.topicFocus,
+        profile: {
+          goal: profile.goal,
+          timeline: profile.timeline,
+          level: profile.level,
+          department: profile.department,
+        },
+      });
+
+      const ids = questions.map((q) => q.id);
+      update({
+        aiQuestions: questions,
+        inProgressTest: {
+          courseCode: course.code,
+          courseTitle: course.name,
+          questionCount: ids.length,
+          durationSec: settings.minutes * 60,
+          startedAt: Date.now(),
+          answers: Array(ids.length).fill(null),
+          currentIndex: 0,
+          questionIds: ids,
+          source: "ai",
+        },
+      });
+      navigate("mock-run", { courseCode: course.code });
+    } catch (e) {
+      console.error("[mock-gen] generation failed", e);
+      setError(
+        (e as Error)?.message === NOT_CONFIGURED_MESSAGE
+          ? NOT_CONFIGURED_MESSAGE
+          : "Couldn't build your mock test right now. Try again in a moment.",
+      );
+    } finally {
+      runningRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course?.code, settings]);
 
   useEffect(() => {
-    const start = Date.now();
-    const total = 2200;
-    const id = setInterval(() => {
-      const t = Math.min(1, (Date.now() - start) / total);
-      setPct(Math.round(t * 100));
-      setStatusIdx(Math.min(genSteps.length - 1, Math.floor(t * genSteps.length)));
-      if (t >= 1) {
-        clearInterval(id);
-        navigate("mock-config", { courseCode: course?.code ?? null });
-      }
-    }, 60);
+    void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt, course?.code]);
+
+  useEffect(() => {
+    if (error) return;
+    const id = setInterval(() => setStatusIdx((i) => (i + 1) % genSteps.length), 2200);
     return () => clearInterval(id);
-  }, [course?.code, navigate]);
+  }, [error]);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-sm">
-            <Sparkles className="h-6 w-6" />
+          <div className={cn(
+            "mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl shadow-sm",
+            error ? "bg-destructive/15 text-destructive" : "bg-accent text-accent-foreground",
+          )}>
+            {error ? <AlertCircle className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
           </div>
-          <h1 className="font-display text-2xl font-semibold text-foreground">Preparing your mock</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground">
+            {error ? "Generation didn't finish" : "Building your mock test"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">{course?.code} · {course?.name}</p>
         </div>
 
-        <Progress value={pct} className="h-2" />
-        <p className="mt-3 text-center text-sm text-muted-foreground">{genSteps[statusIdx]}</p>
+        {error ? (
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-center text-sm text-foreground">
+            {error}
+            <div className="mt-4 flex justify-center gap-2">
+              <Button variant="outline" onClick={() => navigate("course-detail", { courseCode: course?.code ?? null })}>
+                Back
+              </Button>
+              <Button onClick={() => setAttempt((a) => a + 1)}>
+                <RotateCw className="mr-1.5 h-4 w-4" /> Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Progress value={undefined} className="h-2 animate-pulse" />
+            <p className="mt-3 text-center text-sm text-accent">{genSteps[statusIdx]}</p>
+            <p className="mt-1 text-center text-[11px] text-muted-foreground">
+              {settings?.questionCount} questions · {settings?.minutes} min
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
