@@ -432,7 +432,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         className="hidden"
         onChange={onFile}
       />
-      <Button size="lg" variant="outline" onClick={onPick} disabled={busy}>
+      <Button size="lg" variant="outline" className="w-full" onClick={onPick} disabled={busy}>
         {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
         {busy ? "Uploading…" : "Upload paper"}
       </Button>
