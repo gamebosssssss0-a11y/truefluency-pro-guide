@@ -31,6 +31,8 @@ export type InProgressTest = {
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
+  /** "ai" = questions live in profile.aiQuestions; "sample" = built-in bank. */
+  source?: "ai" | "sample";
 } | null;
 
 export type TopicScore = { course: string; topic: string; score: number };
@@ -126,6 +128,12 @@ export type Profile = {
 
   // Per-course last-used mock test settings
   courseTestSettings: Record<string, CourseTestSettings>;
+
+  // Real AI-generated question set backing the current/last mock test
+  aiQuestions: AIQuestion[];
+
+  // Real topic analysis per course code (from "Analyze Upload")
+  courseTopicAnalysis: Record<string, CourseTopicAnalysis>;
 };
 
 const emptyProfile: Profile = {
@@ -149,6 +157,8 @@ const emptyProfile: Profile = {
   hasCompletedFirstMock: false,
   masteredCourses: [],
   courseTestSettings: {},
+  aiQuestions: [],
+  courseTopicAnalysis: {},
 };
 
 type Ctx = {
