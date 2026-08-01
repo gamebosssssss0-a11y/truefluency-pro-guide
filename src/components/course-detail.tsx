@@ -275,36 +275,12 @@ function useAnalyzeTopics(courseCode: string, courseName: string, material: Cour
   return { analyze, busy, error, stored, stale, statusText: ANALYZE_STEPS[stepIdx] };
 }
 
-const AnalysisEventKey = "course-analysis-run";
+type AnalysisState = ReturnType<typeof useAnalyzeTopics>;
 
-function AnalyzeButton({ courseCode, courseName, material }: {
-  courseCode: string; courseName: string; material: CourseMaterial;
+function PredictedTopicsSection({ courseCode, material, analysis }: {
+  courseCode: string; material: CourseMaterial | null; analysis: AnalysisState;
 }) {
-  const { stored, stale } = useAnalyzeTopics(courseCode, courseName, material);
-  const label = stored && !stale ? "Re-analyze" : "Analyze Upload";
-  return (
-    <Button
-      size="lg"
-      variant="outline"
-      onClick={() => window.dispatchEvent(new Event(AnalysisEventKey))}
-    >
-      <Wand2 className="mr-1.5 h-4 w-4" /> {label}
-    </Button>
-  );
-}
-
-function PredictedTopicsSection({ courseCode, courseName, material }: {
-  courseCode: string; courseName: string; material: CourseMaterial | null;
-}) {
-  const { analyze, busy, error, stored, stale, statusText } = useAnalyzeTopics(courseCode, courseName, material);
-
-  // The visible "Analyze Upload" button lives in the action row above.
-  useEffect(() => {
-    const h = () => void analyze();
-    window.addEventListener(AnalysisEventKey, h);
-    return () => window.removeEventListener(AnalysisEventKey, h);
-  });
-
+  const { analyze, busy, error, stored, stale, statusText } = analysis;
   const topics = stored?.topics ?? [];
 
   return (
