@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useProfile, averageForCourse } from "@/lib/profile-store";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -7,22 +7,52 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Zap, Upload, Sparkles, ChevronRight,
+  ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2,
   FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
-  findDuplicateMaterial, ACCEPTED_UPLOAD_MIME,
+  findDuplicateMaterial, pickAnalyzableMaterial, ACCEPTED_UPLOAD_MIME,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
+import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { courseFeatureOrder } from "@/lib/personalization";
 
+/* -------- shared materials loader for this screen -------- */
+
+function useCourseMaterials(courseCode: string) {
+  const [items, setItems] = useState<CourseMaterial[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setItems(await listMaterialsForCourse(courseCode));
+    } catch (e) {
+      console.error("[materials] load failed", e);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [courseCode]);
+
+  useEffect(() => {
+    void load();
+    const h = () => void load();
+    window.addEventListener("course-materials-refresh", h);
+    return () => window.removeEventListener("course-materials-refresh", h);
+  }, [load]);
+
+  return { items, loading };
+}
+
 export function CourseDetailScreen() {
   const { profile, navigate, activeCourseCode } = useProfile();
   const course = profile.courses.find((c) => c.code === activeCourseCode);
+  const { items, loading } = useCourseMaterials(course?.code ?? "__none__");
 
   if (!course) {
     return (
@@ -37,6 +67,7 @@ export function CourseDetailScreen() {
 
   const avg = averageForCourse(profile, course.code);
   const relevantAttempts = profile.attempts.filter((a) => a.courseCode === course.code).slice(-3).reverse();
+  const readyMaterial = items ? pickAnalyzableMaterial(items) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,22 +87,13 @@ export function CourseDetailScreen() {
           </div>
         </div>
 
-        <CoursePrimaryActions courseCode={course.code} />
-
-
-
-        <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" /> Predicted topics
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <TopicPill label="Core Concepts" strength={0.85} />
-            <TopicPill label="Applications" strength={0.6} />
-            <TopicPill label="Theory & Proofs" strength={0.4} />
-            <TopicPill label="Edge cases" strength={0.2} />
-          </div>
-          <AiGeneratedLabel className="mt-3" />
-        </div>
+        <CoursePrimaryActions
+          courseCode={course.code}
+          courseName={course.name}
+          materials={items}
+          materialsLoading={loading}
+          readyMaterial={readyMaterial}
+        />
 
         <div className="mt-6">
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -113,14 +135,51 @@ export function CourseDetailScreen() {
 
 /* -------- Personalization-aware action section -------- */
 
-function CoursePrimaryActions({ courseCode }: { courseCode: string }) {
+function CoursePrimaryActions({
+  courseCode, courseName, materials, materialsLoading, readyMaterial,
+}: {
+  courseCode: string;
+  courseName: string;
+  materials: CourseMaterial[] | null;
+  materialsLoading: boolean;
+  readyMaterial: CourseMaterial | null;
+}) {
   const { navigate, profile } = useProfile();
   const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
+  const ready = Boolean(readyMaterial);
 
-  const mockButton = (
-    <Button size="lg" onClick={() => navigate("mock-gen", { courseCode })}>
-      <Zap className="mr-1.5 h-4 w-4" /> Mock test
-    </Button>
+  const actions = ready ? (
+    <div className="mt-5 grid grid-cols-2 gap-2">
+      <AnalyzeButton
+        courseCode={courseCode}
+        courseName={courseName}
+        material={readyMaterial!}
+      />
+      <Button size="lg" onClick={() => navigate("mock-config", { courseCode })}>
+        <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
+      </Button>
+      <div className="col-span-2">
+        <UploadButton courseCode={courseCode} fullWidth />
+      </div>
+    </div>
+  ) : (
+    <div className="mt-5 space-y-2">
+      <UploadButton courseCode={courseCode} fullWidth />
+      <Button size="lg" className="w-full" disabled>
+        <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
+      </Button>
+      <p className="text-center text-[11px] text-muted-foreground">
+        {materialsLoading && materials === null ? "Checking your uploads…" : "Upload a past paper first."}
+      </p>
+    </div>
+  );
+
+  const topics = (
+    <PredictedTopicsSection
+      courseCode={courseCode}
+      courseName={courseName}
+      material={readyMaterial}
+    />
   );
 
   const readingFirst = order[0] === "materials";
@@ -129,29 +188,179 @@ function CoursePrimaryActions({ courseCode }: { courseCode: string }) {
     <>
       {readingFirst ? (
         <>
-          <MaterialsList courseCode={courseCode} />
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <UploadButton courseCode={courseCode} />
-            {mockButton}
-          </div>
+          <MaterialsList courseCode={courseCode} items={materials} loading={materialsLoading} />
+          {actions}
+          {topics}
         </>
       ) : (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            {mockButton}
-            <UploadButton courseCode={courseCode} />
-          </div>
-          <MaterialsList courseCode={courseCode} />
+          {actions}
+          {topics}
+          <MaterialsList courseCode={courseCode} items={materials} loading={materialsLoading} />
         </>
       )}
       {flashcardsPlaceholderNote ? (
-        <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
-          Flashcards coming soon, your preferred study method.
-        </p>
+        <>
+          <Button size="lg" variant="outline" className="mt-4 w-full" disabled>
+            Flashcards · Coming soon
+          </Button>
+          <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
+            Flashcards coming soon, your preferred study method.
+          </p>
+        </>
       ) : null}
     </>
   );
 }
+
+/* -------- Analyze Upload + real predicted topics -------- */
+
+const ANALYZE_STEPS = [
+  "Reading your material…",
+  "Identifying likely topics…",
+  "Scoring confidence…",
+];
+
+/**
+ * Shared analysis runner. Stores the result on the profile keyed by course so
+ * revisiting the screen doesn't re-fetch, while a newer upload allows a re-run.
+ */
+function useAnalyzeTopics(courseCode: string, courseName: string, material: CourseMaterial | null) {
+  const { profile, update } = useProfile();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  const runningRef = useRef(false);
+
+  useEffect(() => {
+    if (!busy) return;
+    const id = setInterval(() => setStepIdx((i) => (i + 1) % ANALYZE_STEPS.length), 1800);
+    return () => clearInterval(id);
+  }, [busy]);
+
+  const stored: CourseTopicAnalysis | undefined = profile.courseTopicAnalysis[courseCode];
+  const stale = Boolean(stored && material && stored.materialId !== material.id);
+
+  const analyze = async () => {
+    if (!material || runningRef.current) return;
+    runningRef.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+      const topics = await predictTopics({
+        materialId: material.id,
+        courseCode,
+        courseName,
+        level: profile.level,
+        department: profile.department,
+      });
+      update({
+        courseTopicAnalysis: {
+          ...profile.courseTopicAnalysis,
+          [courseCode]: { materialId: material.id, analyzedAt: Date.now(), topics },
+        },
+      });
+    } catch (e) {
+      console.error("[analyze] failed", e);
+      setError(
+        (e as Error)?.message === NOT_CONFIGURED_MESSAGE
+          ? NOT_CONFIGURED_MESSAGE
+          : "Couldn't analyze your material right now. Try again in a moment.",
+      );
+    } finally {
+      setBusy(false);
+      runningRef.current = false;
+    }
+  };
+
+  return { analyze, busy, error, stored, stale, statusText: ANALYZE_STEPS[stepIdx] };
+}
+
+const AnalysisEventKey = "course-analysis-run";
+
+function AnalyzeButton({ courseCode, courseName, material }: {
+  courseCode: string; courseName: string; material: CourseMaterial;
+}) {
+  const { stored, stale } = useAnalyzeTopics(courseCode, courseName, material);
+  const label = stored && !stale ? "Re-analyze" : "Analyze Upload";
+  return (
+    <Button
+      size="lg"
+      variant="outline"
+      onClick={() => window.dispatchEvent(new Event(AnalysisEventKey))}
+    >
+      <Wand2 className="mr-1.5 h-4 w-4" /> {label}
+    </Button>
+  );
+}
+
+function PredictedTopicsSection({ courseCode, courseName, material }: {
+  courseCode: string; courseName: string; material: CourseMaterial | null;
+}) {
+  const { analyze, busy, error, stored, stale, statusText } = useAnalyzeTopics(courseCode, courseName, material);
+
+  // The visible "Analyze Upload" button lives in the action row above.
+  useEffect(() => {
+    const h = () => void analyze();
+    window.addEventListener(AnalysisEventKey, h);
+    return () => window.removeEventListener(AnalysisEventKey, h);
+  });
+
+  const topics = stored?.topics ?? [];
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <Sparkles className="h-3.5 w-3.5" /> Predicted topics
+      </div>
+
+      {busy ? (
+        <div className="rounded-xl border border-accent/40 bg-accent/10 p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {statusText}
+          </div>
+          <Progress value={undefined} className="mt-2 h-1.5 animate-pulse" />
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <div className="min-w-0 flex-1 text-foreground">{error}</div>
+            <Button size="sm" variant="outline" onClick={() => void analyze()} disabled={!material}>
+              <RotateCw className="mr-1 h-3 w-3" /> Retry
+            </Button>
+          </div>
+          <p className="mt-2 text-muted-foreground">
+            No topic predictions for {courseCode} yet.
+          </p>
+        </div>
+      ) : topics.length > 0 ? (
+        <>
+          <div className="flex flex-wrap gap-1.5">
+            {topics.map((t) => (
+              <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
+            ))}
+          </div>
+          {stale ? (
+            <p className="mt-2 text-[11px] italic text-muted-foreground">
+              Based on an earlier upload. Tap Re-analyze for your newest file.
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {material
+            ? "Tap Analyze Upload to see the topics most likely to come up."
+            : `Upload a past paper or slides to unlock predictions for ${courseCode}.`}
+        </p>
+      )}
+
+      <AiGeneratedLabel className="mt-3" />
+    </div>
+  );
+}
+
 
 /* -------- Upload button + duplicate dialog -------- */
 
