@@ -301,27 +301,34 @@ export function MockConfigScreen() {
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Topic focus <span className="normal-case text-muted-foreground/70">(optional)</span>
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {ALL_TOPICS.map((t) => {
-                    const on = topicFocus.includes(t);
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => toggleTopic(t)}
-                        className={cn(
-                          "rounded-full border px-2.5 py-1 text-[11px] transition",
-                          on
-                            ? "border-accent bg-accent/15 text-accent-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-accent/50",
-                        )}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
-                </div>
+                {topicOptions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                    Run "Analyze Upload" on this course to pick specific topics.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {topicOptions.map((t) => {
+                      const on = topicFocus.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => toggleTopic(t)}
+                          className={cn(
+                            "rounded-full border px-2.5 py-1 text-[11px] transition",
+                            on
+                              ? "border-accent bg-accent/15 text-accent-foreground"
+                              : "border-border bg-background text-muted-foreground hover:border-accent/50",
+                          )}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
 
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
