@@ -520,29 +520,9 @@ function StageBanner({ stage }: { stage: UploadStage }) {
 
 /* -------- Materials list scoped to this course -------- */
 
-function MaterialsList({ courseCode }: { courseCode: string }) {
-  const [items, setItems] = useState<CourseMaterial[] | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const rows = await listMaterialsForCourse(courseCode);
-      setItems(rows);
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-    const h = () => void load();
-    window.addEventListener("course-materials-refresh", h);
-    return () => window.removeEventListener("course-materials-refresh", h);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseCode]);
+function MaterialsList({ courseCode, items, loading }: {
+  courseCode: string; items: CourseMaterial[] | null; loading: boolean;
+}) {
 
   return (
     <div className="mt-6">
