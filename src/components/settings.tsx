@@ -27,7 +27,7 @@ export function SettingsScreen() {
   const jumpTo = [
     { label: "Start a mock test", icon: Zap, onClick: () => {
       const c = profile.courses[0];
-      if (c) navigate("mock-gen", { courseCode: c.code });
+      if (c) navigate("mock-config", { courseCode: c.code });
     }},
     { label: "Flashcards", icon: Layers, onClick: () => navigate("flashcards-soon") },
     { label: "Add a course", icon: PlusCircle, onClick: () => navigate("add-course") },

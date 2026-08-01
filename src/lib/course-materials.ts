@@ -315,6 +315,22 @@ export async function listMaterialsForCourse(courseCode: string) {
   return (data ?? []) as CourseMaterial[];
 }
 
+/**
+ * A material is usable for AI analysis/generation once its text extracted
+ * successfully. Images need no extraction, so they count too.
+ * Returns the most recent usable material, preferring extracted text.
+ */
+export function pickAnalyzableMaterial(items: CourseMaterial[]): CourseMaterial | null {
+  const sorted = [...items].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  return (
+    sorted.find((m) => m.extraction_status === "success") ??
+    sorted.find((m) => m.file_type === "image") ??
+    null
+  );
+}
+
 /** All materials the signed-in user has ever uploaded, across every course. */
 export async function listAllUserMaterials() {
   const { data, error } = await supabase

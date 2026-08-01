@@ -159,8 +159,15 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
   const { navigate, profile } = useProfile();
   const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
 
+  // Real analysis result for this course, if the student has run one.
+  const analysis = profile.courseTopicAnalysis[course.code];
+  const topics = analysis?.topics ?? [];
+  const avgConfidence = topics.length
+    ? Math.round((topics.reduce((s, t) => s + t.confidence, 0) / topics.length) * 100)
+    : null;
+
   const mockBtn = (
-    <Button key="mock" className="mt-2 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+    <Button key="mock" className="mt-2 w-full" size="lg" onClick={() => navigate("mock-config", { courseCode: course.code })}>
       <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
     </Button>
   );
@@ -182,7 +189,7 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
       <Upload className="mr-1.5 h-4 w-4" /> Upload past paper
     </Button>
   ) : (
-    <Button key="mock-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+    <Button key="mock-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("mock-config", { courseCode: course.code })}>
       <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
     </Button>
   );
@@ -193,31 +200,38 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
       <div className="bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
         <div className="mb-3 flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
-            <Sparkles className="h-3 w-3" /> Mock prediction ready
+            <Sparkles className="h-3 w-3" />
+            {topics.length ? "Mock prediction ready" : "No analysis yet"}
           </span>
           <TrendingUp className="h-4 w-4 text-primary-foreground/60" />
         </div>
         <div className="text-xs font-medium text-primary-foreground/70">{course.code}</div>
         <div className="mt-0.5 font-display text-xl font-semibold leading-tight">{course.name}</div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-4">
-          <Stat label="Predicted topics" value="8" />
-          <Stat label="Confidence" value="72%" />
-          <Stat label="Past papers" value="5 yrs" />
-        </div>
+        {topics.length ? (
+          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-4">
+            <Stat label="Predicted topics" value={String(topics.length)} />
+            <Stat label="Confidence" value={`${avgConfidence}%`} />
+            <Stat label="Analyzed" value={new Date(analysis!.analyzedAt).toLocaleDateString()} />
+          </div>
+        ) : null}
       </div>
 
       <div className="p-5">
         <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Top predicted topics
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <TopicPill label="Recursion & Trees" strength={0.9} />
-          <TopicPill label="Sorting Algorithms" strength={0.75} />
-          <TopicPill label="Complexity Analysis" strength={0.55} />
-          <TopicPill label="Graph Traversal" strength={0.35} />
-          <TopicPill label="Dynamic Programming" strength={0.15} />
-        </div>
+        {topics.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {topics.slice(0, 5).map((t) => (
+              <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Upload your first past paper and tap Analyze Upload to see predictions for {course.code}.
+          </p>
+        )}
 
         <AiGeneratedLabel className="mt-4" />
 
@@ -225,9 +239,14 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
         {secondaryBtn}
         {openBtn}
         {flashcardsPlaceholderNote ? (
-          <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
-            Flashcards coming soon, your preferred study method.
-          </p>
+          <>
+            <Button className="mt-2 w-full" size="lg" variant="outline" disabled>
+              Flashcards · Coming soon
+            </Button>
+            <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
+              Flashcards coming soon, your preferred study method.
+            </p>
+          </>
         ) : null}
       </div>
     </div>
