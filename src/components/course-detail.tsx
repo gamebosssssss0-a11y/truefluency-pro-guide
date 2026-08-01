@@ -147,24 +147,26 @@ function CoursePrimaryActions({
   const { navigate, profile } = useProfile();
   const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
   const ready = Boolean(readyMaterial);
+  const analysis = useAnalyzeTopics(courseCode, courseName, readyMaterial);
 
   const actions = ready ? (
     <div className="mt-5 grid grid-cols-2 gap-2">
-      <AnalyzeButton
-        courseCode={courseCode}
-        courseName={courseName}
-        material={readyMaterial!}
-      />
+      <Button size="lg" variant="outline" onClick={() => void analysis.analyze()} disabled={analysis.busy}>
+        {analysis.busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1.5 h-4 w-4" />}
+        {analysis.busy
+          ? "Analyzing…"
+          : analysis.stored && !analysis.stale ? "Re-analyze" : "Analyze Upload"}
+      </Button>
       <Button size="lg" onClick={() => navigate("mock-config", { courseCode })}>
         <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
       </Button>
       <div className="col-span-2">
-        <UploadButton courseCode={courseCode} fullWidth />
+        <UploadButton courseCode={courseCode} />
       </div>
     </div>
   ) : (
     <div className="mt-5 space-y-2">
-      <UploadButton courseCode={courseCode} fullWidth />
+      <UploadButton courseCode={courseCode} />
       <Button size="lg" className="w-full" disabled>
         <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
       </Button>
@@ -175,11 +177,7 @@ function CoursePrimaryActions({
   );
 
   const topics = (
-    <PredictedTopicsSection
-      courseCode={courseCode}
-      courseName={courseName}
-      material={readyMaterial}
-    />
+    <PredictedTopicsSection courseCode={courseCode} material={readyMaterial} analysis={analysis} />
   );
 
   const readingFirst = order[0] === "materials";
