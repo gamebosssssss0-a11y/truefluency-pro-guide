@@ -157,7 +157,6 @@ const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = 
   { key: "exam", label: "Exam-level", blurb: "Full pressure" },
 ];
 
-const ALL_TOPICS = Array.from(new Set(sampleQuestions.map((q) => q.topic)));
 
 export function smartDefaultsFor(courseCode: string, profile: Profile): CourseTestSettings {
   const timeline = timelineDefaults(profile.timeline);
@@ -648,7 +647,7 @@ export function MockResultScreen() {
 
         <div className="mt-6 grid grid-cols-2 gap-2">
           <Button variant="outline" size="lg" onClick={() => navigate("dashboard")}>Dashboard</Button>
-          <Button size="lg" onClick={() => navigate("mock-gen", { courseCode: attempt.courseCode })}>
+          <Button size="lg" onClick={() => navigate("mock-config", { courseCode: attempt.courseCode })}>
             <Zap className="mr-1.5 h-4 w-4" /> Try again
           </Button>
         </div>

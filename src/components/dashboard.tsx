@@ -160,7 +160,7 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
   const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
 
   const mockBtn = (
-    <Button key="mock" className="mt-2 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+    <Button key="mock" className="mt-2 w-full" size="lg" onClick={() => navigate("mock-config", { courseCode: course.code })}>
       <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
     </Button>
   );
@@ -182,7 +182,7 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
       <Upload className="mr-1.5 h-4 w-4" /> Upload past paper
     </Button>
   ) : (
-    <Button key="mock-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("mock-gen", { courseCode: course.code })}>
+    <Button key="mock-primary" className="mt-4 w-full" size="lg" onClick={() => navigate("mock-config", { courseCode: course.code })}>
       <Zap className="mr-1.5 h-4 w-4" /> Start a mock test
     </Button>
   );
