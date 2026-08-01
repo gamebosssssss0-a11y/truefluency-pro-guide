@@ -104,7 +104,9 @@ export async function generateMock(input: {
   const questions: AIQuestion[] = raw
     .map((q, i) => {
       const o = q as Partial<AIQuestion> & { correct_index?: unknown };
-      const options = Array.isArray(o.options) ? o.options.filter((x) => typeof x === "string") : [];
+      const options: string[] = Array.isArray(o.options)
+        ? (o.options as unknown[]).filter((x): x is string => typeof x === "string")
+        : [];
       const correct = Number(o.correct_index);
       if (typeof o.question !== "string" || options.length < 2) return null;
       return {
