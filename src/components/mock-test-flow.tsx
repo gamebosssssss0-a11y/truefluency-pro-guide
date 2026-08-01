@@ -396,10 +396,21 @@ export function MockRunScreen() {
     return Math.max(0, t.durationSec - elapsed);
   }, [t, now]);
 
-  const questions = useMemo(() => {
+  const questions = useMemo<{ id: number; topic: string; question: string; options: string[]; correctIndex: number }[]>(() => {
     if (!t) return [];
-    return t.questionIds.map((id) => sampleQuestions.find((q) => q.id === id)!).filter(Boolean);
-  }, [t]);
+    if (t.source === "ai") {
+      return t.questionIds
+        .map((id) => profile.aiQuestions.find((q) => q.id === id))
+        .filter((q): q is NonNullable<typeof q> => Boolean(q))
+        .map((q) => ({
+          id: q.id, topic: q.topic, question: q.question,
+          options: q.options, correctIndex: q.correct_index,
+        }));
+    }
+    return t.questionIds
+      .map((id) => sampleQuestions.find((q) => q.id === id))
+      .filter((q): q is NonNullable<typeof q> => Boolean(q));
+  }, [t, profile.aiQuestions]);
 
   const submit = () => {
     if (!t || submittedRef.current) return;
