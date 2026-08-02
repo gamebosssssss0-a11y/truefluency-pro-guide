@@ -363,15 +363,9 @@ Respond ONLY with a JSON array. No explanation, no markdown, no backticks. Just 
 Return 5 to 8 topics, ordered from highest to lowest confidence.
 """
 
-    raw = await call_gemini(prompt)
+    raw = await call_model(prompt, max_tokens=1500)
+    topics = parse_json_list(raw)
 
-    # Clean up any accidental markdown the model adds
-    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
-
-    try:
-        topics = json.loads(cleaned)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail=f"Gemini returned invalid JSON: {cleaned[:300]}")
 
     return {
         "course_code": req.course_code,
