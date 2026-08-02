@@ -10,13 +10,14 @@ Flow:
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import os
 import json
 import io
 import httpx
 from dotenv import load_dotenv
+
 
 # File extraction libraries
 try:
@@ -39,49 +40,73 @@ except ImportError:
 
 load_dotenv()
 
-app = FastAPI(title="StudySprint Backend", version="1.0.0")
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
-# This allows the React frontend to call this backend.
-# In production, replace "*" with your actual Lovable/frontend URL.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],        # TODO: lock down to your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="TrueFluency Pro Backend", version="1.0.0")
 
 # ── ENV VARS ──────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")   # service role key, NOT the publishable one
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"                           # fast + cheap for test phase
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", "https://truefluency-pro.lovable.app")
+
+# Comma-separated browser origins. Empty means "allow all" (dev only).
+_origins_raw = (os.getenv("ALLOWED_ORIGINS") or "").strip()
+ALLOWED_ORIGINS = [o.strip() for o in _origins_raw.split(",") if o.strip()] or ["*"]
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+# allow_credentials must be False when origins is "*": browsers reject that
+# combination outright, and this API is called with a plain fetch (no cookies).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
+
+
+def require_env():
+    """Fail with a clear message instead of an opaque 502 deep in a handler."""
+    missing = [
+        name
+        for name, value in (
+            ("SUPABASE_URL", SUPABASE_URL),
+            ("SUPABASE_SERVICE_KEY", SUPABASE_SERVICE_KEY),
+            ("OPENROUTER_API_KEY", OPENROUTER_API_KEY),
+        )
+        if not value
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Server is missing configuration: {', '.join(missing)}",
+        )
 
 
 # ── REQUEST / RESPONSE MODELS ─────────────────────────────────────────────────
 
 class MockRequest(BaseModel):
-    material_id: str            # ID from course_materials table in Supabase
-    course_code: str            # e.g. "GST111"
-    course_name: str            # e.g. "Use of English"
-    question_count: int = 20
+    material_id: str = Field(min_length=1, max_length=64)
+    course_code: str = Field(min_length=1, max_length=32)
+    course_name: str = Field(min_length=1, max_length=200)
+    question_count: int = Field(default=20, ge=5, le=40)
     difficulty: str = "balanced"  # gentle | balanced | challenging | exam
-    topic_focus: list[str] = []   # optional list of topics to weight heavily
+    topic_focus: list[str] = Field(default_factory=list, max_length=20)
 
     # User context — built from their onboarding profile
-    user_goal: Optional[str] = None         # "pass" | "top-grades" | "catch-up"
-    user_timeline: Optional[str] = None     # "lt-week" | "2-4-weeks" | "gt-month"
-    user_level: Optional[str] = None        # "100" | "200" | "300" | "400" | "500"
-    user_department: Optional[str] = None
+    user_goal: Optional[str] = Field(default=None, max_length=32)
+    user_timeline: Optional[str] = Field(default=None, max_length=32)
+    user_level: Optional[str] = Field(default=None, max_length=8)
+    user_department: Optional[str] = Field(default=None, max_length=120)
 
 
 class PredictRequest(BaseModel):
-    material_id: str
-    course_code: str
-    course_name: str
-    user_level: Optional[str] = None
-    user_department: Optional[str] = None
+    material_id: str = Field(min_length=1, max_length=64)
+    course_code: str = Field(min_length=1, max_length=32)
+    course_name: str = Field(min_length=1, max_length=200)
+    user_level: Optional[str] = Field(default=None, max_length=8)
+    user_department: Optional[str] = Field(default=None, max_length=120)
+
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -122,37 +147,69 @@ async def fetch_extracted_text(material_id: str) -> str:
     return content
 
 
-async def call_gemini(prompt: str) -> str:
+async def call_model(prompt: str, max_tokens: int = 4096) -> str:
     """
-    Call Ai Api via OpenRouter and return the raw text response.
+    Call the configured OpenRouter model and return the raw text response.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:8000",
-        "X-Title": "StudySprint",
+        "HTTP-Referer": PUBLIC_APP_URL,
+        "X-Title": "TrueFluency Pro",
     }
 
     body = {
         "model": OPENROUTER_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": max_tokens,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        res = await client.post(url, headers=headers, json=body)
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            res = await client.post(url, headers=headers, json=body)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=504, detail=f"The AI service did not respond in time: {e}")
 
     if res.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Gemini error: {res.text}")
+        raise HTTPException(status_code=502, detail=f"AI service error: {res.text[:300]}")
 
     data = res.json()
     try:
         return data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
-        raise HTTPException(status_code=502, detail="Unexpected OpenRouter response format")
+    except (KeyError, IndexError, TypeError):
+        raise HTTPException(status_code=502, detail="Unexpected AI service response format")
+
+
+def parse_json_list(raw: str) -> list:
+    """
+    Models sometimes wrap JSON in markdown or add trailing prose. Strip the
+    fences, then fall back to slicing the outermost array before giving up.
+    """
+    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start, end = cleaned.find("["), cleaned.rfind("]")
+        if start == -1 or end <= start:
+            raise HTTPException(
+                status_code=502,
+                detail=f"The AI returned malformed data: {cleaned[:200]}",
+            )
+        try:
+            parsed = json.loads(cleaned[start : end + 1])
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=502,
+                detail=f"The AI returned malformed data: {cleaned[:200]}",
+            )
+    if not isinstance(parsed, list):
+        raise HTTPException(status_code=502, detail="The AI returned an unexpected shape.")
+    return parsed
+
+
 
 def build_user_context(req) -> str:
     """
@@ -260,7 +317,11 @@ async def save_extracted_content(material_id: str, content: str, status: str = "
 @app.get("/health")
 def health():
     """Quick check that the server is alive — call this first when testing."""
-    return {"status": "ok", "service": "StudySprint Backend"}
+    return {
+        "status": "ok",
+        "service": "TrueFluency Pro Backend",
+        "configured": bool(SUPABASE_URL and SUPABASE_SERVICE_KEY and OPENROUTER_API_KEY),
+    }
 
 
 @app.post("/predict-topics")
@@ -268,15 +329,17 @@ async def predict_topics(req: PredictRequest):
     """
     Step 1 of the AI pipeline.
     Takes a material_id, fetches the extracted text from Supabase,
-    sends it to Gemini, returns predicted exam topics with confidence scores.
+    sends it to the model, returns predicted exam topics with confidence scores.
 
     Frontend uses this to replace the hardcoded placeholder topics on the
     dashboard and course detail screens.
     """
+    require_env()
     extracted_text = await fetch_extracted_text(req.material_id)
 
     # Trim to avoid token overload — first 6000 chars is usually enough for topic prediction
     trimmed = extracted_text[:6000]
+
 
     prompt = f"""
 You are an exam prediction engine for University of Ibadan ({req.user_level or "undergraduate"} level).
@@ -300,15 +363,9 @@ Respond ONLY with a JSON array. No explanation, no markdown, no backticks. Just 
 Return 5 to 8 topics, ordered from highest to lowest confidence.
 """
 
-    raw = await call_gemini(prompt)
+    raw = await call_model(prompt, max_tokens=1500)
+    topics = parse_json_list(raw)
 
-    # Clean up any accidental markdown the model adds
-    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
-
-    try:
-        topics = json.loads(cleaned)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail=f"Gemini returned invalid JSON: {cleaned[:300]}")
 
     return {
         "course_code": req.course_code,
@@ -325,7 +382,9 @@ async def generate_mock(req: MockRequest):
 
     This replaces the hardcoded sampleQuestions from questions.ts in the frontend.
     """
+    require_env()
     extracted_text = await fetch_extracted_text(req.material_id)
+
 
     # Trim to keep within Gemini's context window comfortably
     trimmed = extracted_text[:8000]
@@ -374,13 +433,11 @@ Respond ONLY with a JSON array. No explanation, no markdown, no backticks:
 correct_index is 0-based (0 = A, 1 = B, 2 = C, 3 = D).
 """
 
-    raw = await call_gemini(prompt)
-    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+    # ~350 tokens per MCQ with options + explanation, plus headroom, so a
+    # 40-question set can't silently truncate into malformed JSON.
+    raw = await call_model(prompt, max_tokens=min(16000, 600 + req.question_count * 400))
+    questions = parse_json_list(raw)
 
-    try:
-        questions = json.loads(cleaned)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail=f"Gemini returned invalid JSON: {cleaned[:300]}")
 
     return {
         "course_code": req.course_code,

@@ -316,35 +316,41 @@ export async function listMaterialsForCourse(courseCode: string) {
 }
 
 /**
- * A material is usable for AI analysis/generation once its text extracted
- * successfully. Images need no extraction, so they count too.
- * Returns the most recent usable material, preferring extracted text.
+ * A material is usable for AI analysis/generation only once its text extracted
+ * successfully. Images are deliberately excluded: the analysis service reads
+ * `extracted_content` and rejects anything else with "text not ready yet", so
+ * offering an image here would guarantee a failed run.
  */
 export function pickAnalyzableMaterial(items: CourseMaterial[]): CourseMaterial | null {
   const sorted = [...items].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
-  return (
-    sorted.find((m) => m.extraction_status === "success") ??
-    sorted.find((m) => m.file_type === "image") ??
-    null
-  );
+  return sorted.find((m) => m.extraction_status === "success") ?? null;
 }
 
 /** All materials the signed-in user has ever uploaded, across every course. */
-export async function listAllUserMaterials() {
+export async function listAllUserMaterials(limit = 500) {
   const { data, error } = await supabase
     .from("course_materials")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
   if (error) throw error;
   return (data ?? []) as CourseMaterial[];
 }
 
 export async function deleteMaterial(m: CourseMaterial) {
-  await supabase.storage.from("course-materials").remove([m.file_path]);
-  await supabase.from("course_materials").delete().eq("id", m.id);
+  const { error: storageError } = await supabase.storage
+    .from("course-materials")
+    .remove([m.file_path]);
+  if (storageError) console.error("[materials] storage delete failed", storageError);
+  const { error } = await supabase.from("course_materials").delete().eq("id", m.id);
+  if (error) {
+    console.error("[materials] row delete failed", error);
+    throw new Error("Couldn't delete that file. Please try again.");
+  }
 }
+
 
 /** Wipe every uploaded file (storage + DB) for the signed-in user. */
 export async function deleteAllUserMaterials() {

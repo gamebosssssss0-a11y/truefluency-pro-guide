@@ -171,8 +171,13 @@ function CoursePrimaryActions({
         <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
       </Button>
       <p className="text-center text-[11px] text-muted-foreground">
-        {materialsLoading && materials === null ? "Checking your uploads…" : "Upload a past paper first."}
+        {materialsLoading && materials === null
+          ? "Checking your uploads…"
+          : materials && materials.length > 0
+            ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file to unlock mock tests."
+            : "Upload a past paper first."}
       </p>
+
     </div>
   );
 

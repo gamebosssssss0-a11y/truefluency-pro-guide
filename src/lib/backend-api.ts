@@ -21,7 +21,26 @@ function base(): string {
   return BACKEND_URL!.replace(/\/+$/, "");
 }
 
-async function postJson<T>(path: string, body: unknown, timeoutMs = 90_000): Promise<T> {
+/** Pull FastAPI's `detail` out of an error body so users see a real reason. */
+function readErrorDetail(text: string, status: number): string {
+  try {
+    const parsed = JSON.parse(text) as { detail?: unknown };
+    const detail = parsed?.detail;
+    if (typeof detail === "string" && detail.trim()) return detail.trim();
+    if (Array.isArray(detail) && detail.length) {
+      const first = detail[0] as { msg?: unknown };
+      if (typeof first?.msg === "string") return first.msg;
+    }
+  } catch {
+    /* not JSON */
+  }
+  if (status === 404) return "We couldn't find that upload on the analysis service.";
+  if (status === 503) return "The analysis service isn't fully configured yet.";
+  if (status >= 500) return "The analysis service had a problem. Please try again.";
+  return `The analysis service rejected the request (${status}).`;
+}
+
+async function postJson<T>(path: string, body: unknown, timeoutMs = 120_000): Promise<T> {
   const url = `${base()}${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -35,16 +54,22 @@ async function postJson<T>(path: string, body: unknown, timeoutMs = 90_000): Pro
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.error("[backend] request failed", { path, status: res.status, text });
-      throw new Error(`Backend responded with ${res.status}`);
+      throw new Error(readErrorDetail(text, res.status));
     }
     return (await res.json()) as T;
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      // Network-level failure: offline, DNS, or a CORS rejection.
+      console.error("[backend] network error", { path, error: e });
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
     throw e;
   } finally {
     clearTimeout(timer);
   }
 }
+
 
 /** Real topic prediction for one uploaded material. */
 export async function predictTopics(input: {
