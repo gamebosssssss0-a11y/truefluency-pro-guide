@@ -40,49 +40,73 @@ except ImportError:
 
 load_dotenv()
 
-app = FastAPI(title="StudySprint Backend", version="1.0.0")
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
-# This allows the React frontend to call this backend.
-# In production, replace "*" with your actual Lovable/frontend URL.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],        # TODO: lock down to your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="TrueFluency Pro Backend", version="1.0.0")
 
 # ── ENV VARS ──────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")   # service role key, NOT the publishable one
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"                           # fast + cheap for test phase
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", "https://truefluency-pro.lovable.app")
+
+# Comma-separated browser origins. Empty means "allow all" (dev only).
+_origins_raw = (os.getenv("ALLOWED_ORIGINS") or "").strip()
+ALLOWED_ORIGINS = [o.strip() for o in _origins_raw.split(",") if o.strip()] or ["*"]
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+# allow_credentials must be False when origins is "*": browsers reject that
+# combination outright, and this API is called with a plain fetch (no cookies).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
+
+
+def require_env():
+    """Fail with a clear message instead of an opaque 502 deep in a handler."""
+    missing = [
+        name
+        for name, value in (
+            ("SUPABASE_URL", SUPABASE_URL),
+            ("SUPABASE_SERVICE_KEY", SUPABASE_SERVICE_KEY),
+            ("OPENROUTER_API_KEY", OPENROUTER_API_KEY),
+        )
+        if not value
+    ]
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Server is missing configuration: {', '.join(missing)}",
+        )
 
 
 # ── REQUEST / RESPONSE MODELS ─────────────────────────────────────────────────
 
 class MockRequest(BaseModel):
-    material_id: str            # ID from course_materials table in Supabase
-    course_code: str            # e.g. "GST111"
-    course_name: str            # e.g. "Use of English"
-    question_count: int = 20
+    material_id: str = Field(min_length=1, max_length=64)
+    course_code: str = Field(min_length=1, max_length=32)
+    course_name: str = Field(min_length=1, max_length=200)
+    question_count: int = Field(default=20, ge=5, le=40)
     difficulty: str = "balanced"  # gentle | balanced | challenging | exam
-    topic_focus: list[str] = []   # optional list of topics to weight heavily
+    topic_focus: list[str] = Field(default_factory=list, max_length=20)
 
     # User context — built from their onboarding profile
-    user_goal: Optional[str] = None         # "pass" | "top-grades" | "catch-up"
-    user_timeline: Optional[str] = None     # "lt-week" | "2-4-weeks" | "gt-month"
-    user_level: Optional[str] = None        # "100" | "200" | "300" | "400" | "500"
-    user_department: Optional[str] = None
+    user_goal: Optional[str] = Field(default=None, max_length=32)
+    user_timeline: Optional[str] = Field(default=None, max_length=32)
+    user_level: Optional[str] = Field(default=None, max_length=8)
+    user_department: Optional[str] = Field(default=None, max_length=120)
 
 
 class PredictRequest(BaseModel):
-    material_id: str
-    course_code: str
-    course_name: str
-    user_level: Optional[str] = None
-    user_department: Optional[str] = None
+    material_id: str = Field(min_length=1, max_length=64)
+    course_code: str = Field(min_length=1, max_length=32)
+    course_name: str = Field(min_length=1, max_length=200)
+    user_level: Optional[str] = Field(default=None, max_length=8)
+    user_department: Optional[str] = Field(default=None, max_length=120)
+
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
