@@ -431,13 +431,11 @@ Respond ONLY with a JSON array. No explanation, no markdown, no backticks:
 correct_index is 0-based (0 = A, 1 = B, 2 = C, 3 = D).
 """
 
-    raw = await call_gemini(prompt)
-    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+    # ~350 tokens per MCQ with options + explanation, plus headroom, so a
+    # 40-question set can't silently truncate into malformed JSON.
+    raw = await call_model(prompt, max_tokens=min(16000, 600 + req.question_count * 400))
+    questions = parse_json_list(raw)
 
-    try:
-        questions = json.loads(cleaned)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail=f"Gemini returned invalid JSON: {cleaned[:300]}")
 
     return {
         "course_code": req.course_code,
