@@ -317,7 +317,11 @@ async def save_extracted_content(material_id: str, content: str, status: str = "
 @app.get("/health")
 def health():
     """Quick check that the server is alive — call this first when testing."""
-    return {"status": "ok", "service": "StudySprint Backend"}
+    return {
+        "status": "ok",
+        "service": "TrueFluency Pro Backend",
+        "configured": bool(SUPABASE_URL and SUPABASE_SERVICE_KEY and OPENROUTER_API_KEY),
+    }
 
 
 @app.post("/predict-topics")
@@ -325,15 +329,17 @@ async def predict_topics(req: PredictRequest):
     """
     Step 1 of the AI pipeline.
     Takes a material_id, fetches the extracted text from Supabase,
-    sends it to Gemini, returns predicted exam topics with confidence scores.
+    sends it to the model, returns predicted exam topics with confidence scores.
 
     Frontend uses this to replace the hardcoded placeholder topics on the
     dashboard and course detail screens.
     """
+    require_env()
     extracted_text = await fetch_extracted_text(req.material_id)
 
     # Trim to avoid token overload — first 6000 chars is usually enough for topic prediction
     trimmed = extracted_text[:6000]
+
 
     prompt = f"""
 You are an exam prediction engine for University of Ibadan ({req.user_level or "undergraduate"} level).
