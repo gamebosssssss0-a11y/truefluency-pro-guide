@@ -10,13 +10,14 @@ Flow:
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import os
 import json
 import io
 import httpx
 from dotenv import load_dotenv
+
 
 # File extraction libraries
 try:
