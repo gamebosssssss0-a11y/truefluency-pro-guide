@@ -382,7 +382,9 @@ async def generate_mock(req: MockRequest):
 
     This replaces the hardcoded sampleQuestions from questions.ts in the frontend.
     """
+    require_env()
     extracted_text = await fetch_extracted_text(req.material_id)
+
 
     # Trim to keep within Gemini's context window comfortably
     trimmed = extracted_text[:8000]
