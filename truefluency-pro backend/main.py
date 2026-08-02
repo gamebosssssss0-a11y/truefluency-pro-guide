@@ -147,37 +147,69 @@ async def fetch_extracted_text(material_id: str) -> str:
     return content
 
 
-async def call_gemini(prompt: str) -> str:
+async def call_model(prompt: str, max_tokens: int = 4096) -> str:
     """
-    Call Ai Api via OpenRouter and return the raw text response.
+    Call the configured OpenRouter model and return the raw text response.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:8000",
-        "X-Title": "StudySprint",
+        "HTTP-Referer": PUBLIC_APP_URL,
+        "X-Title": "TrueFluency Pro",
     }
 
     body = {
         "model": OPENROUTER_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": max_tokens,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        res = await client.post(url, headers=headers, json=body)
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            res = await client.post(url, headers=headers, json=body)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=504, detail=f"The AI service did not respond in time: {e}")
 
     if res.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Gemini error: {res.text}")
+        raise HTTPException(status_code=502, detail=f"AI service error: {res.text[:300]}")
 
     data = res.json()
     try:
         return data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
-        raise HTTPException(status_code=502, detail="Unexpected OpenRouter response format")
+    except (KeyError, IndexError, TypeError):
+        raise HTTPException(status_code=502, detail="Unexpected AI service response format")
+
+
+def parse_json_list(raw: str) -> list:
+    """
+    Models sometimes wrap JSON in markdown or add trailing prose. Strip the
+    fences, then fall back to slicing the outermost array before giving up.
+    """
+    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start, end = cleaned.find("["), cleaned.rfind("]")
+        if start == -1 or end <= start:
+            raise HTTPException(
+                status_code=502,
+                detail=f"The AI returned malformed data: {cleaned[:200]}",
+            )
+        try:
+            parsed = json.loads(cleaned[start : end + 1])
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=502,
+                detail=f"The AI returned malformed data: {cleaned[:200]}",
+            )
+    if not isinstance(parsed, list):
+        raise HTTPException(status_code=502, detail="The AI returned an unexpected shape.")
+    return parsed
+
+
 
 def build_user_context(req) -> str:
     """
