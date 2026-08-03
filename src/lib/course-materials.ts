@@ -117,19 +117,20 @@ export async function uploadCourseMaterial(opts: {
 
   console.info("[upload] start", { name: file.name, size: file.size, type: file.type, courseCode });
 
-  // 1) Auth check — commented out for testing, re-enable when Firebase auth is set up
+  // 1) Auth check
   let userId: string | undefined;
   try {
-    // const { data: sessionData } = await supabase.auth.getSession();
-    // userId = sessionData.session?.user.id;
+    const { data: sessionData } = await supabase.auth.getSession();
+    userId = sessionData.session?.user.id;
   } catch (e) {
     console.error("[upload] getSession failed", e);
   }
   if (!userId) {
-    // const msg = "You need to be signed in to upload files.";
-    // emit({ kind: "error", message: msg });
-    // throw new Error(msg);
+    const msg = "You need to be signed in to upload files.";
+    emit({ kind: "error", message: msg });
+    throw new Error(msg);
   }
+
 
   // 2) Classify file type
   const fileType = classifyFile(file);
@@ -162,7 +163,7 @@ export async function uploadCourseMaterial(opts: {
     }
   }
 
-  const path = `test-user/${courseCode}/${Date.now()}-${safeName(file.name)}`;
+  const path = `${userId}/${courseCode}/${Date.now()}-${safeName(file.name)}`;
 
   // 4) Upload to Supabase storage
   emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
@@ -302,4 +303,18 @@ export async function deleteAllUserMaterials() {
     .from("course_materials")
     .delete()
     .in("id", all.map((m) => m.id));
+}
+
+/**
+ * Pick the best material that can actually be analyzed by the backend:
+ * text was extracted successfully and it isn't an image.
+ */
+export function pickAnalyzableMaterial(
+  materials: CourseMaterial[],
+): CourseMaterial | null {
+  return (
+    materials.find(
+      (m) => m.file_type !== "image" && m.extraction_status === "success",
+    ) ?? null
+  );
 }
