@@ -126,9 +126,9 @@ export async function uploadCourseMaterial(opts: {
     console.error("[upload] getSession failed", e);
   }
   if (!userId) {
-    const msg = "You need to be signed in to upload files.";
-    emit({ kind: "error", message: msg });
-    throw new Error(msg);
+    //const msg = "You need to be signed in to upload files.";
+    //emit({ kind: "error", message: msg });
+    //throw new Error(msg);
   }
 
 
