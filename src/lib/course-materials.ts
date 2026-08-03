@@ -304,3 +304,17 @@ export async function deleteAllUserMaterials() {
     .delete()
     .in("id", all.map((m) => m.id));
 }
+
+/**
+ * Pick the best material that can actually be analyzed by the backend:
+ * text was extracted successfully and it isn't an image.
+ */
+export function pickAnalyzableMaterial(
+  materials: CourseMaterial[],
+): CourseMaterial | null {
+  return (
+    materials.find(
+      (m) => m.file_type !== "image" && m.extraction_status === "success",
+    ) ?? null
+  );
+}
