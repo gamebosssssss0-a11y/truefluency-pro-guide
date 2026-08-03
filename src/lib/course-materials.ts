@@ -163,7 +163,7 @@ export async function uploadCourseMaterial(opts: {
     }
   }
 
-  const path = `test-user/${courseCode}/${Date.now()}-${safeName(file.name)}`;
+  const path = `${userId}/${courseCode}/${Date.now()}-${safeName(file.name)}`;
 
   // 4) Upload to Supabase storage
   emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
