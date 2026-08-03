@@ -117,19 +117,20 @@ export async function uploadCourseMaterial(opts: {
 
   console.info("[upload] start", { name: file.name, size: file.size, type: file.type, courseCode });
 
-  // 1) Auth check — commented out for testing, re-enable when Firebase auth is set up
+  // 1) Auth check
   let userId: string | undefined;
   try {
-    // const { data: sessionData } = await supabase.auth.getSession();
-    // userId = sessionData.session?.user.id;
+    const { data: sessionData } = await supabase.auth.getSession();
+    userId = sessionData.session?.user.id;
   } catch (e) {
     console.error("[upload] getSession failed", e);
   }
   if (!userId) {
-    // const msg = "You need to be signed in to upload files.";
-    // emit({ kind: "error", message: msg });
-    // throw new Error(msg);
+    const msg = "You need to be signed in to upload files.";
+    emit({ kind: "error", message: msg });
+    throw new Error(msg);
   }
+
 
   // 2) Classify file type
   const fileType = classifyFile(file);
