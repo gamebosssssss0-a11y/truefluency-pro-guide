@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useProfile, averageForCourse, hasQualifyingActivityToday, type UserCourse } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Settings as SettingsIcon, Sparkles, Upload, ChevronRight, TrendingUp,
+  Settings as SettingsIcon, Sparkles, Upload, ChevronDown, ChevronRight, TrendingUp,
   BookOpen, Flame, Target, PlayCircle, Zap, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,7 @@ export function DashboardScreen() {
         {/* Streak strip */}
         <div className="mb-5 flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
           <div className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
+            "streak-icon-glow grid h-10 w-10 shrink-0 place-items-center rounded-xl",
             activeToday ? "bg-accent/20 text-accent" : "bg-muted text-muted-foreground"
           )}>
             <Flame className="h-4.5 w-4.5" />
@@ -196,7 +196,10 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
   const secondaryBtn = primaryKey === "materials" ? mockBtn : materialsBtn;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+    <div className={cn(
+      "overflow-hidden rounded-3xl border bg-card shadow-sm",
+      topics.length ? "prediction-ready-depth border-accent/15" : "border-border",
+    )}>
       <div className="bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
         <div className="mb-3 flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
@@ -228,9 +231,10 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">
-            Upload your first past paper and tap Analyze Upload to see predictions for {course.code}.
-          </p>
+          <div className="text-center text-xs text-muted-foreground">
+            <Upload className="mx-auto mb-2 h-5 w-5 opacity-60" aria-hidden="true" />
+            <p>Upload your first past paper and tap Analyze Upload to see predictions for {course.code}.</p>
+          </div>
         )}
 
         <AiGeneratedLabel className="mt-4" />
@@ -255,10 +259,19 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
 
 function CourseCard({ course, avg }: { course: UserCourse; avg: number | null }) {
   const { navigate } = useProfile();
+  const [expanded, setExpanded] = useState(false);
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => navigate("course-detail", { courseCode: course.code })}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate("course-detail", { courseCode: course.code });
+        }
+      }}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
     >
       <div className={cn(
         "grid h-11 w-11 shrink-0 place-items-center rounded-xl",
@@ -282,20 +295,33 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
             </span>
           )}
         </div>
-        <div className="truncate text-xs text-muted-foreground">{course.name}</div>
+        <p className={cn("text-xs text-muted-foreground", !expanded && "line-clamp-2")}>{course.name}</p>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((current) => !current);
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+          className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-accent hover:text-accent/80"
+          aria-expanded={expanded}
+        >
+          {expanded ? "Read less" : "Read more"}
+          <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
+        </button>
         {avg !== null ? (
           <div className="mt-1.5">
             <TopicPill label={`Avg ${avg}%`} strength={scoreToStrength(avg)} />
           </div>
         ) : (
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Upload className="h-3 w-3" />
-            Upload your first past paper to unlock predictions for {course.code}
+          <div className="mt-1.5 text-center text-[11px] text-muted-foreground">
+            <Upload className="mx-auto mb-1 h-4 w-4 opacity-60" aria-hidden="true" />
+            <span>Upload your first past paper to unlock predictions for {course.code}</span>
           </div>
         )}
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    </button>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </div>
   );
 }
 
