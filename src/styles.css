@@ -118,3 +118,33 @@
     letter-spacing: -0.015em;
   }
 }
+
+@keyframes quote-card-cycle {
+  0%, 100% { opacity: 0; transform: translateY(4px); }
+  10%, 88% { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .quote-card {
+    box-shadow: 0 0 22px color-mix(in oklab, var(--accent) 10%, transparent);
+  }
+
+  .quote-card-cycle {
+    animation: quote-card-cycle 3.6s ease-in-out both;
+  }
+
+  .streak-icon-glow {
+    box-shadow: 0 0 20px color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+
+  .prediction-ready-depth {
+    box-shadow: 0 10px 28px color-mix(in oklab, var(--foreground) 12%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--accent) 5%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quote-card-cycle {
+    animation: none;
+  }
+}

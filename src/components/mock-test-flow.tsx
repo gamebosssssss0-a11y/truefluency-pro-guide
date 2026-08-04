@@ -38,13 +38,48 @@ const genSteps = [
   "Compiling your questions…",
 ];
 
+const STUDY_QUOTES = [
+  { quote: "It always seems impossible until it’s done.", author: "Nelson Mandela" },
+  { quote: "You can’t use up creativity. The more you use, the more you have.", author: "Maya Angelou" },
+  { quote: "Life is like riding a bicycle. To keep your balance, you must keep moving.", author: "Albert Einstein" },
+  { quote: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+  { quote: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+  { quote: "Nothing will work unless you do.", author: "Maya Angelou" },
+  { quote: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { quote: "Energy and persistence conquer all things.", author: "Benjamin Franklin" },
+  { quote: "You may encounter many defeats, but you must not be defeated.", author: "Maya Angelou" },
+];
+
+const QUOTE_CYCLE_MS = 3600;
+
 export function MockGenerationScreen() {
   const course = useActiveCourse();
   const { navigate, profile, update } = useProfile();
   const [pct, setPct] = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
+  const [quoteIdx, setQuoteIdx] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
+  const quoteCycleStartedRef = useRef(Date.now());
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreference = () => setReduceMotion(media.matches);
+    syncPreference();
+    media.addEventListener("change", syncPreference);
+    return () => media.removeEventListener("change", syncPreference);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    quoteCycleStartedRef.current = Date.now();
+    const quoteTimer = window.setInterval(() => {
+      quoteCycleStartedRef.current = Date.now();
+      setQuoteIdx((current) => (current + 1) % STUDY_QUOTES.length);
+    }, QUOTE_CYCLE_MS);
+    return () => window.clearInterval(quoteTimer);
+  }, [reduceMotion]);
 
   useEffect(() => {
     if (!course || fetchedRef.current) return;
@@ -122,9 +157,13 @@ export function MockGenerationScreen() {
           },
         });
 
+        const elapsedInQuoteCycle = Date.now() - quoteCycleStartedRef.current;
+        const quoteFinishDelay = reduceMotion
+          ? 400
+          : Math.max(400, QUOTE_CYCLE_MS - (elapsedInQuoteCycle % QUOTE_CYCLE_MS));
         setTimeout(() => {
           navigate("mock-run", { courseCode: course.code });
-        }, 400);
+        }, quoteFinishDelay);
 
       } catch (e: unknown) {
         clearInterval(animId);
@@ -160,6 +199,20 @@ export function MockGenerationScreen() {
         </div>
         <Progress value={pct} className="h-2" />
         <p className="mt-3 text-center text-sm text-muted-foreground">{genSteps[statusIdx]}</p>
+        <figure
+          key={reduceMotion ? "static-quote" : quoteIdx}
+          className={cn(
+            "quote-card mt-7 rounded-2xl border border-accent/20 bg-accent/5 px-5 py-4 text-center",
+            !reduceMotion && "quote-card-cycle",
+          )}
+        >
+          <blockquote className="font-display text-base font-medium leading-relaxed text-accent">
+            “{STUDY_QUOTES[quoteIdx].quote}”
+          </blockquote>
+          <figcaption className="mt-2 text-xs font-medium text-muted-foreground">
+            {STUDY_QUOTES[quoteIdx].author}
+          </figcaption>
+        </figure>
       </div>
     </div>
   );
