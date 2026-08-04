@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
