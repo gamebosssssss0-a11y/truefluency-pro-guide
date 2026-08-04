@@ -108,10 +108,22 @@ export function MockGenerationScreen() {
         setPct(100);
 
         // Store AI questions in profile state so MockRunScreen can use them
-        update({ aiQuestions: questions });
+        update({
+          aiQuestions: questions,
+          inProgressTest: {
+            courseCode: course.code,
+            courseTitle: course.name,
+            questionCount: questions.length,
+            durationSec: (settings?.minutes ?? 30) * 60,
+            startedAt: Date.now(),
+            answers: Array(questions.length).fill(null),
+            currentIndex: 0,
+            questionIds: questions.map((q) => q.id),
+          },
+        });
 
         setTimeout(() => {
-          navigate("mock-config", { courseCode: course.code });
+          navigate("mock-run", { courseCode: course.code });
         }, 400);
 
       } catch (e: unknown) {
