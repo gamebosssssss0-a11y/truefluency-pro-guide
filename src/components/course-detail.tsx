@@ -158,7 +158,7 @@ function CoursePrimaryActions({
           : analysis.stored && !analysis.stale ? "Re-analyze" : "Analyze Upload"}
       </Button>
       <Button size="lg" onClick={() => navigate("mock-config", { courseCode })}>
-        <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
+        <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
       <div className="col-span-2">
         <UploadButton courseCode={courseCode} />
@@ -168,7 +168,7 @@ function CoursePrimaryActions({
     <div className="mt-5 space-y-2">
       <UploadButton courseCode={courseCode} />
       <Button size="lg" className="w-full" disabled>
-        <Zap className="mr-1.5 h-4 w-4" /> Generate Mock Test
+        <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
       <p className="text-center text-[11px] text-muted-foreground">
         {materialsLoading && materials === null
