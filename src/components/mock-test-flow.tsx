@@ -197,7 +197,6 @@ export function MockConfigScreen() {
   const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
-  const [expanded, setExpanded] = useState(false);
 
   if (!course || !smart) return null;
 
@@ -214,126 +213,99 @@ export function MockConfigScreen() {
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
 
-  // Get topics from AI questions if available
   const aiQuestions: AIQuestion[] = (profile as any).aiQuestions ?? [];
   const ALL_TOPICS = Array.from(new Set(aiQuestions.map((q) => q.topic)));
 
-  const start = () => {
-    const questions = aiQuestions;
+  const generate = () => {
     const nextSettings: CourseTestSettings = { questionCount: count, minutes, difficulty, topicFocus };
     update({
       courseTestSettings: { ...profile.courseTestSettings, [course.code]: nextSettings },
-      inProgressTest: {
-        courseCode: course.code,
-        courseTitle: course.name,
-        questionCount: questions.length,
-        durationSec: minutes * 60,
-        startedAt: Date.now(),
-        answers: Array(questions.length).fill(null),
-        currentIndex: 0,
-        questionIds: questions.map((q) => q.id),
-      },
     });
-    navigate("mock-run", { courseCode: course.code });
+    navigate("mock-gen", { courseCode: course.code });
   };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <button
-          onClick={() => navigate("dashboard")}
+          onClick={() => navigate("course-detail", { courseCode: course.code })}
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Cancel
+          <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
-        <h1 className="font-display text-3xl font-semibold text-foreground">Ready when you are</h1>
+        <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
         <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
         {defaults.toneLine ? (
           <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
         ) : null}
 
-        <Button size="lg" className="mt-6 h-auto w-full py-4" onClick={start}>
+        <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-4">
+          <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={45} step={5} onChange={setMinutes} />
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Difficulty</label>
+            <div className="grid grid-cols-2 gap-2">
+              {DIFFICULTY_OPTIONS.map((d) => {
+                const on = difficulty === d.key;
+                return (
+                  <button key={d.key} type="button" onClick={() => setDifficulty(d.key)}
+                    className={cn("rounded-xl border p-2.5 text-left transition", on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50")}>
+                    <div className="text-sm font-semibold text-foreground">{d.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{d.blurb}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {ALL_TOPICS.length > 0 && (
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Topic focus <span className="normal-case text-muted-foreground/70">(optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_TOPICS.map((t) => {
+                  const on = topicFocus.includes(t);
+                  return (
+                    <button key={t} type="button" onClick={() => toggleTopic(t)}
+                      className={cn("rounded-full border px-2.5 py-1 text-[11px] transition",
+                        on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50")}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question type</label>
+            <div className="rounded-xl border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+              Multiple choice. More formats coming soon.
+            </div>
+          </div>
+
+          <button type="button" onClick={resetToDefaults}
+            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+            <RotateCcw className="h-3 w-3" /> Reset to default
+          </button>
+        </div>
+
+        <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
           <Zap className="mr-2 h-4 w-4" />
           <span className="flex flex-col items-start leading-tight">
-            <span className="text-base font-semibold">Start Mock Test</span>
+            <span className="text-base font-semibold">Generate Mock Test</span>
             <span className="text-[11px] font-normal opacity-90">
-              {aiQuestions.length} questions · {minutes} min · {difficultyLabel}
+              {count} questions · {minutes} min · {difficultyLabel}
               {topicFocus.length > 0 ? ` · ${topicFocus.length} topic${topicFocus.length > 1 ? "s" : ""}` : ""}
             </span>
           </span>
         </Button>
 
-        <div className="mt-3 text-center">
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Adjust settings
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
-          </button>
-        </div>
-
-        <div className={cn("grid transition-[grid-template-rows] duration-300 ease-out", expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
-          <div className="overflow-hidden">
-            <div className="mt-4 space-y-5 rounded-2xl border border-border bg-card p-4">
-              <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={45} step={5} onChange={setMinutes} />
-
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Difficulty</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {DIFFICULTY_OPTIONS.map((d) => {
-                    const on = difficulty === d.key;
-                    return (
-                      <button key={d.key} type="button" onClick={() => setDifficulty(d.key)}
-                        className={cn("rounded-xl border p-2.5 text-left transition", on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50")}>
-                        <div className="text-sm font-semibold text-foreground">{d.label}</div>
-                        <div className="text-[11px] text-muted-foreground">{d.blurb}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {ALL_TOPICS.length > 0 && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Topic focus <span className="normal-case text-muted-foreground/70">(optional)</span>
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ALL_TOPICS.map((t) => {
-                      const on = topicFocus.includes(t);
-                      return (
-                        <button key={t} type="button" onClick={() => toggleTopic(t)}
-                          className={cn("rounded-full border px-2.5 py-1 text-[11px] transition",
-                            on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50")}>
-                          {t}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question type</label>
-                <div className="rounded-xl border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                  Multiple choice. More formats coming soon.
-                </div>
-              </div>
-
-              <button type="button" onClick={resetToDefaults}
-                className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-                <RotateCcw className="h-3 w-3" /> Reset to default
-              </button>
-            </div>
-          </div>
-        </div>
-
         {profile.inProgressTest && profile.inProgressTest.courseCode === course.code ? (
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
-            Starting a new test will discard your current in-progress attempt.
+            Generating a new test will discard your current in-progress attempt.
           </p>
         ) : null}
       </div>
