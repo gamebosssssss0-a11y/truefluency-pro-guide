@@ -261,7 +261,18 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
   const { navigate } = useProfile();
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate("course-detail", { courseCode: course.code })}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate("course-detail", { courseCode: course.code });
+        }
+      }}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+    >
       <div className={cn(
         "grid h-11 w-11 shrink-0 place-items-center rounded-xl",
         course.source === "manual" ? "bg-warning/15 text-warning" :
@@ -287,7 +298,11 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
         <p className={cn("text-xs text-muted-foreground", !expanded && "line-clamp-2")}>{course.name}</p>
         <button
           type="button"
-          onClick={() => setExpanded((current) => !current)}
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((current) => !current);
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
           className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-accent hover:text-accent/80"
           aria-expanded={expanded}
         >
@@ -305,14 +320,7 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
           </div>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => navigate("course-detail", { courseCode: course.code })}
-        className="grid h-8 w-8 shrink-0 place-items-center text-muted-foreground hover:text-accent"
-        aria-label={`Open ${course.code}`}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </div>
   );
 }
