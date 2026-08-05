@@ -12,8 +12,9 @@ import { GoalScreen, TimelineScreen, StudyPreferenceScreen } from "@/components/
 import { DashboardScreen } from "@/components/dashboard";
 import { CourseDetailScreen } from "@/components/course-detail";
 import {
-  MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen,
+  MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen, AttemptReviewScreen,
 } from "@/components/mock-test-flow";
+
 import { SettingsScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
 
@@ -56,6 +57,8 @@ function Router() {
     case "mock-config": return <MockConfigScreen />;
     case "mock-run": return <MockRunScreen />;
     case "mock-result": return <MockResultScreen />;
+    case "attempt-review": return <AttemptReviewScreen />;
+
     case "settings": return <SettingsScreen />;
     case "all-uploads": return <AllUploadsScreen />;
     case "flashcards-soon": return <FlashcardsSoonScreen />;

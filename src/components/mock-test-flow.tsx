@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
@@ -38,27 +38,43 @@ const genSteps = [
   "Compiling your questions…",
 ];
 
+/**
+ * Verified, accurately attributed quotes on the perseverance / study theme.
+ * Anything that could not be traced to a real, documented source has been
+ * replaced rather than paraphrased.
+ */
 const STUDY_QUOTES = [
-  { quote: "It always seems impossible until it’s done.", author: "Nelson Mandela" },
-  { quote: "You can’t use up creativity. The more you use, the more you have.", author: "Maya Angelou" },
-  { quote: "Life is like riding a bicycle. To keep your balance, you must keep moving.", author: "Albert Einstein" },
-  { quote: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
-  { quote: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+  { quote: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+  { quote: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
   { quote: "Nothing will work unless you do.", author: "Maya Angelou" },
-  { quote: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-  { quote: "Energy and persistence conquer all things.", author: "Benjamin Franklin" },
   { quote: "You may encounter many defeats, but you must not be defeated.", author: "Maya Angelou" },
+  { quote: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
+  { quote: "Genius is one percent inspiration and ninety-nine percent perspiration.", author: "Thomas Edison" },
+  { quote: "Energy and persistence conquer all things.", author: "Benjamin Franklin" },
+  { quote: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+  { quote: "Wisdom is not a product of schooling but of the lifelong attempt to acquire it.", author: "Albert Einstein" },
+  { quote: "The only way to learn mathematics is to do mathematics.", author: "Paul Halmos" },
 ];
 
-const QUOTE_CYCLE_MS = 3600;
+const QUOTE_CYCLE_MS = 6000;
+
 
 export function MockGenerationScreen() {
   const course = useActiveCourse();
   const { navigate, profile, update } = useProfile();
   const [pct, setPct] = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
-  const [quoteIdx, setQuoteIdx] = useState(0);
+  // Random starting quote on every visit to this screen.
+  const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * STUDY_QUOTES.length));
+
   const [reduceMotion, setReduceMotion] = useState(false);
+
+  // Reuse the SAME analysis already produced during this course's upload step.
+  const analysis = course ? profile.courseTopicAnalysis[course.code] : undefined;
+  const avgConfidence = analysis?.topics.length
+    ? Math.round((analysis.topics.reduce((s, t) => s + t.confidence, 0) / analysis.topics.length) * 100)
+    : null;
+
   const [error, setError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
   const quoteCycleStartedRef = useRef(Date.now());
@@ -199,17 +215,48 @@ export function MockGenerationScreen() {
         </div>
         <Progress value={pct} className="h-2" />
         <p className="mt-3 text-center text-sm text-muted-foreground">{genSteps[statusIdx]}</p>
+
+        {analysis && analysis.topics.length > 0 ? (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-accent/15 bg-card shadow-sm">
+            <div className="bg-gradient-to-br from-primary to-primary/85 p-4 text-primary-foreground">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                <Sparkles className="h-3 w-3" /> Mock prediction ready
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-3">
+                <GenStat label="Predicted topics" value={String(analysis.topics.length)} />
+                <GenStat label="Confidence" value={`${avgConfidence}%`} />
+                <GenStat label="Analyzed" value={new Date(analysis.analyzedAt).toLocaleDateString()} />
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Top predicted topics
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.topics.slice(0, 5).map((t) => (
+                  <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
+                ))}
+              </div>
+              <AiGeneratedLabel className="mt-3" />
+            </div>
+          </div>
+        ) : null}
+
         <figure
           key={reduceMotion ? "static-quote" : quoteIdx}
           className={cn(
-            "quote-card mt-7 rounded-2xl border border-accent/20 bg-accent/5 px-5 py-4 text-center",
+            "quote-card relative mt-7 overflow-hidden rounded-2xl px-6 py-5 text-center",
             !reduceMotion && "quote-card-cycle",
           )}
         >
-          <blockquote className="font-display text-base font-medium leading-relaxed text-accent">
+          <Quote
+            className="pointer-events-none absolute -left-1 -top-2 h-16 w-16 text-accent/25"
+            aria-hidden="true"
+          />
+          <blockquote className="quote-text relative font-display text-base font-semibold leading-relaxed">
             “{STUDY_QUOTES[quoteIdx].quote}”
           </blockquote>
-          <figcaption className="mt-2 text-xs font-medium text-muted-foreground">
+          <figcaption className="relative mt-2 text-xs font-normal text-muted-foreground">
             {STUDY_QUOTES[quoteIdx].author}
           </figcaption>
         </figure>
@@ -217,6 +264,16 @@ export function MockGenerationScreen() {
     </div>
   );
 }
+
+function GenStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="font-display text-lg font-semibold leading-none">{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">{label}</div>
+    </div>
+  );
+}
+
 
 /* ---------- 2. Config screen ---------- */
 
@@ -278,8 +335,11 @@ export function MockConfigScreen() {
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
 
-  const aiQuestions: AIQuestion[] = (profile as any).aiQuestions ?? [];
-  const ALL_TOPICS = Array.from(new Set(aiQuestions.map((q) => q.topic)));
+  // Topic focus options come from THIS course's stored analysis, not from a
+  // previously generated question set (which may belong to another course).
+  const analysedTopics = profile.courseTopicAnalysis[course.code]?.topics ?? [];
+  const ALL_TOPICS = Array.from(new Set(analysedTopics.map((t) => t.topic)));
+
 
   const generate = () => {
     const nextSettings: CourseTestSettings = { questionCount: count, minutes, difficulty, topicFocus };
@@ -452,7 +512,13 @@ export function MockRunScreen() {
       total: questions.length,
       submittedAt: Date.now(),
       topics,
+      // Snapshot the exact questions and selections so the review screen can
+      // replay this attempt without regenerating anything.
+      questions,
+      answers: questions.map((_, i) => t.answers[i] ?? null),
+      settings: profile.courseTestSettings[t.courseCode],
     };
+
 
     const newTopicScores = [...profile.topicScores];
     for (const tp of topics) {
@@ -638,6 +704,171 @@ export function MockResultScreen() {
             <Zap className="mr-1.5 h-4 w-4" /> Try again
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 5. Attempt review screen ---------- */
+
+export function AttemptReviewScreen() {
+  const { profile, navigate, update, activeAttemptId } = useProfile();
+  const attempt = profile.attempts.find((a) => a.id === activeAttemptId);
+
+  if (!attempt) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-md px-5 pt-6">
+          <Button variant="ghost" onClick={() => navigate("dashboard")}>← Back</Button>
+          <p className="mt-6 text-sm text-muted-foreground">That attempt is no longer available.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const questions = attempt.questions ?? [];
+  const answers = attempt.answers ?? [];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+        <button
+          onClick={() => navigate("course-detail", { courseCode: attempt.courseCode })}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+
+        {/* Header */}
+        <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
+          <div className="text-xs font-medium text-primary-foreground/70">{attempt.courseCode}</div>
+          <div className="mt-0.5 font-display text-xl font-semibold leading-tight">{attempt.courseTitle}</div>
+          <div className="mt-1 text-[11px] text-primary-foreground/70">
+            Completed {new Date(attempt.submittedAt).toLocaleString()}
+          </div>
+          <div className="mt-4 flex items-baseline gap-2 border-t border-primary-foreground/15 pt-4">
+            <span className="font-display text-4xl font-semibold leading-none">{attempt.score}%</span>
+            <span className="text-sm text-primary-foreground/75">
+              {attempt.correct}/{attempt.total} correct
+            </span>
+          </div>
+        </div>
+
+        <AiGeneratedLabel className="mt-4" />
+
+        {questions.length === 0 ? (
+          <div className="mt-5 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
+            This attempt was recorded before question-by-question review was available, so its
+            individual questions weren't saved.
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            {questions.map((q, i) => {
+              const selected = answers[i] ?? null;
+              const isCorrect = selected === q.correct_index;
+              return (
+                <div key={`${q.id}-${i}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      Q{i + 1} · {q.topic}
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                        isCorrect ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+                      )}
+                    >
+                      {isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                      {isCorrect ? "Correct" : "Incorrect"}
+                    </span>
+                  </div>
+
+                  <div className="font-display text-base font-semibold text-foreground">{q.question}</div>
+
+                  <div className="mt-3 space-y-1.5">
+                    {q.options.map((opt, oi) => {
+                      const isAnswer = oi === q.correct_index;
+                      const isPicked = oi === selected;
+                      return (
+                        <div
+                          key={oi}
+                          className={cn(
+                            "flex items-start gap-2.5 rounded-xl border p-2.5 text-sm",
+                            isAnswer
+                              ? "border-success/50 bg-success/10"
+                              : isPicked
+                                ? "border-destructive/50 bg-destructive/10"
+                                : "border-border bg-background",
+                          )}
+                        >
+                          <span className="mt-0.5 shrink-0">
+                            {isAnswer ? (
+                              <Check className="h-4 w-4 text-success" aria-label="Correct answer" />
+                            ) : isPicked ? (
+                              <X className="h-4 w-4 text-destructive" aria-label="Your incorrect answer" />
+                            ) : (
+                              <span className="grid h-4 w-4 place-items-center text-[10px] font-semibold text-muted-foreground">
+                                {String.fromCharCode(65 + oi)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 text-foreground">{opt}</span>
+                          {isPicked ? (
+                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Your answer
+                            </span>
+                          ) : isAnswer ? (
+                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Correct
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {selected === null ? (
+                    <p className="mt-2 text-[11px] italic text-muted-foreground">
+                      You left this question unanswered.
+                    </p>
+                  ) : null}
+
+                  <div className="mt-3 rounded-xl border border-border bg-background p-3">
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Why this is the answer
+                    </div>
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+                      {q.explanation}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <AiGeneratedLabel className="mt-5" />
+
+        <Button
+          size="lg"
+          className="mt-4 w-full"
+          onClick={() => {
+            if (attempt.settings) {
+              update({
+                courseTestSettings: {
+                  ...profile.courseTestSettings,
+                  [attempt.courseCode]: attempt.settings,
+                },
+              });
+            }
+            navigate("mock-gen", { courseCode: attempt.courseCode });
+          }}
+        >
+          <Zap className="mr-1.5 h-4 w-4" /> Retake This Test
+        </Button>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          Generates a fresh set of questions using the same course and settings.
+        </p>
       </div>
     </div>
   );
