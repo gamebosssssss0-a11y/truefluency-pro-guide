@@ -258,8 +258,15 @@ function FeaturedCourseCard({ course }: { course: UserCourse }) {
 }
 
 function CourseCard({ course, avg }: { course: UserCourse; avg: number | null }) {
-  const { navigate } = useProfile();
+  const { navigate, profile } = useProfile();
   const [expanded, setExpanded] = useState(false);
+
+  const analysis = profile.courseTopicAnalysis[course.code];
+  const topics = analysis?.topics ?? [];
+  const avgConfidence = topics.length
+    ? Math.round((topics.reduce((s, t) => s + t.confidence, 0) / topics.length) * 100)
+    : null;
+
   return (
     <div
       role="button"
@@ -271,7 +278,7 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
           navigate("course-detail", { courseCode: course.code });
         }
       }}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
     >
       <div className={cn(
         "grid h-11 w-11 shrink-0 place-items-center rounded-xl",
@@ -309,6 +316,42 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
           {expanded ? "Read less" : "Read more"}
           <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
         </button>
+
+        {expanded ? (
+          <div className="mt-2 overflow-hidden rounded-2xl border border-accent/15 bg-card shadow-sm">
+            <div className="bg-gradient-to-br from-primary to-primary/85 p-3.5 text-primary-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent">
+                <Sparkles className="h-3 w-3" />
+                {topics.length ? "Mock prediction ready" : "No analysis yet"}
+              </span>
+              {topics.length ? (
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-3">
+                  <Stat label="Predicted topics" value={String(topics.length)} />
+                  <Stat label="Confidence" value={`${avgConfidence}%`} />
+                  <Stat label="Analyzed" value={new Date(analysis!.analyzedAt).toLocaleDateString()} />
+                </div>
+              ) : null}
+            </div>
+            <div className="p-3.5">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Top predicted topics
+              </div>
+              {topics.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {topics.slice(0, 5).map((t) => (
+                    <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Upload a past paper and tap Analyze Upload to see predictions for {course.code}.
+                </p>
+              )}
+              <AiGeneratedLabel className="mt-3" />
+            </div>
+          </div>
+        ) : null}
+
         {avg !== null ? (
           <div className="mt-1.5">
             <TopicPill label={`Avg ${avg}%`} strength={scoreToStrength(avg)} />
@@ -320,10 +363,11 @@ function CourseCard({ course, avg }: { course: UserCourse; avg: number | null })
           </div>
         )}
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-muted-foreground" />
     </div>
   );
 }
+
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

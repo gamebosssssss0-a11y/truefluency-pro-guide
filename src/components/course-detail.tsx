@@ -114,17 +114,23 @@ export function CourseDetailScreen() {
                 </div>
               ) : null}
               {relevantAttempts.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => navigate("attempt-review", { courseCode: course.code, attemptId: a.id })}
+                  className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-foreground">{a.correct}/{a.total} correct</div>
                     <div className="text-[11px] text-muted-foreground">
-                      {new Date(a.submittedAt).toLocaleDateString()} · {a.total} questions
+                      {new Date(a.submittedAt).toLocaleDateString()} · {a.total} questions · Review answers
                     </div>
                   </div>
                   <TopicPill label={`${a.score}%`} strength={scoreToStrength(a.score)} />
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
+                </button>
               ))}
+
             </div>
           )}
         </div>

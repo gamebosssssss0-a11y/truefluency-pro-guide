@@ -20,7 +20,14 @@ export type MockAttempt = {
   total: number;
   submittedAt: number;
   topics: { topic: string; score: number }[];
+  /** Exact questions asked, in presentation order (for the review screen). */
+  questions?: AIQuestion[];
+  /** The student's selected option index per question, aligned with `questions`. */
+  answers?: (number | null)[];
+  /** Settings used, so "Retake This Test" can regenerate with the same setup. */
+  settings?: CourseTestSettings;
 };
+
 
 export type InProgressTest = {
   courseCode: string;
@@ -94,7 +101,9 @@ export type AppView =
   | "settings"
   | "flashcards-soon"
   | "add-course"
-  | "all-uploads";
+  | "all-uploads"
+  | "attempt-review";
+
 
 
 /* ---------- Profile ---------- */
@@ -166,9 +175,10 @@ type Ctx = {
   step: OnboardingStep | "dashboard";
   view: AppView;
   activeCourseCode: string | null;
+  activeAttemptId: string | null;
   update: (p: Partial<Profile>) => void;
   go: (s: OnboardingStep | "dashboard") => void;
-  navigate: (v: AppView, opts?: { courseCode?: string | null }) => void;
+  navigate: (v: AppView, opts?: { courseCode?: string | null; attemptId?: string | null }) => void;
   resetSetup: () => void;
 };
 
@@ -180,6 +190,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [step, setStep] = useState<OnboardingStep | "dashboard">("splash");
   const [view, setView] = useState<AppView>("dashboard");
   const [activeCourseCode, setActiveCourseCode] = useState<string | null>(null);
+  const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -205,22 +216,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setStep(s);
     if (s === "dashboard") setView("dashboard");
   };
-  const navigate = (v: AppView, opts?: { courseCode?: string | null }) => {
+  const navigate = (v: AppView, opts?: { courseCode?: string | null; attemptId?: string | null }) => {
     setView(v);
     if (opts && "courseCode" in opts) setActiveCourseCode(opts.courseCode ?? null);
+    if (opts && "attemptId" in opts) setActiveAttemptId(opts.attemptId ?? null);
   };
   const resetSetup = () => {
     setProfile(emptyProfile);
     setStep("splash");
     setView("dashboard");
     setActiveCourseCode(null);
+    setActiveAttemptId(null);
     try { localStorage.removeItem(KEY); } catch { /* ignore */ }
   };
 
   return (
-    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, update, go, navigate, resetSetup }}>
+    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, activeAttemptId, update, go, navigate, resetSetup }}>
       {hydrated ? children : null}
     </StoreCtx.Provider>
+
   );
 }
 
