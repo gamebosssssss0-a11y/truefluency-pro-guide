@@ -3,6 +3,7 @@ import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficu
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X } from "lucide-react";
+import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
@@ -206,6 +207,9 @@ export function MockGenerationScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+        <div className="absolute left-5 top-6">
+          <HeaderLogo />
+        </div>
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-sm">
             <Sparkles className="h-6 w-6" />
@@ -352,12 +356,15 @@ export function MockConfigScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("course-detail", { courseCode: course.code })}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("course-detail", { courseCode: course.code })}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
         <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
@@ -584,9 +591,12 @@ export function MockRunScreen() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-24 pt-6">
         <div className="mb-4 flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-2">
+            <HeaderLogo />
+            <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t.courseCode}</div>
             <div className="truncate text-sm font-semibold text-foreground">{t.courseTitle}</div>
+            </div>
           </div>
           <div className={cn("font-display text-2xl font-semibold tabular-nums", timerColor)}>
             {mm}:{String(ss).padStart(2, "0")}
@@ -666,6 +676,9 @@ export function MockResultScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+        </div>
         <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
           <div className={cn("mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl",
             celebratory ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
@@ -732,12 +745,15 @@ export function AttemptReviewScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("course-detail", { courseCode: attempt.courseCode })}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("course-detail", { courseCode: attempt.courseCode })}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
 
         {/* Header */}
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">

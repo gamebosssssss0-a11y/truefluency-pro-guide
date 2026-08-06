@@ -9,6 +9,7 @@
  */
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
+import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
@@ -23,7 +24,7 @@ export type CourseMaterial = {
   course_code: string;
   file_path: string;
   file_name: string;
-  file_type: "image" | "pdf" | "docx" | "pptx";
+  file_type: "image" | "pdf" | "docx" | "pptx" | "pasted";
   mime_type: string;
   size_bytes: number;
   extracted_content: string | null;
@@ -37,6 +38,12 @@ export type CourseMaterial = {
   extraction_error: string | null;
   created_at: string;
 };
+
+/** Minimum characters of pasted text that can produce useful predictions. */
+export const MIN_PASTED_CHARS = 200;
+export const PASTED_TOO_SHORT_MESSAGE =
+  "This looks too short to generate useful predictions from, try adding more content.";
+
 
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
@@ -224,6 +231,16 @@ export async function uploadCourseMaterial(opts: {
 
   console.info("[upload] db row created", { id: row.id });
 
+  // 5b) Advisory-only metadata heuristic. Never blocks the upload.
+  try {
+    const reason = await inspectFileMetadata(file, fileType);
+    if (reason) setMetadataFlag(row.id, reason);
+  } catch (e) {
+    console.error("[upload] metadata heuristic failed, ignoring", e);
+  }
+
+
+
   // 6) Call FastAPI backend to extract text — replaces broken Supabase edge functions
   if (needsExtraction) {
     emit({ kind: "extracting" });
@@ -265,6 +282,99 @@ export async function uploadCourseMaterial(opts: {
   emit({ kind: "done" });
   return (fresh ?? row) as CourseMaterial;
 }
+
+/**
+ * Save raw pasted text as a course material. It goes through the same storage
+ * and course-linkage path as a file upload, but since pasted text is already
+ * plain text it is stored directly as `extracted_content`, with no extraction
+ * step.
+ */
+export async function savePastedText(opts: {
+  text: string;
+  courseCode: string;
+  title?: string;
+  onStage?: (s: UploadStage) => void;
+}): Promise<CourseMaterial> {
+  const { courseCode, onStage } = opts;
+  const text = opts.text.trim();
+  const emit = (s: UploadStage) => {
+    try { onStage?.(s); } catch (e) { console.error("[paste] onStage handler threw", e); }
+  };
+
+  if (text.length < MIN_PASTED_CHARS) {
+    emit({ kind: "error", message: PASTED_TOO_SHORT_MESSAGE });
+    throw new Error(PASTED_TOO_SHORT_MESSAGE);
+  }
+
+  let userId: string | undefined;
+  try {
+    const { data } = await supabase.auth.getSession();
+    userId = data.session?.user.id;
+  } catch (e) {
+    console.error("[paste] getSession failed", e);
+  }
+  if (!userId) {
+    const msg = "You need to be signed in to save pasted text.";
+    emit({ kind: "error", message: msg });
+    throw new Error(msg);
+  }
+
+  const stamp = Date.now();
+  const fileName = safeName(opts.title?.trim() || `Pasted text ${new Date(stamp).toLocaleDateString()}`);
+  const path = `${userId}/${courseCode}/${stamp}-${fileName}.txt`;
+
+  emit({ kind: "uploading", pct: 20 });
+
+  const blob = new Blob([text], { type: "text/plain" });
+  let upErr: unknown = null;
+  try {
+    const res = await supabase.storage
+      .from("course-materials")
+      .upload(path, blob, { contentType: "text/plain", upsert: false });
+    upErr = res.error;
+  } catch (e) {
+    upErr = e;
+  }
+  if (upErr) {
+    console.error("[paste] storage upload failed", upErr);
+    emit({ kind: "error", message: "Couldn't save your text. Check your connection and try again." });
+    throw upErr instanceof Error ? upErr : new Error("Storage upload failed");
+  }
+
+  emit({ kind: "uploading", pct: 80 });
+
+  try {
+    const { data, error } = await supabase
+      .from("course_materials")
+      .insert({
+        user_id: userId,
+        course_code: courseCode,
+        file_path: path,
+        file_name: opts.title?.trim() || `Pasted text · ${new Date(stamp).toLocaleDateString()}`,
+        file_type: "pasted",
+        mime_type: "text/plain",
+        size_bytes: blob.size,
+        extracted_content: text,
+        extraction_status: "success",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    emit({ kind: "done" });
+    return data as CourseMaterial;
+  } catch (e) {
+    console.error("[paste] db insert failed, rolling back storage", e);
+    try {
+      await supabase.storage.from("course-materials").remove([path]);
+    } catch (rollbackErr) {
+      console.error("[paste] storage rollback also failed", rollbackErr);
+    }
+    emit({ kind: "error", message: "Couldn't save your text. Please try again." });
+    throw e instanceof Error ? e : new Error("Insert failed");
+  }
+}
+
+
 
 export async function listMaterialsForCourse(courseCode: string) {
   const { data, error } = await supabase

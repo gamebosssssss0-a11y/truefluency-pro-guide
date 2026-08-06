@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
+import { Wordmark } from "@/components/brand";
 
 /** Shown once per browser session; later app opens in the same tab skip it. */
 const SESSION_KEY = "truefluency-splash-seen";
@@ -66,13 +67,12 @@ export function SplashScreen() {
           </div>
         </div>
         <div className={reduceMotion ? "text-center" : "text-center animate-in fade-in slide-in-from-bottom-2 duration-700"}>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">
-            TrueFluency <span className="text-accent">Pro</span>
-          </h1>
+          <Wordmark size="lg" onDark className="justify-center" />
           <p className="mt-2 text-sm text-primary-foreground/70">
             Smarter prep. For UI students.
           </p>
         </div>
+
         <div className="mt-6 h-1 w-32 overflow-hidden rounded-full bg-primary-foreground/15">
           <div
             className="h-full w-full origin-left bg-accent"

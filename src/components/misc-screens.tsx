@@ -1,6 +1,7 @@
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Layers, Sparkles } from "lucide-react";
+import { HeaderLogo } from "@/components/brand";
 import { AddCourseFlow } from "@/components/add-course-flow";
 
 export function AddCourseScreen() {
@@ -8,12 +9,15 @@ export function AddCourseScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("settings")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Settings
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("settings")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Settings
+          </button>
+        </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">Add a course</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Search the catalogue first. If it's not there, add it manually.
@@ -39,12 +43,15 @@ export function FlashcardsSoonScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("dashboard")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Dashboard
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("dashboard")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Dashboard
+          </button>
+        </div>
 
         <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
           <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-accent/15 text-accent">

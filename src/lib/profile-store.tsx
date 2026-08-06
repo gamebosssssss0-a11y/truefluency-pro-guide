@@ -102,7 +102,48 @@ export type AppView =
   | "flashcards-soon"
   | "add-course"
   | "all-uploads"
-  | "attempt-review";
+  | "attempt-review"
+  | "cgpa";
+
+/* ---------- CGPA calculator + static study plan ---------- */
+
+export type CgpaInputs = {
+  currentCgpa: string;
+  currentUnits: string;
+  targetCgpa: string;
+  daysRemaining: string;
+  /** course code -> credit units for this semester */
+  units: Record<string, number>;
+};
+
+export type CgpaPlanCourse = {
+  code: string;
+  name: string;
+  units: number;
+  requiredPoints: number;
+  requiredGrade: string;
+  requiredPercent: string;
+  highImpact: boolean;
+  dailyReadingMinutes: number;
+  dailyMockQuestions: number;
+};
+
+export type CgpaPlan = {
+  createdAt: number;
+  currentCgpa: number;
+  currentUnits: number;
+  targetCgpa: number;
+  daysRemaining: number;
+  semesterUnits: number;
+  /** Semester GPA needed across this semester's units to hit the target. */
+  requiredSemesterGpa: number;
+  reachable: boolean;
+  alreadyThere: boolean;
+  targetClassification: string;
+  probationNote: boolean;
+  courses: CgpaPlanCourse[];
+};
+
 
 
 
@@ -143,7 +184,12 @@ export type Profile = {
 
   // Real topic analysis per course code (from "Analyze Upload")
   courseTopicAnalysis: Record<string, CourseTopicAnalysis>;
+
+  // CGPA calculator inputs + the last generated static study plan
+  cgpaInputs: CgpaInputs | null;
+  cgpaPlan: CgpaPlan | null;
 };
+
 
 const emptyProfile: Profile = {
   identity: null,
@@ -168,6 +214,9 @@ const emptyProfile: Profile = {
   courseTestSettings: {},
   aiQuestions: [],
   courseTopicAnalysis: {},
+  cgpaInputs: null,
+  cgpaPlan: null,
+
 };
 
 type Ctx = {

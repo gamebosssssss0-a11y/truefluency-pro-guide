@@ -2,24 +2,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2,
+  ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
   FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { HeaderLogo } from "@/components/brand";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
   findDuplicateMaterial, pickAnalyzableMaterial, ACCEPTED_UPLOAD_MIME,
+  savePastedText, MIN_PASTED_CHARS, PASTED_TOO_SHORT_MESSAGE,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
+import {
+  getMetadataFlag, dismissMetadataFlag, METADATA_NOTE,
+} from "@/lib/material-metadata";
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { courseFeatureOrder } from "@/lib/personalization";
+
 
 /* -------- shared materials loader for this screen -------- */
 
@@ -72,12 +79,16 @@ export function CourseDetailScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("dashboard")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Dashboard
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("dashboard")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Dashboard
+          </button>
+        </div>
+
 
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
           <div className="text-xs font-medium text-primary-foreground/70">{course.code}</div>
@@ -169,10 +180,14 @@ function CoursePrimaryActions({
       <div className="col-span-2">
         <UploadButton courseCode={courseCode} />
       </div>
+      <div className="col-span-2">
+        <PasteTextButton courseCode={courseCode} />
+      </div>
     </div>
   ) : (
     <div className="mt-5 space-y-2">
       <UploadButton courseCode={courseCode} />
+      <PasteTextButton courseCode={courseCode} />
       <Button size="lg" className="w-full" disabled>
         <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
@@ -180,12 +195,13 @@ function CoursePrimaryActions({
         {materialsLoading && materials === null
           ? "Checking your uploads…"
           : materials && materials.length > 0
-            ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file to unlock mock tests."
-            : "Upload a past paper first."}
+            ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file, or paste text, to unlock mock tests."
+            : "Upload a past paper or paste text first."}
       </p>
 
     </div>
   );
+
 
   const topics = (
     <PredictedTopicsSection courseCode={courseCode} material={readyMaterial} analysis={analysis} />
@@ -489,6 +505,89 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   );
 }
 
+/* -------- Paste text as an upload alternative -------- */
+
+function PasteTextButton({ courseCode }: { courseCode: string }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [stage, setStage] = useState<UploadStage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const busy = stage !== null && stage.kind !== "done" && stage.kind !== "error";
+  const tooShort = text.trim().length < MIN_PASTED_CHARS;
+
+  const submit = async () => {
+    if (tooShort) {
+      setError(PASTED_TOO_SHORT_MESSAGE);
+      return;
+    }
+    setError(null);
+    try {
+      await savePastedText({ text, courseCode, onStage: setStage });
+      toast.success(`Added to ${courseCode}. Text ready.`);
+      setText("");
+      setOpen(false);
+      try { window.dispatchEvent(new Event("course-materials-refresh")); } catch { /* ignore */ }
+    } catch (e) {
+      console.error("[paste] submit failed", e);
+      setError((e as Error)?.message || "Couldn't save your text. Please try again.");
+    } finally {
+      setTimeout(() => setStage(null), 1200);
+    }
+  };
+
+  if (!open) {
+    return (
+      <Button size="lg" variant="ghost" className="w-full" onClick={() => setOpen(true)}>
+        <ClipboardPaste className="mr-1.5 h-4 w-4" /> Paste text instead
+      </Button>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Paste text for {courseCode}
+        </span>
+        <button
+          onClick={() => { setOpen(false); setError(null); }}
+          className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+          aria-label="Close"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <Textarea
+        autoFocus
+        rows={8}
+        placeholder="Paste course content here, from a WhatsApp message, a Google Doc, or anywhere else."
+        value={text}
+        onChange={(e) => { setText(e.target.value); setError(null); }}
+      />
+      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{text.trim().length} characters</span>
+        <span>{MIN_PASTED_CHARS} minimum</span>
+      </div>
+
+      {error ? (
+        <div className="mt-2 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-foreground">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      {stage ? <StageBanner stage={stage} /> : null}
+
+      <Button className="mt-3 w-full" onClick={() => void submit()} disabled={busy}>
+        {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+        {busy ? "Saving…" : "Save pasted text"}
+      </Button>
+    </div>
+  );
+}
+
+
 function StageBanner({ stage }: { stage: UploadStage }) {
   return (
     <div className="col-span-2 mt-2 rounded-2xl border border-accent/40 bg-accent/10 p-3 text-xs">
@@ -571,47 +670,80 @@ export function MaterialRow({
 }) {
   const t = m.file_type;
   const isImage = t === "image";
+  const isPasted = t === "pasted";
   const hasExtraction = t === "pdf" || t === "docx" || t === "pptx";
   const kb = Math.round(m.size_bytes / 1024);
+  const [flag, setFlag] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFlag(getMetadataFlag(m.id));
+  }, [m.id]);
 
   const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
     if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
     if (t === "docx") return { Icon: FileType2, tone: "bg-[hsl(215_70%_45%)] text-white" };
     if (t === "pptx") return { Icon: Presentation, tone: "bg-[hsl(20_85%_50%)] text-white" };
+    if (t === "pasted") return { Icon: ClipboardPaste, tone: "bg-secondary text-primary" };
     return { Icon: FileImage, tone: "bg-accent text-accent-foreground" };
   })();
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
-        <iconMeta.Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-          {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
-          {showCourse ? <span>·</span> : null}
-          <span className="uppercase">{isImage ? "IMG" : t}</span>
-          <span>·</span>
-          <span>{kb}KB</span>
-          <span>·</span>
-          <span>{new Date(m.created_at).toLocaleDateString()}</span>
-          {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
+    <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
+          <iconMeta.Icon className="h-4 w-4" />
         </div>
-        {isFromInactiveCourse ? (
-          <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
-        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
+            {showCourse ? <span>·</span> : null}
+            {isPasted ? (
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Pasted text
+              </span>
+            ) : (
+              <span className="uppercase">{isImage ? "IMG" : t}</span>
+            )}
+            <span>·</span>
+            <span>{kb}KB</span>
+            <span>·</span>
+            <span>{new Date(m.created_at).toLocaleDateString()}</span>
+            {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
+          </div>
+          {isFromInactiveCourse ? (
+            <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
+          ) : null}
+        </div>
+        <button
+          onClick={onDelete}
+          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
+          aria-label="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
-      <button
-        onClick={onDelete}
-        className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
-        aria-label="Delete"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+
+      {flag ? (
+        <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 p-2.5 text-[11px] text-foreground">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p>{METADATA_NOTE}</p>
+            <p className="mt-1 text-muted-foreground">{flag}</p>
+          </div>
+          <button
+            onClick={() => { dismissMetadataFlag(m.id); setFlag(null); }}
+            className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+            aria-label="Dismiss note"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
+
 
 function ExtractionBadge({ status }: { status: CourseMaterial["extraction_status"] }) {
   if (status === "success") return <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Text ready</span>;
