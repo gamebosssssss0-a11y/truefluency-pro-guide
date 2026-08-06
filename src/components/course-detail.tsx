@@ -79,12 +79,16 @@ export function CourseDetailScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("dashboard")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Dashboard
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("dashboard")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Dashboard
+          </button>
+        </div>
+
 
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
           <div className="text-xs font-medium text-primary-foreground/70">{course.code}</div>
