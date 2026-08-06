@@ -184,7 +184,12 @@ export type Profile = {
 
   // Real topic analysis per course code (from "Analyze Upload")
   courseTopicAnalysis: Record<string, CourseTopicAnalysis>;
+
+  // CGPA calculator inputs + the last generated static study plan
+  cgpaInputs: CgpaInputs | null;
+  cgpaPlan: CgpaPlan | null;
 };
+
 
 const emptyProfile: Profile = {
   identity: null,
