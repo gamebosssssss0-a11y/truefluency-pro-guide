@@ -283,6 +283,99 @@ export async function uploadCourseMaterial(opts: {
   return (fresh ?? row) as CourseMaterial;
 }
 
+/**
+ * Save raw pasted text as a course material. It goes through the same storage
+ * and course-linkage path as a file upload, but since pasted text is already
+ * plain text it is stored directly as `extracted_content`, with no extraction
+ * step.
+ */
+export async function savePastedText(opts: {
+  text: string;
+  courseCode: string;
+  title?: string;
+  onStage?: (s: UploadStage) => void;
+}): Promise<CourseMaterial> {
+  const { courseCode, onStage } = opts;
+  const text = opts.text.trim();
+  const emit = (s: UploadStage) => {
+    try { onStage?.(s); } catch (e) { console.error("[paste] onStage handler threw", e); }
+  };
+
+  if (text.length < MIN_PASTED_CHARS) {
+    emit({ kind: "error", message: PASTED_TOO_SHORT_MESSAGE });
+    throw new Error(PASTED_TOO_SHORT_MESSAGE);
+  }
+
+  let userId: string | undefined;
+  try {
+    const { data } = await supabase.auth.getSession();
+    userId = data.session?.user.id;
+  } catch (e) {
+    console.error("[paste] getSession failed", e);
+  }
+  if (!userId) {
+    const msg = "You need to be signed in to save pasted text.";
+    emit({ kind: "error", message: msg });
+    throw new Error(msg);
+  }
+
+  const stamp = Date.now();
+  const fileName = safeName(opts.title?.trim() || `Pasted text ${new Date(stamp).toLocaleDateString()}`);
+  const path = `${userId}/${courseCode}/${stamp}-${fileName}.txt`;
+
+  emit({ kind: "uploading", pct: 20 });
+
+  const blob = new Blob([text], { type: "text/plain" });
+  let upErr: unknown = null;
+  try {
+    const res = await supabase.storage
+      .from("course-materials")
+      .upload(path, blob, { contentType: "text/plain", upsert: false });
+    upErr = res.error;
+  } catch (e) {
+    upErr = e;
+  }
+  if (upErr) {
+    console.error("[paste] storage upload failed", upErr);
+    emit({ kind: "error", message: "Couldn't save your text. Check your connection and try again." });
+    throw upErr instanceof Error ? upErr : new Error("Storage upload failed");
+  }
+
+  emit({ kind: "uploading", pct: 80 });
+
+  try {
+    const { data, error } = await supabase
+      .from("course_materials")
+      .insert({
+        user_id: userId,
+        course_code: courseCode,
+        file_path: path,
+        file_name: opts.title?.trim() || `Pasted text · ${new Date(stamp).toLocaleDateString()}`,
+        file_type: "pasted",
+        mime_type: "text/plain",
+        size_bytes: blob.size,
+        extracted_content: text,
+        extraction_status: "success",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    emit({ kind: "done" });
+    return data as CourseMaterial;
+  } catch (e) {
+    console.error("[paste] db insert failed, rolling back storage", e);
+    try {
+      await supabase.storage.from("course-materials").remove([path]);
+    } catch (rollbackErr) {
+      console.error("[paste] storage rollback also failed", rollbackErr);
+    }
+    emit({ kind: "error", message: "Couldn't save your text. Please try again." });
+    throw e instanceof Error ? e : new Error("Insert failed");
+  }
+}
+
+
+
 export async function listMaterialsForCourse(courseCode: string) {
   const { data, error } = await supabase
     .from("course_materials")
