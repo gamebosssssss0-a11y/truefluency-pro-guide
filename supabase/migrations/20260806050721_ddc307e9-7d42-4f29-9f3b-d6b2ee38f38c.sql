@@ -1,0 +1,2 @@
+ALTER TABLE public.course_materials DROP CONSTRAINT IF EXISTS course_materials_file_type_check;
+ALTER TABLE public.course_materials ADD CONSTRAINT course_materials_file_type_check CHECK (file_type = ANY (ARRAY['image'::text, 'pdf'::text, 'docx'::text, 'pptx'::text, 'pasted'::text]));
