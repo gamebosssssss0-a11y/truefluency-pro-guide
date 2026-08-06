@@ -2,24 +2,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2,
+  ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
   FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { HeaderLogo } from "@/components/brand";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
   findDuplicateMaterial, pickAnalyzableMaterial, ACCEPTED_UPLOAD_MIME,
+  savePastedText, MIN_PASTED_CHARS, PASTED_TOO_SHORT_MESSAGE,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
+import {
+  getMetadataFlag, dismissMetadataFlag, METADATA_NOTE,
+} from "@/lib/material-metadata";
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { courseFeatureOrder } from "@/lib/personalization";
+
 
 /* -------- shared materials loader for this screen -------- */
 
