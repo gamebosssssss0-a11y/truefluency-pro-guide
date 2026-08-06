@@ -588,9 +588,12 @@ export function MockRunScreen() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-24 pt-6">
         <div className="mb-4 flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-2">
+            <HeaderLogo />
+            <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t.courseCode}</div>
             <div className="truncate text-sm font-semibold text-foreground">{t.courseTitle}</div>
+            </div>
           </div>
           <div className={cn("font-display text-2xl font-semibold tabular-nums", timerColor)}>
             {mm}:{String(ss).padStart(2, "0")}
@@ -670,6 +673,9 @@ export function MockResultScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+        </div>
         <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
           <div className={cn("mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl",
             celebratory ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
