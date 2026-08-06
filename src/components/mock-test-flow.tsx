@@ -3,6 +3,7 @@ import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficu
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X } from "lucide-react";
+import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
@@ -352,12 +353,15 @@ export function MockConfigScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("course-detail", { courseCode: course.code })}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("course-detail", { courseCode: course.code })}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
         <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
@@ -732,12 +736,15 @@ export function AttemptReviewScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("course-detail", { courseCode: attempt.courseCode })}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("course-detail", { courseCode: attempt.courseCode })}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
 
         {/* Header */}
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
