@@ -55,12 +55,15 @@ export function SettingsScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("dashboard")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("dashboard")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage your profile and preferences.</p>
 
@@ -230,12 +233,15 @@ export function AllUploadsScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <button
-          onClick={() => navigate("settings")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Settings
-        </button>
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("settings")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Settings
+          </button>
+        </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Everything you've uploaded stays with you, even if you change department or level later.
