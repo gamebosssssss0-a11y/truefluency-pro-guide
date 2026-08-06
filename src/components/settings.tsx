@@ -8,8 +8,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, User, GraduationCap, BookOpen, ShieldAlert, Zap,
-  PlusCircle, Layers, ChevronRight, LogOut, FolderOpen, Trash2, Loader2,
+  PlusCircle, Layers, ChevronRight, LogOut, FolderOpen, Trash2, Loader2, Calculator,
 } from "lucide-react";
+import { HeaderLogo } from "@/components/brand";
 import {
   deleteAllUserMaterials, deleteMaterial, listAllUserMaterials,
   type CourseMaterial,
