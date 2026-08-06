@@ -23,7 +23,7 @@ export type CourseMaterial = {
   course_code: string;
   file_path: string;
   file_name: string;
-  file_type: "image" | "pdf" | "docx" | "pptx";
+  file_type: "image" | "pdf" | "docx" | "pptx" | "pasted";
   mime_type: string;
   size_bytes: number;
   extracted_content: string | null;
@@ -37,6 +37,12 @@ export type CourseMaterial = {
   extraction_error: string | null;
   created_at: string;
 };
+
+/** Minimum characters of pasted text that can produce useful predictions. */
+export const MIN_PASTED_CHARS = 200;
+export const PASTED_TOO_SHORT_MESSAGE =
+  "This looks too short to generate useful predictions from, try adding more content.";
+
 
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
