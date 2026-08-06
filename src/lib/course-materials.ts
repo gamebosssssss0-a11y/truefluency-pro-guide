@@ -230,6 +230,16 @@ export async function uploadCourseMaterial(opts: {
 
   console.info("[upload] db row created", { id: row.id });
 
+  // 5b) Advisory-only metadata heuristic. Never blocks the upload.
+  try {
+    const reason = await inspectFileMetadata(file, fileType);
+    if (reason) setMetadataFlag(row.id, reason);
+  } catch (e) {
+    console.error("[upload] metadata heuristic failed, ignoring", e);
+  }
+
+
+
   // 6) Call FastAPI backend to extract text — replaces broken Supabase edge functions
   if (needsExtraction) {
     emit({ kind: "extracting" });
