@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
+import { Wordmark } from "@/components/brand";
 
 /** Shown once per browser session; later app opens in the same tab skip it. */
 const SESSION_KEY = "truefluency-splash-seen";
