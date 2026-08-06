@@ -505,6 +505,89 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   );
 }
 
+/* -------- Paste text as an upload alternative -------- */
+
+function PasteTextButton({ courseCode }: { courseCode: string }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [stage, setStage] = useState<UploadStage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const busy = stage !== null && stage.kind !== "done" && stage.kind !== "error";
+  const tooShort = text.trim().length < MIN_PASTED_CHARS;
+
+  const submit = async () => {
+    if (tooShort) {
+      setError(PASTED_TOO_SHORT_MESSAGE);
+      return;
+    }
+    setError(null);
+    try {
+      await savePastedText({ text, courseCode, onStage: setStage });
+      toast.success(`Added to ${courseCode}. Text ready.`);
+      setText("");
+      setOpen(false);
+      try { window.dispatchEvent(new Event("course-materials-refresh")); } catch { /* ignore */ }
+    } catch (e) {
+      console.error("[paste] submit failed", e);
+      setError((e as Error)?.message || "Couldn't save your text. Please try again.");
+    } finally {
+      setTimeout(() => setStage(null), 1200);
+    }
+  };
+
+  if (!open) {
+    return (
+      <Button size="lg" variant="ghost" className="w-full" onClick={() => setOpen(true)}>
+        <ClipboardPaste className="mr-1.5 h-4 w-4" /> Paste text instead
+      </Button>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Paste text for {courseCode}
+        </span>
+        <button
+          onClick={() => { setOpen(false); setError(null); }}
+          className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+          aria-label="Close"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <Textarea
+        autoFocus
+        rows={8}
+        placeholder="Paste course content here, from a WhatsApp message, a Google Doc, or anywhere else."
+        value={text}
+        onChange={(e) => { setText(e.target.value); setError(null); }}
+      />
+      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{text.trim().length} characters</span>
+        <span>{MIN_PASTED_CHARS} minimum</span>
+      </div>
+
+      {error ? (
+        <div className="mt-2 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-foreground">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      {stage ? <StageBanner stage={stage} /> : null}
+
+      <Button className="mt-3 w-full" onClick={() => void submit()} disabled={busy}>
+        {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+        {busy ? "Saving…" : "Save pasted text"}
+      </Button>
+    </div>
+  );
+}
+
+
 function StageBanner({ stage }: { stage: UploadStage }) {
   return (
     <div className="col-span-2 mt-2 rounded-2xl border border-accent/40 bg-accent/10 p-3 text-xs">
