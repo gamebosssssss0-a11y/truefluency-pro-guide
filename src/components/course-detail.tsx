@@ -180,10 +180,14 @@ function CoursePrimaryActions({
       <div className="col-span-2">
         <UploadButton courseCode={courseCode} />
       </div>
+      <div className="col-span-2">
+        <PasteTextButton courseCode={courseCode} />
+      </div>
     </div>
   ) : (
     <div className="mt-5 space-y-2">
       <UploadButton courseCode={courseCode} />
+      <PasteTextButton courseCode={courseCode} />
       <Button size="lg" className="w-full" disabled>
         <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
@@ -191,12 +195,13 @@ function CoursePrimaryActions({
         {materialsLoading && materials === null
           ? "Checking your uploads…"
           : materials && materials.length > 0
-            ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file to unlock mock tests."
-            : "Upload a past paper first."}
+            ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file, or paste text, to unlock mock tests."
+            : "Upload a past paper or paste text first."}
       </p>
 
     </div>
   );
+
 
   const topics = (
     <PredictedTopicsSection courseCode={courseCode} material={readyMaterial} analysis={analysis} />
