@@ -214,6 +214,9 @@ const emptyProfile: Profile = {
   courseTestSettings: {},
   aiQuestions: [],
   courseTopicAnalysis: {},
+  cgpaInputs: null,
+  cgpaPlan: null,
+
 };
 
 type Ctx = {
