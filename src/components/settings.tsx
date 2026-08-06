@@ -29,10 +29,12 @@ export function SettingsScreen() {
       const c = profile.courses[0];
       if (c) navigate("mock-config", { courseCode: c.code });
     }},
+    { label: "CGPA calculator", icon: Calculator, onClick: () => navigate("cgpa") },
     { label: "Flashcards", icon: Layers, onClick: () => navigate("flashcards-soon") },
     { label: "Add a course", icon: PlusCircle, onClick: () => navigate("add-course") },
     { label: "My courses", icon: BookOpen, onClick: () => navigate("dashboard") },
   ];
+
 
   const handleDeleteAll = async () => {
     setDeleting(true);
