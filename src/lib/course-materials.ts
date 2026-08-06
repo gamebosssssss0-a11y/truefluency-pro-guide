@@ -9,6 +9,7 @@
  */
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
+import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
