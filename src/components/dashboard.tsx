@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { HeaderLogo } from "@/components/brand";
 import { focusCardCopy, greetingSubline, timelineDefaults, courseFeatureOrder } from "@/lib/personalization";
 
 export function DashboardScreen() {
@@ -36,8 +37,11 @@ export function DashboardScreen() {
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Welcome back
+            <div className="flex items-center gap-2">
+              <HeaderLogo />
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Welcome back
+              </div>
             </div>
             <h1 className="mt-1 font-display text-3xl font-semibold leading-tight text-foreground">
               Hi, {name}

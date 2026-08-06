@@ -207,6 +207,9 @@ export function MockGenerationScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+        <div className="absolute left-5 top-6">
+          <HeaderLogo />
+        </div>
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-sm">
             <Sparkles className="h-6 w-6" />

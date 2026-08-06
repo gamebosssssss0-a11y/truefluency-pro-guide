@@ -17,6 +17,7 @@ import {
 
 import { SettingsScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
+import { CgpaCalculatorScreen } from "@/components/cgpa-calculator";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -63,6 +64,7 @@ function Router() {
     case "all-uploads": return <AllUploadsScreen />;
     case "flashcards-soon": return <FlashcardsSoonScreen />;
     case "add-course": return <AddCourseScreen />;
+    case "cgpa": return <CgpaCalculatorScreen />;
     default: return <DashboardScreen />;
 
   }
