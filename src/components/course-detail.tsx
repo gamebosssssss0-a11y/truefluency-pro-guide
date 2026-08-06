@@ -670,47 +670,80 @@ export function MaterialRow({
 }) {
   const t = m.file_type;
   const isImage = t === "image";
+  const isPasted = t === "pasted";
   const hasExtraction = t === "pdf" || t === "docx" || t === "pptx";
   const kb = Math.round(m.size_bytes / 1024);
+  const [flag, setFlag] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFlag(getMetadataFlag(m.id));
+  }, [m.id]);
 
   const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
     if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
     if (t === "docx") return { Icon: FileType2, tone: "bg-[hsl(215_70%_45%)] text-white" };
     if (t === "pptx") return { Icon: Presentation, tone: "bg-[hsl(20_85%_50%)] text-white" };
+    if (t === "pasted") return { Icon: ClipboardPaste, tone: "bg-secondary text-primary" };
     return { Icon: FileImage, tone: "bg-accent text-accent-foreground" };
   })();
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-      <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
-        <iconMeta.Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-          {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
-          {showCourse ? <span>·</span> : null}
-          <span className="uppercase">{isImage ? "IMG" : t}</span>
-          <span>·</span>
-          <span>{kb}KB</span>
-          <span>·</span>
-          <span>{new Date(m.created_at).toLocaleDateString()}</span>
-          {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
+    <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
+          <iconMeta.Icon className="h-4 w-4" />
         </div>
-        {isFromInactiveCourse ? (
-          <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
-        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
+            {showCourse ? <span>·</span> : null}
+            {isPasted ? (
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Pasted text
+              </span>
+            ) : (
+              <span className="uppercase">{isImage ? "IMG" : t}</span>
+            )}
+            <span>·</span>
+            <span>{kb}KB</span>
+            <span>·</span>
+            <span>{new Date(m.created_at).toLocaleDateString()}</span>
+            {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
+          </div>
+          {isFromInactiveCourse ? (
+            <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
+          ) : null}
+        </div>
+        <button
+          onClick={onDelete}
+          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
+          aria-label="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
-      <button
-        onClick={onDelete}
-        className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
-        aria-label="Delete"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+
+      {flag ? (
+        <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 p-2.5 text-[11px] text-foreground">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p>{METADATA_NOTE}</p>
+            <p className="mt-1 text-muted-foreground">{flag}</p>
+          </div>
+          <button
+            onClick={() => { dismissMetadataFlag(m.id); setFlag(null); }}
+            className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+            aria-label="Dismiss note"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
+
 
 function ExtractionBadge({ status }: { status: CourseMaterial["extraction_status"] }) {
   if (status === "success") return <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Text ready</span>;
