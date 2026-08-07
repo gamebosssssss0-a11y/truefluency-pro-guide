@@ -21,7 +21,7 @@ const fullSections: { title: string; body: string }[] = [
 ];
 
 export function DisclaimerScreen() {
-  const { update, go } = useProfile();
+  const { update, go, navigate } = useProfile();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -74,6 +74,53 @@ export function DisclaimerScreen() {
   );
 }
 
+/** Read-only view of the disclaimer, reachable from Settings after onboarding. */
+export function DisclaimerViewScreen() {
+  const { navigate } = useProfile();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <AppShell title="Disclaimer" subtitle="How TrueFluency Pro should be used.">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-accent">
+          <ShieldCheck className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Summary</span>
+        </div>
+        <p className="text-sm leading-relaxed text-foreground/85">{summary}</p>
+
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-accent"
+        >
+          {expanded ? "Hide full version" : "Read full version"}
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
+
+        {expanded ? (
+          <div className="mt-4 space-y-3 border-t border-border pt-4">
+            {fullSections.map((s) => (
+              <div key={s.title}>
+                <h3 className="text-sm font-semibold text-foreground">{s.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.body}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-6">
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={() => navigate("settings")}
+        >
+          Got it, back to Settings
+        </Button>
+      </div>
+    </AppShell>
+  );
+}
+
 export function DisclaimerBlockedScreen() {
   const { go } = useProfile();
   return (
@@ -99,4 +146,4 @@ export function DisclaimerBlockedScreen() {
       </div>
     </AppShell>
   );
-}
+          }
