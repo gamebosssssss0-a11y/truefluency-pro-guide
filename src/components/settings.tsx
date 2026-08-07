@@ -20,7 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
 export function SettingsScreen() {
-  const { profile, navigate, go, resetSetup } = useProfile();
+  const { profile, navigate, resetSetup } = useProfile();
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -41,15 +41,19 @@ export function SettingsScreen() {
     setDeleting(true);
     try {
       await deleteAllUserMaterials();
-      resetSetup();
-      toast.success("All your data has been deleted.");
     } catch (e) {
       toast.error((e as Error).message || "Couldn't delete everything. Try again.");
-    } finally {
       setDeleting(false);
       setDeleteAllOpen(false);
       setDeleteConfirmText("");
+      return;
     }
+    // Reset local profile state + localStorage AFTER storage deletion succeeds
+    resetSetup();
+    toast.success("All your data has been deleted.");
+    setDeleting(false);
+    setDeleteAllOpen(false);
+    setDeleteConfirmText("");
   };
 
   return (
@@ -108,7 +112,7 @@ export function SettingsScreen() {
 
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal</h2>
         <button
-          onClick={() => go("disclaimer")}
+          onClick={() => navigate("disclaimer-view")}
           className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
         >
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
