@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { SplashScreen } from "@/components/onboarding/splash";
-import { DisclaimerScreen, DisclaimerBlockedScreen } from "@/components/onboarding/disclaimer";
+import { DisclaimerScreen, DisclaimerBlockedScreen, DisclaimerViewScreen } from "@/components/onboarding/disclaimer";
 import { IdentityScreen } from "@/components/onboarding/identity";
 import {
   FacultyScreen, DepartmentScreen, LevelScreen, CoursesScreen,
@@ -65,7 +65,8 @@ function Router() {
     case "flashcards-soon": return <FlashcardsSoonScreen />;
     case "add-course": return <AddCourseScreen />;
     case "cgpa": return <CgpaCalculatorScreen />;
+    case "disclaimer-view": return <DisclaimerViewScreen />;
     default: return <DashboardScreen />;
 
   }
-}
+                                     }
