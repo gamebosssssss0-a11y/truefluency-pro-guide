@@ -103,7 +103,8 @@ export type AppView =
   | "add-course"
   | "all-uploads"
   | "attempt-review"
-  | "cgpa";
+  | "cgpa"
+  | "disclaimer-view";
 
 /* ---------- CGPA calculator + static study plan ---------- */
 
@@ -328,4 +329,5 @@ export function averageForCourse(p: Profile, code: string): number | null {
   const rel = p.attempts.filter((a) => a.courseCode === code);
   if (!rel.length) return null;
   return Math.round(rel.reduce((s, a) => s + a.score, 0) / rel.length);
-}
+  }
+  
