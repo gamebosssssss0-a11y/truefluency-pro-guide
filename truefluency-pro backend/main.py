@@ -109,31 +109,88 @@ class PredictRequest(BaseModel):
 
 
 
-# ── HELPERS ───────────────────────────────────────────────────────────────────
+# ── AUTH ──────────────────────────────────────────────────────────────────────
 
-async def fetch_extracted_text(material_id: str) -> str:
-    """
-    Fetch the extracted_content from Supabase for a given material_id.
-    Uses the service role key so it can bypass RLS.
-    """
+def _service_headers(json_body: bool = True) -> dict:
     headers = {
         "apikey": SUPABASE_SERVICE_KEY,
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/json",
     }
-    url = f"{SUPABASE_URL}/rest/v1/course_materials?id=eq.{material_id}&select=extracted_content,file_name,course_code,extraction_status"
+    if json_body:
+        headers["Content-Type"] = "application/json"
+    return headers
 
-    async with httpx.AsyncClient() as client:
-        res = await client.get(url, headers=headers)
+
+async def require_user(authorization: Optional[str]) -> str:
+    """
+    Validate the caller's Supabase access token and return their user id.
+
+    Every endpoint that touches a student's private material must go through
+    this. Without it, the service role key below would let anyone read or
+    overwrite any row in course_materials.
+    """
+    require_env()
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Sign in to use the analysis service.")
+
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Sign in to use the analysis service.")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.get(
+                f"{SUPABASE_URL}/auth/v1/user",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {token}",
+                },
+            )
+    except httpx.HTTPError:
+        raise HTTPException(status_code=503, detail="Could not verify your session. Try again.")
 
     if res.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Supabase error: {res.text}")
+        raise HTTPException(status_code=401, detail="Your session has expired. Sign in again.")
+
+    user_id = (res.json() or {}).get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Your session could not be verified.")
+    return str(user_id)
+
+
+# ── HELPERS ───────────────────────────────────────────────────────────────────
+
+async def fetch_owned_material(material_id: str, user_id: str) -> dict:
+    """
+    Load one course_materials row, scoped to the authenticated owner.
+
+    The user_id filter is what keeps the service role key from becoming an
+    IDOR: an id belonging to someone else simply resolves to no rows.
+    """
+    url = (
+        f"{SUPABASE_URL}/rest/v1/course_materials"
+        f"?id=eq.{material_id}&user_id=eq.{user_id}"
+        "&select=id,user_id,file_path,file_name,file_type,course_code,extracted_content,extraction_status"
+    )
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        res = await client.get(url, headers=_service_headers())
+
+    if res.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not load that upload.")
 
     rows = res.json()
     if not rows:
+        # Same response whether the row is missing or owned by someone else,
+        # so ids can't be probed for existence.
         raise HTTPException(status_code=404, detail="Material not found")
+    return rows[0]
 
-    row = rows[0]
+
+async def fetch_extracted_text(material_id: str, user_id: str) -> str:
+    """Extracted text for a material the caller owns."""
+    row = await fetch_owned_material(material_id, user_id)
+
     if row.get("extraction_status") not in ("success",):
         raise HTTPException(
             status_code=422,
@@ -145,6 +202,7 @@ async def fetch_extracted_text(material_id: str) -> str:
         raise HTTPException(status_code=422, detail="Extracted content is too short to generate questions from.")
 
     return content
+
 
 
 async def call_model(prompt: str, max_tokens: int = 4096) -> str:
