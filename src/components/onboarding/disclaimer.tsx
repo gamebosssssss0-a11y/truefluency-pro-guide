@@ -45,7 +45,7 @@ export function DisclaimerScreen() {
           <div className="mt-4 space-y-3 border-t border-border pt-4">
             {fullSections.map((s) => (
               <div key={s.title}>
-                <h3 className="text-sm font-semibold text-foreground">{s.title}</h3>
+                <h2 className="text-sm font-semibold text-foreground">{s.title}</h2>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.body}</p>
               </div>
             ))}
@@ -100,7 +100,7 @@ export function DisclaimerViewScreen() {
           <div className="mt-4 space-y-3 border-t border-border pt-4">
             {fullSections.map((s) => (
               <div key={s.title}>
-                <h3 className="text-sm font-semibold text-foreground">{s.title}</h3>
+                <h2 className="text-sm font-semibold text-foreground">{s.title}</h2>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.body}</p>
               </div>
             ))}
