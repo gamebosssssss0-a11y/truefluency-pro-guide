@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, User, GraduationCap, BookOpen, ShieldAlert, Zap,
-  PlusCircle, Layers, ChevronRight, LogOut, FolderOpen, Trash2, Loader2, Calculator,
+  ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
+  LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
 } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import {
@@ -18,99 +17,156 @@ import {
 import { MaterialRow } from "@/components/course-detail";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-export function SettingsScreen() {
+export function AccountScreen() {
   const { profile, navigate, resetSetup } = useProfile();
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  /** Two-tap confirmation: 1 = warning, 2 = final confirm. No typing required. */
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [deleting, setDeleting] = useState(false);
 
-  const jumpTo = [
-    { label: "Start a mock test", icon: Zap, onClick: () => {
-      const c = profile.courses[0];
-      if (c) navigate("mock-config", { courseCode: c.code });
-    }},
-    { label: "CGPA calculator", icon: Calculator, onClick: () => navigate("cgpa") },
-    { label: "Flashcards", icon: Layers, onClick: () => navigate("flashcards-soon") },
-    { label: "Add a course", icon: PlusCircle, onClick: () => navigate("add-course") },
-    { label: "My courses", icon: BookOpen, onClick: () => navigate("dashboard") },
-  ];
-
+  const closeDelete = () => {
+    setDeleteAllOpen(false);
+    setDeleteStep(1);
+  };
 
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
+      // Files and database rows first. Local state is only cleared once the
+      // backend deletion has actually succeeded.
       await deleteAllUserMaterials();
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        console.error("[account] sign-out after deletion failed", signOutError);
+      }
     } catch (e) {
+      console.error("[account] delete all failed", e);
       toast.error((e as Error).message || "Couldn't delete everything. Try again.");
       setDeleting(false);
-      setDeleteAllOpen(false);
-      setDeleteConfirmText("");
+      closeDelete();
       return;
     }
-    // Reset local profile state + localStorage AFTER storage deletion succeeds
     resetSetup();
     toast.success("All your data has been deleted.");
     setDeleting(false);
-    setDeleteAllOpen(false);
-    setDeleteConfirmText("");
+    closeDelete();
   };
+
+  const tools = [
+    {
+      label: "CGPA calculator",
+      blurb: "Enter real scores, get your semester GPA and cumulative CGPA.",
+      icon: Calculator,
+      onClick: () => navigate("cgpa"),
+    },
+    {
+      label: "CGPA goal setter",
+      blurb: "Set a target CGPA and get the grades plus daily plan it needs.",
+      icon: Target,
+      onClick: () => navigate("cgpa-goal"),
+    },
+    {
+      label: "Test history",
+      blurb: "Every attempt, with question-by-question review.",
+      icon: ClipboardList,
+      onClick: () => navigate("test-history"),
+    },
+    {
+      label: "Flashcards",
+      blurb: "Coming soon.",
+      icon: Layers,
+      onClick: () => navigate("flashcards-soon"),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("dashboard")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </button>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Account
+          </span>
         </div>
-        <h1 className="font-display text-3xl font-semibold text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your profile and preferences.</p>
+        <h1 className="font-display text-3xl font-semibold text-foreground">Account</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your profile, your tools, and your data.
+        </p>
 
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jump to</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {jumpTo.map((j) => (
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Tools
+        </h2>
+        <div className="space-y-2">
+          {tools.map((t) => (
             <button
-              key={j.label}
-              onClick={j.onClick}
-              className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
+              key={t.label}
+              onClick={t.onClick}
+              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
             >
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
-                <j.icon className="h-4 w-4" />
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+                <t.icon className="h-4 w-4" />
               </div>
-              <span className="text-xs font-medium text-foreground">{j.label}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-foreground">{t.label}</div>
+                <div className="text-[11px] text-muted-foreground">{t.blurb}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           ))}
         </div>
 
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">My courses</h2>
-        <button
-          onClick={() => navigate("all-uploads")}
-          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
-        >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-            <FolderOpen className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-foreground">All my uploads</div>
-            <div className="text-[11px] text-muted-foreground">Every file you've uploaded, across every course.</div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          My courses
+        </h2>
+        <div className="space-y-2">
+          <button
+            onClick={() => navigate("all-uploads")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+          >
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <FolderOpen className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-foreground">All my uploads</div>
+              <div className="text-[11px] text-muted-foreground">
+                Every file you've uploaded, across every course.
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={() => navigate("add-course")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+          >
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <PlusCircle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-foreground">Add a course</div>
+              <div className="text-[11px] text-muted-foreground">
+                Anything your department list missed.
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
 
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your profile</h2>
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Your profile
+        </h2>
         <div className="space-y-2">
           <Row icon={User} label="Identity" value={profile.identity?.name ?? "Not set"} sub={profile.identity?.email} />
-          <Row icon={GraduationCap} label="Faculty" value={profile.faculty ?? "Not set"} />
-          <Row icon={GraduationCap} label="Department · Level" value={`${profile.department ?? "Not set"} · ${profile.level ?? "?"}L`} />
+          <Row icon={Building2} label="Faculty" value={profile.faculty ?? "Not set"} />
+          <Row icon={Layers} label="Department · Level" value={`${profile.department ?? "Not set"} · ${profile.level ?? "?"}L`} />
           <Row icon={BookOpen} label="Courses" value={`${profile.courses.length} on file`} />
         </div>
 
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Legal</h2>
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Legal
+        </h2>
         <button
           onClick={() => navigate("disclaimer-view")}
           className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
@@ -120,13 +176,17 @@ export function SettingsScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Review the disclaimer</div>
-            <div className="text-[11px] text-muted-foreground">Study aid, not a substitute for lectures.</div>
+            <div className="text-[11px] text-muted-foreground">
+              Study aid, not a substitute for lectures.
+            </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
 
-        {/* Reset — clears local profile only, keeps uploaded files */}
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reset</h2>
+        {/* Reset, clears local profile only, keeps uploaded files */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Reset
+        </h2>
         <Button
           variant="outline"
           className="w-full"
@@ -142,45 +202,55 @@ export function SettingsScreen() {
           Keeps your uploaded files. Only clears profile and course selection.
         </p>
 
-        {/* Danger — deletes everything including files in storage */}
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-destructive">Danger zone</h2>
-        <Button
-          variant="destructive"
-          className="w-full"
-          onClick={() => setDeleteAllOpen(true)}
-        >
+        {/* Danger, deletes everything including files in storage */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-destructive">
+          Danger zone
+        </h2>
+        <Button variant="destructive" className="w-full" onClick={() => { setDeleteStep(1); setDeleteAllOpen(true); }}>
           <Trash2 className="mr-2 h-4 w-4" /> Delete all my data
         </Button>
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          Permanently deletes your uploaded past papers, slides, and profile.
+          Permanently deletes your uploaded past papers, slides, pasted notes, and profile.
         </p>
 
-        <AlertDialog open={deleteAllOpen} onOpenChange={(o) => { setDeleteAllOpen(o); if (!o) setDeleteConfirmText(""); }}>
+        <AlertDialog
+          open={deleteAllOpen}
+          onOpenChange={(o) => { if (!o && !deleting) closeDelete(); }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete all my data</AlertDialogTitle>
+              <AlertDialogTitle>
+                {deleteStep === 1 ? "Delete all my data" : "Last check, this is permanent"}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes your uploaded past papers and slides. This cannot be undone. Type <span className="font-bold text-foreground">DELETE</span> to confirm.
+                {deleteStep === 1
+                  ? "This permanently deletes your uploaded past papers, slides, pasted notes, mock test history, and profile. It cannot be undone."
+                  : "Tap Delete everything to confirm. Your files are removed from storage first, then your profile is cleared on this device."}
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <Input
-              autoFocus
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="Type DELETE"
-            />
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={deleteConfirmText !== "DELETE" || deleting}
-                onClick={(e) => {
-                  e.preventDefault();
-                  void handleDeleteAll();
-                }}
-              >
-                {deleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                Delete everything
-              </AlertDialogAction>
+              {deleteStep === 1 ? (
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDeleteStep(2);
+                  }}
+                >
+                  Continue
+                </AlertDialogAction>
+              ) : (
+                <AlertDialogAction
+                  disabled={deleting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void handleDeleteAll();
+                  }}
+                >
+                  {deleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                  Delete everything
+                </AlertDialogAction>
+              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -188,6 +258,9 @@ export function SettingsScreen() {
     </div>
   );
 }
+
+/** Back-compat alias for older navigation that still says "settings". */
+export const SettingsScreen = AccountScreen;
 
 function Row({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
   return (
@@ -227,7 +300,6 @@ export function AllUploadsScreen() {
     return () => window.removeEventListener("course-materials-refresh", h);
   }, []);
 
-  // Group by course_code
   const grouped: Record<string, CourseMaterial[]> = {};
   (items ?? []).forEach((m) => {
     (grouped[m.course_code] ??= []).push(m);
@@ -236,14 +308,14 @@ export function AllUploadsScreen() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
-            onClick={() => navigate("settings")}
+            onClick={() => navigate("account")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> Settings
+            <ArrowLeft className="h-4 w-4" /> Account
           </button>
         </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>

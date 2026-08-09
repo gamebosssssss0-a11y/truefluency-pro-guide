@@ -3,7 +3,17 @@
 // code === "UNVERIFIED" means an entry that must trigger the manual-entry flow.
 
 export type CatalogStatus = "Compulsory" | "Required" | "Elective";
-export type CatalogEntry = { code: string; name: string; status: CatalogStatus };
+export type CatalogEntry = {
+  code: string;
+  name: string;
+  status: CatalogStatus;
+  /**
+   * Optional manual override for subject-aware "Predicted Topics" category
+   * labels on genuinely mixed courses (e.g. Statistics for the Social
+   * Sciences, Economics). Unset entries fall back to faculty detection.
+   */
+  labelOverride?: "stem" | "humanities" | "neutral";
+};
 
 export const uiCourseCatalog: Record<string, CatalogEntry[]> = {
   "Statistics_100": [

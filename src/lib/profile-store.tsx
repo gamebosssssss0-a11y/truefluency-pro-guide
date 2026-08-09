@@ -83,7 +83,8 @@ export type OnboardingStep =
   | "faculty"
   | "department"
   | "level"
-  | "courses";
+  | "courses"
+  | "cgpa-intro";
 
 export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
@@ -93,6 +94,13 @@ export type LocalAccount = { name: string; email: string; password: string };
 
 export type AppView =
   | "dashboard"
+  | "home"
+  | "mock-tests"
+  | "test-history"
+  | "library"
+  | "chatbot"
+  | "account"
+  | "cgpa-goal"
   | "course-detail"
   | "mock-gen"
   | "mock-config"
@@ -105,6 +113,9 @@ export type AppView =
   | "attempt-review"
   | "cgpa"
   | "disclaimer-view";
+
+/** The five persistent bottom tabs. */
+export type TabKey = "home" | "mock-tests" | "library" | "chatbot" | "account";
 
 /* ---------- CGPA calculator + static study plan ---------- */
 
@@ -148,6 +159,22 @@ export type CgpaPlan = {
 
 
 
+/** Result of the real CGPA Calculator (actual scores, not a target). */
+export type CgpaActual = {
+  calculatedAt: number;
+  /** course code -> percentage score entered (or derived from a letter grade) */
+  scores: Record<string, number>;
+  /** course code -> credit units used */
+  units: Record<string, number>;
+  priorCgpa: number;
+  priorUnits: number;
+  semesterUnits: number;
+  semesterGpa: number;
+  cumulativeCgpa: number;
+  totalUnits: number;
+  classification: string;
+};
+
 /* ---------- Profile ---------- */
 
 export type Profile = {
@@ -189,6 +216,9 @@ export type Profile = {
   // CGPA calculator inputs + the last generated static study plan
   cgpaInputs: CgpaInputs | null;
   cgpaPlan: CgpaPlan | null;
+  cgpaActual: CgpaActual | null;
+  /** True once the onboarding CGPA-goal introduction has been shown. */
+  cgpaIntroSeen: boolean;
 };
 
 
@@ -217,6 +247,8 @@ const emptyProfile: Profile = {
   courseTopicAnalysis: {},
   cgpaInputs: null,
   cgpaPlan: null,
+  cgpaActual: null,
+  cgpaIntroSeen: false,
 
 };
 
@@ -238,7 +270,7 @@ const KEY = "truefluency-profile-v2";
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile>(emptyProfile);
   const [step, setStep] = useState<OnboardingStep | "dashboard">("splash");
-  const [view, setView] = useState<AppView>("dashboard");
+  const [view, setView] = useState<AppView>("home");
   const [activeCourseCode, setActiveCourseCode] = useState<string | null>(null);
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -264,7 +296,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const update = (p: Partial<Profile>) => setProfile((cur) => ({ ...cur, ...p }));
   const go = (s: OnboardingStep | "dashboard") => {
     setStep(s);
-    if (s === "dashboard") setView("dashboard");
+    if (s === "dashboard") setView("home");
   };
   const navigate = (v: AppView, opts?: { courseCode?: string | null; attemptId?: string | null }) => {
     setView(v);
@@ -274,7 +306,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const resetSetup = () => {
     setProfile(emptyProfile);
     setStep("splash");
-    setView("dashboard");
+    setView("home");
     setActiveCourseCode(null);
     setActiveAttemptId(null);
     try { localStorage.removeItem(KEY); } catch { /* ignore */ }

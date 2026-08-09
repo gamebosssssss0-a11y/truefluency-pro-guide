@@ -2,19 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
+import { STUDY_QUOTES } from "@/lib/study-quotes";
 
 // Your FastAPI backend URL — change to Render URL when deployed
 const BACKEND_URL = "https://truefluency-pro-backend.onrender.com";
 
 /* ---------- types ---------- */
 
-type AIQuestion = {
+export type AIQuestion = {
   id: number;
   topic: string;
   question: string;
@@ -37,24 +38,6 @@ const genSteps = [
   "Balancing difficulty…",
   "Sampling from past papers…",
   "Compiling your questions…",
-];
-
-/**
- * Verified, accurately attributed quotes on the perseverance / study theme.
- * Anything that could not be traced to a real, documented source has been
- * replaced rather than paraphrased.
- */
-const STUDY_QUOTES = [
-  { quote: "It always seems impossible until it's done.", author: "Nelson Mandela" },
-  { quote: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
-  { quote: "Nothing will work unless you do.", author: "Maya Angelou" },
-  { quote: "You may encounter many defeats, but you must not be defeated.", author: "Maya Angelou" },
-  { quote: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
-  { quote: "Genius is one percent inspiration and ninety-nine percent perspiration.", author: "Thomas Edison" },
-  { quote: "Energy and persistence conquer all things.", author: "Benjamin Franklin" },
-  { quote: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
-  { quote: "Wisdom is not a product of schooling but of the lifelong attempt to acquire it.", author: "Albert Einstein" },
-  { quote: "The only way to learn mathematics is to do mathematics.", author: "Paul Halmos" },
 ];
 
 const QUOTE_CYCLE_MS = 6000;
@@ -198,7 +181,7 @@ export function MockGenerationScreen() {
       <div className="min-h-screen bg-background">
         <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 text-center">
           <p className="text-sm text-destructive">{error}</p>
-          <Button className="mt-4" onClick={() => navigate("dashboard")}>Back to Dashboard</Button>
+          <Button className="mt-4" onClick={() => navigate("mock-tests")}>Back to Mock Tests</Button>
         </div>
       </div>
     );
@@ -281,6 +264,11 @@ function GenStat({ label, value }: { label: string; value: string }) {
 
 /* ---------- 2. Config screen ---------- */
 
+/** Question-count range. Anything above the free limit is a future paid tier. */
+export const MIN_QUESTIONS = 20;
+export const MAX_QUESTIONS = 120;
+export const FREE_QUESTION_LIMIT = 60;
+
 const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = [
   { key: "gentle", label: "Gentle", blurb: "Ease in" },
   { key: "balanced", label: "Balanced", blurb: "Recommended" },
@@ -300,7 +288,7 @@ function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProf
       .map((t) => t.topic);
   }
   return {
-    questionCount: timeline.questionCount,
+    questionCount: Math.min(FREE_QUESTION_LIMIT, Math.max(MIN_QUESTIONS, timeline.questionCount)),
     minutes: timeline.minutes,
     difficulty: "balanced",
     topicFocus,
@@ -319,7 +307,7 @@ export function MockConfigScreen() {
   const remembered = course ? profile.courseTestSettings[course.code] : undefined;
   const initial = remembered ?? smart!;
 
-  const [count, setCount] = useState(initial?.questionCount ?? 20);
+  const [count, setCount] = useState(Math.min(FREE_QUESTION_LIMIT, Math.max(MIN_QUESTIONS, initial?.questionCount ?? 20)));
   const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
@@ -359,10 +347,10 @@ export function MockConfigScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
-            onClick={() => navigate("course-detail", { courseCode: course.code })}
+            onClick={() => navigate("mock-tests")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> Back
+            <ArrowLeft className="h-4 w-4" /> Mock Tests
           </button>
         </div>
 
@@ -373,7 +361,27 @@ export function MockConfigScreen() {
         ) : null}
 
         <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-4">
-          <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={45} step={5} onChange={setMinutes} />
+          <div>
+            <ConfigSlider
+              label="Questions"
+              unit="questions"
+              value={count}
+              min={MIN_QUESTIONS}
+              max={MAX_QUESTIONS}
+              step={5}
+              onChange={(v) => setCount(Math.min(v, FREE_QUESTION_LIMIT))}
+              hardCeiling={FREE_QUESTION_LIMIT}
+            />
+            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+              <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              <span>
+                Tests above {FREE_QUESTION_LIMIT} questions are part of a paid tier that is not
+                available yet, so the slider stops there for now.
+              </span>
+            </p>
+          </div>
+
+          <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={120} step={5} onChange={setMinutes} />
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Difficulty</label>
@@ -445,8 +453,11 @@ export function MockConfigScreen() {
   );
 }
 
-function ConfigSlider({ label, unit, value, min, max, step, onChange }: {
-  label: string; unit: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void;
+function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeiling }: {
+  label: string; unit: string; value: number; min: number; max: number; step: number;
+  onChange: (v: number) => void;
+  /** Values above this are shown on the track but cannot be selected. */
+  hardCeiling?: number;
 }) {
   return (
     <div>
@@ -456,10 +467,20 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange }: {
           {value} <span className="text-xs font-medium text-muted-foreground">{unit}</span>
         </span>
       </div>
-      <input type="range" min={min} max={max} step={step} value={value}
+      <input type="range" min={min} max={hardCeiling ?? max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-accent" />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>{min}</span><span>{max}</span>
+        <span>{min}</span>
+        {hardCeiling && hardCeiling < max ? (
+          <span className="inline-flex items-center gap-1">
+            {hardCeiling}
+            <span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold uppercase tracking-wider">
+              {max} soon
+            </span>
+          </span>
+        ) : (
+          <span>{max}</span>
+        )}
       </div>
     </div>
   );
@@ -562,7 +583,7 @@ export function MockRunScreen() {
     return (
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-md px-5 pt-6">
-          <Button variant="ghost" onClick={() => navigate("dashboard")}>← Back</Button>
+          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
         </div>
       </div>
@@ -664,7 +685,7 @@ export function MockResultScreen() {
     return (
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-md px-5 pt-6">
-          <Button variant="ghost" onClick={() => navigate("dashboard")}>← Back</Button>
+          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No result to show.</p>
         </div>
       </div>
@@ -711,8 +732,19 @@ export function MockResultScreen() {
           <AiGeneratedLabel className="mt-3" />
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          <Button variant="outline" size="lg" onClick={() => navigate("dashboard")}>Dashboard</Button>
+        <Button
+          size="lg"
+          variant="outline"
+          className="mt-5 w-full"
+          onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
+        >
+          Review every question
+        </Button>
+
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Button variant="outline" size="lg" onClick={() => navigate("test-history")}>
+            <History className="mr-1.5 h-4 w-4" /> History
+          </Button>
           <Button size="lg" onClick={() => navigate("mock-gen", { courseCode: attempt.courseCode })}>
             <Zap className="mr-1.5 h-4 w-4" /> Try again
           </Button>
@@ -732,7 +764,7 @@ export function AttemptReviewScreen() {
     return (
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-md px-5 pt-6">
-          <Button variant="ghost" onClick={() => navigate("dashboard")}>← Back</Button>
+          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">That attempt is no longer available.</p>
         </div>
       </div>
@@ -748,10 +780,10 @@ export function AttemptReviewScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
-            onClick={() => navigate("course-detail", { courseCode: attempt.courseCode })}
+            onClick={() => navigate("test-history")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> Back
+            <ArrowLeft className="h-4 w-4" /> Test history
           </button>
         </div>
 

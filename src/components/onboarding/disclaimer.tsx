@@ -112,7 +112,7 @@ export function DisclaimerViewScreen() {
         <Button
           size="lg"
           className="w-full"
-          onClick={() => navigate("settings")}
+          onClick={() => navigate("account")}
         >
           Got it, back to Settings
         </Button>

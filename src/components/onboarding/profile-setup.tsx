@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LogoMark } from "@/components/logo-mark";
 import { useProfile } from "@/lib/profile-store";
 import {
   facultyData,
@@ -14,7 +15,7 @@ import {
 import { AddCourseFlow, StatusBadge } from "@/components/add-course-flow";
 import type { UserCourse } from "@/lib/profile-store";
 import {
-  BookOpen, Check, ChevronRight, GraduationCap, Info, Lock, Search,
+  BookOpen, Check, ChevronRight, Info, Lock, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +40,7 @@ export function FacultyScreen() {
               className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-                <GraduationCap className="h-4 w-4" />
+                <LogoMark className="h-7 w-7" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-foreground">{f}</div>
@@ -184,7 +185,7 @@ export function CoursesScreen() {
       .map((c) => ({ ...c, source: "verified" }));
     const all: UserCourse[] = [...gesCourses, ...chosenDept, ...manualCourses];
     update({ courses: all, setupComplete: true });
-    go("dashboard");
+    go("cgpa-intro");
   };
 
   const totalPicked = ges.length + selectedDept.length + manualCourses.length;
