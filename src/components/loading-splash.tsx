@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  LOGO_ACCENT, LOGO_BG, LOGO_DOT, LOGO_PATH, LOGO_VIEWBOX,
+  LOGO_ACCENT, LOGO_BG, LOGO_MARK_URL,
 } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
 
@@ -132,8 +132,8 @@ export function SonicUnfurlLoader({
                   aria-hidden="true"
                   className={ambient ? "sonic-particle sonic-particle-ambient" : "sonic-particle"}
                   style={{
-                    left: `${(LOGO_DOT.x / 100) * 100}%`,
-                    top: `${(LOGO_DOT.y / 64) * 100}%`,
+                    left: "82%",
+                    top: "35%",
                     width: p.size,
                     height: p.size,
                     backgroundColor: p.color,
