@@ -357,19 +357,19 @@ def extract_text_from_pptx(file_bytes: bytes) -> str:
     return text.strip()
 
 
-async def save_extracted_content(material_id: str, content: str, status: str = "success"):
-    """Save extracted text back to Supabase course_materials table."""
-    headers = {
-        "apikey": SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/json",
-    }
-    url = f"{SUPABASE_URL}/rest/v1/course_materials?id=eq.{material_id}"
+async def save_extracted_content(
+    material_id: str, user_id: str, content: str, status: str = "success"
+):
+    """Save extracted text back to the caller's own course_materials row."""
+    url = (
+        f"{SUPABASE_URL}/rest/v1/course_materials"
+        f"?id=eq.{material_id}&user_id=eq.{user_id}"
+    )
     body = {"extracted_content": content, "extraction_status": status}
-    async with httpx.AsyncClient() as client:
-        res = await client.patch(url, headers=headers, json=body)
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        res = await client.patch(url, headers=_service_headers(), json=body)
     if res.status_code not in (200, 204):
-        raise HTTPException(status_code=502, detail=f"Failed to save extraction: {res.text}")
+        raise HTTPException(status_code=502, detail="Failed to save extraction.")
 
 
 @app.get("/health")
@@ -383,7 +383,10 @@ def health():
 
 
 @app.post("/predict-topics")
-async def predict_topics(req: PredictRequest):
+async def predict_topics(
+    req: PredictRequest,
+    authorization: Optional[str] = Header(default=None),
+):
     """
     Step 1 of the AI pipeline.
     Takes a material_id, fetches the extracted text from Supabase,
@@ -392,8 +395,8 @@ async def predict_topics(req: PredictRequest):
     Frontend uses this to replace the hardcoded placeholder topics on the
     dashboard and course detail screens.
     """
-    require_env()
-    extracted_text = await fetch_extracted_text(req.material_id)
+    user_id = await require_user(authorization)
+    extracted_text = await fetch_extracted_text(req.material_id, user_id)
 
     # Trim to avoid token overload — first 6000 chars is usually enough for topic prediction
     trimmed = extracted_text[:6000]
@@ -433,15 +436,18 @@ Return 5 to 8 topics, ordered from highest to lowest confidence.
 
 
 @app.post("/generate-mock")
-async def generate_mock(req: MockRequest):
+async def generate_mock(
+    req: MockRequest,
+    authorization: Optional[str] = Header(default=None),
+):
     """
     Step 2 of the AI pipeline — the core endpoint.
     Generates a full mock test based on the extracted material.
 
     This replaces the hardcoded sampleQuestions from questions.ts in the frontend.
     """
-    require_env()
-    extracted_text = await fetch_extracted_text(req.material_id)
+    user_id = await require_user(authorization)
+    extracted_text = await fetch_extracted_text(req.material_id, user_id)
 
 
     # Trim to keep within Gemini's context window comfortably
@@ -507,19 +513,31 @@ correct_index is 0-based (0 = A, 1 = B, 2 = C, 3 = D).
 
 
 class ExtractRequest(BaseModel):
-    material_id: str
-    file_path: str
-    file_type: str   # "pdf" | "docx" | "pptx"
+    material_id: str = Field(min_length=1, max_length=64)
+    file_type: str = Field(min_length=1, max_length=8)   # "pdf" | "docx" | "pptx"
 
 
 @app.post("/extract-text")
-async def extract_text(req: ExtractRequest):
+async def extract_text(
+    req: ExtractRequest,
+    authorization: Optional[str] = Header(default=None),
+):
     """
     Extracts text from PDF, DOCX, or PPTX files stored in Supabase.
     Called by the frontend after a file is uploaded.
-    Replaces the broken Supabase edge functions.
+
+    The storage path is read from the caller's own material row, never taken
+    from the request body, so an arbitrary path can't be pulled out of the
+    private bucket.
     """
-    file_bytes = await fetch_file_from_supabase(req.file_path)
+    user_id = await require_user(authorization)
+    row = await fetch_owned_material(req.material_id, user_id)
+
+    file_path = row.get("file_path") or ""
+    if not file_path or not file_path.startswith(f"{user_id}/"):
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    file_bytes = await fetch_file_from_supabase(file_path)
 
     try:
         if req.file_type == "pdf":
@@ -533,17 +551,19 @@ async def extract_text(req: ExtractRequest):
     except HTTPException:
         raise
     except Exception as e:
-        await save_extracted_content(req.material_id, "", "failed")
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+        await save_extracted_content(req.material_id, user_id, "", "failed")
+        print(f"[extract-text] extraction failed for {req.material_id}: {e}")
+        raise HTTPException(status_code=500, detail="We couldn't read that file.")
 
     if not text or len(text.strip()) < 20:
-        await save_extracted_content(req.material_id, "", "scanned_pdf")
+        await save_extracted_content(req.material_id, user_id, "", "scanned_pdf")
         return {"material_id": req.material_id, "status": "scanned_pdf", "chars": 0}
 
-    await save_extracted_content(req.material_id, text)
+    await save_extracted_content(req.material_id, user_id, text)
     return {
         "material_id": req.material_id,
         "status": "success",
         "chars": len(text),
         "preview": text[:200],
     }
+
