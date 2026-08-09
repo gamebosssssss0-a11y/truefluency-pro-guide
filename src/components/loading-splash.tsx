@@ -102,55 +102,27 @@ export function SonicUnfurlLoader({
     >
       <div className="flex flex-col items-center">
         {/* Mark */}
-        <div className="relative h-[104px] w-[164px]">
-          <svg viewBox={LOGO_VIEWBOX} className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
-            <path
-              d={LOGO_PATH}
-              stroke="#FFFFFF"
-              strokeWidth={7}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pathLength={1}
-              className={reduceMotion ? undefined : "sonic-unfurl-path"}
-              strokeDasharray={1}
-            />
-            {/* Light pulse travelling back along the drawn line */}
-            {!reduceMotion ? (
-              <path
-                key={`pulse-${cycle}`}
-                d={LOGO_PATH}
-                stroke={LOGO_ACCENT}
-                strokeWidth={7}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                pathLength={1}
-                strokeDasharray="0.14 0.86"
-                className={ambient ? "sonic-pulse sonic-pulse-ambient" : "sonic-pulse"}
-              />
-            ) : null}
-            <circle
-              key={`dot-${cycle}`}
-              cx={LOGO_DOT.x}
-              cy={LOGO_DOT.y}
-              r={LOGO_DOT.r}
-              fill={LOGO_ACCENT}
-              className={reduceMotion ? undefined : ambient ? "sonic-dot sonic-dot-ambient" : "sonic-dot"}
-              style={{ transformOrigin: `${LOGO_DOT.x}px ${LOGO_DOT.y}px` }}
-            />
-          </svg>
+        <div className="relative h-[120px] w-[120px]">
+          <img
+            src={LOGO_MARK_URL}
+            alt=""
+            aria-hidden="true"
+            className={cn(
+              "h-full w-full rounded-[26%] object-cover shadow-2xl",
+              !reduceMotion && "sonic-mark-in",
+            )}
+          />
 
-          {/* Lock-in flare */}
+          {/* Lock-in flare on the amber tip of the mark */}
           {!reduceMotion ? (
             <span
               key={`flare-${cycle}`}
               aria-hidden="true"
               className={ambient ? "sonic-flare sonic-flare-ambient" : "sonic-flare"}
-              style={{
-                left: `${(LOGO_DOT.x / 100) * 100}%`,
-                top: `${(LOGO_DOT.y / 64) * 100}%`,
-              }}
+              style={{ left: "82%", top: "35%" }}
             />
           ) : null}
+
 
           {/* Particle convergence on the endpoint */}
           {!reduceMotion
