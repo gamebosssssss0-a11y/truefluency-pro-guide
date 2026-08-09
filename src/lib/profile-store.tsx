@@ -294,6 +294,61 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
   }, [profile, hydrated]);
 
+  /* ---------- Cloud sync ----------
+   * The database is the source of truth for signed-in users; localStorage is
+   * an offline cache. On session start we load the cloud snapshot, or migrate
+   * the existing local profile up when no cloud record exists yet. After that,
+   * profile changes are written through (debounced).
+   */
+  const cloudReady = useRef(false);
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+
+  useEffect(() => {
+    if (!hydrated) return;
+    let cancelled = false;
+
+    const sync = async () => {
+      const { loadCloudProfile, pushCloudProfile } = await import("@/lib/cloud-sync");
+      try {
+        const snapshot = await loadCloudProfile();
+        if (cancelled) return;
+        if (snapshot) {
+          setProfile((cur) => ({ ...cur, ...snapshot }));
+        } else {
+          // First cloud session: migrate whatever is already on this device.
+          await pushCloudProfile(profileRef.current);
+        }
+        cloudReady.current = true;
+      } catch (err) {
+        console.error("[profile-store] cloud sync failed, staying on local cache", err);
+      }
+    };
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) void sync();
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) return;
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
+        if (!cloudReady.current) void sync();
+      }
+    });
+
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, [hydrated]);
+
+  // Debounced write-through of every profile change.
+  useEffect(() => {
+    if (!hydrated || !cloudReady.current) return;
+    const t = setTimeout(() => {
+      void import("@/lib/cloud-sync").then(({ pushCloudProfile }) => pushCloudProfile(profile));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [profile, hydrated]);
+
+
   const update = (p: Partial<Profile>) => setProfile((cur) => ({ ...cur, ...p }));
   const go = (s: OnboardingStep | "dashboard") => {
     setStep(s);
