@@ -4,6 +4,7 @@
  * The base URL comes from VITE_BACKEND_URL. If it isn't configured we fail
  * loudly with a friendly message instead of silently hitting localhost.
  */
+import { supabase } from "@/integrations/supabase/client";
 import type { AIQuestion, Difficulty, Profile } from "@/lib/profile-store";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
@@ -45,9 +46,18 @@ async function postJson<T>(path: string, body: unknown, timeoutMs = 120_000): Pr
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    // The analysis service only serves the signed-in owner of a material, so
+    // every call carries the current Supabase access token.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
