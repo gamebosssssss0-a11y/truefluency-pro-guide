@@ -40,7 +40,10 @@ export async function ensureSupabaseSession(profile: Profile): Promise<void> {
     const acct = profile.accounts.find(
       (a) => a.email.toLowerCase() === id.email!.toLowerCase(),
     );
-    const localPw = acct?.password ?? id.email; // fallback for old profiles
+    // Google-authenticated users have no local password record. Don't guess a
+    // password for them: their session comes from the OAuth flow instead.
+    if (!acct) return;
+    const localPw = acct.password;
     const pw = await derivePassword(id.email, localPw);
 
     const signIn = await supabase.auth.signInWithPassword({
