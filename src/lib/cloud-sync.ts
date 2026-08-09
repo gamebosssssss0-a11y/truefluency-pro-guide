@@ -7,6 +7,7 @@
  * by the same RLS policies.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { Level, CatalogStatus } from "@/lib/uni-data";
 import type {
   Profile,
   UserCourse,
@@ -20,8 +21,8 @@ import type {
   CgpaInputs,
   CgpaPlan,
   CgpaActual,
-  Level,
 } from "@/lib/profile-store";
+
 
 export type CloudSnapshot = Partial<Profile> | null;
 
