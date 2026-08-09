@@ -4,14 +4,15 @@ import { SonicUnfurlLoader } from "@/components/loading-splash";
 
 /** Plays on every app open. Skippable with a tap or key press. */
 export function SplashScreen() {
-  const { go } = useProfile();
+  const { go, profile } = useProfile();
   const advanced = useRef(false);
 
   const advance = useCallback(() => {
     if (advanced.current) return;
     advanced.current = true;
-    go("disclaimer");
-  }, [go]);
+    // Returning users land back in the app; new users continue onboarding.
+    go(profile.setupComplete ? "dashboard" : "disclaimer");
+  }, [go, profile.setupComplete]);
 
   useEffect(() => {
     // Skippable: any tap or key press jumps straight ahead.
