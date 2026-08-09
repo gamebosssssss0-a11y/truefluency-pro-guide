@@ -281,7 +281,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw) as Profile;
         setProfile({ ...emptyProfile, ...parsed });
-        if (parsed.setupComplete) setStep("dashboard");
+        // Step stays "splash": the entrance animation plays on every app open,
+        // then the splash routes returning users straight to the dashboard.
       }
     } catch { /* ignore */ }
     setHydrated(true);
