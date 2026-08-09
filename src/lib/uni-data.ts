@@ -26,7 +26,14 @@ export const facultyData: Record<string, string[]> = {
     "Human Nutrition and Dietetics", "Medical Laboratory Science",
     "Medicine and Surgery", "Nursing Science", "Physiology", "Physiotherapy",
   ],
-  "Faculty of Computing": ["Computer Science"],
+  "Faculty of Computing": [
+    "Computer Science",
+    "Software Engineering",
+    "Data Science",
+    "Artificial Intelligence",
+    "Information and Communications Technology",
+    "Cybersecurity",
+  ],
   "Faculty of Economics and Management Sciences": [
     "Economics", "Accounting", "Banking and Finance",
     "Marketing and Consumer Studies",
