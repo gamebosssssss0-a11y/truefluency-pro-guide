@@ -58,10 +58,14 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
 
   const courses: UserCourse[] = (coursesRes.data ?? []).map((c) => ({
     code: c.course_code,
-    title: c.title ?? "",
-    units: c.units ?? 0,
-    source: (c.source === "verified" ? "verified" : "manual") as UserCourse["source"],
-  })) as UserCourse[];
+    name: c.title ?? "",
+    status: (c.status ?? "Compulsory") as CatalogStatus,
+    ...(c.label_override
+      ? { labelOverride: c.label_override as "stem" | "humanities" | "neutral" }
+      : {}),
+    source: c.source === "verified" ? "verified" : "manual",
+  }));
+
 
   const courseTestSettings: Record<string, CourseTestSettings> = {};
   for (const c of coursesRes.data ?? []) {
