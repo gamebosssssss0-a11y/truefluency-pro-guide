@@ -250,7 +250,9 @@ export type Database = {
           course_code: string
           created_at: string
           id: string
+          label_override: string | null
           source: string
+          status: string
           test_settings: Json | null
           title: string
           units: number | null
@@ -261,7 +263,9 @@ export type Database = {
           course_code: string
           created_at?: string
           id?: string
+          label_override?: string | null
           source?: string
+          status?: string
           test_settings?: Json | null
           title?: string
           units?: number | null
@@ -272,7 +276,9 @@ export type Database = {
           course_code?: string
           created_at?: string
           id?: string
+          label_override?: string | null
           source?: string
+          status?: string
           test_settings?: Json | null
           title?: string
           units?: number | null
