@@ -98,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               name: "TrueFluency Pro",
               url: "https://truefluency-pro.lovable.app",
               description:
-                "Exam preparation for University of Ibadan students, with personalized past-paper topic predictions, mock tests and CGPA planning tools.",
+                "AI-powered exam preparation for University of Ibadan students, with past-paper topic predictions, mock tests and CGPA planning tools.",
             },
             {
               "@type": "WebSite",
@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               name: "TrueFluency Pro",
               url: "https://truefluency-pro.lovable.app",
               description:
-                "Smarter exam prep for University of Ibadan students: predicted topics, AI mock tests and study plans built from your own course materials.",
+                "AI exam prep for University of Ibadan students: predicted topics, AI mock tests and study plans built from your own course materials.",
               publisher: { "@id": "https://truefluency-pro.lovable.app/#organization" },
               inLanguage: "en",
             },
