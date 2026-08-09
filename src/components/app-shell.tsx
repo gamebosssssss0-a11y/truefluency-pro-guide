@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { GraduationCap } from "lucide-react";
+import { LogoMark } from "@/components/logo-mark";
 
 export function AppShell({
   children,
@@ -22,9 +22,7 @@ export function AppShell({
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
         <header className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-4 w-4" />
-            </div>
+            <LogoMark className="h-8 w-8" />
             <span className="font-display text-base font-semibold tracking-tight text-foreground">
               TrueFluency <span className="text-accent">Pro</span>
             </span>

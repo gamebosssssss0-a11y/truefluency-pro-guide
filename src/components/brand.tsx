@@ -1,24 +1,21 @@
-import { GraduationCap } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
+import { LogoMark } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
 
 /**
  * Small, static, icon-only brand mark for the app header. Present on every
- * screen as a constant brand anchor; tapping it returns to the dashboard.
+ * screen as a constant brand anchor; tapping it returns to Home.
  */
 export function HeaderLogo({ className }: { className?: string }) {
   const { navigate } = useProfile();
   return (
     <button
       type="button"
-      onClick={() => navigate("dashboard")}
+      onClick={() => navigate("home")}
       aria-label="TrueFluency Pro home"
-      className={cn(
-        "grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm transition hover:opacity-90",
-        className,
-      )}
+      className={cn("shrink-0 rounded-lg shadow-sm transition hover:opacity-90", className)}
     >
-      <GraduationCap className="h-3.5 w-3.5" />
+      <LogoMark className="h-7 w-7" />
     </button>
   );
 }
@@ -58,6 +55,16 @@ export function Wordmark({
       >
         Pro
       </span>
+    </div>
+  );
+}
+
+/** Brand lockup: the mark beside the wordmark, for empty states and headers. */
+export function BrandLockup({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-2.5", className)}>
+      <LogoMark className="h-9 w-9" />
+      <Wordmark />
     </div>
   );
 }

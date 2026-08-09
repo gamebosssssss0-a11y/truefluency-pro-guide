@@ -12,10 +12,10 @@ export function AddCourseScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
-            onClick={() => navigate("settings")}
+            onClick={() => navigate("account")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> Settings
+            <ArrowLeft className="h-4 w-4" /> Account
           </button>
         </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">Add a course</h1>
@@ -32,7 +32,7 @@ export function AddCourseScreen() {
           />
         </div>
 
-        <Button size="lg" className="mt-6 w-full" onClick={() => navigate("dashboard")}>Done</Button>
+        <Button size="lg" className="mt-6 w-full" onClick={() => navigate("home")}>Done</Button>
       </div>
     </div>
   );
@@ -46,7 +46,7 @@ export function FlashcardsSoonScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
-            onClick={() => navigate("dashboard")}
+            onClick={() => navigate("home")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" /> Dashboard

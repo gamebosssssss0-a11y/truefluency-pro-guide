@@ -25,6 +25,7 @@ import {
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { groupTopicsByCategory } from "@/lib/topic-labels";
 import { courseFeatureOrder } from "@/lib/personalization";
 
 
@@ -65,7 +66,7 @@ export function CourseDetailScreen() {
     return (
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-md px-5 pt-6">
-          <Button variant="ghost" onClick={() => navigate("dashboard")}>← Back</Button>
+          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">Course not found.</p>
         </div>
       </div>
@@ -82,7 +83,7 @@ export function CourseDetailScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
-            onClick={() => navigate("dashboard")}
+            onClick={() => navigate("home")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" /> Dashboard
@@ -307,6 +308,7 @@ type AnalysisState = ReturnType<typeof useAnalyzeTopics>;
 function PredictedTopicsSection({ courseCode, material, analysis }: {
   courseCode: string; material: CourseMaterial | null; analysis: AnalysisState;
 }) {
+  const { profile } = useProfile();
   const { analyze, busy, error, stored, stale, statusText } = analysis;
   const topics = stored?.topics ?? [];
 
@@ -338,9 +340,22 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
         </div>
       ) : topics.length > 0 ? (
         <>
-          <div className="flex flex-wrap gap-1.5">
-            {topics.map((t) => (
-              <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
+          <div className="space-y-3">
+            {groupTopicsByCategory(topics, {
+              code: courseCode,
+              department: profile.department,
+              faculty: profile.faculty,
+            }).map((group) => (
+              <div key={group.label}>
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.topics.map((t) => (
+                    <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
           {stale ? (
@@ -349,6 +364,7 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
             </p>
           ) : null}
         </>
+
       ) : (
         <p className="text-xs text-muted-foreground">
           {material
