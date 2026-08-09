@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { useProfile } from "@/lib/profile-store";
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 
 type Tab = "signup" | "login";
 
@@ -16,7 +18,7 @@ export function IdentityScreen() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | "signup" | "login" | "guest">(null);
+  const [busy, setBusy] = useState<null | "signup" | "login" | "guest" | "google">(null);
 
   const finish = (identity: { kind: "email" | "guest"; name: string; email?: string }, extraAccounts?: typeof profile.accounts) => {
     update({ identity, ...(extraAccounts ? { accounts: extraAccounts } : {}) });
@@ -57,10 +59,42 @@ export function IdentityScreen() {
     withDelay("login", () => finish({ kind: "email", name: match.name, email: match.email }));
   };
 
+  const onGoogle = async () => {
+    setError(null);
+    setBusy("google");
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        console.error("[auth] Google sign-in failed", result.error);
+        setError("Google sign-in didn't complete. Tap to try again.");
+        setBusy(null);
+        return;
+      }
+      if (result.redirected) return; // browser is navigating to Google
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) {
+        setError("Google sign-in didn't complete. Tap to try again.");
+        setBusy(null);
+        return;
+      }
+      const meta = (user.user_metadata ?? {}) as { full_name?: string; name?: string };
+      const displayName = meta.full_name || meta.name || (user.email ?? "").split("@")[0] || "Student";
+      setBusy(null);
+      finish({ kind: "email", name: displayName, email: user.email ?? undefined });
+    } catch (err) {
+      console.error("[auth] Google sign-in threw", err);
+      setError("Google sign-in didn't complete. Tap to try again.");
+      setBusy(null);
+    }
+  };
+
   return (
     <AppShell
       title={tab === "signup" ? "Create your account" : "Welcome back"}
-      subtitle="Saved locally on this device. No cloud sync yet. Clearing storage removes it."
+      subtitle="Signed-in progress syncs to your account across devices."
     >
       {/* Tabs */}
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
@@ -115,6 +149,16 @@ export function IdentityScreen() {
       </div>
 
       <button
+        type="button"
+        onClick={() => void onGoogle()}
+        disabled={busy !== null}
+        className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card font-semibold text-foreground shadow-sm transition hover:shadow-md disabled:opacity-60"
+      >
+        {busy === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleGlyph />}
+        <span className="text-[15px]">Continue with Google</span>
+      </button>
+
+      <button
         onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
         disabled={busy !== null}
         className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md disabled:opacity-60"
@@ -128,6 +172,17 @@ export function IdentityScreen() {
         </div>
       </button>
     </AppShell>
+  );
+}
+
+function GoogleGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.94H.96a9 9 0 0 0 0 8.12l3.01-2.34Z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58Z" />
+    </svg>
   );
 }
 
