@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TrueFluency Pro: Smarter Exam Prep for UI Students" },
-      { name: "description", content: "Personalized past-paper predictions, mock tests and study plans for University of Ibadan students." },
-      { property: "og:title", content: "TrueFluency Pro: Smarter Exam Prep for UI Students" },
-      { property: "og:description", content: "Personalized past-paper predictions and mock tests for University of Ibadan students." },
+      { title: "TrueFluency Pro: AI Exam Prep for UI Students" },
+      { name: "description", content: "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students." },
+      { property: "og:title", content: "TrueFluency Pro: AI Exam Prep for UI Students" },
+      { property: "og:description", content: "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students." },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "TrueFluency Pro" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "TrueFluency Pro: Smarter Exam Prep for UI Students" },
+      { name: "twitter:title", content: "TrueFluency Pro: AI Exam Prep for UI Students" },
     ],
     scripts: [
       {
@@ -98,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               name: "TrueFluency Pro",
               url: "https://truefluency-pro.lovable.app",
               description:
-                "Exam preparation for University of Ibadan students, with personalized past-paper topic predictions, mock tests and CGPA planning tools.",
+                "AI-powered exam preparation for University of Ibadan students, with past-paper topic predictions, mock tests and CGPA planning tools.",
             },
             {
               "@type": "WebSite",
@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               name: "TrueFluency Pro",
               url: "https://truefluency-pro.lovable.app",
               description:
-                "Smarter exam prep for University of Ibadan students: predicted topics, AI mock tests and study plans built from your own course materials.",
+                "AI exam prep for University of Ibadan students: predicted topics, AI mock tests and study plans built from your own course materials.",
               publisher: { "@id": "https://truefluency-pro.lovable.app/#organization" },
               inLanguage: "en",
             },

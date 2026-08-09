@@ -47,7 +47,7 @@ export function SplashScreen() {
 
   return (
     <>
-      <h1 className="sr-only">TrueFluency Pro: Smarter Exam Prep for UI Students</h1>
+      <h1 className="sr-only">TrueFluency Pro: AI Exam Prep for UI Students</h1>
       <SonicUnfurlLoader
         onDone={() => {
           // Animation is shorter than the 5s hold; the hold timer handles auto-advance.
