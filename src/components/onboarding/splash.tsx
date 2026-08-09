@@ -46,14 +46,17 @@ export function SplashScreen() {
   }, [advance]);
 
   return (
-    <SonicUnfurlLoader
-      onDone={() => {
-        // Animation is shorter than the 5s hold; the hold timer handles auto-advance.
-      }}
-      busy
-      caption="Smarter prep. For UI students."
-      tapHint={`Tap to skip \u00b7 ${5 - elapsedSeconds}s`}
-    />
+    <>
+      <h1 className="sr-only">TrueFluency Pro: Smarter Exam Prep for UI Students</h1>
+      <SonicUnfurlLoader
+        onDone={() => {
+          // Animation is shorter than the 5s hold; the hold timer handles auto-advance.
+        }}
+        busy
+        caption="Smarter prep. For UI students."
+        tapHint={`Tap to skip \u00b7 ${5 - elapsedSeconds}s`}
+      />
+    </>
   );
 }
 
