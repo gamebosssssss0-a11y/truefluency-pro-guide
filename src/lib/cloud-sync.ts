@@ -171,8 +171,11 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         profile.courses.map((c) => ({
           user_id: userId,
           course_code: c.code,
-          title: c.title ?? "",
-          units: (c as { units?: number }).units ?? null,
+          title: c.name ?? "",
+          status: c.status,
+          label_override: c.labelOverride ?? null,
+          units: null,
+
           source: c.source,
           test_settings: (profile.courseTestSettings[c.code] ?? null) as never,
         })),
