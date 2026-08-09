@@ -246,12 +246,19 @@ export async function uploadCourseMaterial(opts: {
     emit({ kind: "extracting" });
     console.info("[upload] calling FastAPI extract-text", { fileType });
     try {
+      // The backend requires the caller's Supabase session and resolves the
+      // storage path from the owner's own row, so no file_path is sent.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("No active session for extraction");
       const res = await fetch(`${BACKEND_URL}/extract-text`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           material_id: row.id,
-          file_path: path,
           file_type: fileType,
         }),
       });
