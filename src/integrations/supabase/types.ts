@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_question_sets: {
+        Row: {
+          course_code: string
+          created_at: string
+          generated_at: string
+          id: string
+          questions: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_code?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          questions?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_code?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          questions?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       course_materials: {
         Row: {
           course_code: string
@@ -55,6 +85,198 @@ export type Database = {
           id?: string
           mime_type?: string
           size_bytes?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      course_topic_analysis: {
+        Row: {
+          analyzed_at: string
+          course_code: string
+          created_at: string
+          id: string
+          material_id: string | null
+          topics: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analyzed_at?: string
+          course_code: string
+          created_at?: string
+          id?: string
+          material_id?: string | null
+          topics?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analyzed_at?: string
+          course_code?: string
+          created_at?: string
+          id?: string
+          material_id?: string | null
+          topics?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mock_attempts: {
+        Row: {
+          answers: Json | null
+          correct: number
+          course_code: string
+          course_title: string
+          created_at: string
+          id: string
+          questions: Json | null
+          score: number
+          settings: Json | null
+          submitted_at: string
+          topics: Json
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          correct?: number
+          course_code: string
+          course_title?: string
+          created_at?: string
+          id: string
+          questions?: Json | null
+          score?: number
+          settings?: Json | null
+          submitted_at?: string
+          topics?: Json
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          correct?: number
+          course_code?: string
+          course_title?: string
+          created_at?: string
+          id?: string
+          questions?: Json | null
+          score?: number
+          settings?: Json | null
+          submitted_at?: string
+          topics?: Json
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          cgpa_actual: Json | null
+          cgpa_inputs: Json | null
+          cgpa_intro_seen: boolean
+          cgpa_plan: Json | null
+          created_at: string
+          department: string | null
+          disclaimer_accepted: boolean
+          display_name: string | null
+          email: string | null
+          faculty: string | null
+          goal: string | null
+          has_completed_first_mock: boolean
+          last_qualifying_day: string | null
+          level: number | null
+          mastered_courses: Json
+          setup_complete: boolean
+          streak_days: number
+          study_preference: string | null
+          timeline: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cgpa_actual?: Json | null
+          cgpa_inputs?: Json | null
+          cgpa_intro_seen?: boolean
+          cgpa_plan?: Json | null
+          created_at?: string
+          department?: string | null
+          disclaimer_accepted?: boolean
+          display_name?: string | null
+          email?: string | null
+          faculty?: string | null
+          goal?: string | null
+          has_completed_first_mock?: boolean
+          last_qualifying_day?: string | null
+          level?: number | null
+          mastered_courses?: Json
+          setup_complete?: boolean
+          streak_days?: number
+          study_preference?: string | null
+          timeline?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cgpa_actual?: Json | null
+          cgpa_inputs?: Json | null
+          cgpa_intro_seen?: boolean
+          cgpa_plan?: Json | null
+          created_at?: string
+          department?: string | null
+          disclaimer_accepted?: boolean
+          display_name?: string | null
+          email?: string | null
+          faculty?: string | null
+          goal?: string | null
+          has_completed_first_mock?: boolean
+          last_qualifying_day?: string | null
+          level?: number | null
+          mastered_courses?: Json
+          setup_complete?: boolean
+          streak_days?: number
+          study_preference?: string | null
+          timeline?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_courses: {
+        Row: {
+          course_code: string
+          created_at: string
+          id: string
+          source: string
+          test_settings: Json | null
+          title: string
+          units: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_code: string
+          created_at?: string
+          id?: string
+          source?: string
+          test_settings?: Json | null
+          title?: string
+          units?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_code?: string
+          created_at?: string
+          id?: string
+          source?: string
+          test_settings?: Json | null
+          title?: string
+          units?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
