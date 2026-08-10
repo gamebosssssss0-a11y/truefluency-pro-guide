@@ -10,6 +10,7 @@
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
+import { extractMaterialText } from "@/lib/extraction.functions";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
@@ -52,15 +53,8 @@ const DOCX_TYPE =
 const PPTX_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-// We still use this to know WHICH file types need extraction
-const EXTRACTION_FN: Partial<Record<CourseMaterial["file_type"], string>> = {
-  pdf: "extract-pdf-text",
-  docx: "extract-docx-text",
-  pptx: "extract-pptx-text",
-};
-
-// Your FastAPI backend URL — change to Render URL when deployed
-const BACKEND_URL = "https://truefluency-pro-backend.onrender.com";
+// Which file types carry extractable text.
+const EXTRACTABLE_TYPES: CourseMaterial["file_type"][] = ["pdf", "docx", "pptx"];
 
 export const ACCEPTED_UPLOAD_MIME =
   "image/jpeg,image/jpg,image/png,application/pdf," +
