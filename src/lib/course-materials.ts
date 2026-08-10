@@ -142,7 +142,7 @@ export async function uploadCourseMaterial(opts: {
     throw new Error(msg);
   }
   const isImage = fileType === "image";
-  const needsExtraction = !!EXTRACTION_FN[fileType];
+  const needsExtraction = EXTRACTABLE_TYPES.includes(fileType);
 
   // 3) (Image only) compress with graceful fallback
   let payload: Blob = file;
