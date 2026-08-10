@@ -26,6 +26,24 @@ import { BottomTabBar, hidesTabBar } from "@/components/tab-bar";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "TrueFluency Pro: AI Exam Prep for UI Students" },
+      {
+        name: "description",
+        content:
+          "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students.",
+      },
+      { property: "og:title", content: "TrueFluency Pro: AI Exam Prep for UI Students" },
+      {
+        property: "og:description",
+        content:
+          "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students.",
+      },
+      { property: "og:url", content: "https://truefluency.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://truefluency.app/" }],
+  }),
 });
 
 function Index() {
