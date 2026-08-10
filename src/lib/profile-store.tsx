@@ -76,6 +76,7 @@ export type CourseTopicAnalysis = {
 
 export type OnboardingStep =
   | "splash"
+  | "landing"
   | "disclaimer"
   | "disclaimer-blocked"
   | "identity"

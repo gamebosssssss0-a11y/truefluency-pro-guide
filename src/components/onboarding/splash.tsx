@@ -14,7 +14,7 @@ export function SplashScreen() {
     if (advanced.current) return;
     advanced.current = true;
     // Returning users land back in the app; new users continue onboarding.
-    go(profile.setupComplete ? "dashboard" : "disclaimer");
+    go(profile.setupComplete ? "dashboard" : "landing");
   }, [go, profile.setupComplete]);
 
   useEffect(() => {
