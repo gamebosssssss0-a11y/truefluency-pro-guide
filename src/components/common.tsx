@@ -1,4 +1,5 @@
-import { Info } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Info } from "lucide-react";
 
 /**
  * "AI-generated — verify against your material" label — muted text intended to sit
@@ -33,7 +34,7 @@ export function TopicPill({ label, strength, big }: { label: string; strength: n
       style={{
         borderColor: `hsl(${hue} 70% 55% / 0.35)`,
         backgroundColor: `hsl(${hue} 70% 55% / 0.12)`,
-        color: `hsl(${hue} 60% 30%)`,
+        color: `hsl(${hue} 60% var(--pill-text-l, 30%))`,
       }}
     >
       <span
@@ -47,4 +48,30 @@ export function TopicPill({ label, strength, big }: { label: string; strength: n
 
 export function scoreToStrength(pct: number) {
   return Math.max(0, Math.min(1, pct / 100));
+}
+
+/**
+ * Course description with a 2-line clamp and a "Read more / Read less" toggle.
+ * Shared so every screen that lists courses renders the description the same way.
+ */
+export function CourseDescription({ text, className }: { text: string; className?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className={className}>
+      <p className={"text-xs text-muted-foreground " + (expanded ? "" : "line-clamp-2")}>{text}</p>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setExpanded((current) => !current);
+        }}
+        onKeyDown={(event) => event.stopPropagation()}
+        className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-accent hover:text-accent/80"
+        aria-expanded={expanded}
+      >
+        {expanded ? "Read less" : "Read more"}
+        <ChevronDown className={"h-3 w-3 transition-transform " + (expanded ? "rotate-180" : "")} />
+      </button>
+    </div>
+  );
 }

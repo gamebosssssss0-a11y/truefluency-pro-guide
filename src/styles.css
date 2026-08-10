@@ -77,29 +77,36 @@
   --border: oklch(0.88 0.015 85);
   --input: oklch(0.9 0.015 85);
   --ring: oklch(0.72 0.15 55);
+  /* Lightness for topic-pill text, so pills stay legible in both themes. */
+  --pill-text-l: 30%;
 }
 
+/* Dark: near-black ink base (#0B0B14), raised indigo surfaces, amber accent. */
 .dark {
-  --background: oklch(0.18 0.03 260);
-  --foreground: oklch(0.96 0.012 85);
-  --card: oklch(0.22 0.04 260);
-  --card-foreground: oklch(0.96 0.012 85);
-  --popover: oklch(0.22 0.04 260);
-  --popover-foreground: oklch(0.96 0.012 85);
-  --primary: oklch(0.72 0.15 55);
-  --primary-foreground: oklch(0.18 0.03 260);
-  --secondary: oklch(0.28 0.05 260);
-  --secondary-foreground: oklch(0.96 0.012 85);
-  --muted: oklch(0.28 0.04 260);
-  --muted-foreground: oklch(0.72 0.02 260);
-  --accent: oklch(0.72 0.15 55);
-  --accent-foreground: oklch(0.18 0.03 260);
+  --background: #0B0B14;
+  --foreground: #F5F3EE;
+  --card: #141420;
+  --card-foreground: #F5F3EE;
+  --popover: #141420;
+  --popover-foreground: #F5F3EE;
+  --primary: #6C63FF;
+  --primary-foreground: #0B0B14;
+  --secondary: #1C1C2B;
+  --secondary-foreground: #F5F3EE;
+  --muted: #1C1C2B;
+  --muted-foreground: #A2A0B8;
+  --accent: #F5A524;
+  --accent-foreground: #0B0B14;
   --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.96 0.012 85);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.15 55);
+  --destructive-foreground: #F5F3EE;
+  --success: oklch(0.7 0.15 150);
+  --warning: #F5A524;
+  --border: #26263A;
+  --input: #2E2E44;
+  --ring: #F5A524;
+  --pill-text-l: 82%;
 }
+
 
 @layer base {
   * {

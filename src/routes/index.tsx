@@ -22,6 +22,9 @@ import { AccountScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
 import { CgpaCalculatorScreen } from "@/components/cgpa-calculator";
 import { CgpaGoalSetterScreen } from "@/components/cgpa-goal-setter";
+import { SupportScreen } from "@/components/support";
+import { EditIdentityScreen } from "@/components/edit-identity";
+import { ThemeProvider } from "@/lib/theme";
 import { BottomTabBar, hidesTabBar } from "@/components/tab-bar";
 
 export const Route = createFileRoute("/")({
@@ -48,9 +51,11 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <ProfileProvider>
-      <Router />
-    </ProfileProvider>
+    <ThemeProvider>
+      <ProfileProvider>
+        <Router />
+      </ProfileProvider>
+    </ThemeProvider>
   );
 }
 
@@ -99,6 +104,8 @@ function Router() {
       case "add-course": return <AddCourseScreen />;
       case "cgpa": return <CgpaCalculatorScreen />;
       case "cgpa-goal": return <CgpaGoalSetterScreen />;
+      case "support": return <SupportScreen />;
+      case "edit-identity": return <EditIdentityScreen />;
       case "disclaimer-view": return <DisclaimerViewScreen />;
       default: return <HomeScreen />;
     }

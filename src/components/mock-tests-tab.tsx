@@ -3,7 +3,7 @@ import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-st
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HeaderLogo } from "@/components/brand";
-import { TopicPill, scoreToStrength, AiGeneratedLabel } from "@/components/common";
+import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
   ArrowLeft, BookOpen, ChevronRight, History, Sparkles, Zap, TrendingUp, TrendingDown,
   Minus, AlertTriangle, RotateCcw, Trophy,
@@ -56,7 +56,7 @@ export function MockTestsScreen() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-foreground">{c.code}</div>
-                      <p className="line-clamp-2 text-xs text-muted-foreground">{c.name}</p>
+                      <CourseDescription text={c.name} />
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {analysis?.topics.length ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">

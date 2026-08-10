@@ -32,6 +32,8 @@ export function tabForView(view: AppView): TabKey {
     case "cgpa-goal":
     case "flashcards-soon":
     case "add-course":
+    case "support":
+    case "edit-identity":
     case "disclaimer-view":
       return "account";
     default:
