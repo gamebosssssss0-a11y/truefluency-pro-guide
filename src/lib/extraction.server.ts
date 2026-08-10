@@ -79,8 +79,6 @@ function fromPptx(bytes: Uint8Array): string {
     if (!entry) continue;
     const xml = strFromU8(entry);
     const runs = [...xml.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((m) => m[1] ?? "");
-    const text = runs
-      .join(" ")
     const text = decodeEntities(runs.join(" "));
     if (text.trim()) chunks.push(text.trim());
   }
