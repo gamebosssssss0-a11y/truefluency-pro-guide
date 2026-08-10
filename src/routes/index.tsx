@@ -62,7 +62,16 @@ function Index() {
 function Router() {
   const { step, view, profile } = useProfile();
   useEffect(() => {
-    if (profile.identity) void ensureSupabaseSession(profile);
+    if (!profile.identity) return;
+    void ensureSupabaseSession(profile).then((result) => {
+      // Failing silently used to leave uploads and sync broken with no signal.
+      if (!result.ok && result.reason !== "oauth-or-missing-account") {
+        toast.message("You're working offline", {
+          description: "We couldn't reach your account, so changes are saved on this device for now.",
+        });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.identity?.kind, profile.identity?.email]);
 
   if (step !== "dashboard") {
