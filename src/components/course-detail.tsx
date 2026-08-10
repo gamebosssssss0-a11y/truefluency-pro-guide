@@ -55,6 +55,31 @@ function useCourseMaterials(courseCode: string) {
     return () => window.removeEventListener("course-materials-refresh", h);
   }, [load]);
 
+  /* Uploads left at "pending" (e.g. from an earlier failed extraction) get one
+   * automatic repair attempt per session so old files become usable without
+   * the student having to re-upload anything. */
+  const repaired = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!items) return;
+    const stuck = items.filter(
+      (m) => m.extraction_status === "pending" && !repaired.current.has(m.id),
+    );
+    if (stuck.length === 0) return;
+    for (const m of stuck) repaired.current.add(m.id);
+    void (async () => {
+      let changed = false;
+      for (const m of stuck) {
+        try {
+          await retryExtraction(m.id);
+          changed = true;
+        } catch (e) {
+          console.error("[materials] auto-repair failed", { id: m.id, error: e });
+        }
+      }
+      if (changed) void load();
+    })();
+  }, [items, load]);
+
   return { items, loading };
 }
 
