@@ -40,7 +40,7 @@ export type InProgressTest = {
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
-  /** "ai" = questions live in profile.aiQuestions; "sample" = built-in bank. */
+  /** "ai" = questions live in profile.aiQuestionsByCourse[courseCode]; "sample" = built-in bank. */
   source?: "ai" | "sample";
 } | null;
 
@@ -93,7 +93,16 @@ export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
 export type StudyPreference = "practice" | "flashcards" | "reading";
 
-export type LocalAccount = { name: string; email: string; password: string };
+export type LocalAccount = {
+  name: string;
+  email: string;
+  /** SHA-256 verifier used to check the typed password locally. */
+  verifier?: string;
+  /** Derived Supabase password for this account (never the typed one). */
+  derived?: string;
+  /** Legacy plaintext password from older builds; migrated away on load. */
+  password?: string;
+};
 
 export type AppView =
   | "dashboard"
@@ -212,8 +221,8 @@ export type Profile = {
   // Per-course last-used mock test settings
   courseTestSettings: Record<string, CourseTestSettings>;
 
-  // Real AI-generated question set backing the current/last mock test
-  aiQuestions: AIQuestion[];
+  // Real AI-generated question sets, keyed by course code
+  aiQuestionsByCourse: Record<string, AIQuestion[]>;
 
   // Real topic analysis per course code (from "Analyze Upload")
   courseTopicAnalysis: Record<string, CourseTopicAnalysis>;
@@ -248,7 +257,7 @@ const emptyProfile: Profile = {
   hasCompletedFirstMock: false,
   masteredCourses: [],
   courseTestSettings: {},
-  aiQuestions: [],
+  aiQuestionsByCourse: {},
   courseTopicAnalysis: {},
   cgpaInputs: null,
   cgpaPlan: null,
