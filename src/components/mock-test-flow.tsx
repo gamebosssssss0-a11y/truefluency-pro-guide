@@ -136,9 +136,13 @@ export function MockGenerationScreen() {
         clearInterval(animId);
         setPct(100);
 
-        // Store AI questions in profile state so MockRunScreen can use them
+        // Store the AI questions under this course code so a set generated for
+        // one course can never be served during another course's test.
         update({
-          aiQuestions: questions,
+          aiQuestionsByCourse: {
+            ...profile.aiQuestionsByCourse,
+            [course.code]: questions,
+          },
           inProgressTest: {
             courseCode: course.code,
             courseTitle: course.name,
@@ -148,6 +152,7 @@ export function MockGenerationScreen() {
             answers: Array(questions.length).fill(null),
             currentIndex: 0,
             questionIds: questions.map((q) => q.id),
+            source: "ai",
           },
         });
 
@@ -485,7 +490,8 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeilin
 export function MockRunScreen() {
   const { profile, update, navigate } = useProfile();
   const t = profile.inProgressTest;
-  const aiQuestions: AIQuestion[] = (profile as any).aiQuestions ?? [];
+  // Only this course's generated set, so questions never cross courses.
+  const aiQuestions: AIQuestion[] = t ? (profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
 
   const [now, setNow] = useState(Date.now());
   const submittedRef = useRef(false);

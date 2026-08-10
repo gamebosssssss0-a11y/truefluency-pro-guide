@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
+import { deriveSupabasePassword, localPasswordVerifier } from "@/lib/supabase-session";
 
 type Tab = "signup" | "login";
 
@@ -31,7 +32,7 @@ export function IdentityScreen() {
     setTimeout(() => { setBusy(null); fn(); }, 900);
   };
 
-  const onSignup = (e: React.FormEvent) => {
+  const onSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password) return;
     const em = email.trim().toLowerCase();
@@ -39,11 +40,17 @@ export function IdentityScreen() {
       setError("An account with that email already exists on this device. Try logging in.");
       return;
     }
-    const next = [...profile.accounts, { name: name.trim(), email: em, password }];
+    // The typed password is never stored: we keep a verifier hash plus the
+    // derived cloud password.
+    const [verifier, derived] = await Promise.all([
+      localPasswordVerifier(em, password),
+      deriveSupabasePassword(em, password),
+    ]);
+    const next = [...profile.accounts, { name: name.trim(), email: em, verifier, derived }];
     withDelay("signup", () => finish({ kind: "email", name: name.trim(), email: em }, next));
   };
 
-  const onLogin = (e: React.FormEvent) => {
+  const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
     const em = email.trim().toLowerCase();
@@ -52,7 +59,8 @@ export function IdentityScreen() {
       setError("We couldn't find an account with that email on this device. Try signing up instead.");
       return;
     }
-    if (match.password !== password) {
+    const verifier = await localPasswordVerifier(em, password);
+    if (match.verifier !== verifier) {
       setError("Wrong password for that account.");
       return;
     }

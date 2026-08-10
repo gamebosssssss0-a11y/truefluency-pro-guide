@@ -40,7 +40,7 @@ export type InProgressTest = {
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
-  /** "ai" = questions live in profile.aiQuestions; "sample" = built-in bank. */
+  /** "ai" = questions live in profile.aiQuestionsByCourse[courseCode]; "sample" = built-in bank. */
   source?: "ai" | "sample";
 } | null;
 
@@ -93,7 +93,16 @@ export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
 export type StudyPreference = "practice" | "flashcards" | "reading";
 
-export type LocalAccount = { name: string; email: string; password: string };
+export type LocalAccount = {
+  name: string;
+  email: string;
+  /** SHA-256 verifier used to check the typed password locally. */
+  verifier?: string;
+  /** Derived Supabase password for this account (never the typed one). */
+  derived?: string;
+  /** Legacy plaintext password from older builds; migrated away on load. */
+  password?: string;
+};
 
 export type AppView =
   | "dashboard"
@@ -212,8 +221,8 @@ export type Profile = {
   // Per-course last-used mock test settings
   courseTestSettings: Record<string, CourseTestSettings>;
 
-  // Real AI-generated question set backing the current/last mock test
-  aiQuestions: AIQuestion[];
+  // Real AI-generated question sets, keyed by course code
+  aiQuestionsByCourse: Record<string, AIQuestion[]>;
 
   // Real topic analysis per course code (from "Analyze Upload")
   courseTopicAnalysis: Record<string, CourseTopicAnalysis>;
@@ -248,7 +257,7 @@ const emptyProfile: Profile = {
   hasCompletedFirstMock: false,
   masteredCourses: [],
   courseTestSettings: {},
-  aiQuestions: [],
+  aiQuestionsByCourse: {},
   courseTopicAnalysis: {},
   cgpaInputs: null,
   cgpaPlan: null,
@@ -256,6 +265,51 @@ const emptyProfile: Profile = {
   cgpaIntroSeen: false,
 
 };
+
+/* ---------- Stored-profile sanitising ----------
+ * localStorage can hold data written by older builds (or a partially failed
+ * write). Coerce every collection back to its expected shape so screens never
+ * crash on `.map` / `.length` of a non-array.
+ */
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function asRecord<T>(value: unknown): Record<string, T> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, T>)
+    : {};
+}
+
+export function sanitizeProfile(raw: unknown): Profile {
+  const p = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+
+  const byCourse = asRecord<AIQuestion[]>(p.aiQuestionsByCourse);
+  for (const key of Object.keys(byCourse)) {
+    byCourse[key] = asArray<AIQuestion>(byCourse[key]);
+  }
+  // Legacy flat list: attribute it to the in-progress course if we can tell,
+  // otherwise drop it rather than risk serving it for the wrong course.
+  const legacy = asArray<AIQuestion>(p.aiQuestions);
+  const legacyCourse = (p.inProgressTest as { courseCode?: string } | null)?.courseCode;
+  if (legacy.length && legacyCourse && !byCourse[legacyCourse]) {
+    byCourse[legacyCourse] = legacy;
+  }
+
+  return {
+    ...emptyProfile,
+    ...(p as Partial<Profile>),
+    accounts: asArray<LocalAccount>(p.accounts),
+    courses: asArray<UserCourse>(p.courses),
+    attempts: asArray<MockAttempt>(p.attempts),
+    topicScores: asArray<TopicScore>(p.topicScores),
+    masteredCourses: asArray<string>(p.masteredCourses),
+    courseTestSettings: asRecord<CourseTestSettings>(p.courseTestSettings),
+    courseTopicAnalysis: asRecord<CourseTopicAnalysis>(p.courseTopicAnalysis),
+    aiQuestionsByCourse: byCourse,
+  };
+}
 
 type Ctx = {
   profile: Profile;
@@ -284,14 +338,46 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Profile;
-        setProfile({ ...emptyProfile, ...parsed });
+        setProfile(sanitizeProfile(JSON.parse(raw)));
         // Step stays "splash": the entrance animation plays on every app open,
         // then the splash routes returning users straight to the dashboard.
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error("[profile-store] stored profile unreadable, starting fresh", err);
+    }
     setHydrated(true);
   }, []);
+
+  // One-time migration: older builds stored the typed password in plain text.
+  // Replace it with a verifier hash plus the derived Supabase password so the
+  // same account still resolves to the same cloud user.
+  useEffect(() => {
+    if (!hydrated) return;
+    const stale = profile.accounts.filter((a) => a.password);
+    if (!stale.length) return;
+    let cancelled = false;
+    void (async () => {
+      const { deriveSupabasePassword, localPasswordVerifier } = await import(
+        "@/lib/supabase-session"
+      );
+      const migrated = await Promise.all(
+        profile.accounts.map(async (a) => {
+          if (!a.password) return a;
+          const [verifier, derived] = await Promise.all([
+            localPasswordVerifier(a.email, a.password),
+            deriveSupabasePassword(a.email, a.password),
+          ]);
+          return { name: a.name, email: a.email, verifier, derived };
+        }),
+      );
+      if (!cancelled) setProfile((cur) => ({ ...cur, accounts: migrated }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, profile.accounts]);
+
 
   useEffect(() => {
     if (hydrated) {
