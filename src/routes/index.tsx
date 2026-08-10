@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
