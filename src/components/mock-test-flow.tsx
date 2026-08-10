@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
+import { generateMock } from "@/lib/backend-api";
 
-// Your FastAPI backend URL — change to Render URL when deployed
-const BACKEND_URL = "https://truefluency-pro-backend.onrender.com";
+// The analysis service accepts at most 40 questions per request.
+const MAX_GENERATED_QUESTIONS = 40;
 
 /* ---------- types ---------- */
 
