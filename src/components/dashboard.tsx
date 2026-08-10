@@ -66,8 +66,9 @@ export function HomeScreen() {
             </div>
           </div>
           <h1 className="mt-1 font-display text-3xl font-semibold leading-tight text-foreground">
-            Hi, {name}
+            Study Dashboard
           </h1>
+          <p className="mt-1 text-base font-medium text-foreground">Hi, {name}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {profile.department} · {profile.level}L
           </p>

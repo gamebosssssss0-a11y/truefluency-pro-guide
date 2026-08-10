@@ -124,7 +124,7 @@ export function DisclaimerViewScreen() {
 export function DisclaimerBlockedScreen() {
   const { go } = useProfile();
   return (
-    <AppShell>
+    <AppShell title="Disclaimer acceptance required" subtitle="Agree to the disclaimer to continue using TrueFluency Pro.">
       <div className="mt-10 rounded-2xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
         <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
           <AlertTriangle className="h-6 w-6" />
