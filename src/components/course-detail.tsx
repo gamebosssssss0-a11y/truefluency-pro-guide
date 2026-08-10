@@ -16,6 +16,7 @@ import { HeaderLogo } from "@/components/brand";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
   findDuplicateMaterial, pickAnalyzableMaterial, ACCEPTED_UPLOAD_MIME,
+  isRetryableMaterial, retryExtraction,
   savePastedText, MIN_PASTED_CHARS, PASTED_TOO_SHORT_MESSAGE,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
@@ -690,10 +691,32 @@ export function MaterialRow({
   const hasExtraction = t === "pdf" || t === "docx" || t === "pptx";
   const kb = Math.round(m.size_bytes / 1024);
   const [flag, setFlag] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const canRetry = isRetryableMaterial(m);
 
   useEffect(() => {
     setFlag(getMetadataFlag(m.id));
   }, [m.id]);
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    try {
+      const fresh = await retryExtraction(m.id);
+      if (fresh?.extraction_status === "success") {
+        toast.success("Text extracted, this upload is ready to analyze.");
+      } else if (fresh?.extraction_status === "scanned_pdf") {
+        toast.error("No selectable text found. This looks like a scan, upload it as an image instead.");
+      } else {
+        toast.error(fresh?.extraction_error ?? "We still couldn't read that file.");
+      }
+      window.dispatchEvent(new Event("course-materials-refresh"));
+    } catch (e) {
+      console.error("[materials] retry extraction failed", e);
+      toast.error(e instanceof Error ? e.message : "Couldn't read that file. Please try again.");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
     if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
@@ -731,6 +754,17 @@ export function MaterialRow({
             <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
           ) : null}
         </div>
+        {canRetry ? (
+          <button
+            onClick={() => void handleRetry()}
+            disabled={retrying}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-50"
+            aria-label="Retry text extraction"
+            title="Retry text extraction"
+          >
+            <RefreshCw className={cn("h-4 w-4", retrying && "animate-spin")} />
+          </button>
+        ) : null}
         <button
           onClick={onDelete}
           className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
