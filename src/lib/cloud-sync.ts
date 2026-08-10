@@ -86,8 +86,12 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
     settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
   }));
 
-  const aiQuestions =
-    ((questionsRes.data ?? [])[0]?.questions as unknown as AIQuestion[]) ?? [];
+  // Keyed by course code so each course only ever sees its own question set.
+  const aiQuestionsByCourse: Record<string, AIQuestion[]> = {};
+  for (const row of questionsRes.data ?? []) {
+    const qs = (row.questions as unknown as AIQuestion[]) ?? [];
+    if (row.course_code && qs.length) aiQuestionsByCourse[row.course_code] = qs;
+  }
 
   const courseTopicAnalysis: Record<string, CourseTopicAnalysis> = {};
   for (const t of analysisRes.data ?? []) {
@@ -123,7 +127,7 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
     courseTestSettings,
     attempts,
     topicScores,
-    aiQuestions,
+    aiQuestionsByCourse,
     courseTopicAnalysis,
   };
 }
@@ -182,14 +186,17 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         { onConflict: "user_id,course_code" },
       );
       if (error) throw error;
+    }
 
-      // Drop courses the user removed locally.
+    // Cleanup runs even when the local list is now empty, otherwise removing
+    // the last course leaves it in the cloud and it reappears on next load.
+    {
       const codes = profile.courses.map((c) => c.code);
-      const { error: delErr } = await supabase
-        .from("user_courses")
-        .delete()
-        .eq("user_id", userId)
-        .not("course_code", "in", `(${codes.map((c) => `"${c}"`).join(",")})`);
+      let del = supabase.from("user_courses").delete().eq("user_id", userId);
+      if (codes.length) {
+        del = del.not("course_code", "in", `(${codes.map((c) => `"${c}"`).join(",")})`);
+      }
+      const { error: delErr } = await del;
       if (delErr) console.error("[cloud-sync] course cleanup failed", delErr);
     }
 
@@ -214,17 +221,20 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
       if (error) throw error;
     }
 
-    if (profile.aiQuestions.length) {
-      const code = profile.attempts[0]?.courseCode ?? "current";
-      const { error } = await supabase.from("ai_question_sets").upsert(
-        {
-          user_id: userId,
-          course_code: code,
-          questions: profile.aiQuestions as never,
-          generated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,course_code" },
-      );
+    // One row per course: a question set generated for GST 111 must never be
+    // served during a CHM 102 test.
+    const questionRows = Object.entries(profile.aiQuestionsByCourse)
+      .filter(([, qs]) => Array.isArray(qs) && qs.length > 0)
+      .map(([code, qs]) => ({
+        user_id: userId,
+        course_code: code,
+        questions: qs as never,
+        generated_at: new Date().toISOString(),
+      }));
+    if (questionRows.length) {
+      const { error } = await supabase
+        .from("ai_question_sets")
+        .upsert(questionRows, { onConflict: "user_id,course_code" });
       if (error) throw error;
     }
 
