@@ -266,6 +266,51 @@ const emptyProfile: Profile = {
 
 };
 
+/* ---------- Stored-profile sanitising ----------
+ * localStorage can hold data written by older builds (or a partially failed
+ * write). Coerce every collection back to its expected shape so screens never
+ * crash on `.map` / `.length` of a non-array.
+ */
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function asRecord<T>(value: unknown): Record<string, T> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, T>)
+    : {};
+}
+
+export function sanitizeProfile(raw: unknown): Profile {
+  const p = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+
+  const byCourse = asRecord<AIQuestion[]>(p.aiQuestionsByCourse);
+  for (const key of Object.keys(byCourse)) {
+    byCourse[key] = asArray<AIQuestion>(byCourse[key]);
+  }
+  // Legacy flat list: attribute it to the in-progress course if we can tell,
+  // otherwise drop it rather than risk serving it for the wrong course.
+  const legacy = asArray<AIQuestion>(p.aiQuestions);
+  const legacyCourse = (p.inProgressTest as { courseCode?: string } | null)?.courseCode;
+  if (legacy.length && legacyCourse && !byCourse[legacyCourse]) {
+    byCourse[legacyCourse] = legacy;
+  }
+
+  return {
+    ...emptyProfile,
+    ...(p as Partial<Profile>),
+    accounts: asArray<LocalAccount>(p.accounts),
+    courses: asArray<UserCourse>(p.courses),
+    attempts: asArray<MockAttempt>(p.attempts),
+    topicScores: asArray<TopicScore>(p.topicScores),
+    masteredCourses: asArray<string>(p.masteredCourses),
+    courseTestSettings: asRecord<CourseTestSettings>(p.courseTestSettings),
+    courseTopicAnalysis: asRecord<CourseTopicAnalysis>(p.courseTopicAnalysis),
+    aiQuestionsByCourse: byCourse,
+  };
+}
+
 type Ctx = {
   profile: Profile;
   step: OnboardingStep | "dashboard";
