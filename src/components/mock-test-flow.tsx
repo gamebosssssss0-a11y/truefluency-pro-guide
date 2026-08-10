@@ -490,7 +490,8 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeilin
 export function MockRunScreen() {
   const { profile, update, navigate } = useProfile();
   const t = profile.inProgressTest;
-  const aiQuestions: AIQuestion[] = (profile as any).aiQuestions ?? [];
+  // Only this course's generated set, so questions never cross courses.
+  const aiQuestions: AIQuestion[] = t ? (profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
 
   const [now, setNow] = useState(Date.now());
   const submittedRef = useRef(false);

@@ -144,12 +144,15 @@ export async function generateMock(input: {
         : [];
       const correct = Number(o.correct_index);
       if (typeof o.question !== "string" || options.length < 2) return null;
+      // A question whose answer key is missing or out of range would be graded
+      // against option A, so drop it rather than mark right answers wrong.
+      if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) return null;
       return {
         id: typeof o.id === "number" ? o.id : i + 1,
         topic: typeof o.topic === "string" && o.topic.trim() ? o.topic : "General",
         question: o.question,
         options,
-        correct_index: Number.isInteger(correct) && correct >= 0 && correct < options.length ? correct : 0,
+        correct_index: correct,
         explanation: typeof o.explanation === "string" ? o.explanation : "",
       } satisfies AIQuestion;
     })
