@@ -8,7 +8,9 @@ import {
 import {
   ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil,
 } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
 import {
   deleteAllUserMaterials, deleteMaterial, listAllUserMaterials,
@@ -21,7 +23,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function AccountScreen() {
   const { profile, navigate, resetSetup } = useProfile();
+  const { theme, setTheme } = useTheme();
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   /** Two-tap confirmation: 1 = warning, 2 = final confirm. No typing required. */
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [deleting, setDeleting] = useState(false);
@@ -55,6 +60,40 @@ export function AccountScreen() {
     closeDelete();
   };
 
+  /**
+   * Sign out. The cloud snapshot is pushed first so nothing that only existed
+   * locally is lost, then the session ends and the local cache is cleared.
+   * The data itself stays in the account and comes back on next sign-in.
+   */
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      const { pushCloudProfile } = await import("@/lib/cloud-sync");
+      const saved = await pushCloudProfile(profile);
+      if (!saved) {
+        toast.error("Couldn't save your latest changes to your account. Check your connection and try again.");
+        setSigningOut(false);
+        return;
+      }
+    } catch (e) {
+      console.error("[account] pre-sign-out save failed", e);
+      toast.error("Couldn't save your latest changes to your account. Check your connection and try again.");
+      setSigningOut(false);
+      return;
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("[account] sign-out failed", e);
+    }
+
+    resetSetup();
+    toast.success("Signed out. Your data is saved to your account.");
+    setSigningOut(false);
+    setSignOutOpen(false);
+  };
+
   const tools = [
     {
       label: "CGPA calculator",
@@ -73,6 +112,12 @@ export function AccountScreen() {
       blurb: "Every attempt, with question-by-question review.",
       icon: ClipboardList,
       onClick: () => navigate("test-history"),
+    },
+    {
+      label: "Support",
+      blurb: "Common questions, and how to reach us directly.",
+      icon: LifeBuoy,
+      onClick: () => navigate("support"),
     },
     {
       label: "Flashcards",
@@ -158,10 +203,75 @@ export function AccountScreen() {
           Your profile
         </h2>
         <div className="space-y-2">
-          <Row icon={User} label="Identity" value={profile.identity?.name ?? "Not set"} sub={profile.identity?.email} />
+          <button
+            onClick={() => navigate("edit-identity")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
+          >
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <User className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Identity</div>
+              <div className="truncate text-sm font-medium text-foreground">
+                {profile.identity?.name ?? "Not set"}
+              </div>
+              {profile.identity?.email ? (
+                <div className="truncate text-[11px] text-muted-foreground">{profile.identity.email}</div>
+              ) : null}
+            </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent">
+              <Pencil className="h-3 w-3" /> Edit
+            </span>
+          </button>
           <Row icon={Building2} label="Faculty" value={profile.faculty ?? "Not set"} />
           <Row icon={Layers} label="Department · Level" value={`${profile.department ?? "Not set"} · ${profile.level ?? "?"}L`} />
           <Row icon={BookOpen} label="Courses" value={`${profile.courses.length} on file`} />
+        </div>
+
+        <button
+          onClick={() => navigate("edit-identity")}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent/80"
+        >
+          <Pencil className="h-3 w-3" /> Edit faculty, department or level
+        </button>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Appearance
+        </h2>
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">Theme</div>
+            <div className="text-[11px] text-muted-foreground">
+              {theme === "dark" ? "Dark, easier at night." : "Light, easier in daylight."}
+            </div>
+          </div>
+          <div className="flex overflow-hidden rounded-full border border-border">
+            <button
+              type="button"
+              aria-pressed={theme === "light"}
+              onClick={() => setTheme("light")}
+              className={
+                "px-2.5 py-1.5 text-[11px] font-semibold transition " +
+                (theme === "light" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              aria-pressed={theme === "dark"}
+              onClick={() => setTheme("dark")}
+              className={
+                "px-2.5 py-1.5 text-[11px] font-semibold transition " +
+                (theme === "dark" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              Dark
+            </button>
+          </div>
         </div>
 
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -183,6 +293,18 @@ export function AccountScreen() {
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
 
+        {/* Session */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Session
+        </h2>
+        <Button variant="outline" className="w-full" onClick={() => setSignOutOpen(true)}>
+          <LogOut className="mr-2 h-4 w-4" /> Sign out
+        </Button>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Your profile, courses, uploads and test history stay saved to your account and come back
+          when you sign in again, on this phone or any other.
+        </p>
+
         {/* Reset, clears local profile only, keeps uploaded files */}
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Reset
@@ -196,7 +318,7 @@ export function AccountScreen() {
             }
           }}
         >
-          <LogOut className="mr-2 h-4 w-4" /> Reset profile
+          <RotateCcw className="mr-2 h-4 w-4" /> Reset profile
         </Button>
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           Keeps your uploaded files. Only clears profile and course selection.
@@ -212,6 +334,29 @@ export function AccountScreen() {
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           Permanently deletes your uploaded past papers, slides, pasted notes, and profile.
         </p>
+
+        <AlertDialog open={signOutOpen} onOpenChange={(o) => { if (!o && !signingOut) setSignOutOpen(false); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out of TrueFluency Pro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your profile, courses, uploads, mock attempts and streak are saved to your account
+                first, so nothing is lost. Sign back in with the same account to pick up exactly
+                where you left off.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={signingOut}>Stay signed in</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={signingOut}
+                onClick={(e) => { e.preventDefault(); void handleSignOut(); }}
+              >
+                {signingOut ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                Save and sign out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog
           open={deleteAllOpen}
