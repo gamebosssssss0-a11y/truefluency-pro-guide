@@ -338,14 +338,46 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Profile;
-        setProfile({ ...emptyProfile, ...parsed });
+        setProfile(sanitizeProfile(JSON.parse(raw)));
         // Step stays "splash": the entrance animation plays on every app open,
         // then the splash routes returning users straight to the dashboard.
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error("[profile-store] stored profile unreadable, starting fresh", err);
+    }
     setHydrated(true);
   }, []);
+
+  // One-time migration: older builds stored the typed password in plain text.
+  // Replace it with a verifier hash plus the derived Supabase password so the
+  // same account still resolves to the same cloud user.
+  useEffect(() => {
+    if (!hydrated) return;
+    const stale = profile.accounts.filter((a) => a.password);
+    if (!stale.length) return;
+    let cancelled = false;
+    void (async () => {
+      const { deriveSupabasePassword, localPasswordVerifier } = await import(
+        "@/lib/supabase-session"
+      );
+      const migrated = await Promise.all(
+        profile.accounts.map(async (a) => {
+          if (!a.password) return a;
+          const [verifier, derived] = await Promise.all([
+            localPasswordVerifier(a.email, a.password),
+            deriveSupabasePassword(a.email, a.password),
+          ]);
+          return { name: a.name, email: a.email, verifier, derived };
+        }),
+      );
+      if (!cancelled) setProfile((cur) => ({ ...cur, accounts: migrated }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, profile.accounts]);
+
 
   useEffect(() => {
     if (hydrated) {
