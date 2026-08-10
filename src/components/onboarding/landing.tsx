@@ -2,24 +2,50 @@ import { useRef } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo-mark";
-import { BrainCircuit, Calculator, FileText, Sparkles } from "lucide-react";
+import {
+  BrainCircuit,
+  Calculator,
+  FileText,
+  LineChart,
+  Library,
+  MessagesSquare,
+  Sparkles,
+} from "lucide-react";
 import productPreview from "@/assets/product-preview.png";
 
 const features = [
   {
-    icon: FileText,
-    title: "AI mock tests from your own materials",
-    body: "Upload past papers, slides or notes and get practice questions generated from the real content of your courses.",
+    icon: BrainCircuit,
+    title: "AI predicted exam topics",
+    body: "Upload a past paper and get a ranked list of likely topics with a confidence score, generated from that exact material rather than a static syllabus.",
   },
   {
-    icon: BrainCircuit,
-    title: "Predicted topics, ranked by confidence",
-    body: "Pattern analysis across your past papers highlights the topics most likely to show up, so revision time goes where it counts.",
+    icon: FileText,
+    title: "AI mock tests from your own material",
+    body: "Realistic practice questions built from your course content, with adjustable difficulty and length instead of a generic question bank.",
+  },
+  {
+    icon: LineChart,
+    title: "Test history and progress tracking",
+    body: "Score trends across attempts, plus the specific topics that keep coming back as weak points so you know what to revisit.",
   },
   {
     icon: Calculator,
-    title: "CGPA planning tools",
-    body: "Calculate your CGPA on the 5.00 scale and work backwards from the result you want to the grades you need.",
+    title: "CGPA calculator and goal setter",
+    body: "Enter your real scores for your true CGPA and classification, then set a target and see the exact grades and study plan needed to reach it.",
+  },
+];
+
+const upcoming = [
+  {
+    icon: Library,
+    title: "Resource Library",
+    body: "Students share past papers and notes by course, so the material pool grows with the community.",
+  },
+  {
+    icon: MessagesSquare,
+    title: "AI Study Chatbot",
+    body: "Course specific Q&A alongside general study help.",
   },
 ];
 
@@ -40,15 +66,16 @@ export function LandingScreen() {
         <section>
           <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
-            Built for University of Ibadan students
+            Every faculty, every department, 100L to final year
           </div>
           <h1 className="font-display text-[2rem] font-semibold leading-tight text-foreground">
-            AI-powered exam prep, built for University of Ibadan students
+            Study smarter using your own course material, not guesswork
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            TrueFluency Pro turns your own course materials into mock tests,
-            predicted exam topics and a CGPA plan, so you walk into every paper
-            knowing exactly what to revise.
+            TrueFluency Pro is an exam prep app built for University of Ibadan
+            students. Upload your past papers and notes, and it predicts the
+            topics most likely to appear and generates mock tests from what you
+            are actually being taught.
           </p>
 
           <div className="mt-6 space-y-3">
@@ -69,6 +96,10 @@ export function LandingScreen() {
             >
               See what's inside
             </Button>
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              Free to start, no card required. Unlock everything for
+              {" "}₦2,000/semester when you're ready.
+            </p>
           </div>
         </section>
 
@@ -100,6 +131,44 @@ export function LandingScreen() {
               </div>
             ))}
           </div>
+
+          <h2 className="mt-8 font-display text-xl font-semibold text-foreground">
+            Coming next
+          </h2>
+          <div className="mt-4 space-y-3">
+            {upcoming.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl border border-dashed border-border bg-card/60 p-4"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-muted-foreground">
+                    <f.icon className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            Built for UI, across all 500+ courses
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Most Nigerian exam prep tools cover one level or one department and
+            stop there. TrueFluency Pro was built by a UI student to work across
+            Science, Arts, Technology, Social Sciences, Law, Medicine,
+            Engineering and the rest, so it still fits when you move from 100L
+            to 200L and beyond.
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            To be straight with you: this is a study aid, not a replacement for
+            lectures, and predictions are statistical estimates from past
+            papers, not guarantees.
+          </p>
         </div>
 
         <div className="mt-8">
@@ -111,8 +180,8 @@ export function LandingScreen() {
             Get Started, it's free
           </Button>
           <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-            A study aid, not a substitute for your coursework. Predictions are
-            statistical estimates from past papers.
+            Free to start, no card required. One time ₦2,000 per semester
+            unlocks everything, no auto renewal.
           </p>
         </div>
       </div>
