@@ -1,8 +1,8 @@
 /**
  * Server-only text extraction for course materials.
  *
- * Pure-JS, Worker-safe extractors (no native binaries): `unpdf` for PDF,
- * `mammoth` for Word, `fflate` + slide XML parsing for PowerPoint. Kept out of
+ * Pure-JS, Worker-safe extractors (no native binaries): `unpdf` for PDF, and
+ * `fflate` + Office XML parsing for Word and PowerPoint. Kept out of
  * the `.functions.ts` wrapper so the server-fn splitter can't strip it.
  */
 import { unzipSync, strFromU8 } from "fflate";
@@ -31,14 +31,35 @@ async function fromPdf(bytes: Uint8Array): Promise<string> {
   return Array.isArray(text) ? text.join("\n\n") : text;
 }
 
-async function fromDocx(bytes: Uint8Array): Promise<string> {
-  const mammoth = await import("mammoth");
-  const buffer = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-  return result.value ?? "";
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/** Word text lives in w:t runs; paragraph and break tags become line breaks. */
+function fromDocx(bytes: Uint8Array): string {
+  const files = unzipSync(bytes);
+  const parts = Object.keys(files)
+    .filter((n) => n === "word/document.xml" || /^word\/(header|footer)\d*\.xml$/.test(n))
+    .sort((a, b) => (a === "word/document.xml" ? -1 : b === "word/document.xml" ? 1 : a.localeCompare(b)));
+
+  const chunks: string[] = [];
+  for (const name of parts) {
+    const entry = files[name];
+    if (!entry) continue;
+    const text = strFromU8(entry)
+      .replace(/<w:br\s*\/?>/g, "\n")
+      .replace(/<\/w:p>/g, "\n")
+      .replace(/<w:tab\s*\/?>/g, " ")
+      .replace(/<[^>]+>/g, (tag) => (/^<w:t[\s>]/.test(tag) || tag === "</w:t>" ? "" : " "));
+    const decoded = decodeEntities(text);
+    if (decoded.trim()) chunks.push(decoded);
+  }
+  return chunks.join("\n\n");
 }
 
 /** Slide order matters for readability, so entries are sorted numerically. */
@@ -60,11 +81,7 @@ function fromPptx(bytes: Uint8Array): string {
     const runs = [...xml.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((m) => m[1] ?? "");
     const text = runs
       .join(" ")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'");
+    const text = decodeEntities(runs.join(" "));
     if (text.trim()) chunks.push(text.trim());
   }
   return chunks.join("\n\n");
@@ -78,7 +95,7 @@ export async function extractText(
   try {
     let raw = "";
     if (fileType === "pdf") raw = await fromPdf(bytes);
-    else if (fileType === "docx") raw = await fromDocx(bytes);
+    else if (fileType === "docx") raw = fromDocx(bytes);
     else if (fileType === "pptx") raw = fromPptx(bytes);
     else return { status: "failed", error: `Unsupported file type: ${fileType}` };
 
