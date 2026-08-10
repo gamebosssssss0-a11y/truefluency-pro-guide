@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useProfile, averageForCourse, hasQualifyingActivityToday, type UserCourse } from "@/lib/profile-store";
+import { useProfile, hasQualifyingActivityToday, type UserCourse } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Sparkles, Upload, ChevronDown, ChevronRight, TrendingUp, BookOpen, Flame, Target,
+  Sparkles, Upload, ChevronRight, TrendingUp, Flame, Target,
   PlayCircle, Zap, AlertTriangle, Quote as QuoteIcon, Lightbulb, Calculator, GaugeCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
