@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
+import { generateMock } from "@/lib/backend-api";
 
-// Your FastAPI backend URL — change to Render URL when deployed
-const BACKEND_URL = "https://truefluency-pro-backend.onrender.com";
+// The analysis service accepts at most 40 questions per request.
+const MAX_GENERATED_QUESTIONS = 40;
 
 /* ---------- types ---------- */
 
@@ -111,29 +112,22 @@ export function MockGenerationScreen() {
           return;
         }
 
-        const res = await fetch(`${BACKEND_URL}/generate-mock`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            material_id: ready.id,
-            course_code: course.code,
-            course_name: course.name,
-            question_count: count,
-            difficulty,
-            topic_focus: topicFocus,
-            user_goal: profile.goal,
-            user_timeline: profile.timeline,
-            user_level: profile.level,
-            user_department: profile.department,
-          }),
+        // Shared client: attaches the signed-in bearer token, normalises the
+        // profile fields the service expects, and surfaces real error text.
+        const questions = await generateMock({
+          materialId: ready.id,
+          courseCode: course.code,
+          courseName: course.name,
+          questionCount: Math.min(MAX_GENERATED_QUESTIONS, count),
+          difficulty,
+          topicFocus,
+          profile: {
+            goal: profile.goal,
+            timeline: profile.timeline,
+            level: profile.level,
+            department: profile.department,
+          },
         });
-
-        if (!res.ok) {
-          throw new Error(`Backend error: ${res.status}`);
-        }
-
-        const data = await res.json();
-        const questions: AIQuestion[] = data.questions;
 
         if (!questions || questions.length === 0) {
           throw new Error("No questions returned from AI");
