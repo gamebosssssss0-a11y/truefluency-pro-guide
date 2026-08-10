@@ -115,6 +115,8 @@ export type AppView =
   | "all-uploads"
   | "attempt-review"
   | "cgpa"
+  | "support"
+  | "edit-identity"
   | "disclaimer-view";
 
 /** The five persistent bottom tabs. */
