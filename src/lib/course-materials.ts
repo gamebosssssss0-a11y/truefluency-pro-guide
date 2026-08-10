@@ -241,33 +241,13 @@ export async function uploadCourseMaterial(opts: {
 
 
 
-  // 6) Call FastAPI backend to extract text — replaces broken Supabase edge functions
+  // 6) Extract text in-app. The server function resolves the storage path from
+  // the caller's own row, so nothing about the file location is trusted here.
   if (needsExtraction) {
     emit({ kind: "extracting" });
-    console.info("[upload] calling FastAPI extract-text", { fileType });
     try {
-      // The backend requires the caller's Supabase session and resolves the
-      // storage path from the owner's own row, so no file_path is sent.
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error("No active session for extraction");
-      const res = await fetch(`${BACKEND_URL}/extract-text`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          material_id: row.id,
-          file_type: fileType,
-        }),
-      });
-      if (!res.ok) {
-        console.error("[upload] extraction failed", await res.text());
-      } else {
-        const result = await res.json();
-        console.info("[upload] extraction ok", result);
-      }
+      const result = await extractMaterialText({ data: { materialId: row.id } });
+      console.info("[upload] extraction finished", result);
     } catch (e) {
       console.error("[upload] extraction threw", e);
     }
