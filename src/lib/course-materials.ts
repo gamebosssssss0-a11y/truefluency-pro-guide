@@ -400,6 +400,30 @@ export async function deleteAllUserMaterials() {
  * Pick the best material that can actually be analyzed by the backend:
  * text was extracted successfully and it isn't an image.
  */
+/** True when a material's text extraction can usefully be run again. */
+export function isRetryableMaterial(m: CourseMaterial): boolean {
+  return (
+    EXTRACTABLE_TYPES.includes(m.file_type) &&
+    (m.extraction_status === "pending" ||
+      m.extraction_status === "failed" ||
+      m.extraction_status === "timeout")
+  );
+}
+
+/**
+ * Re-run text extraction for one upload. Returns the refreshed row so callers
+ * can immediately reflect the new status.
+ */
+export async function retryExtraction(materialId: string): Promise<CourseMaterial | null> {
+  await extractMaterialText({ data: { materialId } });
+  const { data } = await supabase
+    .from("course_materials")
+    .select("*")
+    .eq("id", materialId)
+    .maybeSingle();
+  return (data as CourseMaterial | null) ?? null;
+}
+
 export function pickAnalyzableMaterial(
   materials: CourseMaterial[],
 ): CourseMaterial | null {
