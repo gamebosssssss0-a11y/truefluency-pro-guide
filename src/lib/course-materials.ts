@@ -10,6 +10,7 @@
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
+import { extractMaterialText } from "@/lib/extraction.functions";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
@@ -52,15 +53,8 @@ const DOCX_TYPE =
 const PPTX_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-// We still use this to know WHICH file types need extraction
-const EXTRACTION_FN: Partial<Record<CourseMaterial["file_type"], string>> = {
-  pdf: "extract-pdf-text",
-  docx: "extract-docx-text",
-  pptx: "extract-pptx-text",
-};
-
-// Your FastAPI backend URL — change to Render URL when deployed
-const BACKEND_URL = "https://truefluency-pro-backend.onrender.com";
+// Which file types carry extractable text.
+const EXTRACTABLE_TYPES: CourseMaterial["file_type"][] = ["pdf", "docx", "pptx"];
 
 export const ACCEPTED_UPLOAD_MIME =
   "image/jpeg,image/jpg,image/png,application/pdf," +
@@ -148,7 +142,7 @@ export async function uploadCourseMaterial(opts: {
     throw new Error(msg);
   }
   const isImage = fileType === "image";
-  const needsExtraction = !!EXTRACTION_FN[fileType];
+  const needsExtraction = EXTRACTABLE_TYPES.includes(fileType);
 
   // 3) (Image only) compress with graceful fallback
   let payload: Blob = file;
@@ -241,33 +235,13 @@ export async function uploadCourseMaterial(opts: {
 
 
 
-  // 6) Call FastAPI backend to extract text — replaces broken Supabase edge functions
+  // 6) Extract text in-app. The server function resolves the storage path from
+  // the caller's own row, so nothing about the file location is trusted here.
   if (needsExtraction) {
     emit({ kind: "extracting" });
-    console.info("[upload] calling FastAPI extract-text", { fileType });
     try {
-      // The backend requires the caller's Supabase session and resolves the
-      // storage path from the owner's own row, so no file_path is sent.
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error("No active session for extraction");
-      const res = await fetch(`${BACKEND_URL}/extract-text`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          material_id: row.id,
-          file_type: fileType,
-        }),
-      });
-      if (!res.ok) {
-        console.error("[upload] extraction failed", await res.text());
-      } else {
-        const result = await res.json();
-        console.info("[upload] extraction ok", result);
-      }
+      const result = await extractMaterialText({ data: { materialId: row.id } });
+      console.info("[upload] extraction finished", result);
     } catch (e) {
       console.error("[upload] extraction threw", e);
     }
@@ -426,6 +400,30 @@ export async function deleteAllUserMaterials() {
  * Pick the best material that can actually be analyzed by the backend:
  * text was extracted successfully and it isn't an image.
  */
+/** True when a material's text extraction can usefully be run again. */
+export function isRetryableMaterial(m: CourseMaterial): boolean {
+  return (
+    EXTRACTABLE_TYPES.includes(m.file_type) &&
+    (m.extraction_status === "pending" ||
+      m.extraction_status === "failed" ||
+      m.extraction_status === "timeout")
+  );
+}
+
+/**
+ * Re-run text extraction for one upload. Returns the refreshed row so callers
+ * can immediately reflect the new status.
+ */
+export async function retryExtraction(materialId: string): Promise<CourseMaterial | null> {
+  await extractMaterialText({ data: { materialId } });
+  const { data } = await supabase
+    .from("course_materials")
+    .select("*")
+    .eq("id", materialId)
+    .maybeSingle();
+  return (data as CourseMaterial | null) ?? null;
+}
+
 export function pickAnalyzableMaterial(
   materials: CourseMaterial[],
 ): CourseMaterial | null {
