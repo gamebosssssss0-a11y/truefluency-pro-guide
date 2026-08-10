@@ -1,4 +1,5 @@
-import { Info } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Info } from "lucide-react";
 
 /**
  * "AI-generated — verify against your material" label — muted text intended to sit
