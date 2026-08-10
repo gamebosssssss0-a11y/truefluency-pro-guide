@@ -83,7 +83,7 @@
 .dark {
   --background: #0B0B14;
   --foreground: #F5F3EE;
-  --card: #14142099;
+  --card: #141420;
   --card-foreground: #F5F3EE;
   --popover: #141420;
   --popover-foreground: #F5F3EE;
@@ -102,6 +102,7 @@
   --border: #26263A;
   --input: #2E2E44;
   --ring: #F5A524;
+  --pill-text-l: 82%;
 }
 
 

@@ -34,7 +34,7 @@ export function TopicPill({ label, strength, big }: { label: string; strength: n
       style={{
         borderColor: `hsl(${hue} 70% 55% / 0.35)`,
         backgroundColor: `hsl(${hue} 70% 55% / 0.12)`,
-        color: `hsl(${hue} 60% 30%)`,
+        color: `hsl(${hue} 60% var(--pill-text-l, 30%))`,
       }}
     >
       <span
