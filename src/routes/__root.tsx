@@ -94,20 +94,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@graph": [
             {
               "@type": "Organization",
-              "@id": "https://truefluency-pro.lovable.app/#organization",
+              "@id": "https://truefluency.app/#organization",
               name: "TrueFluency Pro",
-              url: "https://truefluency-pro.lovable.app",
+              url: "https://truefluency.app",
               description:
                 "AI-powered exam preparation for University of Ibadan students, with past-paper topic predictions, mock tests and CGPA planning tools.",
             },
             {
               "@type": "WebSite",
-              "@id": "https://truefluency-pro.lovable.app/#website",
+              "@id": "https://truefluency.app/#website",
               name: "TrueFluency Pro",
-              url: "https://truefluency-pro.lovable.app",
+              url: "https://truefluency.app",
               description:
                 "AI exam prep for University of Ibadan students: predicted topics, AI mock tests and study plans built from your own course materials.",
-              publisher: { "@id": "https://truefluency-pro.lovable.app/#organization" },
+              publisher: { "@id": "https://truefluency.app/#organization" },
               inLanguage: "en",
             },
           ],

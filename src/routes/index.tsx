@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { SplashScreen } from "@/components/onboarding/splash";
+import { LandingScreen } from "@/components/onboarding/landing";
 import { DisclaimerScreen, DisclaimerBlockedScreen, DisclaimerViewScreen } from "@/components/onboarding/disclaimer";
 import { IdentityScreen } from "@/components/onboarding/identity";
 import {
@@ -25,6 +26,24 @@ import { BottomTabBar, hidesTabBar } from "@/components/tab-bar";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "TrueFluency Pro: AI Exam Prep for UI Students" },
+      {
+        name: "description",
+        content:
+          "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students.",
+      },
+      { property: "og:title", content: "TrueFluency Pro: AI Exam Prep for UI Students" },
+      {
+        property: "og:description",
+        content:
+          "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students.",
+      },
+      { property: "og:url", content: "https://truefluency.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://truefluency.app/" }],
+  }),
 });
 
 function Index() {
@@ -44,6 +63,7 @@ function Router() {
   if (step !== "dashboard") {
     switch (step) {
       case "splash": return <SplashScreen />;
+      case "landing": return <LandingScreen />;
       case "disclaimer": return <DisclaimerScreen />;
       case "disclaimer-blocked": return <DisclaimerBlockedScreen />;
       case "identity": return <IdentityScreen />;
