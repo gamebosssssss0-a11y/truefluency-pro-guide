@@ -77,6 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "google-site-verification", content: "xEvr3Eu6d1Zjae6BP1Anhv20kYksnNs2OyDCdUv6v28" },
       { title: "TrueFluency Pro: AI Exam Prep for UI Students" },
       { name: "description", content: "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students." },
       { property: "og:title", content: "TrueFluency Pro: AI Exam Prep for UI Students" },
