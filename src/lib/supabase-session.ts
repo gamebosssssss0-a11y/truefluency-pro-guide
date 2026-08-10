@@ -2,63 +2,90 @@
  * Bridges the app's local identity (email account or guest) to a real
  * Supabase auth session so Storage + RLS work correctly.
  *
- * - "email" identity → deterministic Supabase email/password
- *   (email + hashed local password). If sign-in fails we sign up.
+ * - "email" identity → deterministic Supabase email/password derived from the
+ *   account record. If sign-in fails we sign up.
  * - "guest" identity → supabase.auth.signInAnonymously().
  *
  * Called on app boot and whenever the identity changes.
+ *
+ * The typed password is never stored. Two hashes are kept instead: a verifier
+ * (to check the password locally) and the derived Supabase password.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "@/lib/profile-store";
 
-// Simple deterministic password derived from the local password so the same
-// device+account always resolves to the same Supabase user without asking
-// the user to re-enter anything. Not a security boundary — the whole local
-// auth flow is a UX shim on top of managed Supabase auth.
-async function derivePassword(email: string, localPassword: string) {
-  const enc = new TextEncoder().encode(`${email}::${localPassword}::truefluency-v1`);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 32);
+    .join("");
 }
 
-export async function ensureSupabaseSession(profile: Profile): Promise<void> {
+/**
+ * Deterministic Supabase password so the same device+account always resolves to
+ * the same Supabase user without asking the user to re-enter anything. Not a
+ * security boundary on its own: the whole local auth flow is a UX shim on top
+ * of managed Supabase auth.
+ */
+export async function deriveSupabasePassword(
+  email: string,
+  localPassword: string,
+): Promise<string> {
+  return (await sha256Hex(`${email}::${localPassword}::truefluency-v1`)).slice(0, 32);
+}
+
+/** Hash used to verify a typed password against a stored account. */
+export async function localPasswordVerifier(
+  email: string,
+  localPassword: string,
+): Promise<string> {
+  return sha256Hex(`${email}::${localPassword}::truefluency-verify-v1`);
+}
+
+export type SessionOutcome =
+  | { ok: true; kind: "existing" | "password" | "signup" | "anonymous" }
+  | { ok: false; reason: string };
+
+export async function ensureSupabaseSession(profile: Profile): Promise<SessionOutcome> {
   const { data } = await supabase.auth.getSession();
-  if (data.session) return; // already signed in
+  if (data.session) return { ok: true, kind: "existing" };
 
   const id = profile.identity;
-  if (!id) return;
+  if (!id) return { ok: false, reason: "no-identity" };
 
   if (id.kind === "guest") {
-    await supabase.auth.signInAnonymously();
-    return;
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      console.error("[auth] guest session failed", error);
+      return { ok: false, reason: error.message };
+    }
+    return { ok: true, kind: "anonymous" };
   }
 
   if (id.kind === "email" && id.email) {
-    const acct = profile.accounts.find(
-      (a) => a.email.toLowerCase() === id.email!.toLowerCase(),
-    );
-    // Google-authenticated users have no local password record. Don't guess a
+    const email = id.email;
+    const acct = profile.accounts.find((a) => a.email.toLowerCase() === email.toLowerCase());
+    // Google-authenticated users have no local account record. Don't guess a
     // password for them: their session comes from the OAuth flow instead.
-    if (!acct) return;
-    const localPw = acct.password;
-    const pw = await derivePassword(id.email, localPw);
+    if (!acct?.derived) return { ok: false, reason: "oauth-or-missing-account" };
 
     const signIn = await supabase.auth.signInWithPassword({
-      email: id.email,
-      password: pw,
+      email,
+      password: acct.derived,
     });
-    if (!signIn.error) return;
+    if (!signIn.error) return { ok: true, kind: "password" };
 
     // Try signup — auto-confirm is enabled on this project.
-    await supabase.auth.signUp({ email: id.email, password: pw });
-    // If signup failed (e.g. already exists with different pw), fall back to anon
-    // so uploads still work.
+    const signUp = await supabase.auth.signUp({ email, password: acct.derived });
     const after = await supabase.auth.getSession();
-    if (!after.data.session) {
-      await supabase.auth.signInAnonymously();
-    }
+    if (after.data.session) return { ok: true, kind: "signup" };
+
+    // Surface the real reason instead of silently downgrading to a guest
+    // session, which would strand the user's cloud data under another user.
+    const reason = signUp.error?.message ?? signIn.error.message;
+    console.error("[auth] could not restore account session", reason);
+    return { ok: false, reason };
   }
+
+  return { ok: false, reason: "unsupported-identity" };
 }
