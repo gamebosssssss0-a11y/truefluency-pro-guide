@@ -52,26 +52,54 @@ export function scoreToStrength(pct: number) {
 
 /**
  * Course description with a 2-line clamp and a "Read more / Read less" toggle.
- * Shared so every screen that lists courses renders the description the same way.
+ * The toggle only appears when the text is actually clamped, so short
+ * descriptions (most course names) don't show a control that does nothing.
  */
 export function CourseDescription({ text, className }: { text: string; className?: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const textRef = useRef<HTMLParagraphElement | null>(null);
+
+  const measure = () => {
+    const el = textRef.current;
+    if (!el) return;
+    // Measure against the clamped box: expanded text never overflows.
+    if (expanded) return;
+    setOverflows(el.scrollHeight - el.clientHeight > 1);
+  };
+
+  useLayoutEffect(measure, [text, expanded]);
+
+  useEffect(() => {
+    const onResize = () => measure();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, expanded]);
+
   return (
     <div className={className}>
-      <p className={"text-xs text-muted-foreground " + (expanded ? "" : "line-clamp-2")}>{text}</p>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          setExpanded((current) => !current);
-        }}
-        onKeyDown={(event) => event.stopPropagation()}
-        className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-accent hover:text-accent/80"
-        aria-expanded={expanded}
+      <p
+        ref={textRef}
+        className={"text-xs text-muted-foreground " + (expanded ? "" : "line-clamp-2")}
       >
-        {expanded ? "Read less" : "Read more"}
-        <ChevronDown className={"h-3 w-3 transition-transform " + (expanded ? "rotate-180" : "")} />
-      </button>
+        {text}
+      </p>
+      {overflows ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((current) => !current);
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+          className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-accent hover:text-accent/80"
+          aria-expanded={expanded}
+        >
+          {expanded ? "Read less" : "Read more"}
+          <ChevronDown className={"h-3 w-3 transition-transform " + (expanded ? "rotate-180" : "")} />
+        </button>
+      ) : null}
     </div>
   );
 }
