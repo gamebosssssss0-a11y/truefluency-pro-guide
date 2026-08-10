@@ -77,6 +77,8 @@
   --border: oklch(0.88 0.015 85);
   --input: oklch(0.9 0.015 85);
   --ring: oklch(0.72 0.15 55);
+  /* Lightness for topic-pill text, so pills stay legible in both themes. */
+  --pill-text-l: 30%;
 }
 
 /* Dark: near-black ink base (#0B0B14), raised indigo surfaces, amber accent. */
