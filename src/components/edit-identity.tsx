@@ -25,8 +25,12 @@ export function EditIdentityScreen() {
   const [level, setLevel] = useState<Level | "">((profile.level as Level | null) ?? "");
   const [saving, setSaving] = useState(false);
 
-  const faculties = Object.keys(facultyData);
-  const departments = faculty ? (facultyData[faculty] ?? []) : [];
+  // Keep whatever is already on the profile selectable, even if the catalogue
+  // has since been renamed, so opening this screen never silently blanks it.
+  const faculties = Array.from(new Set([...Object.keys(facultyData), ...(faculty ? [faculty] : [])]));
+  const departments = faculty
+    ? Array.from(new Set([...(facultyData[faculty] ?? []), ...(department ? [department] : [])]))
+    : department ? [department] : [];
   const isGuest = profile.identity?.kind === "guest";
   const coursesWillReset =
     (department && department !== profile.department) || (level && level !== profile.level);
@@ -143,7 +147,7 @@ export function EditIdentityScreen() {
             <Label htmlFor="edit-department">Department</Label>
             <select
               id="edit-department"
-              disabled={!faculty}
+              disabled={!faculty && !department}
               className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground disabled:opacity-50"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
