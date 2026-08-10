@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://truefluency-pro.lovable.app/sitemap.xml
+Sitemap: https://truefluency.app/sitemap.xml
