@@ -1,4 +1,4 @@
-import markAsset from "@/assets/truefluency-mark.jpg.asset.json";
+import markAsset from "@/assets/truefluency-icon.png.asset.json";
 
 /**
  * TrueFluency PRO logo mark: the indigo squircle with the white flowing wave
