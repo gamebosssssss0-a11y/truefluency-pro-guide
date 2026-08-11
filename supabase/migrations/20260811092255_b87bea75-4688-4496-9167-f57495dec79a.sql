@@ -1,0 +1,1 @@
+DELETE FROM public.course_materials WHERE file_name = 'test-paper.pdf' AND size_bytes = 1108;
