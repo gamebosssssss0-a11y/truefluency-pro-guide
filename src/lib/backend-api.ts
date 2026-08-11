@@ -5,7 +5,9 @@
  * loudly with a friendly message instead of silently hitting localhost.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { generateMockInApp, predictTopicsInApp } from "@/lib/ai-analysis.functions";
 import type { AIQuestion, Difficulty, Profile } from "@/lib/profile-store";
+
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
@@ -81,7 +83,13 @@ async function postJson<T>(path: string, body: unknown, timeoutMs = 120_000): Pr
 }
 
 
-/** Real topic prediction for one uploaded material. */
+/**
+ * Real topic prediction for one uploaded material.
+ *
+ * The external analysis service is tried first; if it can't serve the request
+ * (unreachable, misconfigured, or it can't see the upload), the same analysis
+ * runs in-app so the student still gets predictions.
+ */
 export async function predictTopics(input: {
   materialId: string;
   courseCode: string;
@@ -89,15 +97,31 @@ export async function predictTopics(input: {
   level?: string | null;
   department?: string | null;
 }): Promise<PredictedTopic[]> {
-  const data = await postJson<{ topics: unknown }>("/predict-topics", {
-    material_id: input.materialId,
-    course_code: input.courseCode,
-    course_name: input.courseName,
-    user_level: input.level ? String(input.level) : null,
-    user_department: input.department ?? null,
-  });
+  let raw: unknown[] = [];
+  try {
+    if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+    const data = await postJson<{ topics: unknown }>("/predict-topics", {
+      material_id: input.materialId,
+      course_code: input.courseCode,
+      course_name: input.courseName,
+      user_level: input.level ? String(input.level) : null,
+      user_department: input.department ?? null,
+    });
+    raw = Array.isArray(data?.topics) ? data.topics : [];
+    if (raw.length === 0) throw new Error("The analysis came back empty.");
+  } catch (e) {
+    console.warn("[backend] predict-topics unavailable, analyzing in-app", e);
+    return predictTopicsInApp({
+      data: {
+        materialId: input.materialId,
+        courseCode: input.courseCode,
+        courseName: input.courseName,
+        level: input.level ?? null,
+        department: input.department ?? null,
+      },
+    });
+  }
 
-  const raw = Array.isArray(data?.topics) ? data.topics : [];
   const topics: PredictedTopic[] = raw
     .map((t) => {
       const o = t as { topic?: unknown; confidence?: unknown };
@@ -112,7 +136,11 @@ export async function predictTopics(input: {
   return topics;
 }
 
-/** Real mock test generation for one uploaded material. */
+
+/**
+ * Real mock test generation for one uploaded material, with the same in-app
+ * fallback as topic prediction.
+ */
 export async function generateMock(input: {
   materialId: string;
   courseCode: string;
@@ -122,21 +150,41 @@ export async function generateMock(input: {
   topicFocus: string[];
   profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
 }): Promise<AIQuestion[]> {
-  const data = await postJson<{ questions: unknown }>("/generate-mock", {
-    material_id: input.materialId,
-    course_code: input.courseCode,
-    course_name: input.courseName,
-    question_count: input.questionCount,
-    difficulty: input.difficulty,
-    topic_focus: input.topicFocus,
-    user_goal: input.profile.goal,
-    user_timeline: input.profile.timeline,
-    user_level: input.profile.level ? String(input.profile.level) : null,
-    user_department: input.profile.department,
-  });
+  let raw: unknown[] = [];
+  try {
+    if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+    const data = await postJson<{ questions: unknown }>("/generate-mock", {
+      material_id: input.materialId,
+      course_code: input.courseCode,
+      course_name: input.courseName,
+      question_count: input.questionCount,
+      difficulty: input.difficulty,
+      topic_focus: input.topicFocus,
+      user_goal: input.profile.goal,
+      user_timeline: input.profile.timeline,
+      user_level: input.profile.level ? String(input.profile.level) : null,
+      user_department: input.profile.department,
+    });
+    raw = Array.isArray(data?.questions) ? data.questions : [];
+    if (raw.length === 0) throw new Error("No questions came back from the generator.");
+  } catch (e) {
+    console.warn("[backend] generate-mock unavailable, generating in-app", e);
+    raw = await generateMockInApp({
+      data: {
+        materialId: input.materialId,
+        courseCode: input.courseCode,
+        courseName: input.courseName,
+        questionCount: input.questionCount,
+        difficulty: input.difficulty,
+        topicFocus: input.topicFocus,
+        level: input.profile.level ? String(input.profile.level) : null,
+        department: input.profile.department ?? null,
+      },
+    });
+  }
 
-  const raw = Array.isArray(data?.questions) ? data.questions : [];
   const questions: AIQuestion[] = raw
+
     .map((q, i) => {
       const o = q as Partial<AIQuestion> & { correct_index?: unknown };
       const options: string[] = Array.isArray(o.options)
