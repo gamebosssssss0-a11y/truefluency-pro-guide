@@ -57,7 +57,8 @@ function useCourseMaterials(courseCode: string) {
 
   /* Uploads left at "pending" (e.g. from an earlier failed extraction) get one
    * automatic repair attempt per session so old files become usable without
-   * the student having to re-upload anything. */
+   * the student having to re-upload anything. The outcome is always reported,
+   * so a failure can never look like nothing happened. */
   const repaired = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!items) return;
@@ -68,17 +69,27 @@ function useCourseMaterials(courseCode: string) {
     for (const m of stuck) repaired.current.add(m.id);
     void (async () => {
       let changed = false;
+      let failure: string | null = null;
       for (const m of stuck) {
         try {
-          await retryExtraction(m.id);
+          const fresh = await retryExtraction(m.id);
           changed = true;
+          if (fresh && fresh.extraction_status !== "success") {
+            failure = fresh.extraction_error || "We couldn't read text from that file.";
+          }
         } catch (e) {
           console.error("[materials] auto-repair failed", { id: m.id, error: e });
+          changed = true;
+          failure = (e as Error)?.message || "We couldn't read text from that file.";
         }
+      }
+      if (failure) {
+        toast.message("One of your uploads couldn't be read", { description: failure });
       }
       if (changed) void load();
     })();
   }, [items, load]);
+
 
   return { items, loading };
 }
@@ -191,16 +202,34 @@ function CoursePrimaryActions({
   const { navigate, profile } = useProfile();
   const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
   const ready = Boolean(readyMaterial);
-  const analysis = useAnalyzeTopics(courseCode, courseName, readyMaterial);
+  /* An upload whose text hasn't been read yet still powers Analyze: the button
+   * reads it first, then analyzes. */
+  const repairable = readyMaterial
+    ? null
+    : (materials ?? []).find((m) => isRetryableMaterial(m)) ?? null;
+  const analysis = useAnalyzeTopics(courseCode, courseName, readyMaterial, repairable);
+  const canAnalyze = Boolean(readyMaterial || repairable);
+
+  const analyzeButton = (
+    <Button
+      size="lg"
+      variant="outline"
+      className={ready ? undefined : "w-full"}
+      onClick={() => void analysis.analyze()}
+      disabled={analysis.busy || !canAnalyze}
+    >
+      {analysis.busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1.5 h-4 w-4" />}
+      {analysis.busy
+        ? "Analyzing…"
+        : !canAnalyze
+          ? "Upload a paper first"
+          : analysis.stored && !analysis.stale ? "Re-analyze" : "Analyze Upload"}
+    </Button>
+  );
 
   const actions = ready ? (
     <div className="mt-5 grid grid-cols-2 gap-2">
-      <Button size="lg" variant="outline" onClick={() => void analysis.analyze()} disabled={analysis.busy}>
-        {analysis.busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1.5 h-4 w-4" />}
-        {analysis.busy
-          ? "Analyzing…"
-          : analysis.stored && !analysis.stale ? "Re-analyze" : "Analyze Upload"}
-      </Button>
+      {analyzeButton}
       <Button size="lg" onClick={() => navigate("mock-config", { courseCode })}>
         <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
@@ -215,19 +244,23 @@ function CoursePrimaryActions({
     <div className="mt-5 space-y-2">
       <UploadButton courseCode={courseCode} />
       <PasteTextButton courseCode={courseCode} />
+      {analyzeButton}
       <Button size="lg" className="w-full" disabled>
         <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
       <p className="text-center text-[11px] text-muted-foreground">
         {materialsLoading && materials === null
           ? "Checking your uploads…"
-          : materials && materials.length > 0
-            ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file, or paste text, to unlock mock tests."
-            : "Upload a past paper or paste text first."}
+          : repairable
+            ? "Tap Analyze Upload and we'll read your file, then predict topics."
+            : materials && materials.length > 0
+              ? "We couldn't read text from your uploads yet. Add a PDF, Word or PowerPoint file, or paste text, to unlock mock tests."
+              : "Upload a past paper or paste text first."}
       </p>
 
     </div>
   );
+
 
 
   const topics = (
@@ -277,7 +310,12 @@ const ANALYZE_STEPS = [
  * Shared analysis runner. Stores the result on the profile keyed by course so
  * revisiting the screen doesn't re-fetch, while a newer upload allows a re-run.
  */
-function useAnalyzeTopics(courseCode: string, courseName: string, material: CourseMaterial | null) {
+function useAnalyzeTopics(
+  courseCode: string,
+  courseName: string,
+  material: CourseMaterial | null,
+  fallback: CourseMaterial | null = null,
+) {
   const { profile, update } = useProfile();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -294,14 +332,32 @@ function useAnalyzeTopics(courseCode: string, courseName: string, material: Cour
   const stale = Boolean(stored && material && stored.materialId !== material.id);
 
   const analyze = async () => {
-    if (!material || runningRef.current) return;
+    if ((!material && !fallback) || runningRef.current) return;
     runningRef.current = true;
     setBusy(true);
     setError(null);
     try {
+      let target = material;
+
+      /* An upload whose text was never read (stuck or failed) gets read first,
+       * so Analyze does the obvious thing instead of being unavailable. */
+      if (!target && fallback) {
+        const fresh = await retryExtraction(fallback.id);
+        try { window.dispatchEvent(new Event("course-materials-refresh")); } catch { /* ignore */ }
+        if (fresh && fresh.extraction_status === "success") {
+          target = fresh;
+        } else {
+          throw new Error(
+            fresh?.extraction_error ||
+              "We couldn't read text from that file. Try a PDF, Word or PowerPoint file, or paste the text instead.",
+          );
+        }
+      }
+      if (!target) throw new Error("Upload a past paper first.");
+
       if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
       const topics = await predictTopics({
-        materialId: material.id,
+        materialId: target.id,
         courseCode,
         courseName,
         level: profile.level,
@@ -310,15 +366,18 @@ function useAnalyzeTopics(courseCode: string, courseName: string, material: Cour
       update({
         courseTopicAnalysis: {
           ...profile.courseTopicAnalysis,
-          [courseCode]: { materialId: material.id, analyzedAt: Date.now(), topics },
+          [courseCode]: { materialId: target.id, analyzedAt: Date.now(), topics },
         },
       });
     } catch (e) {
       console.error("[analyze] failed", e);
+      const msg = (e as Error)?.message;
       setError(
-        (e as Error)?.message === NOT_CONFIGURED_MESSAGE
+        msg === NOT_CONFIGURED_MESSAGE
           ? NOT_CONFIGURED_MESSAGE
-          : "Couldn't analyze your material right now. Try again in a moment.",
+          : msg && msg.length < 200
+            ? msg
+            : "Couldn't analyze your material right now. Try again in a moment.",
       );
     } finally {
       setBusy(false);
@@ -328,6 +387,7 @@ function useAnalyzeTopics(courseCode: string, courseName: string, material: Cour
 
   return { analyze, busy, error, stored, stale, statusText: ANALYZE_STEPS[stepIdx] };
 }
+
 
 type AnalysisState = ReturnType<typeof useAnalyzeTopics>;
 
@@ -407,16 +467,39 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
 
 /* -------- Upload button + duplicate dialog -------- */
 
+/* The file input stays rendered (off-screen, not display:none) and the trigger
+ * is a real <label>, because Android WebViews and in-app browsers frequently
+ * refuse to open the picker for a display:none input clicked from script. */
+const HIDDEN_INPUT_CLASS =
+  "absolute h-px w-px overflow-hidden opacity-0 -z-10 left-0 top-0 pointer-events-none";
+
 function UploadButton({ courseCode }: { courseCode: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = `upload-${courseCode.replace(/[^a-zA-Z0-9-]/g, "")}`;
   const [stage, setStage] = useState<UploadStage | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [dupOpen, setDupOpen] = useState(false);
   const [lastError, setLastError] = useState<{ file: File } | null>(null);
+  const [noResponse, setNoResponse] = useState(false);
+  const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const onPick = () => {
-    try { inputRef.current?.click(); } catch (e) { console.error("[upload] file picker click failed", e); }
+  const clearWatchdog = () => {
+    if (watchdog.current) {
+      clearTimeout(watchdog.current);
+      watchdog.current = null;
+    }
   };
+
+  useEffect(() => clearWatchdog, []);
+
+  /* If the tap produces neither a file nor an error, say so instead of
+   * looking like nothing happened. */
+  const armWatchdog = () => {
+    setNoResponse(false);
+    clearWatchdog();
+    watchdog.current = setTimeout(() => setNoResponse(true), 20000);
+  };
+
 
   const runUpload = async (file: File) => {
     console.info("[upload] runUpload start", { name: file.name, courseCode });
@@ -465,6 +548,8 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearWatchdog();
+    setNoResponse(false);
     try {
       const file = e.target.files?.[0];
       e.target.value = "";
@@ -496,17 +581,41 @@ function UploadButton({ courseCode }: { courseCode: string }) {
     <>
       <input
         ref={inputRef}
+        id={inputId}
         type="file"
         accept={ACCEPTED_UPLOAD_MIME}
-        className="hidden"
+        className={HIDDEN_INPUT_CLASS}
+        tabIndex={-1}
         onChange={onFile}
       />
-      <Button size="lg" variant="outline" className="w-full" onClick={onPick} disabled={busy}>
-        {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
-        {busy ? "Uploading…" : "Upload paper"}
-      </Button>
+      {busy ? (
+        <Button size="lg" variant="outline" className="w-full" disabled>
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Uploading…
+        </Button>
+      ) : (
+        <Button asChild size="lg" variant="outline" className="w-full">
+          <label htmlFor={inputId} className="cursor-pointer" onClick={armWatchdog}>
+            <Upload className="mr-1.5 h-4 w-4" /> Upload paper
+          </label>
+        </Button>
+      )}
 
       {stage ? <StageBanner stage={stage} /> : null}
+
+      {noResponse && !stage ? (
+        <div className="col-span-2 mt-2 rounded-2xl border border-border bg-muted/40 p-3 text-xs">
+          <div className="font-semibold text-foreground">Picker didn't open?</div>
+          <p className="mt-0.5 text-muted-foreground">
+            Some in-app browsers block file picking. Use the file box below, or open the app in Chrome or Safari.
+          </p>
+          <input
+            type="file"
+            accept={ACCEPTED_UPLOAD_MIME}
+            onChange={onFile}
+            className="mt-2 block w-full text-xs"
+          />
+        </div>
+      ) : null}
 
       {lastError && !stage ? (
         <div className="col-span-2 mt-2 flex items-start gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-xs">
@@ -520,6 +629,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
           </Button>
         </div>
       ) : null}
+
 
       <AlertDialog open={dupOpen} onOpenChange={setDupOpen}>
         <AlertDialogContent>

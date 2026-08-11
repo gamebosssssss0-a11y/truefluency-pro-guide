@@ -412,10 +412,26 @@ export function isRetryableMaterial(m: CourseMaterial): boolean {
 
 /**
  * Re-run text extraction for one upload. Returns the refreshed row so callers
- * can immediately reflect the new status.
+ * can immediately reflect the new status. A crash in the extractor is recorded
+ * on the row itself so the materials list can show a real reason instead of
+ * leaving the upload stuck at "Extracting…" forever.
  */
 export async function retryExtraction(materialId: string): Promise<CourseMaterial | null> {
-  await extractMaterialText({ data: { materialId } });
+  try {
+    await extractMaterialText({ data: { materialId } });
+  } catch (e) {
+    const reason = (e as Error)?.message || "Text extraction failed unexpectedly.";
+    console.error("[extraction] retry threw", { materialId, error: e });
+    try {
+      await supabase
+        .from("course_materials")
+        .update({ extraction_status: "failed", extraction_error: reason })
+        .eq("id", materialId);
+    } catch (persistErr) {
+      console.error("[extraction] couldn't record the failure", persistErr);
+    }
+    throw e instanceof Error ? e : new Error(reason);
+  }
   const { data } = await supabase
     .from("course_materials")
     .select("*")
@@ -423,6 +439,7 @@ export async function retryExtraction(materialId: string): Promise<CourseMateria
     .maybeSingle();
   return (data as CourseMaterial | null) ?? null;
 }
+
 
 export function pickAnalyzableMaterial(
   materials: CourseMaterial[],
