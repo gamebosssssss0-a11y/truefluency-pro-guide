@@ -916,6 +916,10 @@ export function MaterialRow({
         </button>
       </div>
 
+      {hasExtraction ? <ExtractionGuidance material={m} /> : null}
+
+
+
       {flag ? (
         <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 p-2.5 text-[11px] text-foreground">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
