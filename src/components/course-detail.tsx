@@ -23,6 +23,7 @@ import {
 import {
   getMetadataFlag, dismissMetadataFlag, METADATA_NOTE,
 } from "@/lib/material-metadata";
+import { extractionSummary, extractionToastMessage } from "@/lib/extraction-status";
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -517,18 +518,13 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       if (t === "pdf" || t === "docx" || t === "pptx") {
         if (result.extraction_status === "success") {
           toast.success(`Added to ${courseCode}. Text ready.`);
-        } else if (t === "pdf" && result.extraction_status === "scanned_pdf") {
-          toast.message(`Added to ${courseCode}`, {
-            description: "This looks like a scanned document. For best results, upload it as an image instead so we can process it accurately.",
-          });
-        } else if (result.extraction_status === "failed" || result.extraction_status === "timeout") {
-          toast.message(`Added to ${courseCode}`, {
-            description: "We've saved your file, but couldn't process its content automatically yet.",
-          });
         } else {
-          toast.success(`Added to ${courseCode}`);
+          toast.message(`Added to ${courseCode}, but we couldn't read its text`, {
+            description: extractionToastMessage(result),
+          });
         }
       } else {
+
         toast.success(`Added to ${courseCode}`);
       }
       try { window.dispatchEvent(new Event("course-materials-refresh")); } catch (e) {
@@ -837,21 +833,27 @@ export function MaterialRow({
     setRetrying(true);
     try {
       const fresh = await retryExtraction(m.id);
-      if (fresh?.extraction_status === "success") {
+      if (!fresh) {
+        toast.error("We couldn't check that upload. Refresh and try again.");
+      } else if (fresh.extraction_status === "success") {
         toast.success("Text extracted, this upload is ready to analyze.");
-      } else if (fresh?.extraction_status === "scanned_pdf") {
-        toast.error("No selectable text found. This looks like a scan, upload it as an image instead.");
       } else {
-        toast.error(fresh?.extraction_error ?? "We still couldn't read that file.");
+        toast.error("Still couldn't read this file", {
+          description: extractionToastMessage(fresh),
+        });
       }
       window.dispatchEvent(new Event("course-materials-refresh"));
     } catch (e) {
       console.error("[materials] retry extraction failed", e);
       toast.error(e instanceof Error ? e.message : "Couldn't read that file. Please try again.");
+      // The row already carries a terminal status from retryExtraction, so the
+      // list must refresh even after a throw or it would keep showing "Extracting…".
+      window.dispatchEvent(new Event("course-materials-refresh"));
     } finally {
       setRetrying(false);
     }
   };
+
 
   const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
     if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
@@ -883,7 +885,7 @@ export function MaterialRow({
             <span>{kb}KB</span>
             <span>·</span>
             <span>{new Date(m.created_at).toLocaleDateString()}</span>
-            {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
+            {hasExtraction ? <ExtractionBadge material={m} /> : null}
           </div>
           {isFromInactiveCourse ? (
             <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
@@ -909,6 +911,10 @@ export function MaterialRow({
         </button>
       </div>
 
+      {hasExtraction ? <ExtractionGuidance material={m} /> : null}
+
+
+
       {flag ? (
         <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 p-2.5 text-[11px] text-foreground">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -930,10 +936,48 @@ export function MaterialRow({
 }
 
 
-function ExtractionBadge({ status }: { status: CourseMaterial["extraction_status"] }) {
-  if (status === "success") return <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Text ready</span>;
-  if (status === "pending") return <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Extracting…</span>;
-  if (status === "scanned_pdf") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">Scanned, upload as image</span>;
-  if (status === "timeout" || status === "failed") return <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive">Couldn't read content</span>;
-  return null;
+function ExtractionBadge({ material }: { material: CourseMaterial }) {
+  const summary = extractionSummary(material);
+  if (!summary) return null;
+  const tone =
+    summary.tone === "ok"
+      ? "bg-primary/10 text-primary"
+      : summary.tone === "working"
+        ? "bg-muted text-muted-foreground"
+        : summary.tone === "warn"
+          ? "bg-amber-100 text-amber-800"
+          : "bg-destructive/10 text-destructive";
+  return (
+    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", tone)}>
+      {summary.label}
+    </span>
+  );
 }
+
+/** Explains an unreadable upload and lists what the student can do next. */
+function ExtractionGuidance({ material }: { material: CourseMaterial }) {
+  const summary = extractionSummary(material);
+  if (!summary || summary.nextSteps.length === 0) return null;
+  const isWarn = summary.tone === "warn";
+  return (
+    <div
+      className={cn(
+        "mt-2.5 rounded-xl border p-2.5 text-[11px]",
+        isWarn ? "border-amber-200 bg-amber-50 text-amber-900" : "border-destructive/20 bg-destructive/5 text-foreground",
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="min-w-0">
+          <div className="font-semibold">{summary.reason}</div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {summary.nextSteps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -434,6 +434,41 @@ export async function savePastedText(opts: {
   }
 }
 
+/**
+ * Give any abandoned "pending" row a terminal verdict.
+ *
+ * An extraction run can be cut short by a closed tab, a lost connection or a
+ * dropped RPC. Without this sweep those rows would render as "Extracting…"
+ * forever, so the student would never learn what to do next.
+ */
+async function resolveStuckPending(items: CourseMaterial[]): Promise<CourseMaterial[]> {
+  const { isStuckPending, STUCK_PENDING_REASON } = await import("@/lib/extraction-status");
+  const stuck = items.filter(isStuckPending);
+  if (stuck.length === 0) return items;
+
+  try {
+    const { error } = await supabase
+      .from("course_materials")
+      .update({ extraction_status: "failed", extraction_error: STUCK_PENDING_REASON })
+      .in(
+        "id",
+        stuck.map((m) => m.id),
+      )
+      .eq("extraction_status", "pending");
+    if (error) throw error;
+  } catch (e) {
+    console.error("[extraction] couldn't resolve stuck pending rows", e);
+    return items;
+  }
+
+  const stuckIds = new Set(stuck.map((m) => m.id));
+  return items.map((m) =>
+    stuckIds.has(m.id)
+      ? { ...m, extraction_status: "failed", extraction_error: STUCK_PENDING_REASON }
+      : m,
+  );
+}
+
 export async function listMaterialsForCourse(courseCode: string) {
   const { data, error } = await supabase
     .from("course_materials")
@@ -441,7 +476,7 @@ export async function listMaterialsForCourse(courseCode: string) {
     .eq("course_code", courseCode)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as CourseMaterial[];
+  return resolveStuckPending((data ?? []) as CourseMaterial[]);
 }
 
 /** All materials the signed-in user has ever uploaded, across every course. */
@@ -451,8 +486,9 @@ export async function listAllUserMaterials() {
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as CourseMaterial[];
+  return resolveStuckPending((data ?? []) as CourseMaterial[]);
 }
+
 
 export async function deleteMaterial(m: CourseMaterial) {
   await supabase.storage.from("course-materials").remove([m.file_path]);
