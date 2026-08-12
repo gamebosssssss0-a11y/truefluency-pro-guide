@@ -11,7 +11,7 @@ import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
-import type { QuotaVerdict } from "@/lib/entitlements";
+import { FOUNDING_PRICE_NAIRA, FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice, LockedExplanation } from "@/components/paywall-notice";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
@@ -346,10 +346,15 @@ export function MockConfigScreen() {
   const remembered = course ? profile.courseTestSettings[course.code] : undefined;
   const initial = remembered ?? smart!;
 
+  const { maxQuestionsPerSet } = useEntitlement();
   const [count, setCount] = useState(Math.min(FREE_QUESTION_LIMIT, Math.max(MIN_QUESTIONS, initial?.questionCount ?? 20)));
   const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
+
+  useEffect(() => {
+    setCount((c) => Math.min(c, maxQuestionsPerSet));
+  }, [maxQuestionsPerSet]);
 
   if (!course || !smart) return null;
 
@@ -408,16 +413,18 @@ export function MockConfigScreen() {
               min={MIN_QUESTIONS}
               max={MAX_QUESTIONS}
               step={5}
-              onChange={(v) => setCount(Math.min(v, FREE_QUESTION_LIMIT))}
-              hardCeiling={FREE_QUESTION_LIMIT}
+              onChange={(v) => setCount(Math.min(v, maxQuestionsPerSet))}
+              hardCeiling={maxQuestionsPerSet}
             />
-            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
-              <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-              <span>
-                Tests above {FREE_QUESTION_LIMIT} questions are part of a paid tier that is not
-                available yet, so the slider stops there for now.
-              </span>
-            </p>
+            {maxQuestionsPerSet <= FREE_MAX_QUESTIONS ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                <span>
+                  Free accounts cap a set at {FREE_MAX_QUESTIONS} questions. Full access raises it
+                  to {PAID_MAX_QUESTIONS}.
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={120} step={5} onChange={setMinutes} />
@@ -925,9 +932,13 @@ export function AttemptReviewScreen() {
                     <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Why this is the answer
                     </div>
-                    <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
-                      <MathText>{q.explanation}</MathText>
-                    </p>
+                    {q.explanation?.trim() ? (
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+                        <MathText>{q.explanation}</MathText>
+                      </p>
+                    ) : (
+                      <LockedExplanation priceNaira={FOUNDING_PRICE_NAIRA} />
+                    )}
                   </div>
                 </div>
               );
