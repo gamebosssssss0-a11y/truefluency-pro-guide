@@ -23,6 +23,7 @@ import {
 import {
   getMetadataFlag, dismissMetadataFlag, METADATA_NOTE,
 } from "@/lib/material-metadata";
+import { extractionSummary, extractionToastMessage } from "@/lib/extraction-status";
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
