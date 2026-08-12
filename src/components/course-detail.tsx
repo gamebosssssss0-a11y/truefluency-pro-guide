@@ -930,10 +930,48 @@ export function MaterialRow({
 }
 
 
-function ExtractionBadge({ status }: { status: CourseMaterial["extraction_status"] }) {
-  if (status === "success") return <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Text ready</span>;
-  if (status === "pending") return <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Extracting…</span>;
-  if (status === "scanned_pdf") return <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">Scanned, upload as image</span>;
-  if (status === "timeout" || status === "failed") return <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive">Couldn't read content</span>;
-  return null;
+function ExtractionBadge({ material }: { material: CourseMaterial }) {
+  const summary = extractionSummary(material);
+  if (!summary) return null;
+  const tone =
+    summary.tone === "ok"
+      ? "bg-primary/10 text-primary"
+      : summary.tone === "working"
+        ? "bg-muted text-muted-foreground"
+        : summary.tone === "warn"
+          ? "bg-amber-100 text-amber-800"
+          : "bg-destructive/10 text-destructive";
+  return (
+    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", tone)}>
+      {summary.label}
+    </span>
+  );
 }
+
+/** Explains an unreadable upload and lists what the student can do next. */
+function ExtractionGuidance({ material }: { material: CourseMaterial }) {
+  const summary = extractionSummary(material);
+  if (!summary || summary.nextSteps.length === 0) return null;
+  const isWarn = summary.tone === "warn";
+  return (
+    <div
+      className={cn(
+        "mt-2.5 rounded-xl border p-2.5 text-[11px]",
+        isWarn ? "border-amber-200 bg-amber-50 text-amber-900" : "border-destructive/20 bg-destructive/5 text-foreground",
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="min-w-0">
+          <div className="font-semibold">{summary.reason}</div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {summary.nextSteps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
