@@ -145,12 +145,26 @@ export async function extractText(
     return { status: "success", text, chars: text.length };
   } catch (e) {
     console.error("[extraction] failed", { fileType, error: e });
-    return {
-      status: "failed",
-      error:
-        fileType === "pdf"
-          ? "We couldn't read text from that PDF. It may be encrypted or damaged."
-          : "We couldn't read text from that file. It may be damaged.",
-    };
+    return { status: "failed", error: describeFailure(fileType, e) };
   }
 }
+
+/** Turn a parser crash into wording that tells the student what to do next. */
+export function describeFailure(fileType: string, e: unknown): string {
+  const raw = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
+
+  if (/password|encrypt/.test(raw)) {
+    return "That PDF is password protected, so its text can't be read. Upload an unlocked copy.";
+  }
+  if (/timeout|timed out|aborted|deadline/.test(raw)) {
+    return "Reading that file took too long. Try again, or upload a smaller or split copy.";
+  }
+  if (/invalid pdf|structure|xref|corrupt|damaged|unexpected end/.test(raw)) {
+    return "That PDF looks damaged, so its text can't be read. Try re-saving or re-downloading it.";
+  }
+  if (fileType === "pdf") {
+    return "We couldn't read text from that PDF. Try re-saving it, or paste the text instead.";
+  }
+  return "We couldn't read text from that file. It may be damaged.";
+}
+
