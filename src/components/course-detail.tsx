@@ -838,21 +838,27 @@ export function MaterialRow({
     setRetrying(true);
     try {
       const fresh = await retryExtraction(m.id);
-      if (fresh?.extraction_status === "success") {
+      if (!fresh) {
+        toast.error("We couldn't check that upload. Refresh and try again.");
+      } else if (fresh.extraction_status === "success") {
         toast.success("Text extracted, this upload is ready to analyze.");
-      } else if (fresh?.extraction_status === "scanned_pdf") {
-        toast.error("No selectable text found. This looks like a scan, upload it as an image instead.");
       } else {
-        toast.error(fresh?.extraction_error ?? "We still couldn't read that file.");
+        toast.error("Still couldn't read this file", {
+          description: extractionToastMessage(fresh),
+        });
       }
       window.dispatchEvent(new Event("course-materials-refresh"));
     } catch (e) {
       console.error("[materials] retry extraction failed", e);
       toast.error(e instanceof Error ? e.message : "Couldn't read that file. Please try again.");
+      // The row already carries a terminal status from retryExtraction, so the
+      // list must refresh even after a throw or it would keep showing "Extracting…".
+      window.dispatchEvent(new Event("course-materials-refresh"));
     } finally {
       setRetrying(false);
     }
   };
+
 
   const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
     if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
