@@ -11,7 +11,7 @@ import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
 import { extractMaterialText } from "@/lib/extraction.functions";
-import { extractSelectablePdfText } from "@/lib/pdf-extraction.client";
+import { extractSelectablePdfText } from "@/lib/pdf-extraction.browser";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
