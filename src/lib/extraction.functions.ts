@@ -79,8 +79,7 @@ export const extractMaterialText = createServerFn({ method: "POST" })
         await record({
           extracted_content: null,
           extraction_status: "scanned_pdf",
-          extraction_error:
-            "No selectable text found. This looks like a scan or photo of a page.",
+          extraction_error: "No selectable text found. This looks like a scan or photo of a page.",
         });
         return { materialId: row.id, status: "scanned_pdf", chars: 0 };
       }
@@ -102,4 +101,3 @@ export const extractMaterialText = createServerFn({ method: "POST" })
       return { materialId: row.id, status: "failed", chars: 0, error: reason };
     }
   });
-

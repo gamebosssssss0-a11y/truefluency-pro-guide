@@ -46,13 +46,10 @@ export const MIN_PASTED_CHARS = 200;
 export const PASTED_TOO_SHORT_MESSAGE =
   "This looks too short to generate useful predictions from, try adding more content.";
 
-
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
-const DOCX_TYPE =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const PPTX_TYPE =
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const PPTX_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
 // Which file types carry extractable text.
 const EXTRACTABLE_TYPES: CourseMaterial["file_type"][] = ["pdf", "docx", "pptx"];
@@ -65,10 +62,7 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promis
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error("Text extraction took too long.")),
-          milliseconds,
-        );
+        timer = setTimeout(() => reject(new Error("Text extraction took too long.")), milliseconds);
       }),
     ]);
   } finally {
@@ -76,10 +70,7 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promis
   }
 }
 
-async function persistLocalPdfFallback(
-  materialId: string,
-  file: File,
-): Promise<boolean> {
+async function persistLocalPdfFallback(materialId: string, file: File): Promise<boolean> {
   try {
     const text = await extractSelectablePdfText(file);
     if (text.length < MIN_EXTRACTED_CHARS) return false;
@@ -157,7 +148,11 @@ export async function uploadCourseMaterial(opts: {
 }): Promise<CourseMaterial> {
   const { file, courseCode, onStage } = opts;
   const emit = (s: UploadStage) => {
-    try { onStage?.(s); } catch (e) { console.error("[upload] onStage handler threw", e); }
+    try {
+      onStage?.(s);
+    } catch (e) {
+      console.error("[upload] onStage handler threw", e);
+    }
   };
 
   console.info("[upload] start", { name: file.name, size: file.size, type: file.type, courseCode });
@@ -175,7 +170,6 @@ export async function uploadCourseMaterial(opts: {
     emit({ kind: "error", message: msg });
     throw new Error(msg);
   }
-
 
   // 2) Classify file type
   const fileType = classifyFile(file);
@@ -212,8 +206,13 @@ export async function uploadCourseMaterial(opts: {
 
   // 4) Upload to Supabase storage
   emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
-  const contentType = file.type ||
-    (fileType === "docx" ? DOCX_TYPE : fileType === "pptx" ? PPTX_TYPE : "application/octet-stream");
+  const contentType =
+    file.type ||
+    (fileType === "docx"
+      ? DOCX_TYPE
+      : fileType === "pptx"
+        ? PPTX_TYPE
+        : "application/octet-stream");
 
   let upErr: unknown = null;
   try {
@@ -277,8 +276,6 @@ export async function uploadCourseMaterial(opts: {
     console.error("[upload] metadata heuristic failed, ignoring", e);
   }
 
-
-
   // 6) Extract text in-app. The server function resolves the storage path from
   // the caller's own row, so nothing about the file location is trusted here.
   if (needsExtraction) {
@@ -320,7 +317,6 @@ export async function uploadCourseMaterial(opts: {
     }
   }
 
-
   // 7) Refetch row to get updated extraction status
   let fresh: CourseMaterial | null = null;
   try {
@@ -353,7 +349,11 @@ export async function savePastedText(opts: {
   const { courseCode, onStage } = opts;
   const text = opts.text.trim();
   const emit = (s: UploadStage) => {
-    try { onStage?.(s); } catch (e) { console.error("[paste] onStage handler threw", e); }
+    try {
+      onStage?.(s);
+    } catch (e) {
+      console.error("[paste] onStage handler threw", e);
+    }
   };
 
   if (text.length < MIN_PASTED_CHARS) {
@@ -375,7 +375,9 @@ export async function savePastedText(opts: {
   }
 
   const stamp = Date.now();
-  const fileName = safeName(opts.title?.trim() || `Pasted text ${new Date(stamp).toLocaleDateString()}`);
+  const fileName = safeName(
+    opts.title?.trim() || `Pasted text ${new Date(stamp).toLocaleDateString()}`,
+  );
   const path = `${userId}/${courseCode}/${stamp}-${fileName}.txt`;
 
   emit({ kind: "uploading", pct: 20 });
@@ -392,7 +394,10 @@ export async function savePastedText(opts: {
   }
   if (upErr) {
     console.error("[paste] storage upload failed", upErr);
-    emit({ kind: "error", message: "Couldn't save your text. Check your connection and try again." });
+    emit({
+      kind: "error",
+      message: "Couldn't save your text. Check your connection and try again.",
+    });
     throw upErr instanceof Error ? upErr : new Error("Storage upload failed");
   }
 
@@ -428,8 +433,6 @@ export async function savePastedText(opts: {
     throw e instanceof Error ? e : new Error("Insert failed");
   }
 }
-
-
 
 export async function listMaterialsForCourse(courseCode: string) {
   const { data, error } = await supabase
@@ -467,7 +470,10 @@ export async function deleteAllUserMaterials() {
   await supabase
     .from("course_materials")
     .delete()
-    .in("id", all.map((m) => m.id));
+    .in(
+      "id",
+      all.map((m) => m.id),
+    );
 }
 
 /**
@@ -514,13 +520,8 @@ export async function retryExtraction(materialId: string): Promise<CourseMateria
   return (data as CourseMaterial | null) ?? null;
 }
 
-
-export function pickAnalyzableMaterial(
-  materials: CourseMaterial[],
-): CourseMaterial | null {
+export function pickAnalyzableMaterial(materials: CourseMaterial[]): CourseMaterial | null {
   return (
-    materials.find(
-      (m) => m.file_type !== "image" && m.extraction_status === "success",
-    ) ?? null
+    materials.find((m) => m.file_type !== "image" && m.extraction_status === "success") ?? null
   );
 }
