@@ -883,7 +883,7 @@ export function MaterialRow({
             <span>{kb}KB</span>
             <span>·</span>
             <span>{new Date(m.created_at).toLocaleDateString()}</span>
-            {hasExtraction ? <ExtractionBadge status={m.extraction_status} /> : null}
+            {hasExtraction ? <ExtractionBadge material={m} /> : null}
           </div>
           {isFromInactiveCourse ? (
             <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
