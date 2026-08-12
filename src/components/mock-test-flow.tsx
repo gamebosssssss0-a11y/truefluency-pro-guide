@@ -10,6 +10,7 @@ import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock } from "@/lib/backend-api";
+import { MathText } from "@/components/math-text";
 
 // The analysis service accepts at most 40 questions per request.
 const MAX_GENERATED_QUESTIONS = 40;
@@ -632,7 +633,7 @@ export function MockRunScreen() {
         {q ? (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="font-display text-lg font-semibold text-foreground">{q.question}</div>
+            <div className="font-display text-lg font-semibold text-foreground"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -645,7 +646,7 @@ export function MockRunScreen() {
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="text-sm text-foreground">{opt}</span>
+                    <span className="text-sm text-foreground"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
@@ -831,7 +832,7 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="font-display text-base font-semibold text-foreground">{q.question}</div>
+                  <div className="font-display text-base font-semibold text-foreground"><MathText>{q.question}</MathText></div>
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
@@ -860,7 +861,7 @@ export function AttemptReviewScreen() {
                               </span>
                             )}
                           </span>
-                          <span className="min-w-0 flex-1 text-foreground">{opt}</span>
+                          <span className="min-w-0 flex-1 text-foreground"><MathText>{opt}</MathText></span>
                           {isPicked ? (
                             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Your answer
@@ -886,7 +887,7 @@ export function AttemptReviewScreen() {
                       Why this is the answer
                     </div>
                     <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
-                      {q.explanation}
+                      <MathText>{q.explanation}</MathText>
                     </p>
                   </div>
                 </div>
