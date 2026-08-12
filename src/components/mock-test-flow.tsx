@@ -10,6 +10,10 @@ import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock } from "@/lib/backend-api";
+import { consumeFeatureQuota } from "@/lib/entitlements.functions";
+import type { QuotaVerdict } from "@/lib/entitlements";
+import { PaywallNotice, LockedExplanation } from "@/components/paywall-notice";
+import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 
 // The analysis service accepts at most 40 questions per request.
@@ -62,6 +66,7 @@ export function MockGenerationScreen() {
     : null;
 
   const [error, setError] = useState<string | null>(null);
+  const [refused, setRefused] = useState<QuotaVerdict | null>(null);
   const fetchedRef = useRef(false);
   const quoteCycleStartedRef = useRef(Date.now());
 
@@ -113,13 +118,32 @@ export function MockGenerationScreen() {
           return;
         }
 
+        // Daily set limit and question cap are decided on the server; a refusal
+        // is a friendly upsell, not an error.
+        let allowedCount = Math.min(MAX_GENERATED_QUESTIONS, count);
+        try {
+          const verdict = await consumeFeatureQuota({
+            data: { feature: "mock_sets", requestedQuestions: count },
+          });
+          if (!verdict.allowed) {
+            clearInterval(animId);
+            setRefused(verdict);
+            return;
+          }
+          if (verdict.allowedQuestions) {
+            allowedCount = Math.min(MAX_GENERATED_QUESTIONS, verdict.allowedQuestions);
+          }
+        } catch (e) {
+          console.warn("[mock] couldn't check your plan, continuing", e);
+        }
+
         // Shared client: attaches the signed-in bearer token, normalises the
         // profile fields the service expects, and surfaces real error text.
         const questions = await generateMock({
           materialId: ready.id,
           courseCode: course.code,
           courseName: course.name,
-          questionCount: Math.min(MAX_GENERATED_QUESTIONS, count),
+          questionCount: allowedCount,
           difficulty,
           topicFocus,
           profile: {
@@ -175,6 +199,21 @@ export function MockGenerationScreen() {
 
     return () => clearInterval(animId);
   }, [course?.code]);
+
+  if (refused) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+          <PaywallNotice
+            feature="mock_sets"
+            verdict={refused}
+            onDismiss={() => navigate("mock-tests")}
+            dismissLabel="Back to Mock Tests"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
