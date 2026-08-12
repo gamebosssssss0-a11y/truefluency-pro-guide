@@ -46,7 +46,7 @@ export async function extractSelectablePdfText(file: Blob): Promise<string> {
       }
     }
   } finally {
-    await pdf.destroy().catch(() => undefined);
+    await pdf.cleanup().catch(() => undefined);
   }
 
   const text = tidyPdfText(pages.join("\n\n"));
