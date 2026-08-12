@@ -11,6 +11,7 @@ import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
 import { extractMaterialText } from "@/lib/extraction.functions";
+import { extractSelectablePdfText } from "@/lib/pdf-extraction.client";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
@@ -55,6 +56,49 @@ const PPTX_TYPE =
 
 // Which file types carry extractable text.
 const EXTRACTABLE_TYPES: CourseMaterial["file_type"][] = ["pdf", "docx", "pptx"];
+const MIN_EXTRACTED_CHARS = 20;
+const EXTRACTION_TIMEOUT_MS = 45_000;
+
+async function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Text extraction took too long.")),
+          milliseconds,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function persistLocalPdfFallback(
+  materialId: string,
+  file: File,
+): Promise<boolean> {
+  try {
+    const text = await extractSelectablePdfText(file);
+    if (text.length < MIN_EXTRACTED_CHARS) return false;
+
+    const { error } = await supabase
+      .from("course_materials")
+      .update({
+        extracted_content: text,
+        extraction_status: "success",
+        extraction_error: null,
+      })
+      .eq("id", materialId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("[extraction] browser fallback failed", { materialId, error });
+    return false;
+  }
+}
 
 export const ACCEPTED_UPLOAD_MIME =
   "image/jpeg,image/jpg,image/png,application/pdf," +
@@ -239,18 +283,37 @@ export async function uploadCourseMaterial(opts: {
   // the caller's own row, so nothing about the file location is trusted here.
   if (needsExtraction) {
     emit({ kind: "extracting" });
+    let extracted = false;
     try {
-      const result = await extractMaterialText({ data: { materialId: row.id } });
+      const result = await withTimeout(
+        extractMaterialText({ data: { materialId: row.id } }),
+        EXTRACTION_TIMEOUT_MS,
+      );
       console.info("[upload] extraction finished", result);
+      extracted = result.status === "success";
     } catch (e) {
-      // Never leave the row stuck at "pending" with no reason attached.
-      const reason = (e as Error)?.message || "Text extraction failed unexpectedly.";
       console.error("[upload] extraction threw", e);
+    }
+
+    // A server RPC can be interrupted before its handler records a verdict.
+    // For a freshly selected PDF, recover directly from the local bytes rather
+    // than telling the student their selectable text could not be read.
+    if (!extracted && fileType === "pdf") {
+      extracted = await persistLocalPdfFallback(row.id, file);
+    }
+
+    if (!extracted) {
+      const reason =
+        fileType === "pdf"
+          ? "No selectable text was found. This may be a scan, an encrypted PDF, or a damaged file."
+          : "Text extraction failed unexpectedly.";
       try {
-        await supabase
+        const { error } = await supabase
           .from("course_materials")
           .update({ extraction_status: "failed", extraction_error: reason })
-          .eq("id", row.id);
+          .eq("id", row.id)
+          .neq("extraction_status", "success");
+        if (error) throw error;
       } catch (persistErr) {
         console.error("[upload] couldn't record extraction failure", persistErr);
       }

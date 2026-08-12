@@ -43,11 +43,16 @@ export const extractMaterialText = createServerFn({ method: "POST" })
       extraction_status: string;
       extraction_error?: string | null;
     }) => {
-      await supabase
+      let query = supabase
         .from("course_materials")
         .update(patch)
         .eq("id", row.id)
         .eq("user_id", userId);
+      if (patch.extraction_status !== "success") {
+        query = query.neq("extraction_status", "success");
+      }
+      const { error: updateError } = await query;
+      if (updateError) throw new Error(`Couldn't save extraction result: ${updateError.message}`);
     };
 
     // Anything that goes wrong past this point still leaves a verdict on the
