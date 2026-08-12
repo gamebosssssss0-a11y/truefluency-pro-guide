@@ -6,7 +6,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { extractText } from "@/lib/extraction.server";
+import { extractText, describeFailure } from "@/lib/extraction.server";
 
 export type ExtractResult = {
   materialId: string;
@@ -38,7 +38,11 @@ export const extractMaterialText = createServerFn({ method: "POST" })
     const filePath = row.file_path ?? "";
     if (!filePath.startsWith(`${userId}/`)) throw new Error("Material not found");
 
-    const record = async (patch: Record<string, unknown>) => {
+    const record = async (patch: {
+      extracted_content?: string | null;
+      extraction_status: string;
+      extraction_error?: string | null;
+    }) => {
       await supabase
         .from("course_materials")
         .update(patch)
