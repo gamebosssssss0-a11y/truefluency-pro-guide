@@ -243,9 +243,20 @@ export async function uploadCourseMaterial(opts: {
       const result = await extractMaterialText({ data: { materialId: row.id } });
       console.info("[upload] extraction finished", result);
     } catch (e) {
+      // Never leave the row stuck at "pending" with no reason attached.
+      const reason = (e as Error)?.message || "Text extraction failed unexpectedly.";
       console.error("[upload] extraction threw", e);
+      try {
+        await supabase
+          .from("course_materials")
+          .update({ extraction_status: "failed", extraction_error: reason })
+          .eq("id", row.id);
+      } catch (persistErr) {
+        console.error("[upload] couldn't record extraction failure", persistErr);
+      }
     }
   }
+
 
   // 7) Refetch row to get updated extraction status
   let fresh: CourseMaterial | null = null;

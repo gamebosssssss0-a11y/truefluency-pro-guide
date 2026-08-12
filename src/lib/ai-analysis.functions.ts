@@ -74,7 +74,7 @@ export const generateMockInApp = createServerFn({ method: "POST" })
     materialId: requireId(input?.materialId),
     courseCode: String(input?.courseCode ?? "").slice(0, 32),
     courseName: String(input?.courseName ?? "").slice(0, 160),
-    questionCount: Math.max(5, Math.min(40, Number(input?.questionCount) || 20)),
+    questionCount: Math.max(5, Math.min(120, Number(input?.questionCount) || 20)),
     difficulty: String(input?.difficulty ?? "medium").slice(0, 24),
     topicFocus: Array.isArray(input?.topicFocus)
       ? input.topicFocus.filter((t) => typeof t === "string").slice(0, 20)
@@ -94,14 +94,22 @@ export const generateMockInApp = createServerFn({ method: "POST" })
     const text = row?.extracted_content ?? "";
     if (!text.trim()) throw new Error(NO_TEXT);
 
-    return generateMockFromText({
+    // Permission check only: the question count is clamped to what this
+    // student's tier allows, and paid-only explanations are withheld.
+    const { resolveAccess } = await import("@/lib/entitlements.server");
+    const access = await resolveAccess(userId);
+
+    const questions = await generateMockFromText({
       text,
       courseCode: data.courseCode,
       courseName: data.courseName,
-      questionCount: data.questionCount,
+      questionCount: Math.min(data.questionCount, access.maxQuestionsPerSet),
       difficulty: data.difficulty,
       topicFocus: data.topicFocus,
       level: data.level,
       department: data.department,
     });
+
+    if (access.explanationsUnlocked) return questions;
+    return questions.map((q) => ({ ...q, explanation: "" }));
   });

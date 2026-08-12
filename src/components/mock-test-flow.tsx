@@ -10,6 +10,11 @@ import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock } from "@/lib/backend-api";
+import { consumeFeatureQuota } from "@/lib/entitlements.functions";
+import { FOUNDING_PRICE_NAIRA, FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
+import { PaywallNotice, LockedExplanation } from "@/components/paywall-notice";
+import { useEntitlement } from "@/hooks/use-entitlement";
+import { MathText } from "@/components/math-text";
 
 // The analysis service accepts at most 40 questions per request.
 const MAX_GENERATED_QUESTIONS = 40;
@@ -61,6 +66,7 @@ export function MockGenerationScreen() {
     : null;
 
   const [error, setError] = useState<string | null>(null);
+  const [refused, setRefused] = useState<QuotaVerdict | null>(null);
   const fetchedRef = useRef(false);
   const quoteCycleStartedRef = useRef(Date.now());
 
@@ -112,13 +118,32 @@ export function MockGenerationScreen() {
           return;
         }
 
+        // Daily set limit and question cap are decided on the server; a refusal
+        // is a friendly upsell, not an error.
+        let allowedCount = Math.min(MAX_GENERATED_QUESTIONS, count);
+        try {
+          const verdict = await consumeFeatureQuota({
+            data: { feature: "mock_sets", requestedQuestions: count },
+          });
+          if (!verdict.allowed) {
+            clearInterval(animId);
+            setRefused(verdict);
+            return;
+          }
+          if (verdict.allowedQuestions) {
+            allowedCount = Math.min(MAX_GENERATED_QUESTIONS, verdict.allowedQuestions);
+          }
+        } catch (e) {
+          console.warn("[mock] couldn't check your plan, continuing", e);
+        }
+
         // Shared client: attaches the signed-in bearer token, normalises the
         // profile fields the service expects, and surfaces real error text.
         const questions = await generateMock({
           materialId: ready.id,
           courseCode: course.code,
           courseName: course.name,
-          questionCount: Math.min(MAX_GENERATED_QUESTIONS, count),
+          questionCount: allowedCount,
           difficulty,
           topicFocus,
           profile: {
@@ -174,6 +199,21 @@ export function MockGenerationScreen() {
 
     return () => clearInterval(animId);
   }, [course?.code]);
+
+  if (refused) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+          <PaywallNotice
+            feature="mock_sets"
+            verdict={refused}
+            onDismiss={() => navigate("mock-tests")}
+            dismissLabel="Back to Mock Tests"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -306,10 +346,15 @@ export function MockConfigScreen() {
   const remembered = course ? profile.courseTestSettings[course.code] : undefined;
   const initial = remembered ?? smart!;
 
+  const { maxQuestionsPerSet } = useEntitlement();
   const [count, setCount] = useState(Math.min(FREE_QUESTION_LIMIT, Math.max(MIN_QUESTIONS, initial?.questionCount ?? 20)));
   const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
+
+  useEffect(() => {
+    setCount((c) => Math.min(c, maxQuestionsPerSet));
+  }, [maxQuestionsPerSet]);
 
   if (!course || !smart) return null;
 
@@ -368,16 +413,18 @@ export function MockConfigScreen() {
               min={MIN_QUESTIONS}
               max={MAX_QUESTIONS}
               step={5}
-              onChange={(v) => setCount(Math.min(v, FREE_QUESTION_LIMIT))}
-              hardCeiling={FREE_QUESTION_LIMIT}
+              onChange={(v) => setCount(Math.min(v, maxQuestionsPerSet))}
+              hardCeiling={maxQuestionsPerSet}
             />
-            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
-              <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-              <span>
-                Tests above {FREE_QUESTION_LIMIT} questions are part of a paid tier that is not
-                available yet, so the slider stops there for now.
-              </span>
-            </p>
+            {maxQuestionsPerSet <= FREE_MAX_QUESTIONS ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                <span>
+                  Free accounts cap a set at {FREE_MAX_QUESTIONS} questions. Full access raises it
+                  to {PAID_MAX_QUESTIONS}.
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={120} step={5} onChange={setMinutes} />
@@ -632,7 +679,7 @@ export function MockRunScreen() {
         {q ? (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="font-display text-lg font-semibold text-foreground">{q.question}</div>
+            <div className="font-display text-lg font-semibold text-foreground"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -645,7 +692,7 @@ export function MockRunScreen() {
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="text-sm text-foreground">{opt}</span>
+                    <span className="text-sm text-foreground"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
@@ -831,7 +878,7 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="font-display text-base font-semibold text-foreground">{q.question}</div>
+                  <div className="font-display text-base font-semibold text-foreground"><MathText>{q.question}</MathText></div>
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
@@ -860,7 +907,7 @@ export function AttemptReviewScreen() {
                               </span>
                             )}
                           </span>
-                          <span className="min-w-0 flex-1 text-foreground">{opt}</span>
+                          <span className="min-w-0 flex-1 text-foreground"><MathText>{opt}</MathText></span>
                           {isPicked ? (
                             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Your answer
@@ -885,9 +932,13 @@ export function AttemptReviewScreen() {
                     <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Why this is the answer
                     </div>
-                    <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
-                      {q.explanation}
-                    </p>
+                    {q.explanation?.trim() ? (
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+                        <MathText>{q.explanation}</MathText>
+                      </p>
+                    ) : (
+                      <LockedExplanation priceNaira={FOUNDING_PRICE_NAIRA} />
+                    )}
                   </div>
                 </div>
               );

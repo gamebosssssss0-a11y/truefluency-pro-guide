@@ -10,6 +10,9 @@ import { unzipSync, strFromU8 } from "fflate";
 /** Anything shorter than this is treated as "no usable text". */
 export const MIN_USABLE_CHARS = 20;
 
+/** Upper bound on pages parsed, so a huge deck can't outrun the request budget. */
+const MAX_PDF_PAGES = 400;
+
 export type ExtractionOutcome =
   | { status: "success"; text: string; chars: number }
   | { status: "scanned_pdf" }
@@ -24,12 +27,52 @@ function tidy(raw: string): string {
     .trim();
 }
 
+/**
+ * PDFs are read one page at a time so a single malformed page, broken font
+ * table or odd content stream can't discard the whole document. Whatever
+ * parsed is kept.
+ */
 async function fromPdf(bytes: Uint8Array): Promise<string> {
-  const { extractText, getDocumentProxy } = await import("unpdf");
+  const { getDocumentProxy } = await import("unpdf");
   const pdf = await getDocumentProxy(bytes);
-  const { text } = await extractText(pdf, { mergePages: true });
-  return Array.isArray(text) ? text.join("\n\n") : text;
+  const total: number = Number((pdf as { numPages?: number }).numPages ?? 0);
+  const limit = Math.min(total || 0, MAX_PDF_PAGES);
+
+  const pages: string[] = [];
+  let skipped = 0;
+
+  for (let i = 1; i <= limit; i += 1) {
+    try {
+      const page = await pdf.getPage(i);
+      const content = (await page.getTextContent()) as {
+        items: Array<{ str?: string; hasEOL?: boolean }>;
+      };
+      const text = content.items
+        .map((item) => (item.str ?? "") + (item.hasEOL ? "\n" : ""))
+        .join("");
+      if (text.trim()) pages.push(text);
+    } catch (e) {
+      skipped += 1;
+      console.warn("[extraction] skipped unreadable pdf page", { page: i, error: e });
+    }
+  }
+
+  const joined = pages.join("\n\n");
+  console.info("[extraction] pdf parsed", {
+    pages: total,
+    parsed: limit,
+    skipped,
+    chars: joined.length,
+    truncated: total > limit,
+  });
+
+  // Every page failing is a document-level problem, not an empty scan.
+  if (limit > 0 && skipped === limit) {
+    throw new Error("Every page in this PDF failed to parse.");
+  }
+  return joined;
 }
+
 
 function decodeEntities(s: string): string {
   return s
@@ -102,12 +145,26 @@ export async function extractText(
     return { status: "success", text, chars: text.length };
   } catch (e) {
     console.error("[extraction] failed", { fileType, error: e });
-    return {
-      status: "failed",
-      error:
-        fileType === "pdf"
-          ? "We couldn't read text from that PDF. It may be encrypted or damaged."
-          : "We couldn't read text from that file. It may be damaged.",
-    };
+    return { status: "failed", error: describeFailure(fileType, e) };
   }
 }
+
+/** Turn a parser crash into wording that tells the student what to do next. */
+export function describeFailure(fileType: string, e: unknown): string {
+  const raw = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
+
+  if (/password|encrypt/.test(raw)) {
+    return "That PDF is password protected, so its text can't be read. Upload an unlocked copy.";
+  }
+  if (/timeout|timed out|aborted|deadline/.test(raw)) {
+    return "Reading that file took too long. Try again, or upload a smaller or split copy.";
+  }
+  if (/invalid pdf|structure|xref|corrupt|damaged|unexpected end/.test(raw)) {
+    return "That PDF looks damaged, so its text can't be read. Try re-saving or re-downloading it.";
+  }
+  if (fileType === "pdf") {
+    return "We couldn't read text from that PDF. Try re-saving it, or paste the text instead.";
+  }
+  return "We couldn't read text from that file. It may be damaged.";
+}
+
