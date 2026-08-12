@@ -43,11 +43,16 @@ export const extractMaterialText = createServerFn({ method: "POST" })
       extraction_status: string;
       extraction_error?: string | null;
     }) => {
-      await supabase
+      let query = supabase
         .from("course_materials")
         .update(patch)
         .eq("id", row.id)
         .eq("user_id", userId);
+      if (patch.extraction_status !== "success") {
+        query = query.neq("extraction_status", "success");
+      }
+      const { error: updateError } = await query;
+      if (updateError) throw new Error(`Couldn't save extraction result: ${updateError.message}`);
     };
 
     // Anything that goes wrong past this point still leaves a verdict on the
@@ -74,8 +79,7 @@ export const extractMaterialText = createServerFn({ method: "POST" })
         await record({
           extracted_content: null,
           extraction_status: "scanned_pdf",
-          extraction_error:
-            "No selectable text found. This looks like a scan or photo of a page.",
+          extraction_error: "No selectable text found. This looks like a scan or photo of a page.",
         });
         return { materialId: row.id, status: "scanned_pdf", chars: 0 };
       }
@@ -97,4 +101,3 @@ export const extractMaterialText = createServerFn({ method: "POST" })
       return { materialId: row.id, status: "failed", chars: 0, error: reason };
     }
   });
-
