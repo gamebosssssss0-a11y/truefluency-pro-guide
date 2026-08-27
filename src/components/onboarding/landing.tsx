@@ -12,6 +12,17 @@ import {
   Sparkles,
 } from "lucide-react";
 import productPreview from "@/assets/product-preview.png";
+import {
+  FOUNDING_PRICE_NAIRA,
+  FOUNDING_USER_LIMIT,
+  STANDARD_PRICE_NAIRA,
+  formatNaira,
+} from "@/lib/entitlements";
+
+const PRICING_LINE =
+  `Free to start, no card required. ${formatNaira(FOUNDING_PRICE_NAIRA)}/semester ` +
+  `for the first ${FOUNDING_USER_LIMIT} paying students. Price becomes ` +
+  `${formatNaira(STANDARD_PRICE_NAIRA)}/semester after that.`;
 
 const features = [
   {
@@ -61,6 +72,13 @@ export function LandingScreen() {
           <span className="font-display text-base font-semibold tracking-tight text-foreground">
             TrueFluency <span className="text-accent">Pro</span>
           </span>
+          <button
+            type="button"
+            onClick={() => go("identity")}
+            className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Already have an account? Log in
+          </button>
         </header>
 
         <section>
@@ -97,8 +115,7 @@ export function LandingScreen() {
               See what's inside
             </Button>
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Free to start, no card required. Unlock everything for
-              {" "}₦2,000/semester when you're ready.
+              {PRICING_LINE}
             </p>
           </div>
         </section>
