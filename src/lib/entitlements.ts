@@ -3,7 +3,8 @@
  * Numbers live here so the paywall copy and the enforcement can never drift.
  */
 
-export const FOUNDING_USER_LIMIT = 500;
+/** Founding price is for the first 25 PAYING students, not sign-ups. */
+export const FOUNDING_USER_LIMIT = 25;
 export const FOUNDING_PRICE_NAIRA = 1000;
 export const STANDARD_PRICE_NAIRA = 2000;
 export const TRIAL_DAYS = 7;

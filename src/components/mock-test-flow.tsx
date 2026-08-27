@@ -249,8 +249,8 @@ export function MockGenerationScreen() {
                 <Sparkles className="h-3 w-3" /> Mock prediction ready
               </div>
               <div className="grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-3">
-                <GenStat label="Predicted topics" value={String(analysis.topics.length)} />
-                <GenStat label="Confidence" value={`${avgConfidence}%`} />
+                <GenStat label="Topics found" value={String(analysis.topics.length)} />
+                <GenStat label="Avg prominence" value={`${avgConfidence}%`} />
                 <GenStat label="Analyzed" value={new Date(analysis.analyzedAt).toLocaleDateString()} />
               </div>
             </div>

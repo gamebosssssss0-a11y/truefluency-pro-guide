@@ -14,8 +14,11 @@ export function AiGeneratedLabel({ className }: { className?: string }) {
         (className ?? "")
       }
     >
-      <Info className="h-3 w-3" />
-      AI-generated. Verify against your material.
+      <Info className="h-3 w-3 shrink-0" />
+      <span>
+        AI-generated. Verify against your material. Estimates from your upload,
+        not official exam forecasts.
+      </span>
     </p>
   );
 }
@@ -23,7 +26,28 @@ export function AiGeneratedLabel({ className }: { className?: string }) {
 /**
  * Red-to-green weak/strong topic pill. `strength` is 0..1 (0 = weakest).
  */
-export function TopicPill({ label, strength, big }: { label: string; strength: number; big?: boolean }) {
+/**
+ * Plain-language framing for a topic's prominence in the uploaded material.
+ * These are NOT exam probabilities.
+ */
+export function strengthLabel(strength: number): string {
+  const s = Math.max(0, Math.min(1, strength));
+  if (s >= 0.66) return "Strong in this upload";
+  if (s >= 0.33) return "Appears moderately";
+  return "Mentioned briefly";
+}
+
+export function TopicPill({
+  label,
+  strength,
+  big,
+  showPercent,
+}: {
+  label: string;
+  strength: number;
+  big?: boolean;
+  showPercent?: boolean;
+}) {
   const hue = Math.round(Math.max(0, Math.min(1, strength)) * 130);
   return (
     <span
@@ -41,7 +65,13 @@ export function TopicPill({ label, strength, big }: { label: string; strength: n
         className={big ? "h-2 w-2 rounded-full" : "h-1.5 w-1.5 rounded-full"}
         style={{ backgroundColor: `hsl(${hue} 65% 45%)` }}
       />
-      {label}
+      <span className="max-w-[13rem] truncate">{label}</span>
+      <span className="whitespace-nowrap opacity-75">· {strengthLabel(strength)}</span>
+      {showPercent ? (
+        <span className="whitespace-nowrap text-[9px] opacity-55">
+          {Math.round(Math.max(0, Math.min(1, strength)) * 100)}%
+        </span>
+      ) : null}
     </span>
   );
 }

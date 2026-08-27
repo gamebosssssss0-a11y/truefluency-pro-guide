@@ -88,6 +88,8 @@ export function HomeScreen() {
           ) : null}
         </div>
 
+        <TrialBanner />
+
         {/* Streak */}
         <div className="mb-5 flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
           <div className={cn(
@@ -382,8 +384,8 @@ export function FeaturedCourseCard({ course }: { course: UserCourse }) {
 
         {topics.length ? (
           <div className="mt-4 grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-4">
-            <Stat label="Predicted topics" value={String(topics.length)} />
-            <Stat label="Confidence" value={`${avgConfidence}%`} />
+            <Stat label="Topics found" value={String(topics.length)} />
+            <Stat label="Avg prominence" value={`${avgConfidence}%`} />
             <Stat label="Analyzed" value={new Date(analysis!.analyzedAt).toLocaleDateString()} />
           </div>
         ) : null}
