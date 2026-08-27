@@ -14,8 +14,11 @@ export function AiGeneratedLabel({ className }: { className?: string }) {
         (className ?? "")
       }
     >
-      <Info className="h-3 w-3" />
-      AI-generated. Verify against your material.
+      <Info className="h-3 w-3 shrink-0" />
+      <span>
+        AI-generated. Verify against your material. Estimates from your upload,
+        not official exam forecasts.
+      </span>
     </p>
   );
 }
@@ -62,7 +65,13 @@ export function TopicPill({
         className={big ? "h-2 w-2 rounded-full" : "h-1.5 w-1.5 rounded-full"}
         style={{ backgroundColor: `hsl(${hue} 65% 45%)` }}
       />
-      {label}
+      <span className="max-w-[13rem] truncate">{label}</span>
+      <span className="whitespace-nowrap opacity-75">· {strengthLabel(strength)}</span>
+      {showPercent ? (
+        <span className="whitespace-nowrap text-[9px] opacity-55">
+          {Math.round(Math.max(0, Math.min(1, strength)) * 100)}%
+        </span>
+      ) : null}
     </span>
   );
 }
