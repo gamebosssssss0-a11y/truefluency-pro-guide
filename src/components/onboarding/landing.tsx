@@ -197,8 +197,7 @@ export function LandingScreen() {
             Get Started, it's free
           </Button>
           <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-            Free to start, no card required. One time ₦2,000 per semester
-            unlocks everything, no auto renewal.
+            {PRICING_LINE} One time payment, no auto renewal.
           </p>
         </div>
       </div>
