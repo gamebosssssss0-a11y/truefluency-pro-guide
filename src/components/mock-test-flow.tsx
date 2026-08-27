@@ -17,7 +17,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 
 // The analysis service accepts at most 40 questions per request.
-const MAX_GENERATED_QUESTIONS = 40;
+const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
 
 /* ---------- types ---------- */
 
