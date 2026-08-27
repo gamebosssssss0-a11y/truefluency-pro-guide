@@ -303,8 +303,8 @@ function CoursePrimaryActions({
 
 const ANALYZE_STEPS = [
   "Reading your material…",
-  "Identifying likely topics…",
-  "Scoring confidence…",
+  "Identifying the main topics…",
+  "Ranking how strongly each one appears…",
 ];
 
 /**
@@ -455,7 +455,7 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
       ) : (
         <p className="text-xs text-muted-foreground">
           {material
-            ? "Tap Analyze Upload to see the topics most likely to come up."
+            ? "Tap Analyze Upload to rank the topics that stand out in your file."
             : `Upload a past paper or slides to unlock predictions for ${courseCode}.`}
         </p>
       )}

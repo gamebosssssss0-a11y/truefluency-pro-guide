@@ -1,37 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { SonicUnfurlLoader } from "@/components/loading-splash";
 
-const SPLASH_HOLD_MS = 5000;
+const SPLASH_HOLD_MS = 1800;
+const SESSION_KEY = "truefluency-splash-seen";
 
-/** Plays on every app open for 5 seconds. Skippable with a tap or key press. */
+/** Plays once per browser session, under 2 seconds, skippable with a tap or key. */
 export function SplashScreen() {
   const { go, profile } = useProfile();
   const advanced = useRef(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const advance = useCallback(() => {
     if (advanced.current) return;
     advanced.current = true;
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      /* private mode: fail open, just don't remember */
+    }
     // Returning users land back in the app; new users continue onboarding.
     go(profile.setupComplete ? "dashboard" : "landing");
   }, [go, profile.setupComplete]);
 
   useEffect(() => {
-    // 5-second minimum hold before auto-advancing.
+    // Already seen this session: skip instantly, no splash tax on refresh.
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(SESSION_KEY) === "1";
+    } catch {
+      seen = false;
+    }
+    if (seen) {
+      advance();
+      return;
+    }
+
     const holdTimer = window.setTimeout(() => advance(), SPLASH_HOLD_MS);
-
-    const interval = window.setInterval(() => {
-      setElapsedSeconds((s) => {
-        if (s >= 4) {
-          window.clearInterval(interval);
-          return 5;
-        }
-        return s + 1;
-      });
-    }, 1000);
-
-    // Skippable: any tap or key press jumps straight ahead.
     const onPointer = () => advance();
     const onKey = () => advance();
     window.addEventListener("pointerdown", onPointer);
@@ -39,7 +43,6 @@ export function SplashScreen() {
 
     return () => {
       window.clearTimeout(holdTimer);
-      window.clearInterval(interval);
       window.removeEventListener("pointerdown", onPointer);
       window.removeEventListener("keydown", onKey);
     };
@@ -49,14 +52,10 @@ export function SplashScreen() {
     <>
       <h1 className="sr-only">TrueFluency Pro: AI Exam Prep for UI Students</h1>
       <SonicUnfurlLoader
-        onDone={() => {
-          // Animation is shorter than the 5s hold; the hold timer handles auto-advance.
-        }}
-        busy
+        onDone={() => advance()}
         caption="Smarter prep. For UI students."
-        tapHint={`Tap to skip \u00b7 ${5 - elapsedSeconds}s`}
+        tapHint="Tap to skip"
       />
     </>
   );
 }
-
