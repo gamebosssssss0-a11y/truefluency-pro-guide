@@ -88,6 +88,8 @@ export function HomeScreen() {
           ) : null}
         </div>
 
+        <TrialBanner />
+
         {/* Streak */}
         <div className="mb-5 flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
           <div className={cn(
