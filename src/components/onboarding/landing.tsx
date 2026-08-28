@@ -172,7 +172,7 @@ export function LandingScreen() {
 
         <div className="mt-10 rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-foreground">
-            Built for UI, across all 500+ courses
+            Built for UI, across every faculty and department
           </h2>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
             Most Nigerian exam prep tools cover one level or one department and
