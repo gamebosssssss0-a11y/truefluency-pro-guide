@@ -91,9 +91,9 @@ export function LandingScreen() {
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             TrueFluency Pro is an exam prep app built for University of Ibadan
-            students. Upload your past papers and notes, and it predicts the
-            topics most likely to appear and generates mock tests from what you
-            are actually being taught.
+            students. Upload your past papers and notes, and it ranks the topics
+            that stand out in your own material, then generates mock tests from
+            what you are actually being taught.
           </p>
 
           <div className="mt-6 space-y-3">
@@ -172,7 +172,7 @@ export function LandingScreen() {
 
         <div className="mt-10 rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-foreground">
-            Built for UI, across all 500+ courses
+            Built for UI, across every faculty and department
           </h2>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
             Most Nigerian exam prep tools cover one level or one department and

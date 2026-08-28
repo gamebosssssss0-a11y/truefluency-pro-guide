@@ -12,10 +12,33 @@ import { HeaderLogo } from "@/components/brand";
 import { focusCardCopy, greetingSubline, timelineDefaults, courseFeatureOrder } from "@/lib/personalization";
 import { buildRotatingDeck, type Rotating } from "@/lib/study-quotes";
 import { classify } from "@/lib/cgpa";
+import { useEntitlement } from "@/hooks/use-entitlement";
 
 /* ================= Tab 1: Home ================= */
 
 const ROTATE_MS = 8000;
+
+/**
+ * Shows the days left on the 7-day full-access trial, using the entitlement
+ * data the client already reads. Hidden entirely once the trial is over.
+ */
+function TrialBanner() {
+  const { access } = useEntitlement();
+  const endsAt = access?.trialEndsAt ? new Date(access.trialEndsAt).getTime() : null;
+  if (!endsAt || access?.tier !== "trial") return null;
+  const msLeft = endsAt - Date.now();
+  if (msLeft <= 0) return null;
+  const days = Math.max(1, Math.ceil(msLeft / 86_400_000));
+
+  return (
+    <div className="mb-5 flex items-center gap-2 rounded-2xl border border-accent/40 bg-accent/10 px-3.5 py-2.5">
+      <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
+      <p className="text-xs font-medium text-foreground">
+        {days} {days === 1 ? "day" : "days"} left in your full-access trial
+      </p>
+    </div>
+  );
+}
 
 /**
  * Home is glanceable: how you're doing, what to pick up, and one prediction
