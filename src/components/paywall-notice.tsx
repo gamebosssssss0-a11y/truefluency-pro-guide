@@ -28,10 +28,10 @@ export function PaywallNotice({
           <div className="min-w-0">
             <div className="font-display text-base font-semibold text-foreground">{copy.title}</div>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{copy.body}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Payment opens soon. Full access will be {formatNaira(verdict.priceNaira)} a semester,
-              with no auto-renewal.
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              {NO_PAYMENT_YET} {PRICE_LINE} No auto-renewal.
             </p>
+
           </div>
         </div>
         {onDismiss ? (
