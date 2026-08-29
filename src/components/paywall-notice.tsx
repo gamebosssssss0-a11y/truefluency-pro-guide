@@ -5,6 +5,8 @@
 import { Lock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatNaira, paywallCopy, type GatedFeature, type QuotaVerdict } from "@/lib/entitlements";
+import { NO_PAYMENT_YET, PRICE_LINE } from "@/lib/pricing-copy";
+
 
 export function PaywallNotice({
   feature,
