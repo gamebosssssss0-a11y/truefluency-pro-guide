@@ -12,17 +12,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import productPreview from "@/assets/product-preview.png";
-import {
-  FOUNDING_PRICE_NAIRA,
-  FOUNDING_USER_LIMIT,
-  STANDARD_PRICE_NAIRA,
-  formatNaira,
-} from "@/lib/entitlements";
+import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 
-const PRICING_LINE =
-  `Free to start, no card required. ${formatNaira(FOUNDING_PRICE_NAIRA)}/semester ` +
-  `for the first ${FOUNDING_USER_LIMIT} paying students. Price becomes ` +
-  `${formatNaira(STANDARD_PRICE_NAIRA)}/semester after that.`;
+const PRICING_LINE = `Free to start, no card required. ${TRIAL_LINE}. ${PRICE_LINE}`;
+
 
 const features = [
   {
