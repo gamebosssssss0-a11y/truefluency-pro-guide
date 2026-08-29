@@ -406,16 +406,34 @@ export function MockConfigScreen() {
 
         <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-4">
           <div>
-            <ConfigSlider
-              label="Questions"
-              unit="questions"
-              value={count}
-              min={MIN_QUESTIONS}
-              max={MAX_QUESTIONS}
-              step={5}
-              onChange={(v) => setCount(Math.min(v, maxQuestionsPerSet))}
-              hardCeiling={maxQuestionsPerSet}
-            />
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Questions
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[40, 120].map((n) => {
+                const locked = n > maxQuestionsPerSet;
+                const on = count === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => setCount(n)}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition",
+                      on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50",
+                      locked && "opacity-55",
+                    )}
+                  >
+                    <div className="font-display text-xl font-semibold text-foreground">{n}</div>
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      {locked ? <Lock className="h-3 w-3" aria-hidden="true" /> : null}
+                      {n === 40 ? "Standard set" : locked ? "Full access" : "Long set"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
             {maxQuestionsPerSet <= FREE_MAX_QUESTIONS ? (
               <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
                 <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
@@ -426,6 +444,7 @@ export function MockConfigScreen() {
               </p>
             ) : null}
           </div>
+
 
           <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={120} step={5} onChange={setMinutes} />
 
