@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Library, MessageCircle, Sparkles } from "lucide-react";
 
 function ComingSoonTab({
-  title, tagline, icon: Icon, bullets,
+  title, tagline, icon: Icon, bullets, primaryAction,
 }: {
   title: string;
   tagline: string;
   icon: typeof Library;
   bullets: string[];
+  primaryAction?: { label: string; onClick: () => void };
 }) {
+
   const { navigate } = useProfile();
   return (
     <div className="min-h-screen bg-background">
