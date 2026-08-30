@@ -726,11 +726,13 @@ export function MockRunScreen() {
         <button
           type="button"
           onClick={() => setMapOpen(true)}
-          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1.5 text-[11px] font-medium text-success transition hover:bg-success/15"
         >
           <LayoutGrid className="h-3 w-3" />
-          {answered} answered · {questions.length - answered} left
+          <span>{answered} answered</span>
+          <span className="text-destructive">· {questions.length - answered} left</span>
         </button>
+
 
         {q ? (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
