@@ -765,14 +765,15 @@ export function MockRunScreen() {
               <ChevronLeft className="mr-1 h-4 w-4" /> Prev
             </Button>
             {idx === questions.length - 1 ? (
-              <Button size="lg" onClick={submitWithWarning} className="flex-1" disabled={answered === 0}>
+              <Button size="lg" onClick={submitWithWarning} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90" disabled={answered === 0}>
                 Submit ({answered}/{questions.length})
               </Button>
             ) : (
-              <Button size="lg" onClick={() => move(1)} className="flex-1">
+              <Button size="lg" onClick={() => move(1)} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
                 Next <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             )}
+
           </div>
         </div>
 
