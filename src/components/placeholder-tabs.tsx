@@ -43,9 +43,18 @@ function ComingSoonTab({
           ))}
         </div>
 
-        <Button variant="outline" className="mt-8 w-full" onClick={() => navigate("home")}>
+        {primaryAction ? (
+          <Button
+            className="mt-8 h-12 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+            onClick={primaryAction.onClick}
+          >
+            {primaryAction.label}
+          </Button>
+        ) : null}
+        <Button variant="outline" className={(primaryAction ? "mt-2" : "mt-8") + " w-full"} onClick={() => navigate("home")}>
           Back to Home
         </Button>
+
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           This tab is a placeholder. Nothing here is functional yet, and we would rather say so than
           fake it.
