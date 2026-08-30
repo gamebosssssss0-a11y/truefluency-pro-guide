@@ -92,7 +92,7 @@ export function HomeScreen() {
           <div className="flex items-center gap-2">
             <HeaderLogo />
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Welcome back
+              Home
             </div>
           </div>
           <h1 className="mt-1 font-display text-3xl font-semibold leading-tight text-foreground">
