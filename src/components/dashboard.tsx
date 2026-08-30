@@ -98,10 +98,13 @@ export function HomeScreen() {
           <h1 className="mt-1 font-display text-3xl font-semibold leading-tight text-foreground">
             Study Dashboard
           </h1>
-          <p className="mt-1 text-base font-medium text-foreground">Hi, {name}</p>
+          <p className="mt-1 text-base font-medium text-foreground">Welcome back, {name}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {profile.department} · {profile.level}L
+            {[profile.department, profile.level ? `${profile.level}L` : null]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
+
           {subline ? <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p> : null}
           {timeline.urgency ? (
             <span
