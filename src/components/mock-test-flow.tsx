@@ -726,11 +726,13 @@ export function MockRunScreen() {
         <button
           type="button"
           onClick={() => setMapOpen(true)}
-          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1.5 text-[11px] font-medium text-success transition hover:bg-success/15"
         >
           <LayoutGrid className="h-3 w-3" />
-          {answered} answered · {questions.length - answered} left
+          <span>{answered} answered</span>
+          <span className="text-destructive">· {questions.length - answered} left</span>
         </button>
+
 
         {q ? (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -763,14 +765,15 @@ export function MockRunScreen() {
               <ChevronLeft className="mr-1 h-4 w-4" /> Prev
             </Button>
             {idx === questions.length - 1 ? (
-              <Button size="lg" onClick={submitWithWarning} className="flex-1" disabled={answered === 0}>
+              <Button size="lg" onClick={submitWithWarning} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90" disabled={answered === 0}>
                 Submit ({answered}/{questions.length})
               </Button>
             ) : (
-              <Button size="lg" onClick={() => move(1)} className="flex-1">
+              <Button size="lg" onClick={() => move(1)} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
                 Next <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             )}
+
           </div>
         </div>
 

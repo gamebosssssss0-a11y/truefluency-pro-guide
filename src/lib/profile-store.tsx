@@ -125,6 +125,7 @@ export type AppView =
   | "attempt-review"
   | "cgpa"
   | "support"
+  | "upgrade"
   | "edit-identity"
   | "disclaimer-view";
 

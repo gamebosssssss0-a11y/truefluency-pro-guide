@@ -8,7 +8,7 @@ import {
 import {
   ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
-  RotateCcw, LifeBuoy, Moon, Sun, Pencil,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
@@ -20,10 +20,15 @@ import { MaterialRow } from "@/components/course-detail";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PRICE_LINE } from "@/lib/pricing-copy";
+import { useEntitlement } from "@/hooks/use-entitlement";
 
 export function AccountScreen() {
   const { profile, navigate, resetSetup } = useProfile();
   const { theme, setTheme } = useTheme();
+  const { access } = useEntitlement();
+  const planLabel =
+    access?.tier === "paid" ? "Premium" : access?.tier === "trial" ? "Free trial" : "Free";
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -141,9 +146,39 @@ export function AccountScreen() {
           Your profile, your tools, and your data.
         </p>
 
+        <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-foreground">Your plan</span>
+            <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+              {planLabel}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{PRICE_LINE}</p>
+          <button
+            type="button"
+            onClick={() => navigate("upgrade")}
+            className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:text-accent/80"
+          >
+            View premium <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+
+        <div className="mt-2 flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            <Monitor className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">Notify me when ready</div>
+            <div className="text-[11px] text-muted-foreground">
+              Browser extension. On this phone, use Upload.
+            </div>
+          </div>
+        </div>
+
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Tools
         </h2>
+
         <div className="space-y-2">
           {tools.map((t) => (
             <button

@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Library, MessageCircle, Sparkles } from "lucide-react";
 
 function ComingSoonTab({
-  title, tagline, icon: Icon, bullets,
+  title, tagline, icon: Icon, bullets, primaryAction,
 }: {
   title: string;
   tagline: string;
   icon: typeof Library;
   bullets: string[];
+  primaryAction?: { label: string; onClick: () => void };
 }) {
+
   const { navigate } = useProfile();
   return (
     <div className="min-h-screen bg-background">
@@ -41,9 +43,18 @@ function ComingSoonTab({
           ))}
         </div>
 
-        <Button variant="outline" className="mt-8 w-full" onClick={() => navigate("home")}>
+        {primaryAction ? (
+          <Button
+            className="mt-8 h-12 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+            onClick={primaryAction.onClick}
+          >
+            {primaryAction.label}
+          </Button>
+        ) : null}
+        <Button variant="outline" className={(primaryAction ? "mt-2" : "mt-8") + " w-full"} onClick={() => navigate("home")}>
           Back to Home
         </Button>
+
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           This tab is a placeholder. Nothing here is functional yet, and we would rather say so than
           fake it.
@@ -60,7 +71,7 @@ export function LibrarySoonScreen() {
       icon={Library}
       tagline="One place for your uploaded material, saved summaries, and shared past papers."
       bullets={[
-        "Browse everything you've uploaded by course, semester, and file type.",
+        "Browse everything you've uploaded by course and file type.",
         "Saved topic summaries generated from your own material.",
         "For now, your uploads live under Account, then All my uploads.",
       ]}
@@ -69,6 +80,7 @@ export function LibrarySoonScreen() {
 }
 
 export function ChatbotSoonScreen() {
+  const { navigate } = useProfile();
   return (
     <ComingSoonTab
       title="Chatbot"
@@ -79,6 +91,8 @@ export function ChatbotSoonScreen() {
         "Follow-up questions on anything you got wrong in a mock test.",
         "For now, the explanation on each reviewed question is your best guide.",
       ]}
+      primaryAction={{ label: "Go to Library", onClick: () => navigate("library") }}
     />
   );
 }
+

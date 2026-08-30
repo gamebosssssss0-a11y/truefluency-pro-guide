@@ -46,7 +46,14 @@ function TrialBanner() {
  */
 export function HomeScreen() {
   const { profile, navigate } = useProfile();
-  const name = profile.identity?.name ?? "there";
+  /** First name only, in title case: never the full legal name, never ALL-CAPS. */
+  const name = (() => {
+    const raw = (profile.identity?.name ?? "").trim();
+    const first = raw.split(/\s+/)[0] ?? "";
+    if (!first) return "there";
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  })();
+
 
   const activeToday = hasQualifyingActivityToday(profile);
   const resume = profile.inProgressTest;
@@ -85,16 +92,19 @@ export function HomeScreen() {
           <div className="flex items-center gap-2">
             <HeaderLogo />
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Welcome back
+              Home
             </div>
           </div>
           <h1 className="mt-1 font-display text-3xl font-semibold leading-tight text-foreground">
             Study Dashboard
           </h1>
-          <p className="mt-1 text-base font-medium text-foreground">Hi, {name}</p>
+          <p className="mt-1 text-base font-medium text-foreground">Welcome back, {name}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {profile.department} · {profile.level}L
+            {[profile.department, profile.level ? `${profile.level}L` : null]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
+
           {subline ? <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p> : null}
           {timeline.urgency ? (
             <span
@@ -280,7 +290,20 @@ function CgpaStatusCard() {
               <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">your target</div>
             </div>
           ) : null}
+          {plan ? (
+            <span
+              className={cn(
+                "mb-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider",
+                actual.cumulativeCgpa >= plan.targetCgpa
+                  ? "bg-success/15 text-success"
+                  : "bg-destructive/10 text-destructive",
+              )}
+            >
+              {actual.cumulativeCgpa >= plan.targetCgpa ? "On target" : "Behind target"}
+            </span>
+          ) : null}
         </div>
+
       ) : plan ? (
         <p className="text-xs text-muted-foreground">
           Target {plan.targetCgpa.toFixed(2)} ({plan.targetClassification}). Needs a semester GPA of{" "}

@@ -24,6 +24,7 @@ import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens
 import { CgpaCalculatorScreen } from "@/components/cgpa-calculator";
 import { CgpaGoalSetterScreen } from "@/components/cgpa-goal-setter";
 import { SupportScreen } from "@/components/support";
+import { UpgradeScreen } from "@/components/upgrade";
 import { EditIdentityScreen } from "@/components/edit-identity";
 import { ThemeProvider } from "@/lib/theme";
 import { BottomTabBar, hidesTabBar } from "@/components/tab-bar";
@@ -115,6 +116,7 @@ function Router() {
       case "cgpa": return <CgpaCalculatorScreen />;
       case "cgpa-goal": return <CgpaGoalSetterScreen />;
       case "support": return <SupportScreen />;
+      case "upgrade": return <UpgradeScreen />;
       case "edit-identity": return <EditIdentityScreen />;
       case "disclaimer-view": return <DisclaimerViewScreen />;
       default: return <HomeScreen />;
