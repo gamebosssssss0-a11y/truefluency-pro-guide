@@ -8,7 +8,7 @@ import {
 import {
   ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
-  RotateCcw, LifeBuoy, Moon, Sun, Pencil,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
@@ -20,10 +20,15 @@ import { MaterialRow } from "@/components/course-detail";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PRICE_LINE } from "@/lib/pricing-copy";
+import { useEntitlement } from "@/hooks/use-entitlement";
 
 export function AccountScreen() {
   const { profile, navigate, resetSetup } = useProfile();
   const { theme, setTheme } = useTheme();
+  const { access } = useEntitlement();
+  const planLabel =
+    access?.tier === "paid" ? "Premium" : access?.tier === "trial" ? "Free trial" : "Free";
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
