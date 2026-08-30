@@ -46,7 +46,14 @@ function TrialBanner() {
  */
 export function HomeScreen() {
   const { profile, navigate } = useProfile();
-  const name = profile.identity?.name ?? "there";
+  /** First name only, in title case: never the full legal name, never ALL-CAPS. */
+  const name = (() => {
+    const raw = (profile.identity?.name ?? "").trim();
+    const first = raw.split(/\s+/)[0] ?? "";
+    if (!first) return "there";
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  })();
+
 
   const activeToday = hasQualifyingActivityToday(profile);
   const resume = profile.inProgressTest;
