@@ -71,7 +71,7 @@ export function LibrarySoonScreen() {
       icon={Library}
       tagline="One place for your uploaded material, saved summaries, and shared past papers."
       bullets={[
-        "Browse everything you've uploaded by course, semester, and file type.",
+        "Browse everything you've uploaded by course and file type.",
         "Saved topic summaries generated from your own material.",
         "For now, your uploads live under Account, then All my uploads.",
       ]}
@@ -80,6 +80,7 @@ export function LibrarySoonScreen() {
 }
 
 export function ChatbotSoonScreen() {
+  const { navigate } = useProfile();
   return (
     <ComingSoonTab
       title="Chatbot"
@@ -90,6 +91,8 @@ export function ChatbotSoonScreen() {
         "Follow-up questions on anything you got wrong in a mock test.",
         "For now, the explanation on each reviewed question is your best guide.",
       ]}
+      primaryAction={{ label: "Go to Library", onClick: () => navigate("library") }}
     />
   );
 }
+
