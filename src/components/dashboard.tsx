@@ -290,7 +290,20 @@ function CgpaStatusCard() {
               <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">your target</div>
             </div>
           ) : null}
+          {plan ? (
+            <span
+              className={cn(
+                "mb-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider",
+                actual.cumulativeCgpa >= plan.targetCgpa
+                  ? "bg-success/15 text-success"
+                  : "bg-destructive/10 text-destructive",
+              )}
+            >
+              {actual.cumulativeCgpa >= plan.targetCgpa ? "On target" : "Behind target"}
+            </span>
+          ) : null}
         </div>
+
       ) : plan ? (
         <p className="text-xs text-muted-foreground">
           Target {plan.targetCgpa.toFixed(2)} ({plan.targetClassification}). Needs a semester GPA of{" "}
