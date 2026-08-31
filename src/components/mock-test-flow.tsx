@@ -410,7 +410,7 @@ export function MockConfigScreen() {
               Questions
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {[40, 120].map((n) => {
+              {[FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS].map((n) => {
                 const locked = n > maxQuestionsPerSet;
                 const on = count === n;
                 return (
@@ -428,7 +428,7 @@ export function MockConfigScreen() {
                     <div className="font-display text-xl font-semibold text-foreground">{n}</div>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       {locked ? <Lock className="h-3 w-3" aria-hidden="true" /> : null}
-                      {n === 40 ? "Standard set" : locked ? "Full access" : "Long set"}
+                      {n === FREE_MAX_QUESTIONS ? "Standard set" : locked ? "Full access" : "Long set"}
                     </div>
                   </button>
                 );

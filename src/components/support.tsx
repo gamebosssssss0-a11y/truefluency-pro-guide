@@ -4,6 +4,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ArrowLeft, Mail, MessageCircle, LifeBuoy } from "lucide-react";
+import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 
 /**
  * Founder contact details. Single source of truth, update here when they change.
@@ -52,7 +53,8 @@ const FAQS = [
   },
   {
     q: "What does it cost?",
-    a: "You can start free. Full access is 2,000 naira per semester, which covers unlimited analysis, mock tests and the tools as they ship.",
+    // Price and trial wording come from pricing-copy.ts so they can never drift.
+    a: `Every account starts with a ${TRIAL_LINE}. After that: ${PRICE_LINE} Full access covers unlimited analysis, longer mock sets and the WHY behind every answer.`,
   },
 ];
 
