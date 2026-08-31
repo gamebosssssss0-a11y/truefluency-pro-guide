@@ -52,7 +52,7 @@ export function TopicPill({
   return (
     <span
       className={
-        "inline-flex items-center gap-1.5 rounded-full border font-medium " +
+        "inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-2xl border font-medium " +
         (big ? "px-3 py-1.5 text-xs" : "px-2.5 py-1 text-[11px]")
       }
       style={{
@@ -62,11 +62,15 @@ export function TopicPill({
       }}
     >
       <span
-        className={big ? "h-2 w-2 rounded-full" : "h-1.5 w-1.5 rounded-full"}
+        className={
+          (big ? "h-2 w-2" : "h-1.5 w-1.5") + " shrink-0 rounded-full"
+        }
         style={{ backgroundColor: `hsl(${hue} 65% 45%)` }}
       />
-      <span className="max-w-[13rem] truncate">{label}</span>
-      <span className="whitespace-nowrap opacity-75">· {strengthLabel(strength)}</span>
+      {/* Topic name and its plain-language label wrap onto a second line
+          rather than truncating mid-word ("Strong in t"). */}
+      <span className="min-w-0 break-words">{label}</span>
+      <span className="opacity-75">{strengthLabel(strength)}</span>
       {showPercent ? (
         <span className="whitespace-nowrap text-[9px] opacity-55">
           {Math.round(Math.max(0, Math.min(1, strength)) * 100)}%
