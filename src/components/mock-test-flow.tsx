@@ -305,8 +305,8 @@ function GenStat({ label, value }: { label: string; value: string }) {
 
 /** Question-count range. Anything above the free limit is a future paid tier. */
 export const MIN_QUESTIONS = 20;
-export const MAX_QUESTIONS = 120;
-export const FREE_QUESTION_LIMIT = 60;
+/** Caps live in @/lib/entitlements so the UI and the server gate can't drift. */
+export const MAX_QUESTIONS = PAID_MAX_QUESTIONS;
 
 const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = [
   { key: "gentle", label: "Gentle", blurb: "Ease in" },
