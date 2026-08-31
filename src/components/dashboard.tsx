@@ -417,23 +417,26 @@ export function FeaturedCourseCard({ course }: { course: UserCourse }) {
       "overflow-hidden rounded-3xl border bg-card shadow-sm",
       topics.length ? "prediction-ready-depth border-accent/15" : "border-border",
     )}>
-      <div className="bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
+      {/* Cream/white card, not a navy slab: this is an estimate from the
+          student's own upload, never an official exam forecast. */}
+      <div className="border-b border-border bg-background p-5">
         <div className="mb-3 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
             <Sparkles className="h-3 w-3" />
             {topics.length ? "Mock prediction ready" : "No analysis yet"}
           </span>
-          <TrendingUp className="h-4 w-4 text-primary-foreground/60" />
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="text-xs font-medium text-primary-foreground/70">{course.code}</div>
-        <div className="mt-0.5 font-display text-xl font-semibold leading-tight">{course.name}</div>
+        <div className="text-xs font-medium text-muted-foreground">{course.code}</div>
+        <div className="mt-0.5 font-display text-xl font-semibold leading-tight text-foreground">
+          {course.name}
+        </div>
 
         {topics.length ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-4">
-            <Stat label="Topics found" value={String(topics.length)} />
-            <Stat label="Avg prominence" value={`${avgConfidence}%`} />
-            <Stat label="Analyzed" value={new Date(analysis!.analyzedAt).toLocaleDateString()} />
-          </div>
+          <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">
+            {topics.length} topic{topics.length === 1 ? "" : "s"} found · analyzed{" "}
+            {new Date(analysis!.analyzedAt).toLocaleDateString()} · {avgConfidence}% avg prominence
+          </p>
         ) : null}
       </div>
 
@@ -442,7 +445,7 @@ export function FeaturedCourseCard({ course }: { course: UserCourse }) {
           Top predicted topics
         </div>
         {topics.length ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1.5">
             {topics.slice(0, 5).map((t) => (
               <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
             ))}
