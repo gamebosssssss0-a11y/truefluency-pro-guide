@@ -17,13 +17,13 @@ export type GatedFeature =
 
 /** Daily caps for a free (post-trial) account. 0 means the feature is locked. */
 export const FREE_DAILY_LIMITS: Record<GatedFeature, number> = {
-  mock_sets: 3,
-  chatbot_messages: 25,
-  flashcard_decks: 3,
+  mock_sets: 2,
+  chatbot_messages: 10,
+  flashcard_decks: 2,
   library_uploads: 0,
 };
 
-export const FREE_MAX_QUESTIONS = 60;
+export const FREE_MAX_QUESTIONS = 40;
 export const PAID_MAX_QUESTIONS = 120;
 
 export type Tier = "trial" | "free" | "paid";
