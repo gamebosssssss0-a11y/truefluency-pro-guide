@@ -1146,7 +1146,15 @@ export function AttemptReviewScreen() {
               const selected = answers[i] ?? null;
               const isCorrect = selected === q.correct_index;
               return (
-                <div key={`${q.id}-${i}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div
+                  key={`${q.id}-${i}`}
+                  ref={(el) => { questionRefs.current[i] = el; }}
+                  className={cn(
+                    "rounded-2xl border bg-card p-4 shadow-sm",
+                    reviewIndex === i ? "border-amber ring-2 ring-amber/60" : "border-border",
+                  )}
+                >
+
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
                       Q{i + 1} · {q.topic}
