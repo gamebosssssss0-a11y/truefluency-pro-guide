@@ -982,6 +982,16 @@ export function MockResultScreen() {
   }
 
   const celebratory = attempt.score >= 70;
+  const groups: { key: string; label: string; tone: string; topics: typeof attempt.topics }[] = [
+    { key: "strong", label: "Strong", tone: "text-good", topics: attempt.topics.filter((t) => t.score >= 70) },
+    {
+      key: "developing",
+      label: "Developing",
+      tone: "text-warn",
+      topics: attempt.topics.filter((t) => t.score >= 40 && t.score < 70),
+    },
+    { key: "needs", label: "Needs work", tone: "text-bad", topics: attempt.topics.filter((t) => t.score < 40) },
+  ].filter((g) => g.topics.length > 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -989,7 +999,7 @@ export function MockResultScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
         </div>
-        <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
+        <div className="rounded-3xl border border-border bg-cream p-6 text-center shadow-sm">
           <div className={cn("mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl",
             celebratory ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
             <Trophy className="h-6 w-6" />
@@ -997,9 +1007,11 @@ export function MockResultScreen() {
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {celebratory ? "Nice work!" : "Result"}
           </div>
-          <div className="mt-1 font-display text-5xl font-semibold text-primary">{attempt.score}%</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            {attempt.correct} of {attempt.total} correct · {attempt.courseCode}
+          <div className="mt-1 font-display text-5xl font-semibold text-navy">
+            {attempt.correct} <span className="text-2xl text-muted-foreground">/ {attempt.total}</span>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {attempt.score}% · {attempt.courseCode}
           </div>
           {profile.streakDays > 0 ? (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
@@ -1008,27 +1020,38 @@ export function MockResultScreen() {
           ) : null}
         </div>
 
-        <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Topic breakdown</h2>
-          <div className="space-y-2">
-            {attempt.topics.map((t) => (
-              <div key={t.topic} className="flex items-center justify-between gap-3">
-                <div className="text-sm text-foreground">{t.topic}</div>
-                <TopicPill label={`${t.score}%`} strength={scoreToStrength(t.score)} />
-              </div>
-            ))}
-          </div>
+        <div className="mt-5 rounded-2xl border border-border bg-cream p-4 shadow-sm">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Topic analysis</h2>
+          {groups.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No topic breakdown for this attempt.</p>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((g) => (
+                <div key={g.key}>
+                  <div className={cn("text-[11px] font-semibold uppercase tracking-wider", g.tone)}>{g.label}</div>
+                  <div className="mt-1 space-y-1">
+                    {g.topics.map((t) => (
+                      <div key={t.topic} className="flex items-start justify-between gap-3 text-sm">
+                        <span className="min-w-0 break-words text-foreground">{t.topic}</span>
+                        <span className={cn("shrink-0 font-semibold", g.tone)}>{t.score}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <AiGeneratedLabel className="mt-3" />
         </div>
 
         <Button
           size="lg"
-          variant="outline"
-          className="mt-5 w-full"
+          className="mt-5 w-full bg-amber text-white hover:bg-amber/90"
           onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
         >
-          Review every question
+          Review answers
         </Button>
+
 
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Button variant="outline" size="lg" onClick={() => navigate("test-history")}>
