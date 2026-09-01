@@ -1220,18 +1220,29 @@ export function AttemptReviewScreen() {
                     </p>
                   ) : null}
 
-                  <div className="mt-3 rounded-xl border border-border bg-background p-3">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Why this is the answer
-                    </div>
-                    {q.explanation?.trim() ? (
+                  {explanationsUnlocked && q.explanation?.trim() ? (
+                    <div className="mt-3 rounded-xl border border-border bg-background p-3">
+                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Why this is the answer
+                      </div>
                       <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
                         <MathText>{q.explanation}</MathText>
                       </p>
-                    ) : (
-                      <LockedExplanation priceNaira={FOUNDING_PRICE_NAIRA} />
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    /* Locked: the WHY panel replaces the explanation entirely, so no
+                       step-by-step working ever sits beside the lock. */
+                    <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent/10 p-3">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Why</div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {PRICE_LINE} Your score and the correct answers stay free.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               );
             })}
