@@ -41,7 +41,7 @@
   --color-warning: var(--warning);
 
   /* Locked palette tokens (file chips, result groups, history pills). */
-  --color-cream: var(--cream);
+
   --color-navy: var(--navy);
   --color-amber: var(--amber);
   --color-wine: var(--wine);
