@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
-  FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw, RefreshCw,
+  Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw, RefreshCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { HeaderLogo } from "@/components/brand";
@@ -855,23 +855,29 @@ export function MaterialRow({
   };
 
 
-  const iconMeta: { Icon: typeof FileText; tone: string } = (() => {
-    if (t === "pdf") return { Icon: FileText, tone: "bg-primary text-primary-foreground" };
-    if (t === "docx") return { Icon: FileType2, tone: "bg-[hsl(215_70%_45%)] text-white" };
-    if (t === "pptx") return { Icon: Presentation, tone: "bg-[hsl(20_85%_50%)] text-white" };
-    if (t === "pasted") return { Icon: ClipboardPaste, tone: "bg-secondary text-primary" };
-    return { Icon: FileImage, tone: "bg-accent text-accent-foreground" };
+  // Locked file-type chips. PDF must never fall back to the primary/navy token.
+  const chip: { label: string; tone: string } = (() => {
+    if (t === "pdf") return { label: "PDF", tone: "bg-wine text-white" };
+    if (t === "docx") return { label: "DOC", tone: "bg-doc-blue text-white" };
+    if (t === "pptx") return { label: "PPT", tone: "bg-ppt-amber text-white" };
+    if (t === "pasted") return { label: "Note", tone: "border border-border bg-cream text-navy" };
+    return { label: "IMG", tone: "bg-navy text-white" };
   })();
 
   return (
     <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", iconMeta.tone)}>
-          <iconMeta.Icon className="h-4 w-4" />
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold tracking-wider",
+            chip.tone,
+          )}
+        >
+          {chip.label}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-foreground">{m.file_name}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="break-words text-sm font-semibold leading-snug text-foreground">{m.file_name}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
             {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
             {showCourse ? <span>·</span> : null}
             {isPasted ? (
@@ -887,6 +893,7 @@ export function MaterialRow({
             <span>{new Date(m.created_at).toLocaleDateString()}</span>
             {hasExtraction ? <ExtractionBadge material={m} /> : null}
           </div>
+
           {isFromInactiveCourse ? (
             <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
           ) : null}

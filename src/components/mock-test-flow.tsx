@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
-import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
-import { FOUNDING_PRICE_NAIRA, FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
-import { PaywallNotice, LockedExplanation } from "@/components/paywall-notice";
+import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
+import { PaywallNotice } from "@/components/paywall-notice";
+import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 
@@ -982,6 +983,16 @@ export function MockResultScreen() {
   }
 
   const celebratory = attempt.score >= 70;
+  const groups: { key: string; label: string; tone: string; topics: typeof attempt.topics }[] = [
+    { key: "strong", label: "Strong", tone: "text-good", topics: attempt.topics.filter((t) => t.score >= 70) },
+    {
+      key: "developing",
+      label: "Developing",
+      tone: "text-warn",
+      topics: attempt.topics.filter((t) => t.score >= 40 && t.score < 70),
+    },
+    { key: "needs", label: "Needs work", tone: "text-bad", topics: attempt.topics.filter((t) => t.score < 40) },
+  ].filter((g) => g.topics.length > 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -989,7 +1000,7 @@ export function MockResultScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
         </div>
-        <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
+        <div className="rounded-3xl border border-border bg-cream p-6 text-center shadow-sm">
           <div className={cn("mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl",
             celebratory ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
             <Trophy className="h-6 w-6" />
@@ -997,9 +1008,11 @@ export function MockResultScreen() {
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {celebratory ? "Nice work!" : "Result"}
           </div>
-          <div className="mt-1 font-display text-5xl font-semibold text-primary">{attempt.score}%</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            {attempt.correct} of {attempt.total} correct · {attempt.courseCode}
+          <div className="mt-1 font-display text-5xl font-semibold text-navy">
+            {attempt.correct} <span className="text-2xl text-muted-foreground">/ {attempt.total}</span>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {attempt.score}% · {attempt.courseCode}
           </div>
           {profile.streakDays > 0 ? (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
@@ -1008,27 +1021,38 @@ export function MockResultScreen() {
           ) : null}
         </div>
 
-        <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Topic breakdown</h2>
-          <div className="space-y-2">
-            {attempt.topics.map((t) => (
-              <div key={t.topic} className="flex items-center justify-between gap-3">
-                <div className="text-sm text-foreground">{t.topic}</div>
-                <TopicPill label={`${t.score}%`} strength={scoreToStrength(t.score)} />
-              </div>
-            ))}
-          </div>
+        <div className="mt-5 rounded-2xl border border-border bg-cream p-4 shadow-sm">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Topic analysis</h2>
+          {groups.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No topic breakdown for this attempt.</p>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((g) => (
+                <div key={g.key}>
+                  <div className={cn("text-[11px] font-semibold uppercase tracking-wider", g.tone)}>{g.label}</div>
+                  <div className="mt-1 space-y-1">
+                    {g.topics.map((t) => (
+                      <div key={t.topic} className="flex items-start justify-between gap-3 text-sm">
+                        <span className="min-w-0 break-words text-foreground">{t.topic}</span>
+                        <span className={cn("shrink-0 font-semibold", g.tone)}>{t.score}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <AiGeneratedLabel className="mt-3" />
         </div>
 
         <Button
           size="lg"
-          variant="outline"
-          className="mt-5 w-full"
+          className="mt-5 w-full bg-amber text-white hover:bg-amber/90"
           onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
         >
-          Review every question
+          Review answers
         </Button>
+
 
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Button variant="outline" size="lg" onClick={() => navigate("test-history")}>
@@ -1047,7 +1071,11 @@ export function MockResultScreen() {
 
 export function AttemptReviewScreen() {
   const { profile, navigate, update, activeAttemptId } = useProfile();
+  const { explanationsUnlocked } = useEntitlement();
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const attempt = profile.attempts.find((a) => a.id === activeAttemptId);
+
 
   if (!attempt) {
     return (
@@ -1077,21 +1105,36 @@ export function AttemptReviewScreen() {
         </div>
 
         {/* Header */}
-        <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
-          <div className="text-xs font-medium text-primary-foreground/70">{attempt.courseCode}</div>
-          <div className="mt-0.5 font-display text-xl font-semibold leading-tight">{attempt.courseTitle}</div>
-          <div className="mt-1 text-[11px] text-primary-foreground/70">
+        <div className="rounded-3xl border border-border bg-cream p-5 shadow-sm">
+          <div className="text-xs font-medium text-muted-foreground">{attempt.courseCode}</div>
+          <div className="mt-0.5 break-words font-display text-xl font-semibold leading-tight text-navy">
+            {attempt.courseTitle}
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
             Completed {new Date(attempt.submittedAt).toLocaleString()}
           </div>
-          <div className="mt-4 flex items-baseline gap-2 border-t border-primary-foreground/15 pt-4">
-            <span className="font-display text-4xl font-semibold leading-none">{attempt.score}%</span>
-            <span className="text-sm text-primary-foreground/75">
-              {attempt.correct}/{attempt.total} correct
+          <div className="mt-4 flex items-baseline gap-2 border-t border-border pt-4">
+            <span className="font-display text-4xl font-semibold leading-none text-navy">
+              {attempt.correct} <span className="text-xl text-muted-foreground">/ {attempt.total}</span>
             </span>
+            <span className="text-xs text-muted-foreground">{attempt.score}%</span>
           </div>
         </div>
 
+        {questions.length > 0 ? (
+          <ReviewMiniMap
+            questions={questions}
+            answers={answers}
+            current={reviewIndex}
+            onPick={(i) => {
+              setReviewIndex(i);
+              questionRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
+        ) : null}
+
         <AiGeneratedLabel className="mt-4" />
+
 
         {questions.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
@@ -1104,7 +1147,15 @@ export function AttemptReviewScreen() {
               const selected = answers[i] ?? null;
               const isCorrect = selected === q.correct_index;
               return (
-                <div key={`${q.id}-${i}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div
+                  key={`${q.id}-${i}`}
+                  ref={(el) => { questionRefs.current[i] = el; }}
+                  className={cn(
+                    "rounded-2xl border bg-card p-4 shadow-sm",
+                    reviewIndex === i ? "border-amber ring-2 ring-amber/60" : "border-border",
+                  )}
+                >
+
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
                       Q{i + 1} · {q.topic}
@@ -1170,18 +1221,29 @@ export function AttemptReviewScreen() {
                     </p>
                   ) : null}
 
-                  <div className="mt-3 rounded-xl border border-border bg-background p-3">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Why this is the answer
-                    </div>
-                    {q.explanation?.trim() ? (
+                  {explanationsUnlocked && q.explanation?.trim() ? (
+                    <div className="mt-3 rounded-xl border border-border bg-background p-3">
+                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Why this is the answer
+                      </div>
                       <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
                         <MathText>{q.explanation}</MathText>
                       </p>
-                    ) : (
-                      <LockedExplanation priceNaira={FOUNDING_PRICE_NAIRA} />
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    /* Locked: the WHY panel replaces the explanation entirely, so no
+                       step-by-step working ever sits beside the lock. */
+                    <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent/10 p-3">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Why</div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {PRICE_LINE} Your score and the correct answers stay free.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               );
             })}
@@ -1210,6 +1272,49 @@ export function AttemptReviewScreen() {
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Generates a fresh set of questions using the same course and settings.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Review mini-map ---------- */
+
+function ReviewMiniMap({
+  questions, answers, current, onPick,
+}: {
+  questions: AIQuestion[];
+  answers: (number | null)[];
+  current: number;
+  onPick: (index: number) => void;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-border bg-cream p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Question map</div>
+        <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-good" /> Correct</span>
+          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-wine" /> Wrong or blank</span>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-6 gap-1.5">
+        {questions.map((q, i) => {
+          const right = (answers[i] ?? null) === q.correct_index;
+          return (
+            <button
+              key={`${q.id}-${i}`}
+              type="button"
+              onClick={() => onPick(i)}
+              aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}`}
+              className={cn(
+                "grid h-8 place-items-center rounded-lg text-[11px] font-semibold text-white",
+                right ? "bg-good" : "bg-wine",
+                current === i && "ring-2 ring-amber ring-offset-1 ring-offset-cream",
+              )}
+            >
+              {i + 1}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
