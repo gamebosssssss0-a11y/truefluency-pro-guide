@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
-import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
+import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
-import { FOUNDING_PRICE_NAIRA, FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
-import { PaywallNotice, LockedExplanation } from "@/components/paywall-notice";
+import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
+import { PaywallNotice } from "@/components/paywall-notice";
+import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 
@@ -1271,6 +1272,49 @@ export function AttemptReviewScreen() {
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Generates a fresh set of questions using the same course and settings.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Review mini-map ---------- */
+
+function ReviewMiniMap({
+  questions, answers, current, onPick,
+}: {
+  questions: AIQuestion[];
+  answers: (number | null)[];
+  current: number;
+  onPick: (index: number) => void;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-border bg-cream p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Question map</div>
+        <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-good" /> Correct</span>
+          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-wine" /> Wrong or blank</span>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-6 gap-1.5">
+        {questions.map((q, i) => {
+          const right = (answers[i] ?? null) === q.correct_index;
+          return (
+            <button
+              key={`${q.id}-${i}`}
+              type="button"
+              onClick={() => onPick(i)}
+              aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}`}
+              className={cn(
+                "grid h-8 place-items-center rounded-lg text-[11px] font-semibold text-white",
+                right ? "bg-good" : "bg-wine",
+                current === i && "ring-2 ring-amber ring-offset-1 ring-offset-cream",
+              )}
+            >
+              {i + 1}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
