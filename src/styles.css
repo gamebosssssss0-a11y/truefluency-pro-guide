@@ -39,7 +39,19 @@
   --color-cream: var(--cream);
   --color-success: var(--success);
   --color-warning: var(--warning);
+
+  /* Locked palette tokens (file chips, result groups, history pills). */
+  --color-cream: var(--cream);
+  --color-navy: var(--navy);
+  --color-amber: var(--amber);
+  --color-wine: var(--wine);
+  --color-doc-blue: var(--doc-blue);
+  --color-ppt-amber: var(--ppt-amber);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
 }
+
 
 :root {
   --radius: 0.875rem;
