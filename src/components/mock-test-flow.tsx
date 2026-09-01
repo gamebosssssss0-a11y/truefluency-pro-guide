@@ -1100,21 +1100,36 @@ export function AttemptReviewScreen() {
         </div>
 
         {/* Header */}
-        <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
-          <div className="text-xs font-medium text-primary-foreground/70">{attempt.courseCode}</div>
-          <div className="mt-0.5 font-display text-xl font-semibold leading-tight">{attempt.courseTitle}</div>
-          <div className="mt-1 text-[11px] text-primary-foreground/70">
+        <div className="rounded-3xl border border-border bg-cream p-5 shadow-sm">
+          <div className="text-xs font-medium text-muted-foreground">{attempt.courseCode}</div>
+          <div className="mt-0.5 break-words font-display text-xl font-semibold leading-tight text-navy">
+            {attempt.courseTitle}
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
             Completed {new Date(attempt.submittedAt).toLocaleString()}
           </div>
-          <div className="mt-4 flex items-baseline gap-2 border-t border-primary-foreground/15 pt-4">
-            <span className="font-display text-4xl font-semibold leading-none">{attempt.score}%</span>
-            <span className="text-sm text-primary-foreground/75">
-              {attempt.correct}/{attempt.total} correct
+          <div className="mt-4 flex items-baseline gap-2 border-t border-border pt-4">
+            <span className="font-display text-4xl font-semibold leading-none text-navy">
+              {attempt.correct} <span className="text-xl text-muted-foreground">/ {attempt.total}</span>
             </span>
+            <span className="text-xs text-muted-foreground">{attempt.score}%</span>
           </div>
         </div>
 
+        {questions.length > 0 ? (
+          <ReviewMiniMap
+            questions={questions}
+            answers={answers}
+            current={reviewIndex}
+            onPick={(i) => {
+              setReviewIndex(i);
+              questionRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
+        ) : null}
+
         <AiGeneratedLabel className="mt-4" />
+
 
         {questions.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
