@@ -1070,7 +1070,11 @@ export function MockResultScreen() {
 
 export function AttemptReviewScreen() {
   const { profile, navigate, update, activeAttemptId } = useProfile();
+  const { explanationsUnlocked } = useEntitlement();
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const attempt = profile.attempts.find((a) => a.id === activeAttemptId);
+
 
   if (!attempt) {
     return (
