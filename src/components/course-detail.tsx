@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
-  FileImage, FileText, FileType2, Presentation, Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw, RefreshCw,
+  Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw, RefreshCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
 import { HeaderLogo } from "@/components/brand";
