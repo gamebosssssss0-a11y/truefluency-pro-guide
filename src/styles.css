@@ -91,6 +91,17 @@
   --ring: oklch(0.72 0.15 55);
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
   --pill-text-l: 30%;
+
+  /* Locked palette (fixed hex, identical in both themes). */
+  --navy: #1B2A4A;
+  --amber: #B86E0A;
+  --wine: #8B2E2E;
+  --doc-blue: #1D4E89;
+  --ppt-amber: #B86E0A;
+  --good: #2F6B4F;
+  --warn: #B86E0A;
+  --bad: #8B2E2E;
+
 }
 
 /* Dark: near-black ink base (#0B0B14), raised indigo surfaces, amber accent. */
