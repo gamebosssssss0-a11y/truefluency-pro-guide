@@ -220,26 +220,27 @@ export function TestHistoryScreen() {
 
             <div className="mt-4 space-y-2.5">
               {filtered.map((a) => (
-                <div key={a.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div key={a.id} className="rounded-2xl border border-border bg-cream p-4">
                   <div className="flex items-start gap-3">
                     <div
                       className={cn(
-                        "grid h-11 w-11 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold",
+                        "grid h-11 w-14 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold",
                         a.score >= 70
-                          ? "bg-success/15 text-success"
+                          ? "bg-good/12 text-good"
                           : a.score >= 50
-                            ? "bg-warning/15 text-warning"
-                            : "bg-destructive/15 text-destructive",
+                            ? "bg-warn/12 text-warn"
+                            : "bg-bad/12 text-bad",
                       )}
                     >
-                      {a.score}%
+                      {a.correct} / {a.total}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-foreground">{a.courseCode}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">{a.courseTitle}</div>
+                      <div className="break-words text-[11px] text-muted-foreground">{a.courseTitle}</div>
                       <div className="mt-1 text-[11px] text-muted-foreground">
-                        {new Date(a.submittedAt).toLocaleString()}
+                        {new Date(a.submittedAt).toLocaleString()} · {a.score}%
                       </div>
+
                       {a.settings ? (
                         <div className="mt-1 text-[11px] text-muted-foreground">
                           {a.settings.questionCount} questions · {a.settings.minutes} min ·{" "}
