@@ -123,10 +123,24 @@ function Router() {
     }
   })();
 
+  // Mock run and review stay a narrow single column at every width so the
+  // exam surface matches mobile exactly.
+  const examFocus = view === "mock-run" || view === "mock-gen" || view === "attempt-review";
+  const wideHome = view === "home" || view === "dashboard";
+
   return (
     <>
-      {/* Padding keeps the persistent tab bar from covering page content. */}
-      <div className={hidesTabBar(view) ? undefined : "pb-20"}>{screen}</div>
+      <TopNavBar />
+      {/* Padding keeps the persistent mobile tab bar from covering content. */}
+      <div
+        className={cn(
+          hidesTabBar(view) ? undefined : "pb-20 md:pb-8",
+          !examFocus && "app-stage",
+          !examFocus && wideHome && "app-stage-wide",
+        )}
+      >
+        {screen}
+      </div>
       <BottomTabBar />
     </>
   );
