@@ -87,6 +87,9 @@ export function HomeScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+        {/* Two columns from 1024px up; single column below. Same content. */}
+        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+        <div className="min-w-0">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-2">
