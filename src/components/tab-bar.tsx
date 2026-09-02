@@ -1,5 +1,6 @@
 import { useProfile, type AppView, type TabKey } from "@/lib/profile-store";
 import { Home, ClipboardList, Library, MessageCircle, User } from "lucide-react";
+import { LogoMark } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
 
 const TABS: { key: TabKey; label: string; icon: typeof Home; view: AppView }[] = [
