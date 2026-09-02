@@ -419,7 +419,7 @@ export function FeaturedCourseCard({ course }: { course: UserCourse }) {
     )}>
       {/* Cream/white card, not a navy slab: this is an estimate from the
           student's own upload, never an official exam forecast. */}
-      <div className="border-b border-border bg-background p-5">
+      <div className="border-b border-border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
             <Sparkles className="h-3 w-3" />
