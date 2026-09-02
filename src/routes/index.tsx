@@ -27,7 +27,8 @@ import { SupportScreen } from "@/components/support";
 import { UpgradeScreen } from "@/components/upgrade";
 import { EditIdentityScreen } from "@/components/edit-identity";
 import { ThemeProvider } from "@/lib/theme";
-import { BottomTabBar, hidesTabBar } from "@/components/tab-bar";
+import { BottomTabBar, TopNavBar, hidesTabBar } from "@/components/tab-bar";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   component: Index,
