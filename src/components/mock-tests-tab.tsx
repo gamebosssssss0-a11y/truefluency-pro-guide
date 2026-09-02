@@ -220,7 +220,7 @@ export function TestHistoryScreen() {
 
             <div className="mt-4 space-y-2.5">
               {filtered.map((a) => (
-                <div key={a.id} className="rounded-2xl border border-border bg-cream p-4">
+                <div key={a.id} className="rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-start gap-3">
                     <div
                       className={cn(

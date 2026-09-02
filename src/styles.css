@@ -86,7 +86,7 @@
   --success: oklch(0.62 0.14 150);
   --warning: oklch(0.75 0.16 70);
 
-  --border: oklch(0.88 0.015 85);
+  --border: #E4DCC8;
   --input: oklch(0.9 0.015 85);
   --ring: oklch(0.72 0.15 55);
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
@@ -312,5 +312,21 @@
   .sonic-text-1,
   .sonic-text-2 {
     animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------
+   Desktop shell: widen the phone column into a centred stage at
+   >= 768px. Layout only, no new UI. The mock run/review screens opt
+   out of the stage so exam focus stays a narrow single column.
+   --------------------------------------------------------------- */
+@media (min-width: 768px) {
+  .app-stage .max-w-md {
+    max-width: 45rem; /* 720px */
+  }
+}
+@media (min-width: 1024px) {
+  .app-stage-wide .max-w-md {
+    max-width: 60rem; /* 960px */
   }
 }

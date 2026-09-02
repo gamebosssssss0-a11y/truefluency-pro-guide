@@ -87,6 +87,9 @@ export function HomeScreen() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+        {/* Two columns from 1024px up; single column below. Same content. */}
+        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+        <div className="min-w-0">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-2">
@@ -241,14 +244,20 @@ export function HomeScreen() {
           </div>
         ) : null}
 
-        {/* Mock prediction card */}
-        {predictionCourse ? <FeaturedCourseCard course={predictionCourse} /> : null}
-
         {/* CGPA status */}
         <CgpaStatusCard />
+        </div>
 
-        {/* Rotating quotes and study tips */}
-        <RotatingWisdomCard />
+        <div className="min-w-0">
+          {/* Mock prediction card */}
+          <div className="mt-6 lg:mt-0">
+            {predictionCourse ? <FeaturedCourseCard course={predictionCourse} /> : null}
+          </div>
+
+          {/* Rotating quotes and study tips */}
+          <RotatingWisdomCard />
+        </div>
+        </div>
 
         <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
           Predictions are statistical estimates. Always cross-check against your official material.
@@ -419,7 +428,7 @@ export function FeaturedCourseCard({ course }: { course: UserCourse }) {
     )}>
       {/* Cream/white card, not a navy slab: this is an estimate from the
           student's own upload, never an official exam forecast. */}
-      <div className="border-b border-border bg-background p-5">
+      <div className="border-b border-border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
             <Sparkles className="h-3 w-3" />

@@ -1000,7 +1000,7 @@ export function MockResultScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
         </div>
-        <div className="rounded-3xl border border-border bg-cream p-6 text-center shadow-sm">
+        <div className="rounded-3xl border border-border bg-card p-6 text-center">
           <div className={cn("mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl",
             celebratory ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
             <Trophy className="h-6 w-6" />
@@ -1021,7 +1021,7 @@ export function MockResultScreen() {
           ) : null}
         </div>
 
-        <div className="mt-5 rounded-2xl border border-border bg-cream p-4 shadow-sm">
+        <div className="mt-5 rounded-2xl border border-border bg-card p-4">
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Topic analysis</h2>
           {groups.length === 0 ? (
             <p className="text-xs text-muted-foreground">No topic breakdown for this attempt.</p>
@@ -1105,7 +1105,7 @@ export function AttemptReviewScreen() {
         </div>
 
         {/* Header */}
-        <div className="rounded-3xl border border-border bg-cream p-5 shadow-sm">
+        <div className="rounded-3xl border border-border bg-card p-5">
           <div className="text-xs font-medium text-muted-foreground">{attempt.courseCode}</div>
           <div className="mt-0.5 break-words font-display text-xl font-semibold leading-tight text-navy">
             {attempt.courseTitle}
@@ -1288,7 +1288,7 @@ function ReviewMiniMap({
   onPick: (index: number) => void;
 }) {
   return (
-    <div className="mt-4 rounded-2xl border border-border bg-cream p-4 shadow-sm">
+    <div className="mt-4 rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Question map</div>
         <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
