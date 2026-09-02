@@ -244,14 +244,20 @@ export function HomeScreen() {
           </div>
         ) : null}
 
-        {/* Mock prediction card */}
-        {predictionCourse ? <FeaturedCourseCard course={predictionCourse} /> : null}
-
         {/* CGPA status */}
         <CgpaStatusCard />
+        </div>
 
-        {/* Rotating quotes and study tips */}
-        <RotatingWisdomCard />
+        <div className="min-w-0">
+          {/* Mock prediction card */}
+          <div className="mt-6 lg:mt-0">
+            {predictionCourse ? <FeaturedCourseCard course={predictionCourse} /> : null}
+          </div>
+
+          {/* Rotating quotes and study tips */}
+          <RotatingWisdomCard />
+        </div>
+        </div>
 
         <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
           Predictions are statistical estimates. Always cross-check against your official material.
