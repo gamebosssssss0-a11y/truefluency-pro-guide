@@ -86,7 +86,7 @@
   --success: oklch(0.62 0.14 150);
   --warning: oklch(0.75 0.16 70);
 
-  --border: oklch(0.88 0.015 85);
+  --border: #E4DCC8;
   --input: oklch(0.9 0.015 85);
   --ring: oklch(0.72 0.15 55);
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
