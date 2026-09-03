@@ -1,6 +1,6 @@
 /**
  * Client for the TrueFluency AI backend (FastAPI on Render).
- * All generation goes through Render only — no Gemini/Lovable AI fallback.
+ * All generation goes through Render ONLY — no Gemini/Lovable AI fallback.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { AIQuestion, Difficulty, Profile } from "@/lib/profile-store";
