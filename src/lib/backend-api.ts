@@ -37,7 +37,7 @@ function readErrorDetail(text: string, status: number): string {
   return `The analysis service rejected the request (${status}).`;
 }
 
-async function postJson<T>(path: string, body: unknown, timeoutMs = 120_000): Promise<T> {
+async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Promise<T> {
   const url = `${base()}${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
