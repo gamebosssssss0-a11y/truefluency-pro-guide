@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { useProfile } from "@/lib/profile-store";
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 import { deriveSupabasePassword, localPasswordVerifier } from "@/lib/supabase-session";
 
@@ -71,18 +70,22 @@ export function IdentityScreen() {
     setError(null);
     setBusy("google");
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
       });
-      if (result.error) {
-        console.error("[auth] Google sign-in failed", result.error);
-        setError("Google sign-in didn't complete. Tap to try again.");
+      if (oauthError) {
+        console.error("[auth] Google sign-in failed", oauthError);
+        setError(oauthError.message);
         setBusy(null);
         return;
       }
-      if (result.redirected) return; // browser is navigating to Google
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
       if (!user) {
         setError("Google sign-in didn't complete. Tap to try again.");
         setBusy(null);
@@ -94,10 +97,11 @@ export function IdentityScreen() {
       finish({ kind: "email", name: displayName, email: user.email ?? undefined });
     } catch (err) {
       console.error("[auth] Google sign-in threw", err);
-      setError("Google sign-in didn't complete. Tap to try again.");
+      setError(err instanceof Error ? err.message : "Google sign-in didn't complete.");
       setBusy(null);
     }
   };
+
 
   return (
     <AppShell
