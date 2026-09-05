@@ -165,3 +165,27 @@ export async function generateMock(input: {
   if (questions.length === 0) throw new Error("No questions came back from the generator.");
   return questions;
 }
+
+/**
+ * Submit mock test results to the feedback loop — Render backend only.
+ * Fire-and-forget: never throws, never blocks the results screen.
+ */
+export async function submitResults(input: {
+  courseCode: string;
+  results: Array<{
+    topic: string;
+    item_type?: string;
+    difficulty?: string;
+    was_correct: boolean;
+  }>;
+}): Promise<void> {
+  if (!isBackendConfigured()) return;
+  try {
+    await postJson("/submit-results", {
+      course_code: input.courseCode,
+      results: input.results,
+    });
+  } catch {
+    // fire-and-forget — never block the student from seeing their results
+  }
+}
