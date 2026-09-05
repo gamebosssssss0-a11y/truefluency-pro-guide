@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
-import { generateMock } from "@/lib/backend-api";
+import { generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
@@ -640,6 +640,18 @@ export function MockRunScreen() {
       masteredCourses: mastered,
       ...bumpStreak(profile),
     });
+    // Fire-and-forget: send results to backend feedback loop
+    // Never blocks or throws — student always sees their results regardless
+    submitResults({
+      courseCode: t.courseCode,
+      results: questions.map((q, i) => ({
+        topic: q.topic,
+        item_type: (q as { item_type?: string }).item_type,
+        difficulty: profile.courseTestSettings[t.courseCode]?.difficulty,
+        was_correct: t.answers[i] === q.correct_index,
+      })),
+    });
+
     navigate("mock-result", { courseCode: t.courseCode });
   };
 
