@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { useProfile } from "@/lib/profile-store";
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 import { deriveSupabasePassword, localPasswordVerifier } from "@/lib/supabase-session";
 

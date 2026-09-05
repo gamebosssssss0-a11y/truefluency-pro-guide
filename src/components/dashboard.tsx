@@ -3,7 +3,7 @@ import { useProfile, hasQualifyingActivityToday } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight, Flame, Zap, Quote as QuoteIcon, Lightbulb, Calculator, Target,
-  Layers, GraduationCap, FileText,
+  Layers, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TopicPill } from "@/components/common";
@@ -369,4 +369,3 @@ function RotatingWisdomCard() {
   );
 }
 
-export { FileText as _HomeIconUnused };
