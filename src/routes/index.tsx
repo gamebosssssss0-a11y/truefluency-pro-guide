@@ -18,7 +18,8 @@ import {
   MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen, AttemptReviewScreen,
 } from "@/components/mock-test-flow";
 import { MockTestsScreen, TestHistoryScreen } from "@/components/mock-tests-tab";
-import { LibrarySoonScreen, ChatbotSoonScreen } from "@/components/placeholder-tabs";
+import { ChatbotSoonScreen } from "@/components/placeholder-tabs";
+import { LibraryScreen } from "@/components/library";
 import { AccountScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
 import { CgpaCalculatorScreen } from "@/components/cgpa-calculator";
