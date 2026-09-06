@@ -400,31 +400,57 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     let cancelled = false;
 
-    const sync = async () => {
+    const sync = async (): Promise<Profile | null> => {
       const { loadCloudProfile, pushCloudProfile } = await import("@/lib/cloud-sync");
       try {
         const snapshot = await loadCloudProfile();
-        if (cancelled) return;
+        if (cancelled) return null;
+        let syncedProfile = profileRef.current;
         if (snapshot) {
-          setProfile((cur) => ({ ...cur, ...snapshot }));
+          syncedProfile = { ...syncedProfile, ...snapshot };
+          profileRef.current = syncedProfile;
+          setProfile(syncedProfile);
         } else {
           // First cloud session: migrate whatever is already on this device.
-          await pushCloudProfile(profileRef.current);
+          await pushCloudProfile(syncedProfile);
         }
         cloudReady.current = true;
+        return syncedProfile;
       } catch (err) {
         console.error("[profile-store] cloud sync failed, staying on local cache", err);
+        return profileRef.current;
       }
     };
 
     void supabase.auth.getSession().then(({ data }) => {
-      if (data.session) void sync();
+      if (data.session && profileRef.current.identity) void sync();
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) return;
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
-        if (!cloudReady.current) void sync();
+        if (!cloudReady.current) {
+          void (async () => {
+            if (!profileRef.current.identity) {
+              const identity: Profile["identity"] = {
+                kind: "email",
+                name:
+                  session.user.user_metadata?.full_name ||
+                  session.user.user_metadata?.name ||
+                  session.user.email?.split("@")[0] ||
+                  "Student",
+                email: session.user.email,
+              };
+              const profileWithIdentity = { ...profileRef.current, identity };
+              profileRef.current = profileWithIdentity;
+              setProfile(profileWithIdentity);
+            }
+
+            const syncedProfile = await sync();
+            if (!syncedProfile || cancelled) return;
+            go(syncedProfile.setupComplete ? "dashboard" : "goal");
+          })();
+        }
       }
     });
 
