@@ -68,8 +68,11 @@ export function MockGenerationScreen() {
 
   const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState<QuotaVerdict | null>(null);
+  /** Bumped by "Try again" so the generation effect runs the same request again. */
+  const [retryKey, setRetryKey] = useState(0);
   const fetchedRef = useRef(false);
   const quoteCycleStartedRef = useRef(Date.now());
+
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
