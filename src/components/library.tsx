@@ -109,8 +109,9 @@ export function LibraryScreen() {
     { fileName: string; token: string; expiresAt: string; usesLeft: number; maxUses: number } | null
   >(null);
   const [preview, setPreview] = useState<
-    { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean } | null
+    { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; failed?: boolean } | null
   >(null);
+
   const [busy, setBusy] = useState(false);
 
   const loadLocker = useCallback(async () => {
