@@ -13,6 +13,7 @@ import { generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
+import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
