@@ -60,7 +60,7 @@ export function TopNavBar() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 z-40 hidden border-b border-border bg-background/95 backdrop-blur md:block"
+      className="sticky top-0 z-40 hidden border-b border-[#E4DCC8] bg-[#FFFFFF] md:block"
     >
       <div className="mx-auto flex w-full max-w-[60rem] items-center gap-6 px-6 py-3">
         <button
@@ -71,7 +71,7 @@ export function TopNavBar() {
         >
           <LogoMark className="h-7 w-7" />
           <span className="font-display text-base font-semibold tracking-tight text-foreground">
-            TrueFluency <span className="text-accent">Pro</span>
+            TrueFluency <span className="text-[#B86E0A]">Pro</span>
           </span>
         </button>
         <div className="ml-auto flex items-center gap-1">
@@ -84,14 +84,20 @@ export function TopNavBar() {
                 onClick={() => navigate(t.view)}
                 aria-current={on ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm transition",
-                  on
-                    ? "bg-accent/10 font-semibold text-accent"
-                    : "font-medium text-muted-foreground hover:text-foreground",
+                  "relative flex flex-col items-center rounded-lg px-3 py-2 text-sm transition",
+                  on ? "font-semibold text-[#B86E0A]" : "font-medium text-[#8A8494] hover:text-[#1B2A4A]",
                 )}
               >
-                <t.icon className={cn("h-4 w-4", on && "stroke-[2.5]")} />
-                {t.label}
+                <span className="flex items-center gap-1.5">
+                  <t.icon className={cn("h-4 w-4", on && "stroke-[2.5]")} />
+                  {t.label}
+                </span>
+                <span
+                  className={cn(
+                    "mt-1 h-0.5 w-5 rounded-full",
+                    on ? "bg-[#B86E0A]" : "bg-transparent",
+                  )}
+                />
               </button>
             );
           })}
@@ -99,6 +105,7 @@ export function TopNavBar() {
       </div>
     </nav>
   );
+
 }
 
 export function BottomTabBar() {
