@@ -350,27 +350,26 @@ function RotatingWisdomCard() {
   if (!item) return null;
 
   return (
-    <figure className="mt-5 rounded-2xl border border-border bg-card p-4">
+    <figure className="mt-5 rounded-2xl bg-[#1B2A4A] p-5">
       {item.kind === "quote" ? (
-        <>
-          <QuoteIcon className="h-4 w-4 text-accent" aria-hidden="true" />
-          <blockquote className="mt-1.5 text-sm font-medium leading-relaxed text-foreground">
+        <div className="text-center">
+          <QuoteIcon className="mx-auto h-4 w-4 text-[#B86E0A]" aria-hidden="true" />
+          <blockquote className="mt-2 text-sm font-medium leading-relaxed text-[#F7F3EA]">
             {item.quote.quote}
           </blockquote>
-          <figcaption className="mt-1.5 text-[11px] text-muted-foreground">
-            {item.quote.author}
-          </figcaption>
-        </>
+          <figcaption className="mt-2 text-[11px] text-[#C4B8A0]">{item.quote.author}</figcaption>
+        </div>
       ) : (
         <>
-          <Lightbulb className="h-4 w-4 text-accent" aria-hidden="true" />
-          <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+          <Lightbulb className="h-4 w-4 text-[#B86E0A]" aria-hidden="true" />
+          <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#B86E0A]">
             Study tip
           </div>
-          <p className="mt-1 text-sm font-medium leading-relaxed text-foreground">{item.tip}</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-[#F7F3EA]">{item.tip}</p>
         </>
       )}
     </figure>
   );
+
 }
 
