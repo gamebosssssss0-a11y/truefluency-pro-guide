@@ -39,17 +39,36 @@ function serviceFetch(key: string): typeof fetch {
   };
 }
 
-function admin() {
-  const url = process.env["SUPABASE_URL"];
+function adminEnv() {
+  const url =
+    process.env["SB_URL"] ?? process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
+  const urlVar = process.env["SB_URL"]
+    ? "SB_URL"
+    : process.env["SUPABASE_URL"]
+      ? "SUPABASE_URL"
+      : process.env["VITE_SUPABASE_URL"]
+        ? "VITE_SUPABASE_URL"
+        : null;
   // Lovable blocks the SUPABASE_ prefix for user secrets, so the service role
-  // key lives under SERVICE_ROLE_KEY. Server-only, never VITE_.
+  // key usually lives under SERVICE_ROLE_KEY. Server-only, never VITE_.
   const key = process.env["SERVICE_ROLE_KEY"] ?? process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  const keyVar = process.env["SERVICE_ROLE_KEY"]
+    ? "SERVICE_ROLE_KEY"
+    : process.env["SUPABASE_SERVICE_ROLE_KEY"]
+      ? "SUPABASE_SERVICE_ROLE_KEY"
+      : null;
+  return { url, key, urlVar, keyVar };
+}
+
+function admin() {
+  const { url, key } = adminEnv();
   if (!url || !key) throw new Error("Library service is not configured.");
   return createClient<Database>(url, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
     global: { fetch: serviceFetch(key) },
   });
 }
+
 
 function ready(text: string | null): boolean {
   return (text ?? "").trim().length >= READY_FOR_MOCKS_MIN_CHARS;

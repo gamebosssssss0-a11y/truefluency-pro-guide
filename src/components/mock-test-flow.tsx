@@ -13,6 +13,7 @@ import { generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
+import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
@@ -68,8 +69,11 @@ export function MockGenerationScreen() {
 
   const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState<QuotaVerdict | null>(null);
+  /** Bumped by "Try again" so the generation effect runs the same request again. */
+  const [retryKey, setRetryKey] = useState(0);
   const fetchedRef = useRef(false);
   const quoteCycleStartedRef = useRef(Date.now());
+
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -199,7 +203,8 @@ export function MockGenerationScreen() {
     run();
 
     return () => clearInterval(animId);
-  }, [course?.code]);
+    // retryKey re-runs the exact same generation request from "Try again".
+  }, [course?.code, retryKey]);
 
   if (refused) {
     return (
@@ -219,13 +224,24 @@ export function MockGenerationScreen() {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 text-center">
-          <p className="text-sm text-destructive">{error}</p>
-          <Button className="mt-4" onClick={() => navigate("mock-tests")}>Back to Mock Tests</Button>
+        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+          <ErrorCard
+            onAction={() => {
+              // Re-issue the same request rather than dumping the student back
+              // on the config screen.
+              fetchedRef.current = false;
+              setError(null);
+              setPct(0);
+              setStatusIdx(0);
+              setRetryKey((k) => k + 1);
+            }}
+            onLink={() => navigate("mock-tests")}
+          />
         </div>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background">
