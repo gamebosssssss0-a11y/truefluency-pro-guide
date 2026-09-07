@@ -526,12 +526,40 @@ export function LibraryScreen() {
               {preview?.course_code} · viewing in app, no download
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-3 h-[64vh] overflow-hidden rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
-            {preview?.url ? (
+          <div className="mt-3 h-[64vh] overflow-auto rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
+            {preview?.failed ? (
+              <div className="grid h-full place-items-center p-4">
+                <ErrorCard
+                  title="We couldn't open this file"
+                  body="The file may have been removed. Your own files are still in your locker."
+                  onAction={() =>
+                    preview &&
+                    void openPreview(
+                      {
+                        id: preview.id,
+                        file_name: preview.file_name,
+                        file_type: preview.file_type,
+                        course_code: preview.course_code,
+                        readyForMocks: preview.readyForMocks,
+                      },
+                      preview.peer,
+                    )
+                  }
+                  linkLabel="Close"
+                  onLink={() => setPreview(null)}
+                />
+              </div>
+            ) : !preview?.url ? (
+              <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
+                {SHARING_OFFLINE_MESSAGE}
+              </div>
+            ) : preview.file_type === "image" ? (
+              <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
+            ) : preview.file_type === "pdf" ? (
               <iframe src={preview.url} title={preview.file_name} className="h-full w-full" />
             ) : (
               <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
-                {SHARING_OFFLINE_MESSAGE}
+                Preview isn't available for this file type. Save to locker to use it in mocks.
               </div>
             )}
           </div>
@@ -542,10 +570,13 @@ export function LibraryScreen() {
               onClick={() => preview && void doSave({ id: preview.id, course_code: preview.course_code })}
               disabled={busy}
             >
-              Save to my locker
+              Save to locker
             </Button>
-          ) : null}
+          ) : (
+            <p className="mt-3 text-center text-[12px] font-medium text-[#5C5C70]">View only</p>
+          )}
           <p className="mt-2 text-[11px] text-[#5C5C70]">{PRICE_LINE}</p>
+
         </SheetContent>
       </Sheet>
     </div>
