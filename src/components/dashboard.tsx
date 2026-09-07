@@ -217,7 +217,11 @@ export function HomeScreen() {
         ) : null}
 
         {/* Single amber CTA */}
-        <Button size="lg" className="mb-5 w-full" onClick={() => navigate("mock-tests")}>
+        <Button
+          size="lg"
+          className="mb-5 w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#B86E0A]/90"
+          onClick={() => navigate("mock-tests")}
+        >
           <Zap className="mr-1.5 h-4 w-4" /> Take a mock
         </Button>
 
@@ -225,7 +229,8 @@ export function HomeScreen() {
         <StrengthsCard />
 
         {/* Two columns from CGPA down where there's room. */}
-        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
+        <div className="md:grid md:grid-cols-2 md:items-start md:gap-5">
+
           <div className="min-w-0">
             <CgpaStatusCard />
 
