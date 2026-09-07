@@ -222,14 +222,27 @@ export function LibraryScreen() {
 
   const openPreview = async (item: { id: string; file_name: string; file_type: string; course_code: string; readyForMocks: boolean }, peer: boolean) => {
     setBusy(true);
-    const result = await getShelfPreview({ data: { materialId: item.id } });
-    setBusy(false);
-    if (!result.ok) { toast.error(result.reason); return; }
-    setPreview({
-      id: item.id, file_name: result.file_name, file_type: result.file_type,
-      course_code: result.course_code, url: result.url, readyForMocks: result.readyForMocks, peer,
-    });
+    try {
+      const result = await getShelfPreview({ data: { materialId: item.id } });
+      setBusy(false);
+      if (!result.ok) { toast.error(result.reason); return; }
+      setPreview({
+        id: item.id, file_name: result.file_name, file_type: result.file_type,
+        course_code: result.course_code, url: result.url, readyForMocks: result.readyForMocks, peer,
+      });
+    } catch (e) {
+      // The link was valid but the signed URL request itself failed (object
+      // gone, storage error). Show the shared error card, never a blank frame.
+      console.warn("[library] preview failed", e);
+      setBusy(false);
+      setPreview({
+        id: item.id, file_name: item.file_name, file_type: item.file_type,
+        course_code: item.course_code, url: null, readyForMocks: item.readyForMocks, peer,
+        failed: true,
+      });
+    }
   };
+
 
   const doSave = async (item: { id: string; course_code: string }) => {
     setBusy(true);
