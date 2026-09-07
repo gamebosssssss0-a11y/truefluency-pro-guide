@@ -117,7 +117,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E4DCC8] bg-[#FFFFFF] md:hidden"
     >
       <div className="mx-auto flex max-w-md items-stretch">
         {TABS.map((t) => {
@@ -130,7 +130,7 @@ export function BottomTabBar() {
               aria-current={on ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 px-1 pb-2.5 pt-2.5 transition",
-                on ? "text-accent" : "text-muted-foreground hover:text-foreground",
+                on ? "text-[#B86E0A]" : "text-[#8A8494] hover:text-[#1B2A4A]",
               )}
             >
               <t.icon className={cn("h-5 w-5", on && "stroke-[2.5]")} />
@@ -140,7 +140,7 @@ export function BottomTabBar() {
               <span
                 className={cn(
                   "h-0.5 w-6 rounded-full transition-colors",
-                  on ? "bg-accent" : "bg-transparent",
+                  on ? "bg-[#B86E0A]" : "bg-transparent",
                 )}
               />
             </button>
