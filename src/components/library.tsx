@@ -3,6 +3,7 @@
  * Read-only viewing, no downloads. Everything privileged goes through
  * library.functions.ts.
  */
+import { ErrorCard } from "@/components/error-card";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
