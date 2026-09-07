@@ -202,7 +202,8 @@ export function MockGenerationScreen() {
     run();
 
     return () => clearInterval(animId);
-  }, [course?.code]);
+    // retryKey re-runs the exact same generation request from "Try again".
+  }, [course?.code, retryKey]);
 
   if (refused) {
     return (
@@ -222,13 +223,24 @@ export function MockGenerationScreen() {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 text-center">
-          <p className="text-sm text-destructive">{error}</p>
-          <Button className="mt-4" onClick={() => navigate("mock-tests")}>Back to Mock Tests</Button>
+        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+          <ErrorCard
+            onAction={() => {
+              // Re-issue the same request rather than dumping the student back
+              // on the config screen.
+              fetchedRef.current = false;
+              setError(null);
+              setPct(0);
+              setStatusIdx(0);
+              setRetryKey((k) => k + 1);
+            }}
+            onLink={() => navigate("mock-tests")}
+          />
         </div>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background">
