@@ -244,7 +244,7 @@ export function HomeScreen() {
             {/* Flashcards: link only, no generator. */}
             <button
               onClick={() => navigate("flashcards-soon")}
-              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left lg:mt-0"
+              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left md:mt-0"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Layers className="h-4.5 w-4.5" />
