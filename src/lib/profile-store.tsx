@@ -336,6 +336,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [activeCourseCode, setActiveCourseCode] = useState<string | null>(null);
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [authPending, setAuthPending] = useState(false);
 
   useEffect(() => {
     try {
@@ -432,6 +433,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (!session) return;
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
         if (!cloudReady.current) {
+          // Cold sign-in / OAuth redirect return only: a warm returning tab
+          // fires INITIAL_SESSION and must never see the loading screen.
+          if (event === "SIGNED_IN") setAuthPending(true);
           void (async () => {
             if (!profileRef.current.identity) {
               const identity: Profile["identity"] = {
