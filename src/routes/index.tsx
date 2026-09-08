@@ -64,7 +64,7 @@ function Index() {
 }
 
 function Router() {
-  const { step, view, profile } = useProfile();
+  const { step, view, profile, authPending } = useProfile();
   useEffect(() => {
     if (!profile.identity) return;
     void ensureSupabaseSession(profile).then((result) => {
