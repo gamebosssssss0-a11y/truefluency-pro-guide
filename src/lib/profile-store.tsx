@@ -453,6 +453,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             }
 
             const syncedProfile = await sync();
+            setAuthPending(false);
             if (!syncedProfile || cancelled) return;
             go(syncedProfile.setupComplete ? "dashboard" : "goal");
           })();
