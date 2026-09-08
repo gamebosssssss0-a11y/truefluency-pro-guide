@@ -494,7 +494,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, activeAttemptId, update, go, navigate, resetSetup }}>
+    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, activeAttemptId, authPending, update, go, navigate, resetSetup }}>
       {hydrated ? children : null}
     </StoreCtx.Provider>
 
