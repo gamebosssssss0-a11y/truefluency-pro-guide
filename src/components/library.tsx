@@ -468,11 +468,9 @@ export function LibraryScreen() {
             </SheetDescription>
           </SheetHeader>
           <div className="mt-3 space-y-2 pb-4">
-            {ownerSheet?.published ? (
-              <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => ownerSheet && void openPreview(ownerSheet, false)} disabled={busy}>
-                <Eye className="mr-2 h-4 w-4" /> View
-              </Button>
-            ) : null}
+            <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => ownerSheet && void openPreview(ownerSheet, false)} disabled={busy}>
+              <Eye className="mr-2 h-4 w-4" /> View
+            </Button>
             {ownerSheet && !ownerSheet.is_peer_copy ? (
               ownerSheet.published ? (
                 <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => void doPublish(ownerSheet, false)} disabled={busy}>
