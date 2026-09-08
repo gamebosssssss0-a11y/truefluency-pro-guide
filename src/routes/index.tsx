@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { SplashScreen } from "@/components/onboarding/splash";
+import { SigningInScreen } from "@/components/signing-in";
 import { LandingScreen } from "@/components/onboarding/landing";
 import { DisclaimerScreen, DisclaimerBlockedScreen, DisclaimerViewScreen } from "@/components/onboarding/disclaimer";
 import { IdentityScreen } from "@/components/onboarding/identity";
@@ -77,6 +78,9 @@ function Router() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.identity?.kind, profile.identity?.email]);
+
+  // Post-auth gap: a confirmed sign-in whose profile sync is still resolving.
+  if (authPending) return <SigningInScreen />;
 
   if (step !== "dashboard") {
     switch (step) {
