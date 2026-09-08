@@ -318,6 +318,8 @@ type Ctx = {
   view: AppView;
   activeCourseCode: string | null;
   activeAttemptId: string | null;
+  /** True only while a fresh sign-in's session + profile sync is resolving. */
+  authPending: boolean;
   update: (p: Partial<Profile>) => void;
   go: (s: OnboardingStep | "dashboard") => void;
   navigate: (v: AppView, opts?: { courseCode?: string | null; attemptId?: string | null }) => void;
