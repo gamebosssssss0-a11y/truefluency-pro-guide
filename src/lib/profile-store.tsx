@@ -318,6 +318,8 @@ type Ctx = {
   view: AppView;
   activeCourseCode: string | null;
   activeAttemptId: string | null;
+  /** True only while a fresh sign-in's session + profile sync is resolving. */
+  authPending: boolean;
   update: (p: Partial<Profile>) => void;
   go: (s: OnboardingStep | "dashboard") => void;
   navigate: (v: AppView, opts?: { courseCode?: string | null; attemptId?: string | null }) => void;
@@ -334,6 +336,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [activeCourseCode, setActiveCourseCode] = useState<string | null>(null);
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [authPending, setAuthPending] = useState(false);
 
   useEffect(() => {
     try {
@@ -430,6 +433,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (!session) return;
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
         if (!cloudReady.current) {
+          // Cold sign-in / OAuth redirect return only: a warm returning tab
+          // fires INITIAL_SESSION and must never see the loading screen.
+          if (event === "SIGNED_IN") setAuthPending(true);
           void (async () => {
             if (!profileRef.current.identity) {
               const identity: Profile["identity"] = {
@@ -447,6 +453,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             }
 
             const syncedProfile = await sync();
+            setAuthPending(false);
             if (!syncedProfile || cancelled) return;
             go(syncedProfile.setupComplete ? "dashboard" : "goal");
           })();
@@ -487,7 +494,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, activeAttemptId, update, go, navigate, resetSetup }}>
+    <StoreCtx.Provider value={{ profile, step, view, activeCourseCode, activeAttemptId, authPending, update, go, navigate, resetSetup }}>
       {hydrated ? children : null}
     </StoreCtx.Provider>
 

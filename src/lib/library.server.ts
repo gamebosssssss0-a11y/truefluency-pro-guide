@@ -50,13 +50,9 @@ function adminEnv() {
         ? "VITE_SUPABASE_URL"
         : null;
   // Lovable blocks the SUPABASE_ prefix for user secrets, so the service role
-  // key usually lives under SERVICE_ROLE_KEY. Server-only, never VITE_.
-  const key = process.env["SERVICE_ROLE_KEY"] ?? process.env["SUPABASE_SERVICE_ROLE_KEY"];
-  const keyVar = process.env["SERVICE_ROLE_KEY"]
-    ? "SERVICE_ROLE_KEY"
-    : process.env["SUPABASE_SERVICE_ROLE_KEY"]
-      ? "SUPABASE_SERVICE_ROLE_KEY"
-      : null;
+  // key only ever lives under SERVICE_ROLE_KEY. Server-only, never VITE_.
+  const key = process.env["SERVICE_ROLE_KEY"];
+  const keyVar = key ? "SERVICE_ROLE_KEY" : null;
   return { url, key, urlVar, keyVar };
 }
 

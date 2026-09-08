@@ -224,24 +224,47 @@ export function LibraryScreen() {
 
   const openPreview = async (item: { id: string; file_name: string; file_type: string; course_code: string; readyForMocks: boolean }, peer: boolean) => {
     setBusy(true);
+    const fallback = (failed: boolean) =>
+      setPreview({
+        id: item.id, file_name: item.file_name, file_type: item.file_type,
+        course_code: item.course_code, url: null, readyForMocks: item.readyForMocks, peer,
+        ...(failed ? { failed: true } : {}),
+      });
     try {
+      if (!peer) {
+        // Own file: read it straight from storage with the user's own session,
+        // whether or not it is published. No service role, no shelf lookup.
+        const { data: row, error } = await supabase
+          .from("course_materials")
+          .select("file_path")
+          .eq("id", item.id)
+          .maybeSingle();
+        if (error || !row?.file_path) throw new Error("This file couldn't be opened.");
+        const signed = await supabase.storage
+          .from("course-materials")
+          .createSignedUrl(row.file_path, 60 * 30);
+        setBusy(false);
+        if (signed.error || !signed.data?.signedUrl) throw new Error("This file couldn't be opened.");
+        setPreview({
+          id: item.id, file_name: item.file_name, file_type: item.file_type,
+          course_code: item.course_code, url: signed.data.signedUrl,
+          readyForMocks: item.readyForMocks, peer: false,
+        });
+        return;
+      }
       const result = await getShelfPreview({ data: { materialId: item.id } });
       setBusy(false);
-      if (!result.ok) { toast.error(result.reason); return; }
+      if (!result.ok) { toast.error(result.reason); fallback(false); return; }
       setPreview({
         id: item.id, file_name: result.file_name, file_type: result.file_type,
         course_code: result.course_code, url: result.url, readyForMocks: result.readyForMocks, peer,
       });
     } catch (e) {
-      // The link was valid but the signed URL request itself failed (object
-      // gone, storage error). Show the shared error card, never a blank frame.
+      // A real request failure (object gone, storage error): show the shared
+      // error card, never a blank frame.
       console.warn("[library] preview failed", e);
       setBusy(false);
-      setPreview({
-        id: item.id, file_name: item.file_name, file_type: item.file_type,
-        course_code: item.course_code, url: null, readyForMocks: item.readyForMocks, peer,
-        failed: true,
-      });
+      fallback(true);
     }
   };
 
@@ -445,11 +468,9 @@ export function LibraryScreen() {
             </SheetDescription>
           </SheetHeader>
           <div className="mt-3 space-y-2 pb-4">
-            {ownerSheet?.published ? (
-              <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => ownerSheet && void openPreview(ownerSheet, false)} disabled={busy}>
-                <Eye className="mr-2 h-4 w-4" /> View
-              </Button>
-            ) : null}
+            <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => ownerSheet && void openPreview(ownerSheet, false)} disabled={busy}>
+              <Eye className="mr-2 h-4 w-4" /> View
+            </Button>
             {ownerSheet && !ownerSheet.is_peer_copy ? (
               ownerSheet.published ? (
                 <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => void doPublish(ownerSheet, false)} disabled={busy}>

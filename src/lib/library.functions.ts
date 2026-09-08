@@ -12,7 +12,7 @@ export const SHARING_OFFLINE_MESSAGE = "Sharing isn't live yet.";
 export const FREE_PEER_SAVES_PER_COURSE = 5;
 
 function sharingLive(): boolean {
-  return Boolean(process.env["SERVICE_ROLE_KEY"] ?? process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+  return Boolean(process.env["SERVICE_ROLE_KEY"]);
 }
 
 function cleanId(value: unknown): string {
