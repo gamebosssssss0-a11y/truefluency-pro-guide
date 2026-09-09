@@ -87,7 +87,8 @@ export type OnboardingStep =
   | "department"
   | "level"
   | "courses"
-  | "cgpa-intro";
+  | "cgpa-intro"
+  | "trial-welcome";
 
 export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
@@ -234,6 +235,11 @@ export type Profile = {
   cgpaActual: CgpaActual | null;
   /** True once the onboarding CGPA-goal introduction has been shown. */
   cgpaIntroSeen: boolean;
+  /**
+   * True once the one-time "your trial has started" notice has been shown.
+   * Purely informational: it never grants, extends or changes the trial.
+   */
+  trialNoticeSeen: boolean;
 };
 
 
@@ -264,6 +270,8 @@ const emptyProfile: Profile = {
   cgpaPlan: null,
   cgpaActual: null,
   cgpaIntroSeen: false,
+  trialNoticeSeen: false,
+
 
 };
 
