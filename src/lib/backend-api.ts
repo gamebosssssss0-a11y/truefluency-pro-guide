@@ -75,6 +75,48 @@ async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Pr
 }
 
 /**
+ * GET request helper for polling — deliberately short per-call timeout
+ * (15s), since a status check should always be near-instant. This is NOT
+ * the same as waiting for the whole generation to finish.
+ */
+async function getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
+  const url = `${base()}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[backend] status check failed", { path, status: res.status, text });
+      throw new Error(readErrorDetail(text, res.status));
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("Status check timed out — will retry.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Pauses for ms milliseconds — used between polling attempts. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Topic prediction — Render backend only, no in-app fallback.
  */
 export async function predictTopics(input: {
@@ -113,19 +155,36 @@ export async function predictTopics(input: {
 
 /**
  * Mock generation — Render backend only, no in-app fallback.
+ *
+ * Uses the start+poll job pattern, NOT a single long-running request.
+ * Reason: Render's own platform-level request timeout (independent of
+ * anything the backend code does) can cut the connection to the frontend
+ * on a slow generation, while the backend keeps running anyway — the
+ * request just becomes orphaned, and the frontend sees a generic timeout
+ * even though a real result may still be coming. Since no single request
+ * in this flow needs to stay open more than a few seconds, that whole
+ * class of failure goes away.
  */
-export async function generateMock(input: {
-  materialId: string;
-  courseCode: string;
-  courseName: string;
-  questionCount: number;
-  difficulty: Difficulty;
-  topicFocus: string[];
-  profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
-}): Promise<AIQuestion[]> {
+export async function generateMock(
+  input: {
+    materialId: string;
+    courseCode: string;
+    courseName: string;
+    questionCount: number;
+    difficulty: Difficulty;
+    topicFocus: string[];
+    profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
+  },
+  options?: {
+    /** Called each time a poll comes back "processing" — use to show a spinner/progress message. */
+    onProgress?: () => void;
+    /** Max total time to keep polling before giving up. Default 5 minutes. */
+    maxWaitMs?: number;
+  }
+): Promise<AIQuestion[]> {
   if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
 
-  const data = await postJson<{ questions: unknown }>("/generate-mock", {
+  const body = {
     material_id: input.materialId,
     course_code: input.courseCode,
     course_name: input.courseName,
@@ -136,9 +195,46 @@ export async function generateMock(input: {
     user_timeline: input.profile.timeline,
     user_level: input.profile.level ? String(input.profile.level) : null,
     user_department: input.profile.department,
-  });
+  };
 
-  const raw = Array.isArray(data?.questions) ? data.questions : [];
+  // Step 1: kick off the job. This returns almost instantly — it does NOT
+  // wait for generation to finish.
+  const started = await postJson<{ job_id: string; status: string }>(
+    "/generate-mock/start",
+    body,
+    20_000 // starting the job should be fast; 20s is generous, not the old 180s
+  );
+
+  // Step 2: poll for the result.
+  const maxWaitMs = options?.maxWaitMs ?? 5 * 60_000; // 5 minutes default ceiling
+  const pollIntervalMs = 3_000;
+  const deadline = Date.now() + maxWaitMs;
+
+  let data: { status: string; result?: { questions: unknown }; error?: string } | null = null;
+
+  while (Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    try {
+      data = await getJson(`/generate-mock/status/${started.job_id}`);
+    } catch {
+      // A single poll failing (brief network blip) shouldn't kill the whole
+      // flow — just try again next interval rather than aborting immediately.
+      continue;
+    }
+
+    if (data.status === "completed") break;
+    if (data.status === "failed") {
+      throw new Error(data.error || "Mock generation failed.");
+    }
+    options?.onProgress?.();
+    // status is "processing" — loop again
+  }
+
+  if (!data || data.status !== "completed") {
+    throw new Error("This is taking longer than expected. Your mock test may still finish in the background — try checking back in a minute.");
+  }
+
+  const raw = Array.isArray(data.result?.questions) ? (data.result!.questions as unknown[]) : [];
   if (raw.length === 0) throw new Error("No questions came back from the generator.");
 
   const questions: AIQuestion[] = raw
