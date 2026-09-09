@@ -123,10 +123,16 @@ export const readOneFileLink = createServerFn({ method: "POST" })
   .inputValidator((input: { token: string }) => ({ token: cleanToken(input?.token) }))
   .handler(async ({ data }) => {
     if (!sharingLive()) return { ok: false as const, reason: SHARING_OFFLINE_MESSAGE };
-    const { redeemShareLink, REDEEM_MISS_MESSAGE } = await import("@/lib/library.server");
-    const share = await redeemShareLink(data.token);
-    if (!share) return { ok: false as const, reason: REDEEM_MISS_MESSAGE };
-    return { ok: true as const, share };
+    // A one-file link must never throw: every failure is the same flat "gone".
+    try {
+      const { redeemShareLink, REDEEM_MISS_MESSAGE } = await import("@/lib/library.server");
+      const share = await redeemShareLink(data.token);
+      if (!share) return { ok: false as const, reason: REDEEM_MISS_MESSAGE };
+      return { ok: true as const, share };
+    } catch (e) {
+      console.warn("[library] one-file link failed", e);
+      return { ok: false as const, reason: "This link is no longer available." };
+    }
   });
 
 /** Copy a shared or shelf file into the caller's locker. No OCR, no re-extraction. */

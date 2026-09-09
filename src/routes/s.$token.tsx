@@ -8,7 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HeaderLogo } from "@/components/brand";
+import { LogoMark } from "@/components/logo-mark";
 import { readOneFileLink, savePeerFile, SHARING_OFFLINE_MESSAGE } from "@/lib/library.functions";
 
 const GONE = "This link is no longer available.";
@@ -96,7 +96,7 @@ function SharedFilePage() {
     <div className="min-h-screen bg-[#F7F3EA]">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6 md:max-w-2xl">
         <div className="mb-5 flex items-center gap-2">
-          <HeaderLogo />
+          <LogoMark className="h-7 w-7" />
           <span className="text-xs font-semibold uppercase tracking-wider text-[#5C5C70]">
             Shared file
           </span>
