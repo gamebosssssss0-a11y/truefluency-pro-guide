@@ -80,7 +80,11 @@ function Router() {
   }, [profile.identity?.kind, profile.identity?.email]);
 
   // Post-auth gap: a confirmed sign-in whose profile sync is still resolving.
-  if (authPending) return <SigningInScreen />;
+  // Never stacked on the splash, landing or disclaimer screens: those come
+  // before any sign-in attempt, so a pending session there is not this screen's
+  // business.
+  const preAuthStep = step === "splash" || step === "landing" || step === "disclaimer" || step === "disclaimer-blocked";
+  if (authPending && !preAuthStep) return <SigningInScreen />;
 
   if (step !== "dashboard") {
     switch (step) {
