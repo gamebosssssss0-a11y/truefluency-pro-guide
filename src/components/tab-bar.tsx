@@ -60,7 +60,7 @@ export function TopNavBar() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 z-40 hidden border-b border-[#E4DCC8] bg-[#FFFFFF] md:block"
+      className="sticky top-0 z-40 hidden border-b border-[#E4DCC8] bg-[#F7F3EA] md:block"
     >
       <div className="mx-auto flex w-full max-w-[60rem] items-center gap-6 px-6 py-3">
         <button
@@ -117,7 +117,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E4DCC8] bg-[#FFFFFF] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E4DCC8] bg-[#F7F3EA] md:hidden"
     >
       <div className="mx-auto flex max-w-md items-stretch">
         {TABS.map((t) => {
