@@ -19,10 +19,9 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 /**
- * Deterministic Supabase password so the same device+account always resolves to
- * the same Supabase user without asking the user to re-enter anything. Not a
- * security boundary on its own: the whole local auth flow is a UX shim on top
- * of managed Supabase auth.
+ * Stretches the typed password before it reaches Supabase Auth. The result is
+ * used once, in memory, at sign-up / sign-in time and is never persisted: the
+ * only thing kept on the device is the Supabase session token.
  */
 export async function deriveSupabasePassword(
   email: string,
@@ -31,16 +30,8 @@ export async function deriveSupabasePassword(
   return (await sha256Hex(`${email}::${localPassword}::truefluency-v1`)).slice(0, 32);
 }
 
-/** Hash used to verify a typed password against a stored account. */
-export async function localPasswordVerifier(
-  email: string,
-  localPassword: string,
-): Promise<string> {
-  return sha256Hex(`${email}::${localPassword}::truefluency-verify-v1`);
-}
-
 export type SessionOutcome =
-  | { ok: true; kind: "existing" | "password" | "signup" | "anonymous" }
+  | { ok: true; kind: "existing" | "anonymous" }
   | { ok: false; reason: string };
 
 export async function ensureSupabaseSession(profile: Profile): Promise<SessionOutcome> {
