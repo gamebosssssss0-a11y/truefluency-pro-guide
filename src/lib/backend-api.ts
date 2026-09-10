@@ -176,8 +176,12 @@ export async function generateMock(
     profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
   },
   options?: {
-    /** Called each time a poll comes back "processing" — use to show a spinner/progress message. */
-    onProgress?: () => void;
+    /**
+     * Called each time a poll comes back "processing". When the service reports
+     * how many questions are done, those counts are passed through so the
+     * loading screen can show "n of total ready".
+     */
+    onProgress?: (progress: { ready: number | null; total: number | null }) => void;
     /** Max total time to keep polling before giving up. Default 5 minutes. */
     maxWaitMs?: number;
   }
