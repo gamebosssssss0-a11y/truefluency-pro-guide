@@ -18,7 +18,7 @@ import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 
-// The analysis service accepts at most 40 questions per request.
+// The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
 
 /* ---------- types ---------- */
@@ -386,19 +386,26 @@ export function MockConfigScreen() {
   const remembered = course ? profile.courseTestSettings[course.code] : undefined;
   const initial = remembered ?? smart!;
 
-  const { maxQuestionsPerSet } = useEntitlement();
-  const [count, setCount] = useState(
-    (initial?.questionCount ?? FREE_MAX_QUESTIONS) >= PAID_MAX_QUESTIONS
-      ? PAID_MAX_QUESTIONS
-      : FREE_MAX_QUESTIONS,
-  );
-  const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
+  const { access, maxQuestionsPerSet } = useEntitlement();
+  const fullAccess = access?.fullAccess ?? false;
+  const initialCount = QUESTION_OPTIONS.some((o) => o.count === (initial?.questionCount ?? FREE_MAX_QUESTIONS))
+    ? (initial?.questionCount ?? FREE_MAX_QUESTIONS)
+    : FREE_MAX_QUESTIONS;
+  const [count, setCount] = useState(initialCount);
+  const [minutes, setMinutes] = useState(initial?.minutes ?? defaultMinutesForCount(initialCount));
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
 
   useEffect(() => {
     setCount((c) => Math.min(c, maxQuestionsPerSet));
   }, [maxQuestionsPerSet]);
+
+  useEffect(() => {
+    if (!fullAccess) {
+      setCount((c) => Math.min(c, FREE_MAX_QUESTIONS));
+      setMinutes((m) => Math.min(m, defaultMinutesForCount(FREE_MAX_QUESTIONS)));
+    }
+  }, [fullAccess]);
 
   if (!course || !smart) return null;
 
