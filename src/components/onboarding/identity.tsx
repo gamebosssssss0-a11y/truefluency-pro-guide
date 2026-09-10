@@ -6,7 +6,7 @@ import { useProfile } from "@/lib/profile-store";
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { deriveSupabasePassword, localPasswordVerifier } from "@/lib/supabase-session";
+import { deriveSupabasePassword } from "@/lib/supabase-session";
 
 type Tab = "signup" | "login";
 
