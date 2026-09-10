@@ -359,6 +359,7 @@ export function HomeScreen() {
           Predictions are statistical estimates. Always cross-check against your official material.
         </p>
       </div>
+      <FirstRunTourHost />
     </div>
   );
 }
