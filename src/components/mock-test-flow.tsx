@@ -343,6 +343,8 @@ function GenStat({ label, value }: { label: string; value: string }) {
 export const MIN_QUESTIONS = 20;
 /** Caps live in @/lib/entitlements so the UI and the server gate can't drift. */
 export const MAX_QUESTIONS = PAID_MAX_QUESTIONS;
+/** A student focuses a set on at most three topics from their upload. */
+export const MAX_TOPIC_FOCUS = 3;
 
 const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = [
   { key: "gentle", label: "Gentle", blurb: "Ease in" },
