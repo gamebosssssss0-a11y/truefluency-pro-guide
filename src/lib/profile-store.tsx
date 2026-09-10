@@ -374,39 +374,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // One-time migration: older builds stored the typed password in plain text.
-  // Replace it with a verifier hash plus the derived Supabase password so the
-  // same account still resolves to the same cloud user.
-  useEffect(() => {
-    if (!hydrated) return;
-    const stale = profile.accounts.filter((a) => a.password);
-    if (!stale.length) return;
-    let cancelled = false;
-    void (async () => {
-      const { deriveSupabasePassword, localPasswordVerifier } = await import(
-        "@/lib/supabase-session"
-      );
-      const migrated = await Promise.all(
-        profile.accounts.map(async (a) => {
-          if (!a.password) return a;
-          const [verifier, derived] = await Promise.all([
-            localPasswordVerifier(a.email, a.password),
-            deriveSupabasePassword(a.email, a.password),
-          ]);
-          return { name: a.name, email: a.email, verifier, derived };
-        }),
-      );
-      if (!cancelled) setProfile((cur) => ({ ...cur, accounts: migrated }));
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, profile.accounts]);
-
-
   useEffect(() => {
     if (hydrated) {
+      // Accounts carry display fields only; sanitizeProfile already dropped any
+      // legacy credential fields, so nothing usable for sign-in is written here.
       try { localStorage.setItem(KEY, JSON.stringify(profile)); } catch { /* ignore */ }
     }
   }, [profile, hydrated]);
