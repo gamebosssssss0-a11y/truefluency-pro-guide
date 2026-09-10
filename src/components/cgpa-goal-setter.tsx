@@ -66,7 +66,7 @@ export function CgpaGoalSetterScreen() {
       return;
     }
     const bad = rows.find((c) => {
-      const u = units[c.code];
+      const u = units[c.code] ?? 3;
       return !u || u < 1 || u > 6;
     });
     if (bad) {

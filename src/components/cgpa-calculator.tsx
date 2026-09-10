@@ -80,7 +80,7 @@ export function CgpaCalculatorScreen() {
 
   const perCourse = useMemo(() => {
     return rows.map((c) => {
-      const u = units[c.code] ?? 0;
+      const u = units[c.code] ?? 3;
       let percent: number | null = null;
       if (mode === "percent") {
         const raw = percents[c.code];
