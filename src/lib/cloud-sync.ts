@@ -116,6 +116,9 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
     setupComplete: !!row.setup_complete,
     disclaimerAccepted: !!row.disclaimer_accepted,
     cgpaIntroSeen: !!row.cgpa_intro_seen,
+    // A saved display name is the account-level proof that the welcome screen
+    // has already been completed, so it is never asked for twice.
+    profileCompleted: !!(row.display_name ?? "").trim(),
     streakDays: row.streak_days ?? 0,
     lastQualifyingDay: row.last_qualifying_day ?? null,
     hasCompletedFirstMock: !!row.has_completed_first_mock,
