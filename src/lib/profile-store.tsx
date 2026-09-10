@@ -460,6 +460,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             const syncedProfile = await sync();
             setAuthPending(false);
             if (!syncedProfile || cancelled) return;
+
+            // Google's account often carries no usable name, which used to
+            // leave the greeting empty. Ask once per account: the saved cloud
+            // display name is what marks it done, so a second device or a
+            // re-install never asks again.
+            const provider =
+              (session.user.app_metadata as { provider?: string } | undefined)?.provider ?? "";
+            if (provider === "google" && !syncedProfile.profileCompleted) {
+              go("google-profile");
+              return;
+            }
             go(syncedProfile.setupComplete ? "dashboard" : "goal");
           })();
         }
