@@ -1,6 +1,6 @@
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import { AddCourseFlow } from "@/components/add-course-flow";
 
