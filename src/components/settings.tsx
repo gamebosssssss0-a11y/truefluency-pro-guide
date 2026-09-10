@@ -8,7 +8,7 @@ import {
 import {
   ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
-  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor, Compass,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
