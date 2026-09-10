@@ -274,7 +274,9 @@ export function MockGenerationScreen() {
           <p className="mt-1 text-sm text-muted-foreground">{course?.code} · {course?.name}</p>
         </div>
         <Progress value={pct} className="h-2" />
-        <p className="mt-3 text-center text-sm text-muted-foreground">{genSteps[statusIdx]}</p>
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          {readyLine ?? genSteps[statusIdx]}
+        </p>
 
         {analysis && analysis.topics.length > 0 ? (
           <div className="mt-6 overflow-hidden rounded-2xl border border-accent/15 bg-card shadow-sm">
