@@ -176,8 +176,12 @@ export async function generateMock(
     profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
   },
   options?: {
-    /** Called each time a poll comes back "processing" — use to show a spinner/progress message. */
-    onProgress?: () => void;
+    /**
+     * Called each time a poll comes back "processing". When the service reports
+     * how many questions are done, those counts are passed through so the
+     * loading screen can show "n of total ready".
+     */
+    onProgress?: (progress: { ready: number | null; total: number | null }) => void;
     /** Max total time to keep polling before giving up. Default 5 minutes. */
     maxWaitMs?: number;
   }
@@ -210,7 +214,23 @@ export async function generateMock(
   const pollIntervalMs = 3_000;
   const deadline = Date.now() + maxWaitMs;
 
-  let data: { status: string; result?: { questions: unknown }; error?: string } | null = null;
+  let data: {
+    status: string;
+    result?: { questions: unknown };
+    error?: string;
+    ready?: unknown;
+    questions_ready?: unknown;
+    total?: unknown;
+    question_count?: unknown;
+  } | null = null;
+
+  const readCount = (...candidates: unknown[]): number | null => {
+    for (const c of candidates) {
+      const n = Number(c);
+      if (Number.isFinite(n) && n >= 0) return Math.round(n);
+    }
+    return null;
+  };
 
   while (Date.now() < deadline) {
     await sleep(pollIntervalMs);
@@ -226,7 +246,10 @@ export async function generateMock(
     if (data?.status === "failed") {
       throw new Error(data.error || "Mock generation failed.");
     }
-    options?.onProgress?.();
+    options?.onProgress?.({
+      ready: readCount(data?.ready, data?.questions_ready),
+      total: readCount(data?.total, data?.question_count, input.questionCount),
+    });
     // status is "processing" — loop again
   }
 

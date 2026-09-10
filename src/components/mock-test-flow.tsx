@@ -68,6 +68,10 @@ export function MockGenerationScreen() {
     : null;
 
   const [error, setError] = useState<string | null>(null);
+  /** "n of total ready" while the generator is still working. */
+  const [readyLine, setReadyLine] = useState<string | null>(null);
+  /** True while one generation job is running: blocks a second job. */
+  const inFlightRef = useRef(false);
   const [refused, setRefused] = useState<QuotaVerdict | null>(null);
   /** Bumped by "Try again" so the generation effect runs the same request again. */
   const [retryKey, setRetryKey] = useState(0);
@@ -94,8 +98,11 @@ export function MockGenerationScreen() {
   }, [reduceMotion]);
 
   useEffect(() => {
-    if (!course || fetchedRef.current) return;
+    // One job at a time. Retry can only start a new job once the previous one
+    // has settled, so a retry never stacks on top of a running request.
+    if (!course || fetchedRef.current || inFlightRef.current) return;
     fetchedRef.current = true;
+    inFlightRef.current = true;
 
     const settings = profile.courseTestSettings[course.code];
     const count = settings?.questionCount ?? 20;
@@ -144,20 +151,28 @@ export function MockGenerationScreen() {
 
         // Shared client: attaches the signed-in bearer token, normalises the
         // profile fields the service expects, and surfaces real error text.
-        const questions = await generateMock({
-          materialId: ready.id,
-          courseCode: course.code,
-          courseName: course.name,
-          questionCount: allowedCount,
-          difficulty,
-          topicFocus,
-          profile: {
-            goal: profile.goal,
-            timeline: profile.timeline,
-            level: profile.level,
-            department: profile.department,
+        const questions = await generateMock(
+          {
+            materialId: ready.id,
+            courseCode: course.code,
+            courseName: course.name,
+            questionCount: allowedCount,
+            difficulty,
+            topicFocus,
+            profile: {
+              goal: profile.goal,
+              timeline: profile.timeline,
+              level: profile.level,
+              department: profile.department,
+            },
           },
-        });
+          {
+            onProgress: ({ ready: done, total }) => {
+              if (done === null) return;
+              setReadyLine(`${done} of ${total ?? allowedCount} ready`);
+            },
+          },
+        );
 
         if (!questions || questions.length === 0) {
           throw new Error("No questions returned from AI");
@@ -197,6 +212,8 @@ export function MockGenerationScreen() {
       } catch (e: unknown) {
         clearInterval(animId);
         setError(e instanceof Error ? e.message : "Something went wrong generating your mock.");
+      } finally {
+        inFlightRef.current = false;
       }
     };
 
@@ -257,7 +274,9 @@ export function MockGenerationScreen() {
           <p className="mt-1 text-sm text-muted-foreground">{course?.code} · {course?.name}</p>
         </div>
         <Progress value={pct} className="h-2" />
-        <p className="mt-3 text-center text-sm text-muted-foreground">{genSteps[statusIdx]}</p>
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          {readyLine ?? genSteps[statusIdx]}
+        </p>
 
         {analysis && analysis.topics.length > 0 ? (
           <div className="mt-6 overflow-hidden rounded-2xl border border-accent/15 bg-card shadow-sm">
@@ -324,6 +343,8 @@ function GenStat({ label, value }: { label: string; value: string }) {
 export const MIN_QUESTIONS = 20;
 /** Caps live in @/lib/entitlements so the UI and the server gate can't drift. */
 export const MAX_QUESTIONS = PAID_MAX_QUESTIONS;
+/** A student focuses a set on at most three topics from their upload. */
+export const MAX_TOPIC_FOCUS = 3;
 
 const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = [
   { key: "gentle", label: "Gentle", blurb: "Ease in" },
@@ -344,7 +365,7 @@ function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProf
       .map((t) => t.topic);
   }
   return {
-    questionCount: 40,
+    questionCount: FREE_MAX_QUESTIONS,
     minutes: timeline.minutes,
     difficulty: "balanced",
     topicFocus,
@@ -364,7 +385,11 @@ export function MockConfigScreen() {
   const initial = remembered ?? smart!;
 
   const { maxQuestionsPerSet } = useEntitlement();
-  const [count, setCount] = useState((initial?.questionCount ?? 40) >= 120 ? 120 : 40);
+  const [count, setCount] = useState(
+    (initial?.questionCount ?? FREE_MAX_QUESTIONS) >= PAID_MAX_QUESTIONS
+      ? PAID_MAX_QUESTIONS
+      : FREE_MAX_QUESTIONS,
+  );
   const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
@@ -383,7 +408,12 @@ export function MockConfigScreen() {
   };
 
   const toggleTopic = (t: string) => {
-    setTopicFocus((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
+    setTopicFocus((cur) => {
+      if (cur.includes(t)) return cur.filter((x) => x !== t);
+      // At most three topics per set, so the questions stay focused.
+      if (cur.length >= MAX_TOPIC_FOCUS) return cur;
+      return [...cur, t];
+    });
   };
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
@@ -486,13 +516,18 @@ export function MockConfigScreen() {
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Topic focus <span className="normal-case text-muted-foreground/70">(optional)</span>
               </label>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Pick 3 topics from this upload.
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_TOPICS.map((t) => {
                   const on = topicFocus.includes(t);
+                  const full = !on && topicFocus.length >= MAX_TOPIC_FOCUS;
                   return (
-                    <button key={t} type="button" onClick={() => toggleTopic(t)}
+                    <button key={t} type="button" onClick={() => toggleTopic(t)} disabled={full}
                       className={cn("rounded-full border px-2.5 py-1 text-[11px] transition",
-                        on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50")}>
+                        on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50",
+                        full && "opacity-50")}>
                       {t}
                     </button>
                   );

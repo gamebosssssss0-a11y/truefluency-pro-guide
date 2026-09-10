@@ -95,7 +95,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 export function LibraryScreen() {
-  const { navigate } = useProfile();
+  const { navigate, profile, activeCourseCode } = useProfile();
   const [rail, setRail] = useState<Rail>("locker");
   const [locker, setLocker] = useState<LockerFile[] | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
@@ -334,7 +334,18 @@ export function LibraryScreen() {
             <Button
               className="h-12 w-full text-white"
               style={{ backgroundColor: "#B86E0A" }}
-              onClick={() => navigate("home")}
+              onClick={() => {
+                // Straight to the uploader for the course in front of the
+                // student: the open folder, then their active course, then the
+                // first course they added. No course yet: add one first.
+                const code =
+                  openFolder ??
+                  activeCourseCode ??
+                  profile.courses[0]?.code ??
+                  null;
+                if (code) navigate("course-detail", { courseCode: code });
+                else navigate("add-course");
+              }}
             >
               <Upload className="mr-2 h-4 w-4" /> Upload course material
             </Button>

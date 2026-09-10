@@ -23,8 +23,8 @@ export const FREE_DAILY_LIMITS: Record<GatedFeature, number> = {
   library_uploads: 0,
 };
 
-export const FREE_MAX_QUESTIONS = 40;
-export const PAID_MAX_QUESTIONS = 120;
+export const FREE_MAX_QUESTIONS = 30;
+export const PAID_MAX_QUESTIONS = 60;
 
 export type Tier = "trial" | "free" | "paid";
 
