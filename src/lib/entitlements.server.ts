@@ -164,11 +164,16 @@ async function bump(userId: string, feature: GatedFeature, current: number): Pro
 /**
  * Decide whether one gated action may run, and record it when it may.
  * `requestedQuestions` only applies to mock sets.
+ *
+ * `dryRun` previews the verdict without recording usage. It exists for mock
+ * sets, where the generation service itself is the authoritative gate and does
+ * the recording, so the count is never incremented twice for one set.
  */
 export async function consumeQuota(opts: {
   userId: string;
   feature: GatedFeature;
   requestedQuestions?: number;
+  dryRun?: boolean;
 }): Promise<QuotaVerdict & { access: AccessSummary; allowedQuestions?: number }> {
   const access = await resolveAccess(opts.userId);
   const base = {
@@ -213,7 +218,7 @@ export async function consumeQuota(opts: {
     };
   }
 
-  await bump(opts.userId, opts.feature, used);
+  if (!opts.dryRun) await bump(opts.userId, opts.feature, used);
   return {
     ...base,
     allowed: true,
