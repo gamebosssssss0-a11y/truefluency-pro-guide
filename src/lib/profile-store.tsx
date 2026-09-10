@@ -121,6 +121,7 @@ export type AppView =
   | "mock-result"
   | "settings"
   | "flashcards-soon"
+  | "flashcards-review"
   | "add-course"
   | "all-uploads"
   | "attempt-review"
