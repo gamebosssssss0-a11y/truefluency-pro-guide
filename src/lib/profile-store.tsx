@@ -94,15 +94,15 @@ export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
 export type StudyPreference = "practice" | "flashcards" | "reading";
 
+/**
+ * Local record of an account that has signed in on this device. It holds no
+ * credential of any kind: authentication lives entirely in the Supabase
+ * session, and any legacy credential fields written by older builds are
+ * stripped on load and never written back.
+ */
 export type LocalAccount = {
   name: string;
   email: string;
-  /** SHA-256 verifier used to check the typed password locally. */
-  verifier?: string;
-  /** Derived Supabase password for this account (never the typed one). */
-  derived?: string;
-  /** Legacy plaintext password from older builds; migrated away on load. */
-  password?: string;
 };
 
 export type AppView =
@@ -317,7 +317,13 @@ export function sanitizeProfile(raw: unknown): Profile {
   return {
     ...emptyProfile,
     ...(p as Partial<Profile>),
-    accounts: asArray<LocalAccount>(p.accounts),
+    // Older builds stored a password / verifier / derived Supabase password
+    // here. Keep only the display fields so no working credential can be read
+    // out of localStorage.
+    accounts: asArray<Record<string, unknown>>(p.accounts).map((a) => ({
+      name: typeof a.name === "string" ? a.name : "",
+      email: typeof a.email === "string" ? a.email : "",
+    })) as LocalAccount[],
     courses: asArray<UserCourse>(p.courses),
     attempts: asArray<MockAttempt>(p.attempts),
     topicScores: asArray<TopicScore>(p.topicScores),
@@ -368,39 +374,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // One-time migration: older builds stored the typed password in plain text.
-  // Replace it with a verifier hash plus the derived Supabase password so the
-  // same account still resolves to the same cloud user.
-  useEffect(() => {
-    if (!hydrated) return;
-    const stale = profile.accounts.filter((a) => a.password);
-    if (!stale.length) return;
-    let cancelled = false;
-    void (async () => {
-      const { deriveSupabasePassword, localPasswordVerifier } = await import(
-        "@/lib/supabase-session"
-      );
-      const migrated = await Promise.all(
-        profile.accounts.map(async (a) => {
-          if (!a.password) return a;
-          const [verifier, derived] = await Promise.all([
-            localPasswordVerifier(a.email, a.password),
-            deriveSupabasePassword(a.email, a.password),
-          ]);
-          return { name: a.name, email: a.email, verifier, derived };
-        }),
-      );
-      if (!cancelled) setProfile((cur) => ({ ...cur, accounts: migrated }));
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, profile.accounts]);
-
-
   useEffect(() => {
     if (hydrated) {
+      // Accounts carry display fields only; sanitizeProfile already dropped any
+      // legacy credential fields, so nothing usable for sign-in is written here.
       try { localStorage.setItem(KEY, JSON.stringify(profile)); } catch { /* ignore */ }
     }
   }, [profile, hydrated]);

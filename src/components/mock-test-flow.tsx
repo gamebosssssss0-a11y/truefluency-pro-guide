@@ -135,7 +135,9 @@ export function MockGenerationScreen() {
         let allowedCount = Math.min(MAX_GENERATED_QUESTIONS, count);
         try {
           const verdict = await consumeFeatureQuota({
-            data: { feature: "mock_sets", requestedQuestions: count },
+            // Preview only: the generation service records the usage and is
+            // the authoritative gate, so this must not double-count the set.
+            data: { feature: "mock_sets", requestedQuestions: count, dryRun: true },
           });
           if (!verdict.allowed) {
             clearInterval(animId);

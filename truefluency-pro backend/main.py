@@ -12,6 +12,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime, timezone
 import os
 import json
 import io
@@ -89,7 +90,7 @@ class MockRequest(BaseModel):
     material_id: str = Field(min_length=1, max_length=64)
     course_code: str = Field(min_length=1, max_length=32)
     course_name: str = Field(min_length=1, max_length=200)
-    question_count: int = Field(default=20, ge=5, le=40)
+    question_count: int = Field(default=20, ge=5, le=60)
     difficulty: str = "balanced"  # gentle | balanced | challenging | exam
     topic_focus: list[str] = Field(default_factory=list, max_length=20)
 
@@ -156,6 +157,141 @@ async def require_user(authorization: Optional[str]) -> str:
     if not user_id:
         raise HTTPException(status_code=401, detail="Your session could not be verified.")
     return str(user_id)
+
+
+# ── ENTITLEMENTS ──────────────────────────────────────────────────────────────
+# These mirror src/lib/entitlements.ts. A valid login is not enough: the tier
+# and the daily count are resolved here, so calling this service directly can
+# never hand out more generations than the plan allows.
+
+FREE_DAILY_MOCK_SETS = 2
+FREE_MAX_QUESTIONS = 30
+PAID_MAX_QUESTIONS = 60
+
+
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_ts(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+async def _has_full_access(user_id: str) -> bool:
+    """True only for an unexpired trial or an unexpired paid subscription."""
+    url = (
+        f"{SUPABASE_URL}/rest/v1/subscriptions"
+        f"?user_id=eq.{user_id}&select=tier,trial_ends_at,paid_until&limit=1"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.get(url, headers=_service_headers(json_body=False))
+    except httpx.HTTPError:
+        raise HTTPException(status_code=503, detail="Could not check your plan. Try again.")
+
+    if res.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not check your plan.")
+
+    rows = res.json() or []
+    if not rows:
+        # No subscription row yet: treat as free, the most restrictive tier.
+        return False
+
+    row = rows[0]
+    tier = (row.get("tier") or "free").lower()
+    now = _now_utc()
+    if tier == "trial":
+        ends = _parse_ts(row.get("trial_ends_at"))
+        return bool(ends and ends > now)
+    if tier == "paid":
+        until = _parse_ts(row.get("paid_until"))
+        return bool(until and until > now)
+    return False
+
+
+async def _mock_sets_used_today(user_id: str) -> int:
+    day = _now_utc().date().isoformat()
+    url = (
+        f"{SUPABASE_URL}/rest/v1/usage_counters"
+        f"?user_id=eq.{user_id}&feature=eq.mock_sets&day=eq.{day}&select=count&limit=1"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.get(url, headers=_service_headers(json_body=False))
+    except httpx.HTTPError:
+        raise HTTPException(status_code=503, detail="Could not check your daily usage. Try again.")
+
+    if res.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not check your daily usage.")
+
+    rows = res.json() or []
+    if not rows:
+        return 0
+    try:
+        return int(rows[0].get("count") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+async def _record_mock_set(user_id: str, used: int) -> None:
+    day = _now_utc().date().isoformat()
+    url = f"{SUPABASE_URL}/rest/v1/usage_counters?on_conflict=user_id,feature,day"
+    headers = _service_headers()
+    headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
+    payload = {
+        "user_id": user_id,
+        "feature": "mock_sets",
+        "day": day,
+        "count": used + 1,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            await client.post(url, headers=headers, json=payload)
+    except httpx.HTTPError:
+        # Losing one count is better than failing a generation the user is
+        # entitled to; the next request re-reads the stored count.
+        pass
+
+
+async def enforce_mock_quota(user_id: str, requested: int) -> int:
+    """
+    Authoritative gate for one mock set. Returns how many questions may be
+    generated, and records the usage for free accounts.
+    """
+    full_access = await _has_full_access(user_id)
+
+    if full_access:
+        return max(5, min(requested, PAID_MAX_QUESTIONS))
+
+    if requested > FREE_MAX_QUESTIONS:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Free sets cap at {FREE_MAX_QUESTIONS} questions. "
+                "Upgrade for longer sets."
+            ),
+        )
+
+    used = await _mock_sets_used_today(user_id)
+    if used >= FREE_DAILY_MOCK_SETS:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Free accounts get {FREE_DAILY_MOCK_SETS} mock test sets a day, "
+                "and your count resets tomorrow."
+            ),
+        )
+
+    await _record_mock_set(user_id, used)
+    return max(5, min(requested, FREE_MAX_QUESTIONS))
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -447,6 +583,9 @@ async def generate_mock(
     This replaces the hardcoded sampleQuestions from questions.ts in the frontend.
     """
     user_id = await require_user(authorization)
+    # Plan + daily limit are enforced here, not in the browser, so calling this
+    # endpoint directly cannot exceed the caller's tier.
+    allowed_count = await enforce_mock_quota(user_id, req.question_count)
     extracted_text = await fetch_extracted_text(req.material_id, user_id)
 
 
@@ -473,7 +612,7 @@ Difficulty: {req.difficulty}. {diff_instruction}
 {trimmed}
 --- END MATERIAL ---
 
-Generate exactly {req.question_count} multiple choice questions based ONLY on the material above.
+Generate exactly {allowed_count} multiple choice questions based ONLY on the material above.
 
 Rules:
 - Each question must have exactly 4 options (A, B, C, D)
@@ -499,7 +638,7 @@ correct_index is 0-based (0 = A, 1 = B, 2 = C, 3 = D).
 
     # ~350 tokens per MCQ with options + explanation, plus headroom, so a
     # 40-question set can't silently truncate into malformed JSON.
-    raw = await call_model(prompt, max_tokens=min(16000, 600 + req.question_count * 400))
+    raw = await call_model(prompt, max_tokens=min(16000, 600 + allowed_count * 400))
     questions = parse_json_list(raw)
 
 

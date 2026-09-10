@@ -22,13 +22,14 @@ export const getMyAccess = createServerFn({ method: "GET" })
 
 export const consumeFeatureQuota = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { feature: GatedFeature; requestedQuestions?: number }) => {
+  .inputValidator((input: { feature: GatedFeature; requestedQuestions?: number; dryRun?: boolean }) => {
     const feature = FEATURES.includes(input?.feature) ? input.feature : null;
     if (!feature) throw new Error("Unknown feature.");
     const requested = Number(input?.requestedQuestions);
     return {
       feature,
       requestedQuestions: Number.isFinite(requested) ? Math.round(requested) : undefined,
+      dryRun: input?.dryRun === true,
     };
   })
   .handler(async ({ data, context }): Promise<QuotaVerdict & { allowedQuestions?: number }> => {
@@ -37,6 +38,7 @@ export const consumeFeatureQuota = createServerFn({ method: "POST" })
       userId: context.userId,
       feature: data.feature,
       requestedQuestions: data.requestedQuestions,
+      dryRun: data.dryRun,
     });
     const { access: _access, ...verdict } = result;
     return verdict;

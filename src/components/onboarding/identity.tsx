@@ -6,7 +6,7 @@ import { useProfile } from "@/lib/profile-store";
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { deriveSupabasePassword, localPasswordVerifier } from "@/lib/supabase-session";
+import { deriveSupabasePassword } from "@/lib/supabase-session";
 
 type Tab = "signup" | "login";
 
@@ -31,39 +31,67 @@ export function IdentityScreen() {
     setTimeout(() => { setBusy(null); fn(); }, 900);
   };
 
+  /** Local record of who has signed in here. It holds no credential. */
+  const rememberAccount = (displayName: string, em: string) => {
+    const rest = profile.accounts.filter((a) => a.email.toLowerCase() !== em);
+    return [...rest, { name: displayName, email: em }];
+  };
+
   const onSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password) return;
     const em = email.trim().toLowerCase();
-    if (profile.accounts.some((a) => a.email.toLowerCase() === em)) {
-      setError("An account with that email already exists on this device. Try logging in.");
-      return;
+    setError(null);
+    setBusy("signup");
+    try {
+      // The password is stretched in memory and handed straight to Supabase
+      // Auth. Nothing usable for sign-in is ever written to this device.
+      const secret = await deriveSupabasePassword(em, password);
+      const { error: signUpError } = await supabase.auth.signUp({ email: em, password: secret });
+      if (signUpError) {
+        setError(
+          /already/i.test(signUpError.message)
+            ? "An account with that email already exists. Try logging in."
+            : signUpError.message,
+        );
+        setBusy(null);
+        return;
+      }
+      setBusy(null);
+      finish({ kind: "email", name: name.trim(), email: em }, rememberAccount(name.trim(), em));
+    } catch (err) {
+      console.error("[auth] sign-up failed", err);
+      setError("We couldn't create your account. Check your connection and try again.");
+      setBusy(null);
     }
-    // The typed password is never stored: we keep a verifier hash plus the
-    // derived cloud password.
-    const [verifier, derived] = await Promise.all([
-      localPasswordVerifier(em, password),
-      deriveSupabasePassword(em, password),
-    ]);
-    const next = [...profile.accounts, { name: name.trim(), email: em, verifier, derived }];
-    withDelay("signup", () => finish({ kind: "email", name: name.trim(), email: em }, next));
   };
 
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
     const em = email.trim().toLowerCase();
-    const match = profile.accounts.find((a) => a.email.toLowerCase() === em);
-    if (!match) {
-      setError("We couldn't find an account with that email on this device. Try signing up instead.");
-      return;
+    setError(null);
+    setBusy("login");
+    try {
+      const secret = await deriveSupabasePassword(em, password);
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: em,
+        password: secret,
+      });
+      if (signInError || !data.user) {
+        setError("Wrong email or password.");
+        setBusy(null);
+        return;
+      }
+      const known = profile.accounts.find((a) => a.email.toLowerCase() === em);
+      const displayName = known?.name || em.split("@")[0] || "Student";
+      setBusy(null);
+      finish({ kind: "email", name: displayName, email: em }, rememberAccount(displayName, em));
+    } catch (err) {
+      console.error("[auth] sign-in failed", err);
+      setError("We couldn't sign you in. Check your connection and try again.");
+      setBusy(null);
     }
-    const verifier = await localPasswordVerifier(em, password);
-    if (match.verifier !== verifier) {
-      setError("Wrong password for that account.");
-      return;
-    }
-    withDelay("login", () => finish({ kind: "email", name: match.name, email: match.email }));
   };
 
   const onGoogle = async () => {
