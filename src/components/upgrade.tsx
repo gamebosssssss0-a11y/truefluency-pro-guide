@@ -2,9 +2,18 @@
  * Upgrade screen. Presentation only: it explains the founding price and the
  * standard price. There is no checkout here, and no payment success state.
  */
+import { useState } from "react";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { HeaderLogo } from "@/components/brand";
 import { NOT_SECOND_PRODUCT, NO_PAYMENT_YET, PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, formatNaira, STANDARD_PRICE_NAIRA, FOUNDING_PRICE_NAIRA, FOUNDING_USER_LIMIT } from "@/lib/entitlements";
@@ -18,6 +27,9 @@ const INCLUDED = [
 
 export function UpgradeScreen() {
   const { navigate } = useProfile();
+  // Presentation only: this dialog is the entire behaviour of the button.
+  // No payment provider is called and no entitlement or tier state changes.
+  const [comingSoon, setComingSoon] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
@@ -81,8 +93,14 @@ export function UpgradeScreen() {
         </div>
 
         <Button
+          className="mt-5 h-12 w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#a4620a]"
+          onClick={() => setComingSoon(true)}
+        >
+          Upgrade, {PRICE_LINE}
+        </Button>
+        <Button
           variant="outline"
-          className="mt-5 h-12 w-full"
+          className="mt-3 h-12 w-full"
           onClick={() => navigate("support")}
         >
           Ask us about payment
@@ -90,6 +108,23 @@ export function UpgradeScreen() {
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           Checkout is not live yet, so nothing on this screen charges you.
         </p>
+
+        <Dialog open={comingSoon} onOpenChange={setComingSoon}>
+          <DialogContent className="max-w-[340px]">
+            <DialogHeader>
+              <DialogTitle>Payments are launching soon</DialogTitle>
+              <DialogDescription>
+                We're finishing setup with our payment provider. This won't be
+                available for a little longer, check back soon.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button className="w-full" onClick={() => setComingSoon(false)}>
+                Okay
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

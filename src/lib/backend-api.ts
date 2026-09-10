@@ -222,8 +222,8 @@ export async function generateMock(
       continue;
     }
 
-    if (data.status === "completed") break;
-    if (data.status === "failed") {
+    if (data?.status === "completed") break;
+    if (data?.status === "failed") {
       throw new Error(data.error || "Mock generation failed.");
     }
     options?.onProgress?.();

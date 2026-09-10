@@ -13,6 +13,7 @@ import {
 } from "@/components/onboarding/profile-setup";
 import { GoalScreen, TimelineScreen, StudyPreferenceScreen } from "@/components/onboarding/personalization";
 import { CgpaIntroScreen } from "@/components/onboarding/cgpa-intro";
+import { TrialWelcomeScreen } from "@/components/onboarding/trial-welcome";
 import { HomeScreen } from "@/components/dashboard";
 import { CourseDetailScreen } from "@/components/course-detail";
 import {
@@ -101,6 +102,7 @@ function Router() {
       case "level": return <LevelScreen />;
       case "courses": return <CoursesScreen />;
       case "cgpa-intro": return <CgpaIntroScreen />;
+      case "trial-welcome": return <TrialWelcomeScreen />;
     }
   }
 
