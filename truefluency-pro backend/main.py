@@ -89,7 +89,7 @@ class MockRequest(BaseModel):
     material_id: str = Field(min_length=1, max_length=64)
     course_code: str = Field(min_length=1, max_length=32)
     course_name: str = Field(min_length=1, max_length=200)
-    question_count: int = Field(default=20, ge=5, le=40)
+    question_count: int = Field(default=20, ge=5, le=60)
     difficulty: str = "balanced"  # gentle | balanced | challenging | exam
     topic_focus: list[str] = Field(default_factory=list, max_length=20)
 
