@@ -72,17 +72,38 @@ function ready(text: string | null): boolean {
   return (text ?? "").trim().length >= READY_FOR_MOCKS_MIN_CHARS;
 }
 
-async function aliasFor(ownerId: string): Promise<string> {
+type Attribution = { peer_alias: string; avatar_url: string | null };
+
+/**
+ * Shelf attribution. Nothing about the owner leaves the server unless the owner
+ * ticked the matching box on that exact file: no last name, faculty, level or
+ * email in any case, and no photo URL unless show_owner_photo is true.
+ */
+async function attributionFor(
+  ownerId: string,
+  showName: boolean,
+  showPhoto: boolean,
+): Promise<Attribution> {
+  if (!showName && !showPhoto) return { peer_alias: "A peer", avatar_url: null };
   try {
-    const { data } = await admin()
+    const db = admin();
+    const { data } = await db
       .from("profiles")
-      .select("display_name")
+      .select("display_name, avatar_path")
       .eq("user_id", ownerId)
       .maybeSingle();
-    const first = (data?.display_name ?? "").trim().split(/\s+/)[0];
-    return first ? `${first} (peer)` : "A peer";
+
+    const first = showName ? ((data?.display_name ?? "").trim().split(/\s+/)[0] ?? "") : "";
+    let avatar_url: string | null = null;
+    if (showPhoto && data?.avatar_path) {
+      const { data: signed } = await db.storage
+        .from(BUCKET)
+        .createSignedUrl(data.avatar_path, 60 * 60);
+      avatar_url = signed?.signedUrl ?? null;
+    }
+    return { peer_alias: first ? `${first} (peer)` : "A peer", avatar_url };
   } catch {
-    return "A peer";
+    return { peer_alias: "A peer", avatar_url: null };
   }
 }
 
