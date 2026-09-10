@@ -51,28 +51,9 @@ export async function ensureSupabaseSession(profile: Profile): Promise<SessionOu
   }
 
   if (id.kind === "email" && id.email) {
-    const email = id.email;
-    const acct = profile.accounts.find((a) => a.email.toLowerCase() === email.toLowerCase());
-    // Google-authenticated users have no local account record. Don't guess a
-    // password for them: their session comes from the OAuth flow instead.
-    if (!acct?.derived) return { ok: false, reason: "oauth-or-missing-account" };
-
-    const signIn = await supabase.auth.signInWithPassword({
-      email,
-      password: acct.derived,
-    });
-    if (!signIn.error) return { ok: true, kind: "password" };
-
-    // Try signup — auto-confirm is enabled on this project.
-    const signUp = await supabase.auth.signUp({ email, password: acct.derived });
-    const after = await supabase.auth.getSession();
-    if (after.data.session) return { ok: true, kind: "signup" };
-
-    // Surface the real reason instead of silently downgrading to a guest
-    // session, which would strand the user's cloud data under another user.
-    const reason = signUp.error?.message ?? signIn.error.message;
-    console.error("[auth] could not restore account session", reason);
-    return { ok: false, reason };
+    // No credential is stored on the device, so an expired session can only be
+    // restored by signing in again (email/password or Google).
+    return { ok: false, reason: "sign-in-required" };
   }
 
   return { ok: false, reason: "unsupported-identity" };
