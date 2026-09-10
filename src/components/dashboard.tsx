@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useProfile, hasQualifyingActivityToday } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronRight, Flame, Zap, Quote as QuoteIcon, Lightbulb, Calculator, Target,
+  ChevronRight, Flame, Quote as QuoteIcon, Lightbulb, Calculator, Target,
   Layers, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
 import { getMyAvatar } from "@/lib/avatar";
+import { FirstRunTourHost } from "@/components/first-run-tour";
 
 /* ================= Tab 1: Home ================= */
 
