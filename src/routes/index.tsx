@@ -20,7 +20,7 @@ import {
   MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen, AttemptReviewScreen,
 } from "@/components/mock-test-flow";
 import { MockTestsScreen, TestHistoryScreen } from "@/components/mock-tests-tab";
-import { ChatbotSoonScreen } from "@/components/placeholder-tabs";
+import { ChatbotScreen } from "@/components/chatbot";
 import { LibraryScreen } from "@/components/library";
 import { AccountScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";

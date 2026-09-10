@@ -1,7 +1,7 @@
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
 import { Button } from "@/components/ui/button";
-import { Library, MessageCircle, Sparkles } from "lucide-react";
+import { Library, Sparkles } from "lucide-react";
 
 function ComingSoonTab({
   title, tagline, icon: Icon, bullets, primaryAction,
