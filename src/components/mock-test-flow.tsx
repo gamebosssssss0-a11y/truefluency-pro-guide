@@ -419,6 +419,10 @@ export function MockConfigScreen() {
     }
   }, [fullAccess]);
 
+  useEffect(() => {
+    setMinutes((m) => Math.max(15, Math.min(75, m)));
+  }, []);
+
   if (!course || !smart) return null;
 
   const resetToDefaults = () => {
