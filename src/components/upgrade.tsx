@@ -93,8 +93,14 @@ export function UpgradeScreen() {
         </div>
 
         <Button
+          className="mt-5 h-12 w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#a4620a]"
+          onClick={() => setComingSoon(true)}
+        >
+          Upgrade, {PRICE_LINE}
+        </Button>
+        <Button
           variant="outline"
-          className="mt-5 h-12 w-full"
+          className="mt-3 h-12 w-full"
           onClick={() => navigate("support")}
         >
           Ask us about payment
@@ -102,6 +108,23 @@ export function UpgradeScreen() {
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           Checkout is not live yet, so nothing on this screen charges you.
         </p>
+
+        <Dialog open={comingSoon} onOpenChange={setComingSoon}>
+          <DialogContent className="max-w-[340px]">
+            <DialogHeader>
+              <DialogTitle>Payments are launching soon</DialogTitle>
+              <DialogDescription>
+                We're finishing setup with our payment provider. This won't be
+                available for a little longer, check back soon.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button className="w-full" onClick={() => setComingSoon(false)}>
+                Okay
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
