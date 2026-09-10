@@ -17,7 +17,7 @@ import { getMyAvatar } from "@/lib/avatar";
 
 /* ================= Tab 1: Home ================= */
 
-const ROTATE_MS = 8000;
+const ROTATE_MS = 6000;
 
 /** One chip only: the live trial, paid access, or the founding price line. */
 function PlanChip() {
@@ -359,33 +359,59 @@ function CgpaStatusCard() {
 function RotatingWisdomCard() {
   const [deck] = useState<Rotating[]>(() => buildRotatingDeck());
   const [i, setI] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreference = () => setReduceMotion(media.matches);
+    syncPreference();
+    media.addEventListener("change", syncPreference);
+    return () => media.removeEventListener("change", syncPreference);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) return;
     const id = window.setInterval(() => setI((c) => (c + 1) % deck.length), ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [deck.length]);
+  }, [deck.length, reduceMotion]);
 
   const item = deck[i];
   if (!item) return null;
 
   return (
-    <figure className="mt-5 rounded-2xl bg-[#1B2A4A] p-5">
+    <figure
+      key={reduceMotion ? "static-wisdom" : i}
+      className={cn(
+        "quote-card relative mt-5 min-h-32 overflow-hidden rounded-2xl px-6 py-5 text-center",
+        !reduceMotion && "quote-card-cycle",
+      )}
+    >
       {item.kind === "quote" ? (
-        <div className="text-center">
-          <QuoteIcon className="mx-auto h-4 w-4 text-[#B86E0A]" aria-hidden="true" />
-          <blockquote className="mt-2 text-sm font-medium leading-relaxed text-[#F7F3EA]">
-            {item.quote.quote}
+        <div className="relative">
+          <QuoteIcon
+            className="pointer-events-none absolute -left-5 -top-4 h-16 w-16 text-accent/25"
+            aria-hidden="true"
+          />
+          <blockquote className="quote-text relative font-display text-base font-semibold leading-relaxed">
+            “{item.quote.quote}”
           </blockquote>
-          <figcaption className="mt-2 text-[11px] text-[#C4B8A0]">{item.quote.author}</figcaption>
+          <figcaption className="relative mt-2 text-xs font-normal text-muted-foreground">
+            {item.quote.author}
+          </figcaption>
         </div>
       ) : (
-        <>
-          <Lightbulb className="h-4 w-4 text-[#B86E0A]" aria-hidden="true" />
-          <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#B86E0A]">
+        <div className="relative flex min-h-20 flex-col items-center justify-center">
+          <Lightbulb
+            className="pointer-events-none absolute -left-4 -top-3 h-14 w-14 text-accent/25"
+            aria-hidden="true"
+          />
+          <div className="relative text-[10px] font-semibold uppercase tracking-wider text-accent">
             Study tip
           </div>
-          <p className="mt-1 text-sm font-medium leading-relaxed text-[#F7F3EA]">{item.tip}</p>
-        </>
+          <p className="quote-text relative mt-1 font-display text-base font-semibold leading-relaxed">
+            {item.tip}
+          </p>
+        </div>
       )}
     </figure>
   );
