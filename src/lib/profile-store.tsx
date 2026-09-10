@@ -80,6 +80,7 @@ export type OnboardingStep =
   | "disclaimer"
   | "disclaimer-blocked"
   | "identity"
+  | "google-profile"
   | "goal"
   | "timeline"
   | "study-pref"
@@ -247,6 +248,14 @@ export type Profile = {
    */
   cgpaCalcCourses: string[] | null;
   cgpaGoalCourses: string[] | null;
+  /**
+   * True once the student has confirmed a name on their account. Mirrors the
+   * cloud `profiles.display_name`, so the Google welcome screen is asked for
+   * once per account and never again on another device.
+   */
+  profileCompleted: boolean;
+  /** True once the first-run walkthrough on Home has been seen or skipped. */
+  tourSeen: boolean;
 };
 
 
@@ -280,6 +289,8 @@ const emptyProfile: Profile = {
   trialNoticeSeen: false,
   cgpaCalcCourses: null,
   cgpaGoalCourses: null,
+  profileCompleted: false,
+  tourSeen: false,
 
 
 };
