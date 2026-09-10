@@ -94,15 +94,15 @@ export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
 export type StudyPreference = "practice" | "flashcards" | "reading";
 
+/**
+ * Local record of an account that has signed in on this device. It holds no
+ * credential of any kind: authentication lives entirely in the Supabase
+ * session, and any legacy credential fields written by older builds are
+ * stripped on load and never written back.
+ */
 export type LocalAccount = {
   name: string;
   email: string;
-  /** SHA-256 verifier used to check the typed password locally. */
-  verifier?: string;
-  /** Derived Supabase password for this account (never the typed one). */
-  derived?: string;
-  /** Legacy plaintext password from older builds; migrated away on load. */
-  password?: string;
 };
 
 export type AppView =
