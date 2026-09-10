@@ -275,6 +275,9 @@ export function HomeScreen() {
               {subline ? (
                 <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p>
               ) : null}
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Your study home: upload a file, practise on it, revise it.
+              </p>
             </div>
             {avatarUrl ? (
               <img
@@ -289,6 +292,8 @@ export function HomeScreen() {
             )}
           </div>
         </div>
+
+        <NextStepCard />
 
         <PlanChip />
 
@@ -312,15 +317,6 @@ export function HomeScreen() {
             </div>
           </div>
         ) : null}
-
-        {/* Single amber CTA */}
-        <Button
-          size="lg"
-          className="mb-5 w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#B86E0A]/90"
-          onClick={() => navigate("mock-tests")}
-        >
-          <Zap className="mr-1.5 h-4 w-4" /> Take a mock
-        </Button>
 
         <ContinueFileCard />
         <StrengthsCard />
