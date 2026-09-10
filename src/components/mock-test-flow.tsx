@@ -348,6 +348,18 @@ export const MAX_QUESTIONS = PAID_MAX_QUESTIONS;
 /** A student focuses a set on at most three topics from their upload. */
 export const MAX_TOPIC_FOCUS = 3;
 
+export const QUESTION_OPTIONS = [
+  { count: FREE_MAX_QUESTIONS, label: "Standard set", minutes: 40 },
+  { count: 45, label: "Middle set", minutes: 55 },
+  { count: PAID_MAX_QUESTIONS, label: "Long set", minutes: 75 },
+] as const;
+
+export function defaultMinutesForCount(n: number): number {
+  if (n <= FREE_MAX_QUESTIONS) return 40;
+  if (n <= 45) return 55;
+  return 75;
+}
+
 const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = [
   { key: "gentle", label: "Gentle", blurb: "Ease in" },
   { key: "balanced", label: "Balanced", blurb: "Recommended" },
@@ -368,7 +380,7 @@ function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProf
   }
   return {
     questionCount: FREE_MAX_QUESTIONS,
-    minutes: timeline.minutes,
+    minutes: defaultMinutesForCount(FREE_MAX_QUESTIONS),
     difficulty: "balanced",
     topicFocus,
   };
@@ -434,7 +446,13 @@ export function MockConfigScreen() {
 
 
   const generate = () => {
-    const nextSettings: CourseTestSettings = { questionCount: count, minutes, difficulty, topicFocus };
+    const effectiveCount = fullAccess ? count : Math.min(count, FREE_MAX_QUESTIONS);
+    const nextSettings: CourseTestSettings = {
+      questionCount: effectiveCount,
+      minutes,
+      difficulty,
+      topicFocus,
+    };
     update({
       courseTestSettings: { ...profile.courseTestSettings, [course.code]: nextSettings },
     });
@@ -465,44 +483,48 @@ export function MockConfigScreen() {
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Questions
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS].map((n) => {
-                const locked = n > maxQuestionsPerSet;
+            <div className="grid grid-cols-3 gap-2">
+              {QUESTION_OPTIONS.map(({ count: n, label }) => {
+                const locked = !fullAccess && n > FREE_MAX_QUESTIONS;
                 const on = count === n;
                 return (
                   <button
                     key={n}
                     type="button"
                     disabled={locked}
-                    onClick={() => setCount(n)}
+                    onClick={() => {
+                      setCount(n);
+                      setMinutes(defaultMinutesForCount(n));
+                    }}
                     className={cn(
-                      "rounded-xl border p-3 text-left transition",
+                      "relative overflow-hidden rounded-xl border p-3 text-left transition",
                       on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50",
-                      locked && "opacity-55",
+                      locked && "bg-sand/40 opacity-70",
                     )}
                   >
+                    {locked ? (
+                      <span className="absolute right-2 top-2 text-amber">
+                        <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                    ) : null}
                     <div className="font-display text-xl font-semibold text-foreground">{n}</div>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      {locked ? <Lock className="h-3 w-3" aria-hidden="true" /> : null}
-                      {n === FREE_MAX_QUESTIONS ? "Standard set" : locked ? "Full access" : "Long set"}
+                      {locked ? "Trial / paid" : label}
                     </div>
                   </button>
                 );
               })}
             </div>
-            {maxQuestionsPerSet <= FREE_MAX_QUESTIONS ? (
+            {!fullAccess ? (
               <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
                 <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                <span>
-                  Free accounts cap a set at {FREE_MAX_QUESTIONS} questions. Full access raises it
-                  to {PAID_MAX_QUESTIONS}.
-                </span>
+                <span>{PRICE_LINE}</span>
               </p>
             ) : null}
           </div>
 
 
-          <ConfigSlider label="Duration" unit="minutes" value={minutes} min={5} max={120} step={5} onChange={setMinutes} />
+          <ConfigSlider label="Duration" unit="minutes" value={minutes} min={15} max={75} step={5} onChange={setMinutes} />
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Difficulty</label>
