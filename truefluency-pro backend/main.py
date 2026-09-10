@@ -583,6 +583,9 @@ async def generate_mock(
     This replaces the hardcoded sampleQuestions from questions.ts in the frontend.
     """
     user_id = await require_user(authorization)
+    # Plan + daily limit are enforced here, not in the browser, so calling this
+    # endpoint directly cannot exceed the caller's tier.
+    allowed_count = await enforce_mock_quota(user_id, req.question_count)
     extracted_text = await fetch_extracted_text(req.material_id, user_id)
 
 
