@@ -317,7 +317,13 @@ export function sanitizeProfile(raw: unknown): Profile {
   return {
     ...emptyProfile,
     ...(p as Partial<Profile>),
-    accounts: asArray<LocalAccount>(p.accounts),
+    // Older builds stored a password / verifier / derived Supabase password
+    // here. Keep only the display fields so no working credential can be read
+    // out of localStorage.
+    accounts: asArray<Record<string, unknown>>(p.accounts).map((a) => ({
+      name: typeof a.name === "string" ? a.name : "",
+      email: typeof a.email === "string" ? a.email : "",
+    })) as LocalAccount[],
     courses: asArray<UserCourse>(p.courses),
     attempts: asArray<MockAttempt>(p.attempts),
     topicScores: asArray<TopicScore>(p.topicScores),
