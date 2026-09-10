@@ -124,7 +124,8 @@ function Router() {
       case "account":
       case "settings": return <AccountScreen />;
       case "all-uploads": return <AllUploadsScreen />;
-      case "flashcards-soon": return <FlashcardsSoonScreen />;
+      case "flashcards-soon": return <FlashcardsScreen />;
+      case "flashcards-review": return <FlashcardsReviewScreen />;
       case "add-course": return <AddCourseScreen />;
       case "cgpa": return <CgpaCalculatorScreen />;
       case "cgpa-goal": return <CgpaGoalSetterScreen />;
