@@ -315,6 +315,8 @@ type ResolvedShare = {
     file_path: string;
     extracted_content: string | null;
     extraction_status: string;
+    show_owner_name: boolean;
+    show_owner_photo: boolean;
   };
 };
 
@@ -332,7 +334,7 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
   const { data: material } = await db
     .from("course_materials")
     .select(
-      "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status",
+      "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status, show_owner_name, show_owner_photo",
     )
     .eq("id", share.material_id)
     .maybeSingle();
@@ -376,7 +378,9 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
     course_code: material.course_code,
     size_bytes: material.size_bytes,
     readyForMocks: ready(material.extracted_content),
-    peer_alias: await aliasFor(material.user_id),
+    peer_alias: (
+      await attributionFor(material.user_id, material.show_owner_name, material.show_owner_photo)
+    ).peer_alias,
     previewUrl,
     usesLeft: Math.max(0, share.max_uses - share.use_count),
     maxUses: share.max_uses,
@@ -434,7 +438,7 @@ export async function saveSharedFile(opts: {
     const { data } = await db
       .from("course_materials")
       .select(
-        "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status, published",
+        "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status, published, show_owner_name, show_owner_photo",
       )
       .eq("id", opts.materialId)
       .maybeSingle();
@@ -458,7 +462,9 @@ export async function saveSharedFile(opts: {
     .maybeSingle();
   if (dupe) return { ok: false, reason: "This file is already in your locker." };
 
-  const alias = await aliasFor(source.user_id);
+  const alias = (
+    await attributionFor(source.user_id, source.show_owner_name, source.show_owner_photo)
+  ).peer_alias;
   const destPath = `${opts.recipientId}/${source.course_code}/${Date.now()}-${source.file_name}`;
 
   const { error: copyErr } = await db.storage.from(BUCKET).copy(source.file_path, destPath);
