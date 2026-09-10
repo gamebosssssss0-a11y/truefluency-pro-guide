@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { flatCatalog, type CatalogEntry, type Level } from "@/lib/uni-data";
+import { courseCodeMatches, sameCourseCode } from "@/lib/course-code";
 import type { UserCourse } from "@/lib/profile-store";
 import { AlertTriangle, Check, PencilLine, Search, X } from "lucide-react";
 
@@ -44,7 +45,7 @@ export function AddCourseFlow({
     const seen = new Set<string>();
     const out: (CatalogEntry & { department: string; level: Level })[] = [];
     for (const e of all) {
-      if (e.code.toLowerCase().includes(q) || e.name.toLowerCase().includes(q)) {
+      if (courseCodeMatches(e.code, q) || e.name.toLowerCase().includes(q)) {
         // Prefer catalog entries whose level matches the user's level.
         const key = `${e.code}::${e.name}`;
         if (seen.has(key)) continue;
@@ -60,7 +61,7 @@ export function AddCourseFlow({
     return out;
   }, [q, active, level]);
 
-  const isAdded = (code: string) => existing.some((c) => c.code === code);
+  const isAdded = (code: string) => existing.some((c) => sameCourseCode(c.code, code));
 
   const addVerified = (e: CatalogEntry) => {
     if (isAdded(e.code)) return;

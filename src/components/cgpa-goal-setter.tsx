@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Calculator, Info, AlertCircle, BookOpen, Timer, Target, ListChecks, Zap,
 } from "lucide-react";
+import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
 
 export function CgpaGoalSetterScreen() {
   const { profile, navigate, update } = useProfile();
+  const { selected: rows } = useCgpaCourseSelection("cgpaGoalCourses");
 
   const saved = profile.cgpaInputs;
   // Auto-populate from the real CGPA Calculator result when the student has run
@@ -59,11 +61,11 @@ export function CgpaGoalSetterScreen() {
       setError("Enter how many days you have before exams begin.");
       return;
     }
-    if (profile.courses.length === 0) {
-      setError("Add at least one course to your profile first.");
+    if (rows.length === 0) {
+      setError("Choose at least one course for this plan.");
       return;
     }
-    const bad = profile.courses.find((c) => {
+    const bad = rows.find((c) => {
       const u = units[c.code];
       return !u || u < 1 || u > 6;
     });
@@ -78,10 +80,10 @@ export function CgpaGoalSetterScreen() {
       currentUnits: tcu,
       targetCgpa: target,
       daysRemaining: Math.round(days),
-      courses: profile.courses.map((c) => ({
+      courses: rows.map((c) => ({
         code: c.code,
         name: c.name,
-        units: units[c.code],
+        units: units[c.code] ?? 3,
         currentAveragePercent: averageForCourse(profile, c.code),
       })),
     });
@@ -185,15 +187,21 @@ export function CgpaGoalSetterScreen() {
           This semester's courses
         </h2>
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Pulled from your confirmed courses. Adjust the credit units to match your course forms.
+          Pick the courses this plan should cover, then adjust the credit units to match your
+          course forms.
         </p>
-        {profile.courses.length === 0 ? (
+        <CgpaCoursePicker
+          field="cgpaGoalCourses"
+          helper="Search and add the courses you want in this plan, or remove any you don't."
+        />
+        <div className="mt-3" />
+        {rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
-            No courses on your profile yet.
+            No courses chosen yet. Use “Choose courses” above to add them.
           </div>
         ) : (
           <div className="space-y-2">
-            {profile.courses.map((c) => (
+            {rows.map((c) => (
               <div key={c.code} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-foreground">{c.code}</div>

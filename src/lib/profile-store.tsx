@@ -240,6 +240,12 @@ export type Profile = {
    * Purely informational: it never grants, extends or changes the trial.
    */
   trialNoticeSeen: boolean;
+  /**
+   * Course codes the student picked for each CGPA tool. `null` means "not
+   * chosen yet", in which case every course on the profile is used.
+   */
+  cgpaCalcCourses: string[] | null;
+  cgpaGoalCourses: string[] | null;
 };
 
 
@@ -271,6 +277,8 @@ const emptyProfile: Profile = {
   cgpaActual: null,
   cgpaIntroSeen: false,
   trialNoticeSeen: false,
+  cgpaCalcCourses: null,
+  cgpaGoalCourses: null,
 
 
 };

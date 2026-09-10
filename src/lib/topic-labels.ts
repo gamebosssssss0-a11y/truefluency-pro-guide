@@ -8,6 +8,7 @@
  * treated as humanities and an explicit per-course override taking priority.
  */
 import { facultyData, uiCourseCatalog } from "./uni-data";
+import { sameCourseCode } from "./course-code";
 
 export type SubjectType = "stem" | "humanities" | "neutral";
 
@@ -51,7 +52,7 @@ function facultyForDepartment(department: string | null): string | null {
 /** Explicit per-course override set on a uiCourseCatalog entry, if any. */
 function overrideForCode(code: string): SubjectType | null {
   for (const entries of Object.values(uiCourseCatalog)) {
-    const hit = entries.find((e) => e.code === code);
+    const hit = entries.find((e) => sameCourseCode(e.code, code));
     if (hit?.labelOverride) return hit.labelOverride;
   }
   return null;
