@@ -612,7 +612,7 @@ Difficulty: {req.difficulty}. {diff_instruction}
 {trimmed}
 --- END MATERIAL ---
 
-Generate exactly {req.question_count} multiple choice questions based ONLY on the material above.
+Generate exactly {allowed_count} multiple choice questions based ONLY on the material above.
 
 Rules:
 - Each question must have exactly 4 options (A, B, C, D)
@@ -638,7 +638,7 @@ correct_index is 0-based (0 = A, 1 = B, 2 = C, 3 = D).
 
     # ~350 tokens per MCQ with options + explanation, plus headroom, so a
     # 40-question set can't silently truncate into malformed JSON.
-    raw = await call_model(prompt, max_tokens=min(16000, 600 + req.question_count * 400))
+    raw = await call_model(prompt, max_tokens=min(16000, 600 + allowed_count * 400))
     questions = parse_json_list(raw)
 
 
