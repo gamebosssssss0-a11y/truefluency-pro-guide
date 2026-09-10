@@ -23,7 +23,8 @@ import { MockTestsScreen, TestHistoryScreen } from "@/components/mock-tests-tab"
 import { ChatbotScreen } from "@/components/chatbot";
 import { LibraryScreen } from "@/components/library";
 import { AccountScreen, AllUploadsScreen } from "@/components/settings";
-import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
+import { AddCourseScreen } from "@/components/misc-screens";
+import { FlashcardsScreen, FlashcardsReviewScreen } from "@/components/flashcards";
 import { CgpaCalculatorScreen } from "@/components/cgpa-calculator";
 import { CgpaGoalSetterScreen } from "@/components/cgpa-goal-setter";
 import { SupportScreen } from "@/components/support";
