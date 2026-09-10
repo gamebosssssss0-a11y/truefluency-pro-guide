@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 
 const TABS: { key: TabKey; label: string; icon: typeof Home; view: AppView }[] = [
   { key: "home", label: "Home", icon: Home, view: "home" },
-  { key: "mock-tests", label: "Mock Tests", icon: ClipboardList, view: "mock-tests" },
-  { key: "library", label: "Library", icon: Library, view: "library" },
-  { key: "chatbot", label: "Chatbot", icon: MessageCircle, view: "chatbot" },
+  { key: "mock-tests", label: "Practice", icon: ClipboardList, view: "mock-tests" },
+  { key: "library", label: "My Files", icon: Library, view: "library" },
+  { key: "chatbot", label: "Study Chat", icon: MessageCircle, view: "chatbot" },
   { key: "account", label: "Account", icon: User, view: "account" },
 ];
 

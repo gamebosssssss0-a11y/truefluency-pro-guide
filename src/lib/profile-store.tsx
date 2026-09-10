@@ -80,6 +80,7 @@ export type OnboardingStep =
   | "disclaimer"
   | "disclaimer-blocked"
   | "identity"
+  | "google-profile"
   | "goal"
   | "timeline"
   | "study-pref"
@@ -247,6 +248,14 @@ export type Profile = {
    */
   cgpaCalcCourses: string[] | null;
   cgpaGoalCourses: string[] | null;
+  /**
+   * True once the student has confirmed a name on their account. Mirrors the
+   * cloud `profiles.display_name`, so the Google welcome screen is asked for
+   * once per account and never again on another device.
+   */
+  profileCompleted: boolean;
+  /** True once the first-run walkthrough on Home has been seen or skipped. */
+  tourSeen: boolean;
 };
 
 
@@ -280,6 +289,8 @@ const emptyProfile: Profile = {
   trialNoticeSeen: false,
   cgpaCalcCourses: null,
   cgpaGoalCourses: null,
+  profileCompleted: false,
+  tourSeen: false,
 
 
 };
@@ -449,6 +460,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             const syncedProfile = await sync();
             setAuthPending(false);
             if (!syncedProfile || cancelled) return;
+
+            // Google's account often carries no usable name, which used to
+            // leave the greeting empty. Ask once per account: the saved cloud
+            // display name is what marks it done, so a second device or a
+            // re-install never asks again.
+            const provider =
+              (session.user.app_metadata as { provider?: string } | undefined)?.provider ?? "";
+            if (provider === "google" && !syncedProfile.profileCompleted) {
+              go("google-profile");
+              return;
+            }
             go(syncedProfile.setupComplete ? "dashboard" : "goal");
           })();
         }

@@ -75,7 +75,7 @@ export function ChatbotScreen() {
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-xl font-semibold leading-tight text-navy">
-              Chatbot · {headerLabel}
+              Study Chat · {headerLabel}
             </h1>
             <p className="text-xs text-muted-foreground">
               Answers use this upload only. Not the open web.

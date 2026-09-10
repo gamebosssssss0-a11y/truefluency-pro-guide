@@ -8,7 +8,7 @@ import {
 import {
   ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
-  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor, Compass,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
@@ -118,7 +118,7 @@ function AccountPhotoCard() {
 }
 
 export function AccountScreen() {
-  const { profile, navigate, resetSetup } = useProfile();
+  const { profile, navigate, update, resetSetup } = useProfile();
   const { theme, setTheme } = useTheme();
   const { access } = useEntitlement();
   const planLabel =
@@ -211,6 +211,15 @@ export function AccountScreen() {
       blurb: "Every attempt, with question-by-question review.",
       icon: ClipboardList,
       onClick: () => navigate("test-history"),
+    },
+    {
+      label: "Show me around again",
+      blurb: "Replay the short four-step tour of the app on Home.",
+      icon: Compass,
+      onClick: () => {
+        update({ tourSeen: false });
+        navigate("home");
+      },
     },
     {
       label: "Support",

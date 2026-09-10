@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useProfile, hasQualifyingActivityToday } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronRight, Flame, Zap, Quote as QuoteIcon, Lightbulb, Calculator, Target,
+  ChevronRight, Flame, Quote as QuoteIcon, Lightbulb, Calculator, Target,
   Layers, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
 import { getMyAvatar } from "@/lib/avatar";
+import { FirstRunTourHost } from "@/components/first-run-tour";
 
 /* ================= Tab 1: Home ================= */
 
@@ -112,6 +113,84 @@ function ContinueFileCard() {
   );
 }
 
+/**
+ * One clear instruction at the top of Home, so nobody has to work out what to
+ * do next. It only points at screens that already exist.
+ */
+function NextStepCard() {
+  const { profile, navigate } = useProfile();
+  const [ownCount, setOwnCount] = useState<number | null>(null);
+  const [firstOwn, setFirstOwn] = useState<CourseMaterial | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    listAllUserMaterials()
+      .then((items) => {
+        const own = items.filter(
+          (m) => !(m as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy,
+        );
+        if (!live) return;
+        setOwnCount(own.length);
+        setFirstOwn(own[0] ?? null);
+      })
+      .catch(() => { if (live) setOwnCount(0); });
+    return () => { live = false; };
+  }, []);
+
+  const next = (() => {
+    if (!profile.courses.length) {
+      return {
+        title: "Add your courses",
+        line: "Tell us what you're taking this semester, then we can build tests from it.",
+        cta: "Add courses",
+        go: () => navigate("add-course"),
+      };
+    }
+    if (ownCount === 0) {
+      const code = firstOwn?.course_code ?? profile.courses[0]!.code;
+      return {
+        title: "Upload your first file",
+        line: `Add a past paper or your notes for ${code}. Everything else is built from it.`,
+        cta: "Upload a file",
+        go: () => navigate("course-detail", { courseCode: code }),
+      };
+    }
+    if (!profile.attempts.length) {
+      return {
+        title: "Sit your first mock test",
+        line: "Your file is in. Try a short test on it and see where you stand.",
+        cta: "Start a test",
+        go: () => navigate("mock-tests"),
+      };
+    }
+    const weakest = [...profile.topicScores].sort((a, b) => a.score - b.score)[0];
+    return {
+      title: "Practise your weakest topic",
+      line: weakest
+        ? `${weakest.topic} is your lowest so far. One short test will help.`
+        : "A short test keeps your streak going.",
+      cta: "Take a mock",
+      go: () => navigate("mock-tests"),
+    };
+  })();
+
+  return (
+    <div className="mb-5 rounded-2xl border border-[#E4DCC8] bg-card p-4">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#B86E0A]">
+        Do this next
+      </div>
+      <h2 className="mt-1 font-display text-lg font-semibold text-foreground">{next.title}</h2>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{next.line}</p>
+      <Button
+        className="mt-3 w-full bg-[#B86E0A] text-white hover:bg-[#B86E0A]/90"
+        onClick={next.go}
+      >
+        {next.cta} <ChevronRight className="ml-0.5 h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 /** Cached prediction for the student's own uploads. Never triggers an analyze run. */
 function StrengthsCard() {
   const { profile, navigate } = useProfile();
@@ -197,6 +276,9 @@ export function HomeScreen() {
               {subline ? (
                 <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p>
               ) : null}
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Your study home: upload a file, practise on it, revise it.
+              </p>
             </div>
             {avatarUrl ? (
               <img
@@ -211,6 +293,8 @@ export function HomeScreen() {
             )}
           </div>
         </div>
+
+        <NextStepCard />
 
         <PlanChip />
 
@@ -234,15 +318,6 @@ export function HomeScreen() {
             </div>
           </div>
         ) : null}
-
-        {/* Single amber CTA */}
-        <Button
-          size="lg"
-          className="mb-5 w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#B86E0A]/90"
-          onClick={() => navigate("mock-tests")}
-        >
-          <Zap className="mr-1.5 h-4 w-4" /> Take a mock
-        </Button>
 
         <ContinueFileCard />
         <StrengthsCard />
@@ -285,6 +360,7 @@ export function HomeScreen() {
           Predictions are statistical estimates. Always cross-check against your official material.
         </p>
       </div>
+      <FirstRunTourHost />
     </div>
   );
 }
