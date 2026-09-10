@@ -2,9 +2,18 @@
  * Upgrade screen. Presentation only: it explains the founding price and the
  * standard price. There is no checkout here, and no payment success state.
  */
+import { useState } from "react";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { HeaderLogo } from "@/components/brand";
 import { NOT_SECOND_PRODUCT, NO_PAYMENT_YET, PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, formatNaira, STANDARD_PRICE_NAIRA, FOUNDING_PRICE_NAIRA, FOUNDING_USER_LIMIT } from "@/lib/entitlements";
@@ -18,6 +27,9 @@ const INCLUDED = [
 
 export function UpgradeScreen() {
   const { navigate } = useProfile();
+  // Presentation only: this dialog is the entire behaviour of the button.
+  // No payment provider is called and no entitlement or tier state changes.
+  const [comingSoon, setComingSoon] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
