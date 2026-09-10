@@ -183,7 +183,7 @@ export function LandingScreen() {
           <h2 className="font-display text-xl font-semibold text-[#1B2A4A]">What's inside</h2>
           <figure className="mt-4">
             <img
-              src={landingHero}
+              src={productPreview.url}
               alt="TrueFluency Pro Home from your own upload, not exam percentages"
               className="w-full rounded-2xl border border-[#E4DCC8]"
               loading="lazy"
