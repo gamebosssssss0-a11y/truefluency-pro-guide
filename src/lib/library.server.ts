@@ -23,6 +23,8 @@ export type ShelfItem = {
   size_bytes: number;
   created_at: string;
   peer_alias: string;
+  /** Only ever a URL when the owner ticked "show my photo" for this file. */
+  avatar_url: string | null;
   readyForMocks: boolean;
 };
 
