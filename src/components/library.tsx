@@ -19,6 +19,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyAvatar } from "@/lib/avatar";
 import { useProfile } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import {
@@ -51,6 +52,7 @@ type ShelfItem = {
   size_bytes: number;
   created_at: string;
   peer_alias: string;
+  avatar_url: string | null;
   readyForMocks: boolean;
 };
 
@@ -114,6 +116,10 @@ export function LibraryScreen() {
   >(null);
 
   const [busy, setBusy] = useState(false);
+  // Attribution choices for the publish confirmation. Both start off every time.
+  const [publishName, setPublishName] = useState(false);
+  const [publishPhoto, setPublishPhoto] = useState(false);
+  const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
 
   const loadLocker = useCallback(async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -180,10 +186,19 @@ export function LibraryScreen() {
 
   const doPublish = async (file: LockerFile, published: boolean) => {
     setBusy(true);
-    const result = await setMaterialPublished({ data: { materialId: file.id, published } });
+    const result = await setMaterialPublished({
+      data: {
+        materialId: file.id,
+        published,
+        showOwnerName: published ? publishName : false,
+        showOwnerPhoto: published ? publishPhoto : false,
+      },
+    });
     setBusy(false);
     setPublishTarget(null);
     setOwnerSheet(null);
+    setPublishName(false);
+    setPublishPhoto(false);
     if (!result.ok) { toast.error(result.reason); return; }
     toast.success(published ? "On the shelf for your coursemates." : "Taken off the shelf.");
     void loadLocker();
@@ -430,7 +445,14 @@ export function LibraryScreen() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
-                      <span className="rounded-full bg-[#1D4E89]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1D4E89]">
+                      <span className="flex items-center gap-1.5 rounded-full bg-[#1D4E89]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1D4E89]">
+                        {it.avatar_url ? (
+                          <img
+                            src={it.avatar_url}
+                            alt=""
+                            className="h-5 w-5 rounded-full object-cover"
+                          />
+                        ) : null}
                         Peer copy: {it.peer_alias}
                       </span>
                     </div>
@@ -504,6 +526,31 @@ export function LibraryScreen() {
               unpublish it at any time and it disappears from the shelf.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-3 rounded-xl border border-[#E4DCC8] bg-[#F7F3EA] p-3">
+            <label className="flex items-start gap-3 text-sm text-[#1B2A4A]">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-[#B86E0A]"
+                checked={publishName}
+                onChange={(e) => setPublishName(e.target.checked)}
+              />
+              <span>Show my first name on this file</span>
+            </label>
+            {myAvatarUrl ? (
+              <label className="flex items-start gap-3 text-sm text-[#1B2A4A]">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-[#B86E0A]"
+                  checked={publishPhoto}
+                  onChange={(e) => setPublishPhoto(e.target.checked)}
+                />
+                <span>Show my photo on this file</span>
+              </label>
+            ) : null}
+            <p className="text-xs text-[#5C5C70]">
+              Both are off unless you tick them. Nothing else about you is shown.
+            </p>
+          </div>
           <DialogFooter>
             <Button variant="outline" className="border-[#E4DCC8]" onClick={() => setPublishTarget(null)}>Cancel</Button>
             <Button className="text-white" style={{ backgroundColor: "#B86E0A" }} onClick={() => publishTarget && void doPublish(publishTarget, true)} disabled={busy}>
