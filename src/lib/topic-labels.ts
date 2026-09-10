@@ -8,6 +8,7 @@
  * treated as humanities and an explicit per-course override taking priority.
  */
 import { facultyData, uiCourseCatalog } from "./uni-data";
+import { sameCourseCode } from "./course-code";
 
 export type SubjectType = "stem" | "humanities" | "neutral";
 
