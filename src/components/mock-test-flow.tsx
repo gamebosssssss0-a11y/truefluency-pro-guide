@@ -212,6 +212,8 @@ export function MockGenerationScreen() {
       } catch (e: unknown) {
         clearInterval(animId);
         setError(e instanceof Error ? e.message : "Something went wrong generating your mock.");
+      } finally {
+        inFlightRef.current = false;
       }
     };
 
