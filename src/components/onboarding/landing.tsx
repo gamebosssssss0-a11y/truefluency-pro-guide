@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
+import landingHero from "@/assets/landing-hero.webp";
 
 /**
  * Landing screen. Honesty contract: no exam-probability percentages and no
@@ -180,6 +181,17 @@ export function LandingScreen() {
 
         <div ref={insideRef} className="mt-10 scroll-mt-4">
           <h2 className="font-display text-xl font-semibold text-[#1B2A4A]">What's inside</h2>
+          <figure className="mt-4">
+            <img
+              src={landingHero}
+              alt="TrueFluency Pro Home from your own upload, not exam percentages"
+              className="w-full rounded-2xl border border-[#E4DCC8]"
+              loading="lazy"
+            />
+            <figcaption className="mt-2 text-center text-xs text-muted-foreground">
+              The Home screen after you upload a file.
+            </figcaption>
+          </figure>
           <div className="mt-4 space-y-3">
             {features.map((f) => (
               <div key={f.title} className="rounded-2xl border border-[#E4DCC8] bg-white p-4 shadow-sm">
