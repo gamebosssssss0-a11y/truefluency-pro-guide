@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Calculator, Info, AlertCircle, BookOpen, Timer, Target, ListChecks, Zap,
 } from "lucide-react";
+import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
 
 export function CgpaGoalSetterScreen() {
   const { profile, navigate, update } = useProfile();
+  const { selected: rows } = useCgpaCourseSelection("cgpaGoalCourses");
 
   const saved = profile.cgpaInputs;
   // Auto-populate from the real CGPA Calculator result when the student has run
