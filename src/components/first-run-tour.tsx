@@ -9,7 +9,7 @@ const STEPS: Step[] = [
   {
     icon: Upload,
     title: "1. Add your own material",
-    line: "Open Library, pick a course and upload a past paper or your lecture notes.",
+    line: "Open My Files, pick a course and upload a past paper or your lecture notes.",
   },
   {
     icon: ClipboardList,
@@ -19,7 +19,7 @@ const STEPS: Step[] = [
   {
     icon: Layers,
     title: "3. Revise the hard bits",
-    line: "Flashcards on Home turn the same file into quick cards you can flip.",
+    line: "Flashcards on Home turn the same file into quick cards you can flip, and Study Chat answers questions on it.",
   },
   {
     icon: User,
