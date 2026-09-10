@@ -13,6 +13,7 @@ import { buildRotatingDeck, type Rotating } from "@/lib/study-quotes";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
+import { getMyAvatar } from "@/lib/avatar";
 
 /* ================= Tab 1: Home ================= */
 
