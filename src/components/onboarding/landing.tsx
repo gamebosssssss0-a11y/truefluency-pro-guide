@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
-import landingHero from "@/assets/landing-hero.webp";
+import productPreview from "@/assets/product-preview.png.asset.json";
 
 /**
  * Landing screen. Honesty contract: no exam-probability percentages and no
