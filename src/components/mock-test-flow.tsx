@@ -363,7 +363,7 @@ function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProf
       .map((t) => t.topic);
   }
   return {
-    questionCount: 40,
+    questionCount: FREE_MAX_QUESTIONS,
     minutes: timeline.minutes,
     difficulty: "balanced",
     topicFocus,
@@ -383,7 +383,11 @@ export function MockConfigScreen() {
   const initial = remembered ?? smart!;
 
   const { maxQuestionsPerSet } = useEntitlement();
-  const [count, setCount] = useState((initial?.questionCount ?? 40) >= 120 ? 120 : 40);
+  const [count, setCount] = useState(
+    (initial?.questionCount ?? FREE_MAX_QUESTIONS) >= PAID_MAX_QUESTIONS
+      ? PAID_MAX_QUESTIONS
+      : FREE_MAX_QUESTIONS,
+  );
   const [minutes, setMinutes] = useState(initial?.minutes ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
