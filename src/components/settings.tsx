@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,100 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
+import { getMyAvatar, removeMyAvatar, uploadMyAvatar } from "@/lib/avatar";
+
+/**
+ * Account photo. The image is cropped to a square in the browser, stored in the
+ * student's own folder in the existing private materials bucket, and only ever
+ * shown to coursemates on a file where they ticked "show my photo".
+ */
+function AccountPhotoCard() {
+  const { profile } = useProfile();
+  const [url, setUrl] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const letter = (profile.identity?.name ?? "").trim().charAt(0).toUpperCase() || "S";
+
+  useEffect(() => {
+    let alive = true;
+    void getMyAvatar()
+      .then((r) => { if (alive) setUrl(r.url); })
+      .catch(() => { if (alive) setUrl(null); });
+    return () => { alive = false; };
+  }, []);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setWorking(true);
+    try {
+      const result = await uploadMyAvatar(file);
+      setUrl(result.url);
+      toast.success("Photo saved.");
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't save that photo. Try again.");
+    } finally {
+      setWorking(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const clear = async () => {
+    setWorking(true);
+    try {
+      await removeMyAvatar();
+      setUrl(null);
+      toast.success("Photo removed.");
+    } catch {
+      toast.error("Couldn't remove that photo. Try again.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        {url ? (
+          <img src={url} alt="Your photo" className="h-14 w-14 rounded-full object-cover" />
+        ) : (
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-secondary font-display text-lg font-semibold text-primary">
+            {letter}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-foreground">Your photo</div>
+          <div className="text-[11px] text-muted-foreground">
+            Optional. Square crop. Coursemates see it only on files where you tick the box.
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button
+          variant="outline"
+          className="h-10"
+          disabled={working}
+          onClick={() => inputRef.current?.click()}
+        >
+          {working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+          {url ? "Change photo" : "Add photo"}
+        </Button>
+        {url ? (
+          <Button variant="ghost" className="h-10" disabled={working} onClick={() => void clear()}>
+            Remove
+          </Button>
+        ) : null}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => void pick(e.target.files?.[0])}
+      />
+    </div>
+  );
+}
 
 export function AccountScreen() {
   const { profile, navigate, resetSetup } = useProfile();
@@ -162,6 +256,8 @@ export function AccountScreen() {
             View premium <ChevronRight className="h-3 w-3" />
           </button>
         </div>
+
+        <AccountPhotoCard />
 
         <div className="mt-2 flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
