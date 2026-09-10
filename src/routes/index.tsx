@@ -8,6 +8,7 @@ import { SigningInScreen } from "@/components/signing-in";
 import { LandingScreen } from "@/components/onboarding/landing";
 import { DisclaimerScreen, DisclaimerBlockedScreen, DisclaimerViewScreen } from "@/components/onboarding/disclaimer";
 import { IdentityScreen } from "@/components/onboarding/identity";
+import { GoogleProfileScreen } from "@/components/onboarding/google-profile";
 import {
   FacultyScreen, DepartmentScreen, LevelScreen, CoursesScreen,
 } from "@/components/onboarding/profile-setup";
@@ -103,6 +104,7 @@ function Router() {
       case "disclaimer": return <DisclaimerScreen />;
       case "disclaimer-blocked": return <DisclaimerBlockedScreen />;
       case "identity": return <IdentityScreen />;
+      case "google-profile": return <GoogleProfileScreen />;
       case "goal": return <GoalScreen />;
       case "timeline": return <TimelineScreen />;
       case "study-pref": return <StudyPreferenceScreen />;
