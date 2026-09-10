@@ -1,7 +1,7 @@
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
 import { Button } from "@/components/ui/button";
-import { Library, MessageCircle, Sparkles } from "lucide-react";
+import { Library, Sparkles } from "lucide-react";
 
 function ComingSoonTab({
   title, tagline, icon: Icon, bullets, primaryAction,
@@ -79,20 +79,4 @@ export function LibrarySoonScreen() {
   );
 }
 
-export function ChatbotSoonScreen() {
-  const { navigate } = useProfile();
-  return (
-    <ComingSoonTab
-      title="Chatbot"
-      icon={MessageCircle}
-      tagline="Ask questions about your own course material and get answers grounded in it."
-      bullets={[
-        "Answers cite the slide or past paper they came from.",
-        "Follow-up questions on anything you got wrong in a mock test.",
-        "For now, the explanation on each reviewed question is your best guide.",
-      ]}
-      primaryAction={{ label: "Go to Library", onClick: () => navigate("library") }}
-    />
-  );
-}
 

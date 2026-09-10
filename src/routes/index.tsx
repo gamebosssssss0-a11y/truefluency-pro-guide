@@ -20,7 +20,7 @@ import {
   MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen, AttemptReviewScreen,
 } from "@/components/mock-test-flow";
 import { MockTestsScreen, TestHistoryScreen } from "@/components/mock-tests-tab";
-import { ChatbotSoonScreen } from "@/components/placeholder-tabs";
+import { ChatbotScreen } from "@/components/chatbot";
 import { LibraryScreen } from "@/components/library";
 import { AccountScreen, AllUploadsScreen } from "@/components/settings";
 import { AddCourseScreen, FlashcardsSoonScreen } from "@/components/misc-screens";
@@ -119,7 +119,7 @@ function Router() {
       case "mock-result": return <MockResultScreen />;
       case "attempt-review": return <AttemptReviewScreen />;
       case "library": return <LibraryScreen />;
-      case "chatbot": return <ChatbotSoonScreen />;
+      case "chatbot": return <ChatbotScreen />;
       case "account":
       case "settings": return <AccountScreen />;
       case "all-uploads": return <AllUploadsScreen />;
