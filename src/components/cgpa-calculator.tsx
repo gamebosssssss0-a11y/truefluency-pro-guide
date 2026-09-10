@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Calculator, AlertCircle, Target, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
 
 /**
  * The real CGPA Calculator: the student enters what they actually scored, and
@@ -75,7 +76,7 @@ export function CgpaCalculatorScreen() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CgpaActual | null>(saved);
 
-  const rows = profile.courses;
+  const { selected: rows } = useCgpaCourseSelection("cgpaCalcCourses");
 
   const perCourse = useMemo(() => {
     return rows.map((c) => {
@@ -223,9 +224,14 @@ export function CgpaCalculatorScreen() {
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           This semester's results
         </h2>
+        <CgpaCoursePicker
+          field="cgpaCalcCourses"
+          helper="Search and add the courses you want in this calculation, or remove any you don't."
+        />
+        <div className="mt-3" />
         {rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
-            No courses on your profile yet.
+            No courses chosen yet. Use “Choose courses” above to add them.
           </div>
         ) : (
           <div className="space-y-2">
