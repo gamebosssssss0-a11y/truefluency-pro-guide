@@ -23,13 +23,13 @@ export function MockTestsScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Mock Tests
+            Practice
           </span>
         </div>
 
-        <h1 className="font-display text-3xl font-semibold text-foreground">Mock tests</h1>
+        <h1 className="font-display text-3xl font-semibold text-foreground">Practice</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick a course, set it up how you want, then sit the test.
+          Sit a mock test built from your own uploads. Pick a course, choose how long, then start.
         </p>
 
         {/* Course selection */}

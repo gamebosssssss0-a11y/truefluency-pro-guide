@@ -307,12 +307,13 @@ export function LibraryScreen() {
       <div className="mx-auto max-w-md px-5 pb-28 pt-6 md:max-w-3xl">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#5C5C70]">Library</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5C5C70]">My Files</span>
         </div>
 
-        <h1 className="font-display text-2xl font-semibold text-[#1B2A4A]">Library</h1>
+        <h1 className="font-display text-2xl font-semibold text-[#1B2A4A]">My files</h1>
         <p className="mt-1 text-sm text-[#5C5C70]">
-          Your locker is private. The course shelf only shows what coursemates chose to publish.
+          Upload past papers and notes here. Your locker is private; the course shelf only shows
+          what coursemates chose to publish.
         </p>
 
         {/* Rails */}
