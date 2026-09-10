@@ -123,7 +123,7 @@ export function GoalScreen() {
       step={1}
       stepIndex={0}
       title="What's your main goal right now?"
-      subtitle="We'll tune your dashboard around this."
+      subtitle="We'll tune your Home around this."
       options={goals}
       value={value}
       onChange={setValue}
@@ -159,7 +159,7 @@ export function StudyPreferenceScreen() {
       step={3}
       stepIndex={2}
       title="How do you prefer to study?"
-      subtitle="We'll surface this style first on your dashboard."
+      subtitle="We'll surface this style first on your Home."
       options={prefs}
       value={value}
       onChange={setValue}
