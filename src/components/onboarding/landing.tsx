@@ -222,7 +222,7 @@ export function LandingScreen() {
             still fits when you move from 100L to 200L and beyond.
           </p>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            To be straight with you: this is a study aid, not a replacement for
+            To be clear with you: this is a study aid, not a replacement for
             lectures. It shows you what your own material leans on, and it never
             promises which questions will appear.
           </p>
