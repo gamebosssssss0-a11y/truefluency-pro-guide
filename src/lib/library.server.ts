@@ -174,11 +174,13 @@ export async function listShelf(opts: {
   return { items, courses };
 }
 
-/** Owner-only publish toggle. */
+/** Owner-only publish toggle, plus the two per-file attribution choices. */
 export async function setPublished(opts: {
   ownerId: string;
   materialId: string;
   published: boolean;
+  showOwnerName?: boolean | undefined;
+  showOwnerPhoto?: boolean | undefined;
 }): Promise<{ published: boolean }> {
   const db = admin();
   const { data: row, error } = await db
