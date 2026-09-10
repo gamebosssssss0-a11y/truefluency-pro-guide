@@ -81,6 +81,14 @@ function Router() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.identity?.kind, profile.identity?.email]);
 
+  // All in-app screens render on this same "/" route, so the router's scroll
+  // restoration never fires on a view switch. Without this, opening a screen
+  // from a scrolled position (e.g. the Flashcards card partway down Home)
+  // keeps the old scroll offset and the new screen looks truncated at the top.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view, step]);
+
   // Post-auth gap: a confirmed sign-in whose profile sync is still resolving.
   // Never stacked on the splash, landing or disclaimer screens: those come
   // before any sign-in attempt, so a pending session there is not this screen's
