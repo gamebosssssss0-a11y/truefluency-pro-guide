@@ -68,6 +68,10 @@ export function MockGenerationScreen() {
     : null;
 
   const [error, setError] = useState<string | null>(null);
+  /** "n of total ready" while the generator is still working. */
+  const [readyLine, setReadyLine] = useState<string | null>(null);
+  /** True while one generation job is running: blocks a second job. */
+  const inFlightRef = useRef(false);
   const [refused, setRefused] = useState<QuotaVerdict | null>(null);
   /** Bumped by "Try again" so the generation effect runs the same request again. */
   const [retryKey, setRetryKey] = useState(0);
@@ -94,8 +98,11 @@ export function MockGenerationScreen() {
   }, [reduceMotion]);
 
   useEffect(() => {
-    if (!course || fetchedRef.current) return;
+    // One job at a time. Retry can only start a new job once the previous one
+    // has settled, so a retry never stacks on top of a running request.
+    if (!course || fetchedRef.current || inFlightRef.current) return;
     fetchedRef.current = true;
+    inFlightRef.current = true;
 
     const settings = profile.courseTestSettings[course.code];
     const count = settings?.questionCount ?? 20;
