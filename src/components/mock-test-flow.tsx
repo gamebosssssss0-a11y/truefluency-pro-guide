@@ -151,20 +151,28 @@ export function MockGenerationScreen() {
 
         // Shared client: attaches the signed-in bearer token, normalises the
         // profile fields the service expects, and surfaces real error text.
-        const questions = await generateMock({
-          materialId: ready.id,
-          courseCode: course.code,
-          courseName: course.name,
-          questionCount: allowedCount,
-          difficulty,
-          topicFocus,
-          profile: {
-            goal: profile.goal,
-            timeline: profile.timeline,
-            level: profile.level,
-            department: profile.department,
+        const questions = await generateMock(
+          {
+            materialId: ready.id,
+            courseCode: course.code,
+            courseName: course.name,
+            questionCount: allowedCount,
+            difficulty,
+            topicFocus,
+            profile: {
+              goal: profile.goal,
+              timeline: profile.timeline,
+              level: profile.level,
+              department: profile.department,
+            },
           },
-        });
+          {
+            onProgress: ({ ready: done, total }) => {
+              if (done === null) return;
+              setReadyLine(`${done} of ${total ?? allowedCount} ready`);
+            },
+          },
+        );
 
         if (!questions || questions.length === 0) {
           throw new Error("No questions returned from AI");
