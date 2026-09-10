@@ -119,7 +119,7 @@ function Router() {
       case "mock-result": return <MockResultScreen />;
       case "attempt-review": return <AttemptReviewScreen />;
       case "library": return <LibraryScreen />;
-      case "chatbot": return <ChatbotSoonScreen />;
+      case "chatbot": return <ChatbotScreen />;
       case "account":
       case "settings": return <AccountScreen />;
       case "all-uploads": return <AllUploadsScreen />;
