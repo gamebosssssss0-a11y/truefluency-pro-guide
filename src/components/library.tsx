@@ -173,6 +173,14 @@ export function LibraryScreen() {
 
   useEffect(() => { void loadLocker(); }, [loadLocker]);
   useEffect(() => { if (rail === "shelf") void loadShelf(); }, [rail, loadShelf]);
+  // Only used to decide whether the "show my photo" tick box can appear.
+  useEffect(() => {
+    let alive = true;
+    void getMyAvatar()
+      .then(({ url }) => { if (alive) setMyAvatarUrl(url); })
+      .catch(() => { if (alive) setMyAvatarUrl(null); });
+    return () => { alive = false; };
+  }, []);
 
   const folders = useMemo(() => {
     const map = new Map<string, LockerFile[]>();
