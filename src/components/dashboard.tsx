@@ -13,6 +13,7 @@ import { buildRotatingDeck, type Rotating } from "@/lib/study-quotes";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
+import { getMyAvatar } from "@/lib/avatar";
 
 /* ================= Tab 1: Home ================= */
 
@@ -154,6 +155,16 @@ export function HomeScreen() {
     return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
   })();
 
+  // Photo when the student has set one, otherwise the existing letter circle.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getMyAvatar()
+      .then((r) => { if (alive) setAvatarUrl(r.url); })
+      .catch(() => { if (alive) setAvatarUrl(null); });
+    return () => { alive = false; };
+  }, []);
+
   const activeToday = hasQualifyingActivityToday(profile);
   const subline = greetingSubline(profile.goal);
   const hasStreak = profile.streakDays > 0;
@@ -187,9 +198,17 @@ export function HomeScreen() {
                 <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p>
               ) : null}
             </div>
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent/15 font-display text-lg font-semibold text-foreground">
-              {name.charAt(0)}
-            </div>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Your photo"
+                className="h-11 w-11 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent/15 font-display text-lg font-semibold text-foreground">
+                {name.charAt(0)}
+              </div>
+            )}
           </div>
         </div>
 

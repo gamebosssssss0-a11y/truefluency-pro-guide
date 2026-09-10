@@ -23,6 +23,8 @@ export type ShelfItem = {
   size_bytes: number;
   created_at: string;
   peer_alias: string;
+  /** Only ever a URL when the owner ticked "show my photo" for this file. */
+  avatar_url: string | null;
   readyForMocks: boolean;
 };
 
@@ -70,17 +72,38 @@ function ready(text: string | null): boolean {
   return (text ?? "").trim().length >= READY_FOR_MOCKS_MIN_CHARS;
 }
 
-async function aliasFor(ownerId: string): Promise<string> {
+type Attribution = { peer_alias: string; avatar_url: string | null };
+
+/**
+ * Shelf attribution. Nothing about the owner leaves the server unless the owner
+ * ticked the matching box on that exact file: no last name, faculty, level or
+ * email in any case, and no photo URL unless show_owner_photo is true.
+ */
+async function attributionFor(
+  ownerId: string,
+  showName: boolean,
+  showPhoto: boolean,
+): Promise<Attribution> {
+  if (!showName && !showPhoto) return { peer_alias: "A peer", avatar_url: null };
   try {
-    const { data } = await admin()
+    const db = admin();
+    const { data } = await db
       .from("profiles")
-      .select("display_name")
+      .select("display_name, avatar_path")
       .eq("user_id", ownerId)
       .maybeSingle();
-    const first = (data?.display_name ?? "").trim().split(/\s+/)[0];
-    return first ? `${first} (peer)` : "A peer";
+
+    const first = showName ? ((data?.display_name ?? "").trim().split(/\s+/)[0] ?? "") : "";
+    let avatar_url: string | null = null;
+    if (showPhoto && data?.avatar_path) {
+      const { data: signed } = await db.storage
+        .from(BUCKET)
+        .createSignedUrl(data.avatar_path, 60 * 60);
+      avatar_url = signed?.signedUrl ?? null;
+    }
+    return { peer_alias: first ? `${first} (peer)` : "A peer", avatar_url };
   } catch {
-    return "A peer";
+    return { peer_alias: "A peer", avatar_url: null };
   }
 }
 
@@ -94,7 +117,7 @@ export async function listShelf(opts: {
   let query = db
     .from("course_materials")
     .select(
-      "id, user_id, course_code, file_name, file_type, size_bytes, created_at, extracted_content, published",
+      "id, user_id, course_code, file_name, file_type, size_bytes, created_at, extracted_content, published, show_owner_name, show_owner_photo",
     )
     .eq("published", true)
     .eq("is_peer_copy", false)
@@ -118,20 +141,29 @@ export async function listShelf(opts: {
       )
     : rows;
 
-  const owners = Array.from(new Set(filtered.map((r) => r.user_id)));
-  const aliases = new Map<string, string>();
-  for (const owner of owners.slice(0, 50)) aliases.set(owner, await aliasFor(owner));
-
-  const items: ShelfItem[] = filtered.map((r) => ({
-    id: r.id,
-    course_code: r.course_code,
-    file_name: r.file_name,
-    file_type: r.file_type,
-    size_bytes: r.size_bytes,
-    created_at: r.created_at,
-    peer_alias: aliases.get(r.user_id) ?? "A peer",
-    readyForMocks: ready(r.extracted_content),
-  }));
+  // Attribution is per file, because the two flags live on the file, not the
+  // owner. Cached per owner+flag combination so one query serves many rows.
+  const cache = new Map<string, Attribution>();
+  const items: ShelfItem[] = [];
+  for (const r of filtered.slice(0, 300)) {
+    const key = `${r.user_id}|${r.show_owner_name ? 1 : 0}|${r.show_owner_photo ? 1 : 0}`;
+    let attribution = cache.get(key);
+    if (!attribution) {
+      attribution = await attributionFor(r.user_id, r.show_owner_name, r.show_owner_photo);
+      cache.set(key, attribution);
+    }
+    items.push({
+      id: r.id,
+      course_code: r.course_code,
+      file_name: r.file_name,
+      file_type: r.file_type,
+      size_bytes: r.size_bytes,
+      created_at: r.created_at,
+      peer_alias: attribution.peer_alias,
+      avatar_url: attribution.avatar_url,
+      readyForMocks: ready(r.extracted_content),
+    });
+  }
 
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(r.course_code, (counts.get(r.course_code) ?? 0) + 1);
@@ -142,11 +174,13 @@ export async function listShelf(opts: {
   return { items, courses };
 }
 
-/** Owner-only publish toggle. */
+/** Owner-only publish toggle, plus the two per-file attribution choices. */
 export async function setPublished(opts: {
   ownerId: string;
   materialId: string;
   published: boolean;
+  showOwnerName?: boolean | undefined;
+  showOwnerPhoto?: boolean | undefined;
 }): Promise<{ published: boolean }> {
   const db = admin();
   const { data: row, error } = await db
@@ -163,6 +197,9 @@ export async function setPublished(opts: {
     .update({
       published: opts.published,
       published_at: opts.published ? new Date().toISOString() : null,
+      // Unpublishing always resets both choices back to off.
+      show_owner_name: opts.published ? Boolean(opts.showOwnerName) : false,
+      show_owner_photo: opts.published ? Boolean(opts.showOwnerPhoto) : false,
     })
     .eq("id", opts.materialId);
   if (upErr) throw upErr;
@@ -278,6 +315,8 @@ type ResolvedShare = {
     file_path: string;
     extracted_content: string | null;
     extraction_status: string;
+    show_owner_name: boolean;
+    show_owner_photo: boolean;
   };
 };
 
@@ -295,7 +334,7 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
   const { data: material } = await db
     .from("course_materials")
     .select(
-      "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status",
+      "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status, show_owner_name, show_owner_photo",
     )
     .eq("id", share.material_id)
     .maybeSingle();
@@ -339,7 +378,9 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
     course_code: material.course_code,
     size_bytes: material.size_bytes,
     readyForMocks: ready(material.extracted_content),
-    peer_alias: await aliasFor(material.user_id),
+    peer_alias: (
+      await attributionFor(material.user_id, material.show_owner_name, material.show_owner_photo)
+    ).peer_alias,
     previewUrl,
     usesLeft: Math.max(0, share.max_uses - share.use_count),
     maxUses: share.max_uses,
@@ -397,7 +438,7 @@ export async function saveSharedFile(opts: {
     const { data } = await db
       .from("course_materials")
       .select(
-        "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status, published",
+        "id, user_id, course_code, file_name, file_type, mime_type, size_bytes, file_path, extracted_content, extraction_status, published, show_owner_name, show_owner_photo",
       )
       .eq("id", opts.materialId)
       .maybeSingle();
@@ -421,7 +462,9 @@ export async function saveSharedFile(opts: {
     .maybeSingle();
   if (dupe) return { ok: false, reason: "This file is already in your locker." };
 
-  const alias = await aliasFor(source.user_id);
+  const alias = (
+    await attributionFor(source.user_id, source.show_owner_name, source.show_owner_photo)
+  ).peer_alias;
   const destPath = `${opts.recipientId}/${source.course_code}/${Date.now()}-${source.file_name}`;
 
   const { error: copyErr } = await db.storage.from(BUCKET).copy(source.file_path, destPath);

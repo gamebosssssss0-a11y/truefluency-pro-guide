@@ -60,6 +60,8 @@ export type Database = {
           peer_alias: string | null
           published: boolean
           published_at: string | null
+          show_owner_name: boolean
+          show_owner_photo: boolean
           size_bytes: number
           user_id: string
         }
@@ -78,6 +80,8 @@ export type Database = {
           peer_alias?: string | null
           published?: boolean
           published_at?: string | null
+          show_owner_name?: boolean
+          show_owner_photo?: boolean
           size_bytes: number
           user_id: string
         }
@@ -96,6 +100,8 @@ export type Database = {
           peer_alias?: string | null
           published?: boolean
           published_at?: string | null
+          show_owner_name?: boolean
+          show_owner_photo?: boolean
           size_bytes?: number
           user_id?: string
         }
@@ -231,6 +237,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
           cgpa_actual: Json | null
           cgpa_inputs: Json | null
           cgpa_intro_seen: boolean
@@ -254,6 +261,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_path?: string | null
           cgpa_actual?: Json | null
           cgpa_inputs?: Json | null
           cgpa_intro_seen?: boolean
@@ -277,6 +285,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_path?: string | null
           cgpa_actual?: Json | null
           cgpa_inputs?: Json | null
           cgpa_intro_seen?: boolean

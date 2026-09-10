@@ -52,10 +52,20 @@ export const listShelfItems = createServerFn({ method: "GET" })
 
 export const setMaterialPublished = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { materialId: string; published: boolean }) => ({
-    materialId: cleanId(input?.materialId),
-    published: Boolean(input?.published),
-  }))
+  .inputValidator(
+    (input: {
+      materialId: string;
+      published: boolean;
+      showOwnerName?: boolean;
+      showOwnerPhoto?: boolean;
+    }) => ({
+      materialId: cleanId(input?.materialId),
+      published: Boolean(input?.published),
+      // Both attribution choices default to off unless explicitly ticked.
+      showOwnerName: Boolean(input?.showOwnerName),
+      showOwnerPhoto: Boolean(input?.showOwnerPhoto),
+    }),
+  )
   .handler(async ({ data, context }) => {
     if (!sharingLive()) return { ok: false as const, reason: SHARING_OFFLINE_MESSAGE };
     const { setPublished } = await import("@/lib/library.server");
@@ -64,6 +74,8 @@ export const setMaterialPublished = createServerFn({ method: "POST" })
         ownerId: context.userId,
         materialId: data.materialId,
         published: data.published,
+        showOwnerName: data.showOwnerName,
+        showOwnerPhoto: data.showOwnerPhoto,
       });
       return { ok: true as const, published: result.published };
     } catch (e) {
