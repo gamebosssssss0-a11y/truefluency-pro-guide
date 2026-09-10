@@ -2,14 +2,11 @@
  * Bridges the app's local identity (email account or guest) to a real
  * Supabase auth session so Storage + RLS work correctly.
  *
- * - "email" identity → deterministic Supabase email/password derived from the
- *   account record. If sign-in fails we sign up.
+ * - "email" identity → the existing Supabase session only. No credential is
+ *   ever stored on the device, so a signed-out email user must sign in again.
  * - "guest" identity → supabase.auth.signInAnonymously().
  *
  * Called on app boot and whenever the identity changes.
- *
- * The typed password is never stored. Two hashes are kept instead: a verifier
- * (to check the password locally) and the derived Supabase password.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "@/lib/profile-store";
