@@ -38,35 +38,3 @@ export function AddCourseScreen() {
   );
 }
 
-export function FlashcardsSoonScreen() {
-  const { navigate } = useProfile();
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
-        <div className="mb-4 flex items-center gap-2">
-          <HeaderLogo />
-          <button
-            onClick={() => navigate("home")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Home
-          </button>
-        </div>
-
-        <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
-          <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-accent/15 text-accent">
-            <Layers className="h-6 w-6" />
-          </div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Coming soon</div>
-          <h1 className="mt-1 font-display text-2xl font-semibold text-foreground">Flashcards</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            AI-generated spaced-repetition cards straight from your predicted topics.
-          </p>
-          <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" /> We'll notify you here when it's ready.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
