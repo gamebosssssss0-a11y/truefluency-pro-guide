@@ -406,7 +406,12 @@ export function MockConfigScreen() {
   };
 
   const toggleTopic = (t: string) => {
-    setTopicFocus((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
+    setTopicFocus((cur) => {
+      if (cur.includes(t)) return cur.filter((x) => x !== t);
+      // At most three topics per set, so the questions stay focused.
+      if (cur.length >= MAX_TOPIC_FOCUS) return cur;
+      return [...cur, t];
+    });
   };
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
@@ -509,13 +514,18 @@ export function MockConfigScreen() {
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Topic focus <span className="normal-case text-muted-foreground/70">(optional)</span>
               </label>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Pick 3 topics from this upload.
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_TOPICS.map((t) => {
                   const on = topicFocus.includes(t);
+                  const full = !on && topicFocus.length >= MAX_TOPIC_FOCUS;
                   return (
-                    <button key={t} type="button" onClick={() => toggleTopic(t)}
+                    <button key={t} type="button" onClick={() => toggleTopic(t)} disabled={full}
                       className={cn("rounded-full border px-2.5 py-1 text-[11px] transition",
-                        on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50")}>
+                        on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50",
+                        full && "opacity-50")}>
                       {t}
                     </button>
                   );
