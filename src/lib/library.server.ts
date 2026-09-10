@@ -197,6 +197,9 @@ export async function setPublished(opts: {
     .update({
       published: opts.published,
       published_at: opts.published ? new Date().toISOString() : null,
+      // Unpublishing always resets both choices back to off.
+      show_owner_name: opts.published ? Boolean(opts.showOwnerName) : false,
+      show_owner_photo: opts.published ? Boolean(opts.showOwnerPhoto) : false,
     })
     .eq("id", opts.materialId);
   if (upErr) throw upErr;
