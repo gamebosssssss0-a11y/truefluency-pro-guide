@@ -117,7 +117,7 @@ export async function listShelf(opts: {
   let query = db
     .from("course_materials")
     .select(
-      "id, user_id, course_code, file_name, file_type, size_bytes, created_at, extracted_content, published",
+      "id, user_id, course_code, file_name, file_type, size_bytes, created_at, extracted_content, published, show_owner_name, show_owner_photo",
     )
     .eq("published", true)
     .eq("is_peer_copy", false)
@@ -141,20 +141,29 @@ export async function listShelf(opts: {
       )
     : rows;
 
-  const owners = Array.from(new Set(filtered.map((r) => r.user_id)));
-  const aliases = new Map<string, string>();
-  for (const owner of owners.slice(0, 50)) aliases.set(owner, await aliasFor(owner));
-
-  const items: ShelfItem[] = filtered.map((r) => ({
-    id: r.id,
-    course_code: r.course_code,
-    file_name: r.file_name,
-    file_type: r.file_type,
-    size_bytes: r.size_bytes,
-    created_at: r.created_at,
-    peer_alias: aliases.get(r.user_id) ?? "A peer",
-    readyForMocks: ready(r.extracted_content),
-  }));
+  // Attribution is per file, because the two flags live on the file, not the
+  // owner. Cached per owner+flag combination so one query serves many rows.
+  const cache = new Map<string, Attribution>();
+  const items: ShelfItem[] = [];
+  for (const r of filtered.slice(0, 300)) {
+    const key = `${r.user_id}|${r.show_owner_name ? 1 : 0}|${r.show_owner_photo ? 1 : 0}`;
+    let attribution = cache.get(key);
+    if (!attribution) {
+      attribution = await attributionFor(r.user_id, r.show_owner_name, r.show_owner_photo);
+      cache.set(key, attribution);
+    }
+    items.push({
+      id: r.id,
+      course_code: r.course_code,
+      file_name: r.file_name,
+      file_type: r.file_type,
+      size_bytes: r.size_bytes,
+      created_at: r.created_at,
+      peer_alias: attribution.peer_alias,
+      avatar_url: attribution.avatar_url,
+      readyForMocks: ready(r.extracted_content),
+    });
+  }
 
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(r.course_code, (counts.get(r.course_code) ?? 0) + 1);
