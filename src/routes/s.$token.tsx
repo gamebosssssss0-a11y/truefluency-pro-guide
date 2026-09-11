@@ -156,15 +156,26 @@ function SharedFilePage() {
               <p className="mt-1 text-[11px] text-[#5C5C70]">This link is one file only.</p>
 
               <div className="mt-4 h-[52vh] overflow-hidden rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
-                {share.previewUrl && share.file_type.toLowerCase() === "pdf" && !previewOff ? (
+                {previewOff ? (
+                  <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
+                    <p className="text-sm text-[#5C5C70]">Preview closed.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-[#E4DCC8] text-[#1B2A4A]"
+                      onClick={() => setPreviewOff(false)}
+                    >
+                      Open preview
+                    </Button>
+                  </div>
+                ) : share.previewUrl && share.file_type.toLowerCase() === "pdf" ? (
                   <PdfViewer
                     url={share.previewUrl}
                     fileName={share.file_name}
                     fileKey={`share:${token}`}
                     onCancel={() => setPreviewOff(true)}
                   />
-                ) : share.previewUrl && !previewOff ? (
-
+                ) : share.previewUrl ? (
                   <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
                     {HEAVY_PDF_MESSAGE}
                   </div>
@@ -174,6 +185,7 @@ function SharedFilePage() {
                   </div>
                 )}
               </div>
+
 
               <Button
                 className="mt-4 h-12 w-full text-white"
