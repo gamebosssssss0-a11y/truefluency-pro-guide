@@ -154,7 +154,7 @@ export function PdfViewer({
           </Button>
           <span className="text-[11px] text-[#5C5C70]">
             {doc && doc.numPages > MAX_PREVIEW_PAGES
-              ? `First ${MAX_PREVIEW_PAGES} pages shown`
+              ? `First ${MAX_PREVIEW_PAGES.toLocaleString()} pages shown`
               : "View only, no download"}
           </span>
           <Button
