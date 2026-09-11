@@ -1,14 +1,14 @@
 /**
  * In-app PDF viewer. The signed URL is fetched with pdf.js and painted onto a
  * canvas: the browser never navigates to the storage URL, and no third party
- * viewer is involved. Heavy files are capped at the first 15 pages.
+ * viewer is involved. Files are capped at the first 800 pages.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorCard } from "@/components/error-card";
 
-export const MAX_PREVIEW_PAGES = 15;
+export const MAX_PREVIEW_PAGES = 800;
 export const HEAVY_PDF_MESSAGE =
   "This PDF is too heavy to preview here. Save it to your locker and try a smaller export.";
 
@@ -154,7 +154,7 @@ export function PdfViewer({
           </Button>
           <span className="text-[11px] text-[#5C5C70]">
             {doc && doc.numPages > MAX_PREVIEW_PAGES
-              ? `First ${MAX_PREVIEW_PAGES} pages shown`
+              ? `First ${MAX_PREVIEW_PAGES.toLocaleString()} pages shown`
               : "View only, no download"}
           </span>
           <Button
