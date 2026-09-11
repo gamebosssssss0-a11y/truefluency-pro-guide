@@ -5,10 +5,11 @@
  *
  * Big files stay usable because only the visible page is painted, the next page
  * is prefetched, stale paints are cancelled, and the loading step can be
- * cancelled outright. The last page viewed is remembered per file.
+ * cancelled outright. The last page viewed is remembered per file, and the
+ * viewer can expand to fill the whole screen.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
@@ -33,6 +34,29 @@ type PdfDoc = {
 };
 
 type LoadingTask = { promise: Promise<unknown>; destroy: () => Promise<void> | void };
+
+type PdfjsModule = {
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument: (o: Record<string, unknown>) => unknown;
+};
+
+/**
+ * The engine and its worker are loaded once per session: the second file a
+ * student opens skips the import entirely.
+ */
+let pdfjsPromise: Promise<PdfjsModule> | null = null;
+function loadPdfjs(): Promise<PdfjsModule> {
+  pdfjsPromise ??= (async () => {
+    const [pdfjs, worker] = await Promise.all([
+      import("pdfjs-dist"),
+      import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+    ]);
+    const mod = pdfjs as unknown as PdfjsModule;
+    mod.GlobalWorkerOptions.workerSrc = worker.default as string;
+    return mod;
+  })();
+  return pdfjsPromise;
+}
 
 const pageKey = (fileKey?: string) => (fileKey ? `tf.pdf.page.${fileKey}` : null);
 
@@ -71,6 +95,8 @@ export function PdfViewer({
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const [expanded, setExpanded] = useState(false);
+  const [width, setWidth] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const taskRef = useRef<LoadingTask | null>(null);
@@ -81,15 +107,13 @@ export function PdfViewer({
     setDoc(null);
     void (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist");
-        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default as string;
+        const pdfjs = await loadPdfjs();
         // Range requests only: page one paints without downloading the whole file.
         const task = pdfjs.getDocument({
           url,
           disableAutoFetch: true,
           disableStream: false,
-          rangeChunkSize: 262144,
+          rangeChunkSize: 524288,
         }) as unknown as LoadingTask;
         taskRef.current = task;
         const loaded = (await task.promise) as unknown as PdfDoc;
@@ -99,6 +123,9 @@ export function PdfViewer({
         }
         const cap = Math.min(loaded.numPages, MAX_PREVIEW_PAGES);
         const start = Math.min(Math.max(1, readLastPage(fileKey)), cap);
+        // Warm the page we are about to paint before showing the canvas, so the
+        // remembered page appears directly with no page-1 flash.
+        void loaded.getPage(start).catch(() => undefined);
         setDoc(loaded);
         setTotal(cap);
         setPage(start);
@@ -117,7 +144,40 @@ export function PdfViewer({
     };
   }, [url, fileKey]);
 
-  useEffect(() => load(), [load]);
+  useEffect(load, [load]);
+
+  // Track the available width so expanding/shrinking repaints at the new size.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(measure, 120);
+    });
+    ro.observe(el);
+    return () => {
+      if (timer) clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, [status]);
+
+  // Full screen: keep the page behind still and let Escape bring the file back.
+  useEffect(() => {
+    if (!expanded || typeof document === "undefined") return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
 
   // Paint the current page only, then warm the next one so Next feels instant.
   useEffect(() => {
@@ -133,8 +193,8 @@ export function PdfViewer({
         const ctx = canvas?.getContext("2d");
         if (!canvas || !ctx || cancelled) return;
         const base = p.getViewport({ scale: 1 });
-        const width = wrapRef.current?.clientWidth ?? 340;
-        const scale = Math.max(0.4, Math.min(2.5, (width - 8) / base.width));
+        const box = width || wrapRef.current?.clientWidth || 340;
+        const scale = Math.max(0.4, Math.min(2.5, (box - 8) / base.width));
         const viewport = p.getViewport({ scale });
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.floor(viewport.width * dpr);
@@ -146,7 +206,6 @@ export function PdfViewer({
         renderTask = task;
         await task.promise;
         if (cancelled) return;
-        p.cleanup?.();
         if (page < total) void doc.getPage(page + 1).catch(() => undefined);
       } catch (e) {
         // A cancelled paint is normal when the student pages quickly.
@@ -165,7 +224,7 @@ export function PdfViewer({
       }
       current?.cleanup?.();
     };
-  }, [doc, page, status, total]);
+  }, [doc, page, status, total, width]);
 
   useEffect(() => {
     if (status === "ready") writeLastPage(fileKey, page);
@@ -180,6 +239,7 @@ export function PdfViewer({
   const cancelLoad = () => {
     void taskRef.current?.destroy();
     taskRef.current = null;
+    setExpanded(false);
     (onCancel ?? onClose)?.();
   };
 
@@ -197,7 +257,13 @@ export function PdfViewer({
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#F7F3EA]">
+    <div
+      className={
+        expanded
+          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-[#F7F3EA]"
+          : "flex h-full flex-col bg-[#F7F3EA]"
+      }
+    >
       <div className="flex items-center gap-2 border-b border-[#E4DCC8] px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#1B2A4A]">
           {fileName}
@@ -205,11 +271,22 @@ export function PdfViewer({
         <span className="shrink-0 text-[11px] text-[#5C5C70]">
           {status === "ready" ? `page ${page} / ${total}` : ""}
         </span>
+        <button
+          type="button"
+          aria-label={expanded ? "Exit full screen" : "Full screen"}
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 rounded-md p-1 text-[#5C5C70]"
+        >
+          {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
         {onClose ? (
           <button
             type="button"
             aria-label="Close"
-            onClick={onClose}
+            onClick={() => {
+              setExpanded(false);
+              onClose();
+            }}
             className="shrink-0 rounded-md p-1 text-[#5C5C70]"
           >
             <X className="h-4 w-4" />
