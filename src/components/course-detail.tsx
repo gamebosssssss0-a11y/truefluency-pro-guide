@@ -201,7 +201,7 @@ function CoursePrimaryActions({
   readyMaterial: CourseMaterial | null;
 }) {
   const { navigate, profile } = useProfile();
-  const { order, flashcardsPlaceholderNote } = courseFeatureOrder(profile.studyPreference);
+  const { order, showFlashcardsLink } = courseFeatureOrder(profile.studyPreference);
   const ready = Boolean(readyMaterial);
   /* An upload whose text hasn't been read yet still powers Analyze: the button
    * reads it first, then analyzes. */
@@ -285,13 +285,18 @@ function CoursePrimaryActions({
           <MaterialsList courseCode={courseCode} items={materials} loading={materialsLoading} />
         </>
       )}
-      {flashcardsPlaceholderNote ? (
+      {showFlashcardsLink ? (
         <>
-          <Button size="lg" variant="outline" className="mt-4 w-full" disabled>
-            Flashcards · Coming soon
+          <Button
+            size="lg"
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={() => navigate("flashcards", { courseCode })}
+          >
+            Flashcards for {courseCode}
           </Button>
-          <p className="mt-2 text-center text-[11px] italic text-muted-foreground">
-            Flashcards coming soon, your preferred study method.
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            15-card decks from your upload.
           </p>
         </>
       ) : null}

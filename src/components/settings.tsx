@@ -229,7 +229,7 @@ export function AccountScreen() {
     },
     {
       label: "Flashcards",
-      blurb: "Coming soon.",
+      blurb: "15-card decks from your upload.",
       icon: Layers,
       onClick: () => navigate("flashcards"),
     },

@@ -346,7 +346,7 @@ export function HomeScreen() {
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-foreground">Flashcards</div>
                 <div className="text-[11px] text-muted-foreground">
-                  Coming soon, spaced cards from your predicted topics.
+                  15-card decks from your upload
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />

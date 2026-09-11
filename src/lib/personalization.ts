@@ -75,11 +75,11 @@ export function courseFeatureOrder(pref: StudyPreference | null): {
 } {
   switch (pref) {
     case "reading":
-      return { order: ["materials", "mock"], flashcardsPlaceholderNote: false };
+      return { order: ["materials", "mock"], showFlashcardsLink: false };
     case "flashcards":
-      return { order: ["mock", "materials"], flashcardsPlaceholderNote: true };
+      return { order: ["mock", "materials"], showFlashcardsLink: true };
     case "practice":
     default:
-      return { order: ["mock", "materials"], flashcardsPlaceholderNote: false };
+      return { order: ["mock", "materials"], showFlashcardsLink: false };
   }
 }
