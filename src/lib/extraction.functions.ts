@@ -92,7 +92,15 @@ export const extractMaterialText = createServerFn({ method: "POST" })
       return { materialId: row.id, status: "failed", chars: 0, error: outcome.error };
     } catch (e) {
       const reason = describeFailure(row.file_type, e);
-      console.error("[extraction] handler crashed", { materialId: row.id, error: e });
+      const err = e as { name?: string; message?: string; stack?: string } | null;
+      console.error("[extraction] handler crashed", {
+        materialId: row.id,
+        fileType: row.file_type,
+        name: err?.name ?? typeof e,
+        message: err?.message ?? String(e),
+        stack: err?.stack,
+      });
+
       try {
         await record({ extraction_status: "failed", extraction_error: reason });
       } catch (persistErr) {

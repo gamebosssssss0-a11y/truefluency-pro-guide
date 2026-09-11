@@ -69,13 +69,23 @@ function Index() {
 }
 
 function Router() {
-  const { step, view, profile, authPending } = useProfile();
+  const { step, view, profile, authPending, go } = useProfile();
   useSwipeTabs();
   useEffect(() => {
     if (!profile.identity) return;
     void ensureSupabaseSession(profile).then((result) => {
-      // Failing silently used to leave uploads and sync broken with no signal.
-      if (!result.ok && result.reason !== "oauth-or-missing-account") {
+      if (result.ok) return;
+      // An email account whose session lapsed can't upload, open My Files or
+      // generate a mock, so it is sent back to sign in instead of looking
+      // signed in and failing on every action.
+      if (result.reason === "sign-in-required") {
+        toast.message("Please sign in again", {
+          description: "Your session expired, so we need your password once more.",
+        });
+        go("identity");
+        return;
+      }
+      if (result.reason !== "oauth-or-missing-account") {
         toast.message("You're working offline", {
           description: "We couldn't reach your account, so changes are saved on this device for now.",
         });
@@ -83,6 +93,7 @@ function Router() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.identity?.kind, profile.identity?.email]);
+
 
   // All in-app screens render on this same "/" route, so the router's scroll
   // restoration never fires on a view switch. Without this, opening a screen

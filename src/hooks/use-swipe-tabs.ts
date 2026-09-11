@@ -30,11 +30,14 @@ export function useSwipeTabs() {
 
     const onStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) { tracking = false; return; }
+      // A reader or overlay on screen (e.g. the file viewer) owns the gesture.
+      if (document.querySelector("[data-swipe-lock]")) { tracking = false; return; }
       const t = e.touches[0]!;
       startX = t.clientX;
       startY = t.clientY;
       tracking = true;
     };
+
 
     const onEnd = (e: TouchEvent) => {
       if (!tracking) return;
