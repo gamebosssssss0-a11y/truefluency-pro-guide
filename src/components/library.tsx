@@ -4,6 +4,7 @@
  * library.functions.ts.
  */
 import { ErrorCard } from "@/components/error-card";
+import { PdfViewer, HEAVY_PDF_MESSAGE } from "@/components/pdf-viewer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
