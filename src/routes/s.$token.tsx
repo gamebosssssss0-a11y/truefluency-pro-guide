@@ -152,8 +152,12 @@ function SharedFilePage() {
               <p className="mt-1 text-[11px] text-[#5C5C70]">This link is one file only.</p>
 
               <div className="mt-4 h-[52vh] overflow-hidden rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
-                {share.previewUrl ? (
-                  <iframe src={share.previewUrl} title={share.file_name} className="h-full w-full" />
+                {share.previewUrl && share.file_type.toLowerCase() === "pdf" ? (
+                  <PdfViewer url={share.previewUrl} fileName={share.file_name} />
+                ) : share.previewUrl ? (
+                  <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
+                    {HEAVY_PDF_MESSAGE}
+                  </div>
                 ) : (
                   <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
                     {SHARING_OFFLINE_MESSAGE}
