@@ -60,6 +60,9 @@ function SharedFilePage() {
   const [state, setState] = useState<"loading" | "ready" | "gone" | "signin">("loading");
   const [share, setShare] = useState<Share | null>(null);
   const [saving, setSaving] = useState(false);
+  // Cancelling the preview load keeps the share card, just without the frame.
+  const [previewOff, setPreviewOff] = useState(false);
+
 
   useEffect(() => {
     let alive = true;
