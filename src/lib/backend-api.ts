@@ -1,703 +1,224 @@
 /**
- * TrueFluency backend client.
- *
- * All AI calls go through the FastAPI backend on Render.
- *
- * Backend routes used:
- *   POST /extract-text
- *   POST /predict-topics
- *   POST /generate-mock/start
- *   GET  /generate-mock/status/{job_id}
- *   POST /generate-mock/cancel/{job_id}
- *   POST /submit-results
+ * Client for the TrueFluency AI backend (FastAPI on Render).
+ * All generation goes through Render ONLY — no Gemini/Lovable AI fallback.
  */
-
 import { supabase } from "@/integrations/supabase/client";
-import type {
-  AIQuestion,
-  Difficulty,
-  Profile,
-} from "@/lib/profile-store";
+import type { AIQuestion, Difficulty, Profile } from "@/lib/profile-store";
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
-// ── CONFIGURATION ─────────────────────────────────────────────────────────────
-
-const BACKEND_URL = (
-  import.meta.env. VITE_BACKEND_URL as string | undefined
-)?.trim();
-
-export const NOT_CONFIGURED_MESSAGE =
-  "Prediction service isn't configured yet";
+export const NOT_CONFIGURED_MESSAGE = "Prediction service isn't configured yet";
 
 export function isBackendConfigured(): boolean {
-  return Boolean(BACKEND_URL);
+  return typeof BACKEND_URL === "string" && BACKEND_URL.trim().length > 0;
 }
+
+export type PredictedTopic = { topic: string; confidence: number };
 
 function base(): string {
-  if (! BACKEND_URL) {
-    throw new Error(NOT_CONFIGURED_MESSAGE);
-  }
-
-  if (!/^https?:\/\//i.test(BACKEND_URL)) {
-    throw new Error(
-      "VITE_BACKEND_URL must be a complete HTTP or HTTPS backend URL.",
-    );
-  }
-
-  return BACKEND_URL.replace(/\/+\$/, "");
+  if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+  return BACKEND_URL!.replace(/\/+$/, "");
 }
 
-
-// ── TYPES ─────────────────────────────────────────────────────────────────────
-
-export type PredictedTopic = {
-  topic: string;
-  confidence: number;
-  basis?: "past_pattern" | "student_performance" | "material_only";
-};
-
-export type ExtractTextResponse = {
-  material_id: string;
-  status: "success" | "scanned_pdf" | string;
-  chars: number;
-  preview?: string;
-  message?: string;
-};
-
-type StartJobResponse = {
-  job_id?: unknown;
-  existing_job_id?: unknown;
-  status?: unknown;
-  detail?: unknown;
-};
-
-type MockStatusResponse = {
-  status: string;
-  result?: {
-    questions?: unknown;
-  } | null;
-  error?: string;
-  ready?: number | null;
-  total?: number | null;
-  questions?: unknown[];
-};
-
-type ProgressUpdate = {
-  ready: number | null;
-  total: number | null;
-  questions?: AIQuestion[];
-};
-
-
-// ── ERROR HANDLING ────────────────────────────────────────────────────────────
-
-class BackendRequestError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly retryable: boolean = false,
-  ) {
-    super(message);
-    this.name = "BackendRequestError";
-  }
-}
-
-function readErrorDetail(
-  text: string,
-  status: number,
-): string {
+function readErrorDetail(text: string, status: number): string {
   try {
-    const parsed = JSON.parse(text) as {
-      detail?: unknown;
-      message?: unknown;
-    };
-
+    const parsed = JSON.parse(text) as { detail?: unknown };
     const detail = parsed?.detail;
-
-    if (typeof detail === "string" && detail.trim()) {
-      return detail.trim();
-    }
-
-    if (Array.isArray(detail) && detail.length > 0) {
+    if (typeof detail === "string" && detail.trim()) return detail.trim();
+    if (Array.isArray(detail) && detail.length) {
       const first = detail[0] as { msg?: unknown };
-
-      if (
-        typeof first?.msg === "string"
-        && first.msg.trim()
-      ) {
-        return first.msg.trim();
-      }
+      if (typeof first?.msg === "string") return first.msg;
     }
-
-    if (
-      typeof parsed?.message === "string"
-      && parsed.message.trim()
-    ) {
-      return parsed.message.trim();
-    }
-  } catch {
-    // Response was not JSON.
-  }
-
-  if (status === 401) {
-    return "Your session has expired. Please sign in again.";
-  }
-
-  if (status === 402) {
-    return "You've hit your free limit for today.";
-  }
-
-  if (status === 403) {
-    return "You are not authorised to use this service.";
-  }
-
-  if (status === 404) {
-    return "The requested backend route or upload was not found.";
-  }
-
-  if (status === 422) {
-    return "The uploaded material is not ready for analysis yet.";
-  }
-
-  if (status === 429) {
-    return "The analysis service is busy. Please try again shortly.";
-  }
-
-  if (status === 503) {
-    return "The analysis service isn't fully configured yet.";
-  }
-
-  if (status >= 500) {
-    return "The analysis service had a server problem. Please try again.";
-  }
-
-  return `The analysis service rejected the request (\${status}).`;
+  } catch { /* not JSON */ }
+  if (status === 402) return "You've hit your free limit for today.";
+  if (status === 404) return "We couldn't find that upload on the analysis service.";
+  if (status === 503) return "The analysis service isn't fully configured yet.";
+  if (status >= 500) return "The analysis service had a problem. Please try again.";
+  return `The analysis service rejected the request (${status}).`;
 }
 
-
-// ── AUTHENTICATION ────────────────────────────────────────────────────────────
-
-async function getAccessToken(): Promise<string> {
-  const {
-    data: sessionData,
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(
-      "Could not read your sign-in session. Please sign in again.",
-    );
-  }
-
-  const accessToken = sessionData.session?.access_token;
-
-  if (!accessToken) {
-    throw new Error(
-      "Sign in to use the analysis service.",
-    );
-  }
-
-  return accessToken;
-}
-
-
-// ── HTTP HELPERS ──────────────────────────────────────────────────────────────
-
-type HttpMethod = "GET" | "POST";
-
-async function requestJson<T>(
-  method: HttpMethod,
-  path: string,
-  body?: unknown,
-  timeoutMs = 30_000,
-  acceptedStatuses: number[] = [],
-): Promise<{
-  data: T;
-  status: number;
-}> {
-  const url = `\${base()}\${path}`;
+async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Promise<T> {
+  const url = `${base()}${path}`;
   const controller = new AbortController();
-
-  const timer = window.setTimeout(
-    () => controller.abort(),
-    timeoutMs,
-  );
-
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const accessToken = await getAccessToken();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
 
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-      Authorization: `Bearer \${accessToken}`,
-    };
-
-    const requestInit: RequestInit = {
-      method,
-      headers,
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
       signal: controller.signal,
-    };
+    });
 
-    if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-      requestInit.body = JSON.stringify(body);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[backend] request failed", { path, status: res.status, text });
+      throw new Error(readErrorDetail(text, res.status));
     }
-
-    const response = await fetch(
-      url,
-      requestInit,
-    );
-
-    const rawText = await response
-      .text()
-      .catch(() => "");
-
-    if (
-      !response.ok
-      && !acceptedStatuses.includes(response.status)
-    ) {
-      console.error(
-        "[backend] request failed",
-        {
-          method,
-          path,
-          status: response.status,
-          response: rawText,
-        },
-      );
-
-      const retryable =
-        response.status === 408
-        || response.status === 425
-        || response.status === 429
-        || response.status >= 500;
-
-      throw new BackendRequestError(
-        readErrorDetail(
-          rawText,
-          response.status,
-        ),
-        response.status,
-        retryable,
-      );
+    return (await res.json()) as T;
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      console.error("[backend] network error", { path, error: e });
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
     }
-
-    let parsed: unknown = null;
-
-    if (rawText.trim()) {
-      try {
-        parsed = JSON.parse(rawText);
-      } catch {
-        if (response.ok) {
-          throw new BackendRequestError(
-            "The backend returned an invalid response.",
-            response.status,
-            false,
-          );
-        }
-
-        parsed = null;
-      }
-    }
-
-    return {
-      data: parsed as T,
-      status: response.status,
-    };
-  } catch (error) {
-    if (error instanceof BackendRequestError) {
-      throw error;
-    }
-
-    if (
-      error instanceof Error
-      && error.name === "AbortError"
-    ) {
-      throw new BackendRequestError(
-        `The backend request timed out: \${path}`,
-        0,
-        true,
-      );
-    }
-
-    if (error instanceof TypeError) {
-      console.error(
-        "[backend] network or CORS error",
-        {
-          method,
-          path,
-          error,
-        },
-      );
-
-      throw new BackendRequestError(
-        "Couldn't reach the analysis service. Check your connection and backend URL.",
-        0,
-        true,
-      );
-    }
-
-    throw error;
+    throw e;
   } finally {
-    window.clearTimeout(timer);
+    clearTimeout(timer);
   }
 }
-
-async function postJson<T>(
-  path: string,
-  body?: unknown,
-  timeoutMs = 30_000,
-): Promise<T> {
-  const response = await requestJson<T>(
-    "POST",
-    path,
-    body,
-    timeoutMs,
-  );
-
-  return response.data;
-}
-
-async function getJson<T>(
-  path: string,
-  timeoutMs = 15_000,
-): Promise<T> {
-  const response = await requestJson<T>(
-    "GET",
-    path,
-    undefined,
-    timeoutMs,
-  );
-
-  return response.data;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-
-// ── FILE EXTRACTION ───────────────────────────────────────────────────────────
 
 /**
- * Call this after the file has been uploaded to Supabase Storage and the
- * course_materials row has been created.
- *
- * This must finish successfully before predictTopics or generateMock can
- * retrieve the material from the backend.
+ * Starts a mock-generation job. Handles the "you already have one running"
+ * case gracefully: instead of throwing, it picks up the EXISTING job_id and
+ * resumes watching it. This is the fix for: refresh the page → the old
+ * generation is still running server-side with no way to know about it →
+ * click Generate again → confusing failure. Now it just quietly reconnects
+ * to whatever's already in flight.
  */
-export async function extractText(input: {
-  materialId: string;
-  filePath: string;
-  fileType: "pdf" | "docx" | "pptx" | "txt";
-}): Promise<ExtractTextResponse> {
-  const result = await postJson<ExtractTextResponse>(
-    "/extract-text",
-    {
-      material_id: input.materialId,
-      file_path: input.filePath,
-      file_type: input.fileType,
-    },
-    60_000,
-  );
+async function startOrResumeMockJob(body: unknown): Promise<{ job_id: string; resumed: boolean }> {
+  const url = `${base()}/generate-mock/start`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
 
-  if (
-    result.status === "scanned_pdf"
-  ) {
-    throw new Error(
-      result.message
-      || "This file appears to be scanned and has no readable text.",
-    );
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 409 && typeof data?.existing_job_id === "string") {
+      // Not an error — a job is already running. Resume it instead of failing.
+      return { job_id: data.existing_job_id, resumed: true };
+    }
+    if (!res.ok) {
+      throw new Error(readErrorDetail(JSON.stringify(data), res.status));
+    }
+    return { job_id: data.job_id, resumed: false };
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-
-  if (result.status !== "success") {
-    throw new Error(
-      result.message
-      || "The backend could not extract text from this file.",
-    );
-  }
-
-  return result;
 }
 
+/**
+ * Explicitly abandons an in-progress job — call this if the student wants to
+ * cancel a stuck/orphaned generation (e.g. after a refresh) rather than wait
+ * for it or have it silently keep consuming tokens in the background.
+ */
+export async function cancelMockJob(jobId: string): Promise<void> {
+  await postJson(`/generate-mock/cancel/${jobId}`, {}, 15_000);
+}
 
-// ── TOPIC PREDICTION ──────────────────────────────────────────────────────────
+/**
+ * GET request helper for polling — deliberately short per-call timeout
+ * (15s), since a status check should always be near-instant. This is NOT
+ * the same as waiting for the whole generation to finish.
+ */
+async function getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
+  const url = `${base()}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
 
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[backend] status check failed", { path, status: res.status, text });
+      throw new Error(readErrorDetail(text, res.status));
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("Status check timed out — will retry.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Pauses for ms milliseconds — used between polling attempts. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Topic prediction — Render backend only, no in-app fallback.
+ */
 export async function predictTopics(input: {
   materialId: string;
   courseCode: string;
   courseName: string;
-  level?: string | number | null;
+  level?: string | null;
   department?: string | null;
 }): Promise<PredictedTopic[]> {
-  if (!isBackendConfigured()) {
-    throw new Error(NOT_CONFIGURED_MESSAGE);
-  }
+  if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
 
-  const data = await postJson<{
-    topics?: unknown;
-  }>(
-    "/predict-topics",
-    {
-      material_id: input.materialId,
-      course_code: input.courseCode,
-      course_name: input.courseName,
-      user_level:
-        input.level !== null
-        && input.level !== undefined
-          ? String(input.level)
-          : null,
-      user_department: input.department ?? null,
-    },
-    120_000,
-  );
+  const data = await postJson<{ topics: unknown }>("/predict-topics", {
+    material_id: input.materialId,
+    course_code: input.courseCode,
+    course_name: input.courseName,
+    user_level: input.level ? String(input.level) : null,
+    user_department: input.department ?? null,
+  });
 
-  const rawTopics = Array.isArray(data?.topics)
-    ? data.topics
-    : [];
+  const raw = Array.isArray(data?.topics) ? data.topics : [];
+  if (raw.length === 0) throw new Error("The analysis came back empty.");
 
-  if (rawTopics.length === 0) {
-    throw new Error(
-      "The backend returned no predicted topics.",
-    );
-  }
-
-  const topics: PredictedTopic[] = rawTopics
-    .map((value): PredictedTopic | null => {
-      if (
-        !value
-        || typeof value !== "object"
-      ) {
-        return null;
-      }
-
-      const topicObject = value as {
-        topic?: unknown;
-        confidence?: unknown;
-        basis?: unknown;
-      };
-
-      const topic =
-        typeof topicObject.topic === "string"
-          ? topicObject.topic.trim()
-          : "";
-
-      const confidence =
-        typeof topicObject.confidence === "number"
-          ? topicObject.confidence
-          : typeof topicObject.confidence === "string"
-            ? Number(topicObject.confidence)
-            : Number. NaN;
-
-      if (
-        !topic
-        || ! Number.isFinite(confidence)
-      ) {
-        return null;
-      }
-
-      const basis =
-        topicObject.basis === "past_pattern"
-        || topicObject.basis === "student_performance"
-        || topicObject.basis === "material_only"
-          ? topicObject.basis
-          : undefined;
-
-      return {
-        topic,
-        confidence: Math.max(
-          0,
-          Math.min(1, confidence),
-        ),
-        ...(basis ? { basis } : {}),
-      };
+  const topics: PredictedTopic[] = raw
+    .map((t) => {
+      const o = t as { topic?: unknown; confidence?: unknown };
+      const topic = typeof o.topic === "string" ? o.topic.trim() : "";
+      const confidence = typeof o.confidence === "number" ? o.confidence : Number(o.confidence);
+      if (!topic || !Number.isFinite(confidence)) return null;
+      return { topic, confidence: Math.max(0, Math.min(1, confidence)) };
     })
-    .filter(
-      (topic): topic is PredictedTopic => topic !== null,
-    );
+    .filter((t): t is PredictedTopic => t !== null);
 
-  if (topics.length === 0) {
-    throw new Error(
-      "The backend returned invalid topic data.",
-    );
-  }
-
+  if (topics.length === 0) throw new Error("The analysis came back empty.");
   return topics;
 }
 
-
-// ── MOCK JOB START ────────────────────────────────────────────────────────────
-
-async function startOrResumeMockJob(
-  body: unknown,
-): Promise<{
-  job_id: string;
-  resumed: boolean;
-}> {
-  const response = await requestJson<StartJobResponse>(
-    "POST",
-    "/generate-mock/start",
-    body,
-    20_000,
-    [409],
-  );
-
-  const data = response.data;
-
-  const detailObject =
-    data?.detail
-    && typeof data.detail === "object"
-      ? data.detail as {
-          existing_job_id?: unknown;
-        }
-      : null;
-
-  const existingJobId =
-    typeof data?.existing_job_id === "string"
-      ? data.existing_job_id
-      : typeof detailObject?.existing_job_id === "string"
-        ? detailObject.existing_job_id
-        : null;
-
-  if (existingJobId) {
-    return {
-      job_id: existingJobId,
-      resumed: true,
-    };
-  }
-
-  if (response.status === 409) {
-    throw new BackendRequestError(
-      "The backend reported an existing job but did not return its job ID.",
-      409,
-      false,
-    );
-  }
-
-  if (typeof data?.job_id !== "string") {
-    throw new BackendRequestError(
-      "The backend did not return a mock-generation job ID.",
-      response.status,
-      false,
-    );
-  }
-
-  return {
-    job_id: data.job_id,
-    resumed: false,
-  };
-}
-
-
-// ── MOCK JOB CANCELLATION ─────────────────────────────────────────────────────
-
-export async function cancelMockJob(
-  jobId: string,
-): Promise<void> {
-  await postJson(
-    `/generate-mock/cancel/\${encodeURIComponent(jobId)}`,
-    undefined,
-    15_000,
-  );
-}
-
-
-// ── QUESTION NORMALISATION ────────────────────────────────────────────────────
-
-function normaliseQuestions(
-  raw: unknown,
-): AIQuestion[] {
-  if (! Array.isArray(raw)) {
-    return [];
-  }
-
-  return raw
-    .map((value, index): AIQuestion | null => {
-      if (
-        !value
-        || typeof value !== "object"
-      ) {
-        return null;
-      }
-
-      const questionObject =
-        value as Record<string, unknown>;
-
-      const question =
-        typeof questionObject.question === "string"
-          ? questionObject.question.trim()
-          : "";
-
-      const rawOptions = questionObject.options;
-
-      if (
-        ! Array.isArray(rawOptions)
-        || rawOptions.length !== 4
-        || !rawOptions.every(
-          (option) =>
-            typeof option === "string"
-            && option.trim().length > 0,
-        )
-      ) {
-        return null;
-      }
-
-      const correctIndex =
-        questionObject.correct_index;
-
-      if (
-        typeof correctIndex !== "number"
-        || ! Number.isInteger(correctIndex)
-        || correctIndex < 0
-        || correctIndex >= rawOptions.length
-      ) {
-        return null;
-      }
-
-      if (!question) {
-        return null;
-      }
-
-      const id =
-        typeof questionObject.id === "number"
-        && Number.isInteger(questionObject.id)
-          ? questionObject.id
-          : index + 1;
-
-      const topic =
-        typeof questionObject.topic === "string"
-        && questionObject.topic.trim()
-          ? questionObject.topic.trim()
-          : "General";
-
-      const explanation =
-        typeof questionObject.explanation === "string"
-          ? questionObject.explanation
-          : "";
-
-      return {
-        id,
-        topic,
-        question,
-        options: rawOptions as string[],
-        correct_index: correctIndex,
-        explanation,
-      } satisfies AIQuestion;
-    })
-    .filter(
-      (question): question is AIQuestion =>
-        question !== null,
-    )
-    .map((question, index) => ({
-      ...question,
-      id: index + 1,
-    }));
-}
-
-
-// ── MOCK GENERATION ───────────────────────────────────────────────────────────
-
+/**
+ * Mock generation — Render backend only, no in-app fallback.
+ *
+ * Uses the start+poll job pattern, NOT a single long-running request.
+ * Reason: Render's own platform-level request timeout (independent of
+ * anything the backend code does) can cut the connection to the frontend
+ * on a slow generation, while the backend keeps running anyway — the
+ * request just becomes orphaned, and the frontend sees a generic timeout
+ * even though a real result may still be coming. Since no single request
+ * in this flow needs to stay open more than a few seconds, that whole
+ * class of failure goes away.
+ */
 export async function generateMock(
   input: {
     materialId: string;
@@ -706,24 +227,16 @@ export async function generateMock(
     questionCount: number;
     difficulty: Difficulty;
     topicFocus: string[];
-    profile: Pick<
-      Profile,
-      "goal"
-      | "timeline"
-      | "level"
-      | "department"
-    >;
+    profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
   },
   options?: {
-    onProgress?: (
-      progress: ProgressUpdate,
-    ) => void;
+    /** Called each time a poll comes back "processing" — use to show a spinner/progress message. */
+    onProgress?: (progress: { ready: number | null; total: number | null }) => void;
+    /** Max total time to keep polling before giving up. Default 5 minutes. */
     maxWaitMs?: number;
-  },
-): Promise<AIQuestion[]> {
-  if (!isBackendConfigured()) {
-    throw new Error(NOT_CONFIGURED_MESSAGE);
   }
+): Promise<AIQuestion[]> {
+  if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
 
   const body = {
     material_id: input.materialId,
@@ -734,154 +247,77 @@ export async function generateMock(
     topic_focus: input.topicFocus,
     user_goal: input.profile.goal,
     user_timeline: input.profile.timeline,
-    user_level:
-      input.profile.level !== null
-      && input.profile.level !== undefined
-        ? String(input.profile.level)
-        : null,
-    user_department: input.profile.department ?? null,
+    user_level: input.profile.level ? String(input.profile.level) : null,
+    user_department: input.profile.department,
   };
 
+  // Step 1: kick off the job (or resume an existing one — see startOrResumeMockJob).
+  // This returns almost instantly — it does NOT wait for generation to finish.
   const started = await startOrResumeMockJob(body);
 
-  console.info(
-    "[backend] mock generation started",
-    {
-      jobId: started.job_id,
-      resumed: started.resumed,
-    },
-  );
-
-  const maxWaitMs =
-    options?.maxWaitMs
-    ?? 5 * 60_000;
-
+  // Step 2: poll for the result.
+  const maxWaitMs = options?.maxWaitMs ?? 5 * 60_000; // 5 minutes default ceiling
   const pollIntervalMs = 3_000;
   const deadline = Date.now() + maxWaitMs;
 
-  let completedResult:
-    MockStatusResponse | null = null;
+  let data: { status: string; result?: { questions: unknown }; error?: string; ready?: number | null; total?: number | null } | null = null;
 
   while (Date.now() < deadline) {
-    let poll: MockStatusResponse;
-
+    await sleep(pollIntervalMs);
     try {
-      poll = await getJson<MockStatusResponse>(
-        `/generate-mock/status/\${encodeURIComponent(started.job_id)}`,
-        15_000,
-      );
-    } catch (error) {
-      if (error instanceof BackendRequestError) {
-        /*
-         * A missing job means the Render process restarted and its in-memory
-         * job dictionary was lost. Continuing to poll for five minutes would
-         * only hide the real error.
-         */
-        if (error.status === 404) {
-          throw new Error(
-            "The mock-generation job no longer exists. The backend may have restarted. Please start the mock again.",
-          );
-        }
-
-        /*
-         * Authentication, quota, validation, and permission errors are not
-         * fixed by retrying. Surface them immediately.
-         */
-        if (!error.retryable) {
-          throw error;
-        }
-
-        /*
-         * Network errors, timeouts, 429, and 5xx errors are transient.
-         * Retry the next poll.
-         */
-        await sleep(
-          Math.min(
-            pollIntervalMs,
-            Math.max(0, deadline - Date.now()),
-          ),
-        );
-
-        continue;
-      }
-
-      throw error;
+      data = await getJson(`/generate-mock/status/${started.job_id}`);
+    } catch {
+      // A single poll failing (brief network blip) shouldn't kill the whole
+      // flow — just try again next interval rather than aborting immediately.
+      continue;
     }
 
-    if (poll.status === "completed") {
-      completedResult = poll;
-      break;
-    }
-
+    const poll = data;
+    if (!poll) continue;
+    if (poll.status === "completed") break;
     if (poll.status === "failed") {
-      throw new Error(
-        poll.error || "Mock generation failed.",
-      );
+      throw new Error(poll.error || "Mock generation failed.");
     }
-
-    if (poll.status !== "processing") {
-      throw new Error(
-        `The backend returned an unknown job status: \${poll.status}`,
-      );
-    }
-
-    const partialQuestions =
-      normaliseQuestions(poll.questions);
-
-    options?.onProgress?.({
-      ready:
-        typeof poll.ready === "number"
-          ? poll.ready
-          : null,
-      total:
-        typeof poll.total === "number"
-          ? poll.total
-          : null,
-      questions: partialQuestions,
-    });
-
-    const remainingMs =
-      deadline - Date.now();
-
-    if (remainingMs <= 0) {
-      break;
-    }
-
-    await sleep(
-      Math.min(
-        pollIntervalMs,
-        remainingMs,
-      ),
-    );
+    options?.onProgress?.({ ready: poll.ready ?? null, total: poll.total ?? null });
+    // status is "processing" — loop again
   }
 
-  if (
-    !completedResult
-    || completedResult.status !== "completed"
-  ) {
-    throw new Error(
-      "This is taking longer than expected. The mock may still be running in the background. Please try checking again shortly.",
-    );
+  if (!data || data.status !== "completed") {
+    throw new Error("This is taking longer than expected. Your mock test may still finish in the background — try checking back in a minute.");
   }
 
-  const rawQuestions =
-    completedResult.result?.questions;
+  const raw = Array.isArray(data.result?.questions) ? (data.result!.questions as unknown[]) : [];
+  if (raw.length === 0) throw new Error("No questions came back from the generator.");
 
-  const questions =
-    normaliseQuestions(rawQuestions);
+  const questions: AIQuestion[] = raw
+    .map((q, i) => {
+      const o = q as Partial<AIQuestion> & { correct_index?: unknown };
+      const options: string[] = Array.isArray(o.options)
+        ? (o.options as unknown[]).filter((x): x is string => typeof x === "string")
+        : [];
+      const correct = Number(o.correct_index);
+      if (typeof o.question !== "string" || options.length < 2) return null;
+      if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) return null;
+      return {
+        id: typeof o.id === "number" ? o.id : i + 1,
+        topic: typeof o.topic === "string" && o.topic.trim() ? o.topic : "General",
+        question: o.question,
+        options,
+        correct_index: correct,
+        explanation: typeof o.explanation === "string" ? o.explanation : "",
+      } satisfies AIQuestion;
+    })
+    .filter((q): q is AIQuestion => q !== null)
+    .map((q, i) => ({ ...q, id: i + 1 }));
 
-  if (questions.length === 0) {
-    throw new Error(
-      "The backend completed the job but returned no valid questions.",
-    );
-  }
-
+  if (questions.length === 0) throw new Error("No questions came back from the generator.");
   return questions;
 }
 
-
-// ── RESULT SUBMISSION ─────────────────────────────────────────────────────────
-
+/**
+ * Submit mock test results to the feedback loop — Render backend only.
+ * Fire-and-forget: never throws, never blocks the results screen.
+ */
 export async function submitResults(input: {
   courseCode: string;
   results: Array<{
@@ -891,25 +327,13 @@ export async function submitResults(input: {
     was_correct: boolean;
   }>;
 }): Promise<void> {
-  if (!isBackendConfigured()) {
-    return;
-  }
-
+  if (!isBackendConfigured()) return;
   try {
-    await postJson(
-      "/submit-results",
-      {
-        course_code: input.courseCode,
-        results: input.results,
-      },
-      15_000,
-    );
-  } catch (error) {
-    console.warn(
-      "[backend] result submission failed",
-      error,
-    );
-
-    // This must never block the results screen.
+    await postJson("/submit-results", {
+      course_code: input.courseCode,
+      results: input.results,
+    });
+  } catch {
+    // fire-and-forget — never block the student from seeing their results
   }
 }
