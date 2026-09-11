@@ -75,6 +75,60 @@ async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Pr
 }
 
 /**
+ * Starts a mock-generation job. Handles the "you already have one running"
+ * case gracefully: instead of throwing, it picks up the EXISTING job_id and
+ * resumes watching it. This is the fix for: refresh the page → the old
+ * generation is still running server-side with no way to know about it →
+ * click Generate again → confusing failure. Now it just quietly reconnects
+ * to whatever's already in flight.
+ */
+async function startOrResumeMockJob(body: unknown): Promise<{ job_id: string; resumed: boolean }> {
+  const url = `${base()}/generate-mock/start`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 409 && typeof data?.existing_job_id === "string") {
+      // Not an error — a job is already running. Resume it instead of failing.
+      return { job_id: data.existing_job_id, resumed: true };
+    }
+    if (!res.ok) {
+      throw new Error(readErrorDetail(JSON.stringify(data), res.status));
+    }
+    return { job_id: data.job_id, resumed: false };
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Explicitly abandons an in-progress job — call this if the student wants to
+ * cancel a stuck/orphaned generation (e.g. after a refresh) rather than wait
+ * for it or have it silently keep consuming tokens in the background.
+ */
+export async function cancelMockJob(jobId: string): Promise<void> {
+  await postJson(`/generate-mock/cancel/${jobId}`, {}, 15_000);
+}
+
+/**
  * GET request helper for polling — deliberately short per-call timeout
  * (15s), since a status check should always be near-instant. This is NOT
  * the same as waiting for the whole generation to finish.
@@ -197,13 +251,9 @@ export async function generateMock(
     user_department: input.profile.department,
   };
 
-  // Step 1: kick off the job. This returns almost instantly — it does NOT
-  // wait for generation to finish.
-  const started = await postJson<{ job_id: string; status: string }>(
-    "/generate-mock/start",
-    body,
-    20_000 // starting the job should be fast; 20s is generous, not the old 180s
-  );
+  // Step 1: kick off the job (or resume an existing one — see startOrResumeMockJob).
+  // This returns almost instantly — it does NOT wait for generation to finish.
+  const started = await startOrResumeMockJob(body);
 
   // Step 2: poll for the result.
   const maxWaitMs = options?.maxWaitMs ?? 5 * 60_000; // 5 minutes default ceiling
