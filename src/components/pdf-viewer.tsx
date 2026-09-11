@@ -419,12 +419,14 @@ export function PdfViewer({
 
   return (
     <div
+      data-swipe-lock=""
       className={
         expanded
           ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-[#F7F3EA]"
           : "flex h-full flex-col bg-[#F7F3EA]"
       }
     >
+
       <div className="flex items-center gap-2 border-b border-[#E4DCC8] px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#1B2A4A]">
           {fileName}
