@@ -646,7 +646,7 @@ export function LibraryScreen() {
             ) : preview.file_type === "image" ? (
               <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
             ) : preview.file_type === "pdf" ? (
-              <PdfViewer url={preview.url} fileName={preview.file_name} onClose={() => setPreview(null)} />
+              <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} />
             ) : (
               <div className="grid h-full place-items-center bg-[#F7F3EA] p-4">
                 <ErrorCard
