@@ -31,7 +31,7 @@ export function tabForView(view: AppView): TabKey {
     case "all-uploads":
     case "cgpa":
     case "cgpa-goal":
-    case "flashcards-soon":
+    case "flashcards":
     case "add-course":
     case "support":
     case "edit-identity":

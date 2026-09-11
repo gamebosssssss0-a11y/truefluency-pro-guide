@@ -30,8 +30,8 @@ export function TrialWelcomeScreen() {
           behind every answer.
         </p>
         <p>
-          After that, a free account keeps {FREE_MAX_QUESTIONS} questions a day,
-          or you can upgrade.
+          After the trial, a free account gets 2 mock sets a day and{" "}
+          {FREE_MAX_QUESTIONS} questions per set.
         </p>
         <p className="text-xs text-muted-foreground">{PRICE_LINE}</p>
       </div>

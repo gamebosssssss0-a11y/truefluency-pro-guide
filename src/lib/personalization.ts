@@ -66,12 +66,12 @@ export type CourseFeatureKey = "mock" | "materials" | "flashcards";
 /**
  * Returns ordered feature keys for a course card based on the user's stored
  * study preference. First entry = most prominent.
- * Flashcards are still placeholder; when the user prefers them we surface
- * mock as the actionable primary and expose a "flashcards coming soon" note.
+ * When the student prefers flashcards we keep mock as the actionable primary
+ * and also surface a link to the real Flashcards screen for that course.
  */
 export function courseFeatureOrder(pref: StudyPreference | null): {
   order: CourseFeatureKey[];
-  flashcardsPlaceholderNote: boolean;
+  showFlashcardsLink: boolean;
 } {
   switch (pref) {
     case "reading":

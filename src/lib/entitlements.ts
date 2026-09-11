@@ -73,7 +73,7 @@ export function paywallCopy(
   if (feature === "library_uploads") {
     return {
       title: "Uploading to the Library is a paid feature",
-      body: `Browsing and downloading stay free for everyone. ${upsell}`,
+      body: `You can view published files in the app. Saving a peer file to your locker is limited on free. ${upsell}`,
     };
   }
   const labels: Record<GatedFeature, string> = {

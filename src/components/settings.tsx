@@ -231,7 +231,7 @@ export function AccountScreen() {
       label: "Flashcards",
       blurb: "Coming soon.",
       icon: Layers,
-      onClick: () => navigate("flashcards-soon"),
+      onClick: () => navigate("flashcards"),
     },
   ];
 
