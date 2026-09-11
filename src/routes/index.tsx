@@ -34,6 +34,7 @@ import { EditIdentityScreen } from "@/components/edit-identity";
 import { ThemeProvider } from "@/lib/theme";
 import { BottomTabBar, TopNavBar, hidesTabBar } from "@/components/tab-bar";
 import { cn } from "@/lib/utils";
+import { useSwipeTabs } from "@/hooks/use-swipe-tabs";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -69,6 +70,7 @@ function Index() {
 
 function Router() {
   const { step, view, profile, authPending } = useProfile();
+  useSwipeTabs();
   useEffect(() => {
     if (!profile.identity) return;
     void ensureSupabaseSession(profile).then((result) => {
@@ -134,7 +136,7 @@ function Router() {
       case "account":
       case "settings": return <AccountScreen />;
       case "all-uploads": return <AllUploadsScreen />;
-      case "flashcards-soon": return <FlashcardsScreen />;
+      case "flashcards": return <FlashcardsScreen />;
       case "flashcards-review": return <FlashcardsReviewScreen />;
       case "add-course": return <AddCourseScreen />;
       case "cgpa": return <CgpaCalculatorScreen />;

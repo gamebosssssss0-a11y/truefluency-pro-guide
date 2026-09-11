@@ -337,7 +337,7 @@ export function HomeScreen() {
           <div className="min-w-0">
             {/* Flashcards: link only, no generator. */}
             <button
-              onClick={() => navigate("flashcards-soon")}
+              onClick={() => navigate("flashcards")}
               className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left md:mt-0"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -346,7 +346,7 @@ export function HomeScreen() {
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-foreground">Flashcards</div>
                 <div className="text-[11px] text-muted-foreground">
-                  Coming soon, spaced cards from your predicted topics.
+                  15-card decks from your upload
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
