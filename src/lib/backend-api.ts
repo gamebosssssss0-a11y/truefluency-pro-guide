@@ -272,11 +272,13 @@ export async function generateMock(
       continue;
     }
 
-    if (data.status === "completed") break;
-    if (data.status === "failed") {
-      throw new Error(data.error || "Mock generation failed.");
+    const poll = data;
+    if (!poll) continue;
+    if (poll.status === "completed") break;
+    if (poll.status === "failed") {
+      throw new Error(poll.error || "Mock generation failed.");
     }
-    options?.onProgress?.({ ready: data.ready ?? null, total: data.total ?? null });
+    options?.onProgress?.({ ready: poll.ready ?? null, total: poll.total ?? null });
     // status is "processing" — loop again
   }
 

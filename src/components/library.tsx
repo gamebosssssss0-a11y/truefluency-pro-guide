@@ -4,6 +4,7 @@
  * library.functions.ts.
  */
 import { ErrorCard } from "@/components/error-card";
+import { PdfViewer, HEAVY_PDF_MESSAGE } from "@/components/pdf-viewer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
@@ -645,10 +646,15 @@ export function LibraryScreen() {
             ) : preview.file_type === "image" ? (
               <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
             ) : preview.file_type === "pdf" ? (
-              <iframe src={preview.url} title={preview.file_name} className="h-full w-full" />
+              <PdfViewer url={preview.url} fileName={preview.file_name} onClose={() => setPreview(null)} />
             ) : (
-              <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
-                Preview isn't available for this file type. Save to locker to use it in mocks.
+              <div className="grid h-full place-items-center bg-[#F7F3EA] p-4">
+                <ErrorCard
+                  title="We can't preview this file type here"
+                  body={HEAVY_PDF_MESSAGE}
+                  linkLabel="Close"
+                  onLink={() => setPreview(null)}
+                />
               </div>
             )}
           </div>
