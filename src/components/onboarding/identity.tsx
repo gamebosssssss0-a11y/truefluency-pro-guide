@@ -16,6 +16,7 @@ export function IdentityScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "signup" | "login" | "guest" | "google">(null);
@@ -161,8 +162,20 @@ export function IdentityScreen() {
             <Input required type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
           </Field>
           <PasswordField password={password} setPassword={setPassword} showPw={showPw} setShowPw={setShowPw} />
+          <PasswordField
+            label="Confirm password"
+            password={confirm}
+            setPassword={setConfirm}
+            showPw={showPw}
+            setShowPw={setShowPw}
+            hint={signupHint}
+          />
           {error ? <ErrorNote>{error}</ErrorNote> : null}
-          <Button type="submit" className="h-12 w-full text-base" disabled={busy !== null}>
+          <Button
+            type="submit"
+            className="h-12 w-full text-base"
+            disabled={busy !== null || !signupPasswordOk}
+          >
             {busy === "signup" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating…</> : "Create Account"}
           </Button>
           <SwitchLine text="Already have an account?" cta="Log In" onClick={() => { setTab("login"); setError(null); }} />
@@ -235,17 +248,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function PasswordField({ password, setPassword, showPw, setShowPw }: {
+function PasswordField({ password, setPassword, showPw, setShowPw, label = "Password", hint }: {
   password: string; setPassword: (v: string) => void; showPw: boolean; setShowPw: (v: boolean) => void;
+  label?: string; hint?: string | null;
 }) {
   return (
-    <Field label="Password">
+    <Field label={label}>
       <div className="relative">
         <Input
           required
           type={showPw ? "text" : "password"}
-          placeholder="At least 6 characters"
-          minLength={6}
+          placeholder="At least 8 characters"
+          minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="h-12 pr-11"
@@ -259,8 +273,19 @@ function PasswordField({ password, setPassword, showPw, setShowPw }: {
           {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
+      {hint ? <p className="mt-1.5 text-xs text-destructive">{hint}</p> : null}
     </Field>
   );
+}
+
+/**
+ * Live sign-up password feedback: one message at a time, the rule that is
+ * still missing. Nothing is stored; these values only live in component state.
+ */
+function passwordHint(password: string, confirm: string): string | null {
+  if (password.length > 0 && password.length < 8) return "Use at least 8 characters.";
+  if (confirm.length > 0 && confirm !== password) return "Those two passwords do not match.";
+  return null;
 }
 
 function ErrorNote({ children }: { children: React.ReactNode }) {
