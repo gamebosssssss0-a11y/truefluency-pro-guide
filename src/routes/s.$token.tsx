@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo-mark";
+import { PdfViewer, HEAVY_PDF_MESSAGE } from "@/components/pdf-viewer";
 import { readOneFileLink, savePeerFile, SHARING_OFFLINE_MESSAGE } from "@/lib/library.functions";
 
 const GONE = "This link is no longer available.";
