@@ -21,6 +21,10 @@ export function IdentityScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "signup" | "login" | "guest" | "google">(null);
 
+  const signupHint = passwordHint(password, confirm);
+  const signupPasswordOk = password.length >= 8 && confirm === password;
+
+
   const finish = (identity: { kind: "email" | "guest"; name: string; email?: string }, extraAccounts?: typeof profile.accounts) => {
     update({ identity, ...(extraAccounts ? { accounts: extraAccounts } : {}) });
     go("goal");
@@ -40,7 +44,7 @@ export function IdentityScreen() {
 
   const onSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !password) return;
+    if (!name.trim() || !email.trim() || !signupPasswordOk) return;
     const em = email.trim().toLowerCase();
     setError(null);
     setBusy("signup");
