@@ -3,16 +3,16 @@
  * canvas: the browser never navigates to the storage URL, and no third party
  * viewer is involved. Files are capped at the first 800 pages.
  *
- * Big files stay usable because only the visible page is painted, the next page
- * is prefetched, stale paints are cancelled, and the loading step can be
- * cancelled outright. The last page viewed is remembered per file, and the
- * viewer can expand to fill the whole screen.
+ * Once a file has been opened, its bytes are kept on the device (and briefly in
+ * memory) so re-opening skips the download entirely. Normal size shows one page
+ * with Back/Next; full screen stacks the pages in a continuous scroll.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
+import { getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
 
 export const MAX_PREVIEW_PAGES = 800;
 export const HEAVY_PDF_MESSAGE =
@@ -58,6 +58,9 @@ function loadPdfjs(): Promise<PdfjsModule> {
   return pdfjsPromise;
 }
 
+/** Last file opened in this session, so close-and-reopen is instant. */
+let memoryCache: { key: string; buffer: ArrayBuffer } | null = null;
+
 const pageKey = (fileKey?: string) => (fileKey ? `tf.pdf.page.${fileKey}` : null);
 
 function readLastPage(fileKey?: string): number {
@@ -75,6 +78,85 @@ function writeLastPage(fileKey: string | undefined, page: number) {
   } catch {
     /* storage full or blocked: remembering the page is a nicety, not a must */
   }
+}
+
+/** One page inside the full-screen scroll column. */
+function ScrollPage({
+  doc,
+  pageNumber,
+  width,
+  ratio,
+  active,
+  register,
+}: {
+  doc: PdfDoc;
+  pageNumber: number;
+  width: number;
+  ratio: number;
+  active: boolean;
+  register: (n: number, el: HTMLDivElement | null) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const boxWidth = Math.max(120, width - 8);
+
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    let renderTask: { cancel: () => void } | null = null;
+    let current: PdfPage | null = null;
+    void (async () => {
+      try {
+        const p = await doc.getPage(pageNumber);
+        current = p;
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext("2d");
+        if (!canvas || !ctx || cancelled) return;
+        const base = p.getViewport({ scale: 1 });
+        const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+        const viewport = p.getViewport({ scale });
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const task = p.render({ canvasContext: ctx, viewport });
+        renderTask = task;
+        await task.promise;
+      } catch (e) {
+        const name = (e as { name?: string } | null)?.name ?? "";
+        if (cancelled || name === "RenderingCancelledException") return;
+        console.warn("[pdf-viewer] page render failed", pageNumber, e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      try {
+        renderTask?.cancel();
+      } catch {
+        /* already finished */
+      }
+      current?.cleanup?.();
+    };
+  }, [active, boxWidth, doc, pageNumber]);
+
+  return (
+    <div
+      ref={(el) => register(pageNumber, el)}
+      data-page={pageNumber}
+      className="mx-auto mb-2 flex justify-center"
+      style={active ? undefined : { height: Math.floor(boxWidth * ratio) }}
+    >
+      {active ? (
+        <canvas ref={canvasRef} className="block rounded-md bg-white shadow-sm" />
+      ) : (
+        <div
+          className="rounded-md bg-white/60 shadow-sm"
+          style={{ width: boxWidth, height: Math.floor(boxWidth * ratio) }}
+        />
+      )}
+    </div>
+  );
 }
 
 export function PdfViewer({
@@ -97,9 +179,19 @@ export function PdfViewer({
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [expanded, setExpanded] = useState(false);
   const [width, setWidth] = useState(0);
+  const [ratio, setRatio] = useState(1.414);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const taskRef = useRef<LoadingTask | null>(null);
+  const pageNodes = useRef(new Map<number, HTMLDivElement>());
+  const pageRef = useRef(1);
+
+  pageRef.current = page;
+
+  const registerPage = useCallback((n: number, el: HTMLDivElement | null) => {
+    if (el) pageNodes.current.set(n, el);
+    else pageNodes.current.delete(n);
+  }, []);
 
   const load = useCallback(() => {
     let alive = true;
@@ -108,29 +200,57 @@ export function PdfViewer({
     void (async () => {
       try {
         const pdfjs = await loadPdfjs();
-        // Range requests only: page one paints without downloading the whole file.
-        const task = pdfjs.getDocument({
-          url,
-          disableAutoFetch: true,
-          disableStream: false,
-          rangeChunkSize: 524288,
-        }) as unknown as LoadingTask;
+        const cached =
+          memoryCache && fileKey && memoryCache.key === fileKey
+            ? memoryCache.buffer
+            : await getCachedPdf(fileKey);
+        if (!alive) return;
+        // A cached file skips the network completely; otherwise stream by range
+        // so page one paints before the whole file has arrived.
+        const task = pdfjs.getDocument(
+          cached
+            ? { data: new Uint8Array(cached.slice(0)) }
+            : { url, disableAutoFetch: true, disableStream: false, rangeChunkSize: 524288 },
+        ) as unknown as LoadingTask;
         taskRef.current = task;
         const loaded = (await task.promise) as unknown as PdfDoc;
         if (!alive) {
           void loaded.destroy?.();
           return;
         }
+        if (cached && fileKey) memoryCache = { key: fileKey, buffer: cached };
         const cap = Math.min(loaded.numPages, MAX_PREVIEW_PAGES);
         const start = Math.min(Math.max(1, readLastPage(fileKey)), cap);
         // Warm the page we are about to paint before showing the canvas, so the
         // remembered page appears directly with no page-1 flash.
-        void loaded.getPage(start).catch(() => undefined);
+        void loaded
+          .getPage(start)
+          .then((p) => {
+            if (!alive) return;
+            const base = p.getViewport({ scale: 1 });
+            if (base.width > 0) setRatio(base.height / base.width);
+          })
+          .catch(() => undefined);
         setDoc(loaded);
         setTotal(cap);
         setPage(start);
         setPageInput(String(start));
         setStatus("ready");
+
+        // Keep the bytes for next time, without delaying this open.
+        if (!cached && fileKey) {
+          void (async () => {
+            try {
+              const res = await fetch(url);
+              if (!res.ok) return;
+              const buffer = await res.arrayBuffer();
+              memoryCache = { key: fileKey, buffer };
+              await putCachedPdf(fileKey, buffer);
+            } catch {
+              /* offline or blocked: nothing to cache, streaming still works */
+            }
+          })();
+        }
       } catch (e) {
         if (!alive) return;
         console.warn("[pdf-viewer] failed", e);
@@ -162,7 +282,7 @@ export function PdfViewer({
       if (timer) clearTimeout(timer);
       ro.disconnect();
     };
-  }, [status]);
+  }, [status, expanded]);
 
   // Full screen: keep the page behind still and let Escape bring the file back.
   useEffect(() => {
@@ -179,9 +299,9 @@ export function PdfViewer({
     };
   }, [expanded]);
 
-  // Paint the current page only, then warm the next one so Next feels instant.
+  // Normal size: paint the current page only, then warm the next one.
   useEffect(() => {
-    if (!doc || status !== "ready") return;
+    if (!doc || status !== "ready" || expanded) return;
     let cancelled = false;
     let renderTask: { cancel: () => void } | null = null;
     let current: PdfPage | null = null;
@@ -224,16 +344,57 @@ export function PdfViewer({
       }
       current?.cleanup?.();
     };
-  }, [doc, page, status, total, width]);
+  }, [doc, page, status, total, width, expanded]);
+
+  // Full screen: follow the page the student has scrolled to.
+  useEffect(() => {
+    if (!expanded || status !== "ready" || typeof IntersectionObserver === "undefined") return;
+    const root = wrapRef.current;
+    if (!root) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        let best: { n: number; r: number } | null = null;
+        for (const entry of entries) {
+          const n = Number((entry.target as HTMLElement).dataset.page);
+          if (!n || !entry.isIntersecting) continue;
+          if (!best || entry.intersectionRatio > best.r) best = { n, r: entry.intersectionRatio };
+        }
+        if (best && best.n !== pageRef.current) {
+          setPage(best.n);
+          setPageInput(String(best.n));
+        }
+      },
+      { root, threshold: [0.1, 0.5, 0.9] },
+    );
+    pageNodes.current.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [expanded, status, total]);
+
+  // Land on the current page when entering full screen.
+  useEffect(() => {
+    if (!expanded || status !== "ready") return;
+    const timer = setTimeout(() => {
+      pageNodes.current.get(pageRef.current)?.scrollIntoView({ block: "start" });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [expanded, status]);
 
   useEffect(() => {
     if (status === "ready") writeLastPage(fileKey, page);
   }, [fileKey, page, status]);
 
+  const pages = useMemo(
+    () => Array.from({ length: total }, (_, i) => i + 1),
+    [total],
+  );
+
   const go = (n: number) => {
     const next = Math.min(Math.max(1, n), total || 1);
     setPage(next);
     setPageInput(String(next));
+    if (expanded) {
+      pageNodes.current.get(next)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
   };
 
   const cancelLoad = () => {
@@ -294,7 +455,10 @@ export function PdfViewer({
         ) : null}
       </div>
 
-      <div ref={wrapRef} className="flex-1 overflow-auto p-1">
+      <div
+        ref={wrapRef}
+        className={expanded ? "flex-1 overflow-y-auto p-1" : "flex-1 overflow-hidden p-1"}
+      >
         {status === "loading" ? (
           <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
             <Loader2 className="h-5 w-5 animate-spin text-[#B86E0A]" />
@@ -311,7 +475,27 @@ export function PdfViewer({
             ) : null}
           </div>
         ) : null}
-        <canvas ref={canvasRef} className="mx-auto block rounded-md bg-white shadow-sm" />
+
+        {status === "ready" && expanded && doc ? (
+          pages.map((n) => (
+            <ScrollPage
+              key={n}
+              doc={doc}
+              pageNumber={n}
+              width={width || 340}
+              ratio={ratio}
+              active={Math.abs(n - page) <= 2}
+              register={registerPage}
+            />
+          ))
+        ) : (
+          <canvas
+            ref={canvasRef}
+            className={
+              expanded ? "hidden" : "mx-auto block max-h-full rounded-md bg-white shadow-sm"
+            }
+          />
+        )}
       </div>
 
       {status === "ready" ? (
