@@ -81,11 +81,17 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Home-only host: shows the tour once, then remembers it was seen. */
+/**
+ * Home-only host. The tour shows exactly once: on the first arrival at Home
+ * after onboarding is fully finished (profile set up and at least one course).
+ * The `tourSeen` flag lives on the persisted profile, so a returning login,
+ * a completed signup or a refresh never brings it back.
+ */
 export function FirstRunTourHost() {
   const { profile, update } = useProfile();
-  const [open, setOpen] = useState(!profile.tourSeen);
-  if (!open) return null;
+  const onboardingDone = profile.setupComplete && profile.courses.length > 0;
+  const [open, setOpen] = useState(onboardingDone && !profile.tourSeen);
+  if (!open || profile.tourSeen) return null;
   return (
     <FirstRunTour
       onClose={() => {

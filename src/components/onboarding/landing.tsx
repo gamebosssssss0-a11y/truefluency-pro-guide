@@ -2,15 +2,7 @@ import { useRef } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo-mark";
-import {
-  BrainCircuit,
-  Calculator,
-  FileText,
-  LineChart,
-  Library,
-  MessagesSquare,
-  Sparkles,
-} from "lucide-react";
+import { BrainCircuit, Calculator, FileText, LineChart, Sparkles } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import productPreview from "@/assets/product-preview.png.asset.json";
 
@@ -44,18 +36,6 @@ const features = [
   },
 ];
 
-const upcoming = [
-  {
-    icon: Library,
-    title: "Resource Library",
-    body: "Students share past papers and notes by course, so the material pool grows with the community.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "AI Study Chatbot",
-    body: "Course specific Q&A alongside general study help.",
-  },
-];
 
 const FACULTIES = "Science, Clinical, Arts, Law, Technology, Social Sciences";
 
@@ -200,24 +180,6 @@ export function LandingScreen() {
                 </div>
                 <h3 className="text-sm font-semibold text-[#1B2A4A]">{f.title}</h3>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{f.body}</p>
-              </div>
-            ))}
-          </div>
-
-          <h2 className="mt-8 font-display text-xl font-semibold text-[#1B2A4A]">Coming next</h2>
-          <div className="mt-4 space-y-3">
-            {upcoming.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-dashed border-[#E4DCC8] bg-white/60 p-4"
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-muted-foreground">
-                    <f.icon className="h-4 w-4" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-[#1B2A4A]">{f.title}</h3>
-                </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>
               </div>
             ))}
           </div>
