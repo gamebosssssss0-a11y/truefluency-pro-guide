@@ -14,13 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_path: string | null
+          cgpa_actual: Json | null
+          cgpa_inputs: Json | null
+          cgpa_intro_seen: boolean
+          cgpa_plan: Json | null
+          created_at: string
+          department: string | null
+          disclaimer_accepted: boolean
+          display_name: string | null
+          email: string | null
+          faculty: string | null
+          freeze_used_on: string | null
+          freezes_available: number
+          goal: string | null
+          has_completed_first_mock: boolean
+          last_active_date: string | null
+          last_qualifying_day: string | null
+          level: number | null
+          mastered_courses: Json
+          setup_complete: boolean
+          streak_days: number
+          study_preference: string | null
+          timeline: string | null
+          tour_seen: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_path?: string | null
+          cgpa_actual?: Json | null
+          cgpa_inputs?: Json | null
+          cgpa_intro_seen?: boolean
+          cgpa_plan?: Json | null
+          created_at?: string
+          department?: string | null
+          disclaimer_accepted?: boolean
+          display_name?: string | null
+          email?: string | null
+          faculty?: string | null
+          freeze_used_on?: string | null
+          freezes_available?: number
+          goal?: string | null
+          has_completed_first_mock?: boolean
+          last_active_date?: string | null
+          last_qualifying_day?: string | null
+          level?: number | null
+          mastered_courses?: Json
+          setup_complete?: boolean
+          streak_days?: number
+          study_preference?: string | null
+          timeline?: string | null
+          tour_seen?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_path?: string | null
+          cgpa_actual?: Json | null
+          cgpa_inputs?: Json | null
+          cgpa_intro_seen?: boolean
+          cgpa_plan?: Json | null
+          created_at?: string
+          department?: string | null
+          disclaimer_accepted?: boolean
+          display_name?: string | null
+          email?: string | null
+          faculty?: string | null
+          freeze_used_on?: string | null
+          freezes_available?: number
+          goal?: string | null
+          has_completed_first_mock?: boolean
+          last_active_date?: string | null
+          last_qualifying_day?: string | null
+          level?: number | null
+          mastered_courses?: Json
+          setup_complete?: boolean
+          streak_days?: number
+          study_preference?: string | null
+          timeline?: string | null
+          tour_seen?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_mock_streak: {
+        Args: { answered_count: number }
+        Returns: {
+          event: string
+          freeze_used_on: string
+          freezes_available: number
+          last_active_date: string
+          streak_days: number
+          today_wat: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
