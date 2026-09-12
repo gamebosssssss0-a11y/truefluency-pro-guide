@@ -37,6 +37,61 @@ function readErrorDetail(text: string, status: number): string {
   return `The analysis service rejected the request (${status}).`;
 }
 
+/** Pauses for ms milliseconds — used between polling attempts. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Starts (or resumes) a mock generation job.
+ *
+ * A plain postJson() call would throw on the 409 the backend sends when this
+ * user already has a job running — most commonly because they refreshed the
+ * page mid-generation and lost track of the previous job_id. That 409 body
+ * carries an `existing_job_id` specifically so the SAME job can be resumed
+ * instead of the student hitting a dead-end error with no way to see their
+ * result or start over. This function is the only place that needs to know
+ * about that — it reads the 409 body directly instead of using postJson's
+ * generic throw-on-!ok behavior, then returns the job_id either way so the
+ * caller doesn't need to care whether it was a fresh start or a resume.
+ */
+async function startMockJob(body: unknown): Promise<{ job_id: string; resumed: boolean }> {
+  const url = `${base()}/generate-mock/start`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const payload = await res.json().catch(() => ({}));
+
+    if (res.status === 409 && typeof payload?.existing_job_id === "string") {
+      return { job_id: payload.existing_job_id, resumed: true };
+    }
+    if (!res.ok) {
+      console.error("[backend] request failed", { path: "/generate-mock/start", status: res.status, payload });
+      throw new Error(readErrorDetail(JSON.stringify(payload), res.status));
+    }
+    return { job_id: payload.job_id as string, resumed: false };
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Promise<T> {
   const url = `${base()}${path}`;
   const controller = new AbortController();
@@ -75,60 +130,6 @@ async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Pr
 }
 
 /**
- * Starts a mock-generation job. Handles the "you already have one running"
- * case gracefully: instead of throwing, it picks up the EXISTING job_id and
- * resumes watching it. This is the fix for: refresh the page → the old
- * generation is still running server-side with no way to know about it →
- * click Generate again → confusing failure. Now it just quietly reconnects
- * to whatever's already in flight.
- */
-async function startOrResumeMockJob(body: unknown): Promise<{ job_id: string; resumed: boolean }> {
-  const url = `${base()}/generate-mock/start`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20_000);
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) throw new Error("Sign in to use the analysis service.");
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 409 && typeof data?.existing_job_id === "string") {
-      // Not an error — a job is already running. Resume it instead of failing.
-      return { job_id: data.existing_job_id, resumed: true };
-    }
-    if (!res.ok) {
-      throw new Error(readErrorDetail(JSON.stringify(data), res.status));
-    }
-    return { job_id: data.job_id, resumed: false };
-  } catch (e) {
-    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
-    if (e instanceof TypeError) {
-      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
-    }
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Explicitly abandons an in-progress job — call this if the student wants to
- * cancel a stuck/orphaned generation (e.g. after a refresh) rather than wait
- * for it or have it silently keep consuming tokens in the background.
- */
-export async function cancelMockJob(jobId: string): Promise<void> {
-  await postJson(`/generate-mock/cancel/${jobId}`, {}, 15_000);
-}
-
-/**
  * GET request helper for polling — deliberately short per-call timeout
  * (15s), since a status check should always be near-instant. This is NOT
  * the same as waiting for the whole generation to finish.
@@ -163,11 +164,6 @@ async function getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
-}
-
-/** Pauses for ms milliseconds — used between polling attempts. */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -230,7 +226,11 @@ export async function generateMock(
     profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
   },
   options?: {
-    /** Called each time a poll comes back "processing" — use to show a spinner/progress message. */
+    /**
+     * Called each time a poll comes back "processing". When the service reports
+     * how many questions are done, those counts are passed through so the
+     * loading screen can show "n of total ready".
+     */
     onProgress?: (progress: { ready: number | null; total: number | null }) => void;
     /** Max total time to keep polling before giving up. Default 5 minutes. */
     maxWaitMs?: number;
@@ -251,16 +251,36 @@ export async function generateMock(
     user_department: input.profile.department,
   };
 
-  // Step 1: kick off the job (or resume an existing one — see startOrResumeMockJob).
-  // This returns almost instantly — it does NOT wait for generation to finish.
-  const started = await startOrResumeMockJob(body);
+  // Step 1: kick off the job (or resume one already running for this user —
+  // see startMockJob's docstring for why a plain postJson() call here would
+  // have silently broken the resume-after-refresh flow).
+  const started = await startMockJob(body);
+  if (started.resumed) {
+    console.info("[mock] resuming an in-progress job from before a refresh, instead of starting a new one");
+  }
 
   // Step 2: poll for the result.
   const maxWaitMs = options?.maxWaitMs ?? 5 * 60_000; // 5 minutes default ceiling
-  const pollIntervalMs = 3_000;
+  const pollIntervalMs = 1_500; // tightened from 3000ms — a completed job now shows up to 1.5s sooner instead of up to 3s late
   const deadline = Date.now() + maxWaitMs;
 
-  let data: { status: string; result?: { questions: unknown }; error?: string; ready?: number | null; total?: number | null } | null = null;
+  let data: {
+    status: string;
+    result?: { questions: unknown };
+    error?: string;
+    ready?: unknown;
+    questions_ready?: unknown;
+    total?: unknown;
+    question_count?: unknown;
+  } | null = null;
+
+  const readCount = (...candidates: unknown[]): number | null => {
+    for (const c of candidates) {
+      const n = Number(c);
+      if (Number.isFinite(n) && n >= 0) return Math.round(n);
+    }
+    return null;
+  };
 
   while (Date.now() < deadline) {
     await sleep(pollIntervalMs);
@@ -272,13 +292,14 @@ export async function generateMock(
       continue;
     }
 
-    const poll = data;
-    if (!poll) continue;
-    if (poll.status === "completed") break;
-    if (poll.status === "failed") {
-      throw new Error(poll.error || "Mock generation failed.");
+    if (data?.status === "completed") break;
+    if (data?.status === "failed") {
+      throw new Error(data.error || "Mock generation failed.");
     }
-    options?.onProgress?.({ ready: poll.ready ?? null, total: poll.total ?? null });
+    options?.onProgress?.({
+      ready: readCount(data?.ready, data?.questions_ready),
+      total: readCount(data?.total, data?.question_count, input.questionCount),
+    });
     // status is "processing" — loop again
   }
 
@@ -336,4 +357,24 @@ export async function submitResults(input: {
   } catch {
     // fire-and-forget — never block the student from seeing their results
   }
+}
+
+/**
+ * Permanently deletes the signed-in user's ENTIRE account — every uploaded
+ * file, every table row (materials, mock history, subscription, usage,
+ * profile), and the actual Supabase auth account itself.
+ *
+ * This exists because client-side JS can never delete an auth user — that
+ * always requires the service role key, which only lives on the backend.
+ * The old client-side "delete everything" only ever removed uploaded
+ * materials; the account, profile, subscription, and mock test history all
+ * silently survived. This is the real, complete version.
+ */
+export async function deleteAccount(): Promise<{
+  status: "complete" | "partial";
+  auth_account_deleted: boolean;
+  tables_cleared: string[];
+  tables_failed: string[];
+}> {
+  return postJson("/account/delete", {}, 30_000);
 }
