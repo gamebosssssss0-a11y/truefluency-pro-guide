@@ -214,9 +214,11 @@ export type Profile = {
   inProgressTest: InProgressTest;
   lastResultId: string | null;
 
-  // Streak
+  // Cloud-backed study streak
   streakDays: number;
-  lastQualifyingDay: string | null; // YYYY-MM-DD
+  lastActiveDate: string | null; // YYYY-MM-DD in Africa/Lagos
+  freezesAvailable: number;
+  freezeUsedOn: string | null; // YYYY-MM-DD in Africa/Lagos
 
   // Milestones (one-time celebrations)
   hasCompletedFirstMock: boolean;
@@ -276,7 +278,9 @@ const emptyProfile: Profile = {
   inProgressTest: null,
   lastResultId: null,
   streakDays: 0,
-  lastQualifyingDay: null,
+  lastActiveDate: null,
+  freezesAvailable: 1,
+  freezeUsedOn: null,
   hasCompletedFirstMock: false,
   masteredCourses: [],
   courseTestSettings: {},
@@ -343,6 +347,14 @@ export function sanitizeProfile(raw: unknown): Profile {
     courseTestSettings: asRecord<CourseTestSettings>(p.courseTestSettings),
     courseTopicAnalysis: asRecord<CourseTopicAnalysis>(p.courseTopicAnalysis),
     aiQuestionsByCourse: byCourse,
+    lastActiveDate:
+      typeof p.lastActiveDate === "string"
+        ? p.lastActiveDate
+        : typeof p.lastQualifyingDay === "string"
+          ? p.lastQualifyingDay
+          : null,
+    freezesAvailable: Math.max(0, Math.min(2, Number(p.freezesAvailable) || 1)),
+    freezeUsedOn: typeof p.freezeUsedOn === "string" ? p.freezeUsedOn : null,
   };
 }
 
@@ -523,37 +535,7 @@ export function useProfile() {
   return ctx;
 }
 
-/* ---------- Streak + milestone helpers ---------- */
-
-function today(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function yesterday(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/**
- * Update the streak after a qualifying activity (currently: mock test completion).
- * Structured so flashcards etc. can call this later without a rewrite.
- */
-export function bumpStreak(p: Profile): Pick<Profile, "streakDays" | "lastQualifyingDay"> {
-  const t = today();
-  if (p.lastQualifyingDay === t) {
-    return { streakDays: p.streakDays, lastQualifyingDay: t };
-  }
-  if (p.lastQualifyingDay === yesterday()) {
-    return { streakDays: p.streakDays + 1, lastQualifyingDay: t };
-  }
-  return { streakDays: 1, lastQualifyingDay: t };
-}
-
-export function hasQualifyingActivityToday(p: Profile): boolean {
-  return p.lastQualifyingDay === today();
-}
-
+/* ---------- Milestone helpers ---------- */
 export function averageForCourse(p: Profile, code: string): number | null {
   const rel = p.attempts.filter((a) => a.courseCode === code);
   if (!rel.length) return null;

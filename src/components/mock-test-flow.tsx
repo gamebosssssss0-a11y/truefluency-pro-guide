@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useProfile, bumpStreak, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
+import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid } from "lucide-react";
@@ -17,6 +18,7 @@ import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
+import { recordMockStreak } from "@/lib/streak.functions";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
@@ -668,7 +670,7 @@ export function MockRunScreen() {
     return t.questionIds.map((id) => aiQuestions.find((q) => q.id === id)).filter(Boolean) as AIQuestion[];
   }, [t, aiQuestions]);
 
-  const submit = () => {
+  const submit = async () => {
     if (!t || submittedRef.current) return;
     submittedRef.current = true;
 
@@ -724,8 +726,25 @@ export function MockRunScreen() {
       lastResultId: attempt.id,
       hasCompletedFirstMock: true,
       masteredCourses: mastered,
-      ...bumpStreak(profile),
     });
+
+    const answeredCount = t.answers.filter((answer) => answer !== null).length;
+    if (answeredCount >= 5) {
+      try {
+        const streak = await recordMockStreak({ data: { answeredCount } });
+        if (streak) {
+          update({
+            streakDays: streak.streakDays,
+            lastActiveDate: streak.lastActiveDate,
+            freezesAvailable: streak.freezesAvailable,
+            freezeUsedOn: streak.freezeUsedOn,
+          });
+          if (streak.event === "protected") toast.success("Streak protected. 1 freeze used.");
+        }
+      } catch (error) {
+        console.warn("[streak] couldn't save qualifying mock", error);
+      }
+    }
     // Fire-and-forget: send results to backend feedback loop
     // Never blocks or throws — student always sees their results regardless
     submitResults({
