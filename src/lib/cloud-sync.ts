@@ -170,7 +170,7 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         cgpa_inputs: profile.cgpaInputs as never,
         cgpa_plan: profile.cgpaPlan as never,
         cgpa_actual: profile.cgpaActual as never,
-      },
+      } as never,
       { onConflict: "user_id" },
     );
     if (pErr) throw pErr;

@@ -762,7 +762,7 @@ export function MockRunScreen() {
 
   useEffect(() => {
     if (!t) return;
-    if (remaining === 0) submit();
+    if (remaining === 0) void submit();
   }, [remaining, t]);
 
   if (!t) {
@@ -802,7 +802,7 @@ export function MockRunScreen() {
       );
       if (!ok) return;
     }
-    submit();
+    void submit();
   };
 
   const jumpTo = (target: number) => {
