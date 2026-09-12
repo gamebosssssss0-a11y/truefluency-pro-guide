@@ -13,7 +13,7 @@ import {
 import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
 import {
-  deleteAllUserMaterials, deleteMaterial, listAllUserMaterials,
+  deleteMaterial, listAllUserMaterials,
   type CourseMaterial,
 } from "@/lib/course-materials";
 import { MaterialRow } from "@/components/course-detail";
@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { getMyAvatar, removeMyAvatar, uploadMyAvatar } from "@/lib/avatar";
+import { deleteAccount } from "@/lib/backend-api";
 
 /**
  * Account photo. The image is cropped to a square in the browser, stored in the
@@ -138,9 +139,24 @@ export function AccountScreen() {
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
-      // Files and database rows first. Local state is only cleared once the
-      // backend deletion has actually succeeded.
-      await deleteAllUserMaterials();
+      // Real, complete deletion — every file, every table row (materials,
+      // mock history, subscription, usage, profile), and the actual auth
+      // account itself. The old client-side deleteAllUserMaterials() +
+      // signOut() only ever removed uploaded files and ended the session;
+      // the account, profile, subscription, and mock test history all
+      // silently survived and came right back on next sign-in.
+      const result = await deleteAccount();
+      if (result.status === "partial") {
+        console.error("[account] deletion was partial", result);
+        toast.error(
+          result.tables_failed.length > 0
+            ? `Most of your data was deleted, but ${result.tables_failed.join(", ")} couldn't be cleared. Contact support to finish this.`
+            : "Your data was deleted, but the account itself couldn't be removed. Contact support to finish this."
+        );
+        setDeleting(false);
+        closeDelete();
+        return;
+      }
       try {
         await supabase.auth.signOut();
       } catch (signOutError) {
@@ -154,7 +170,7 @@ export function AccountScreen() {
       return;
     }
     resetSetup();
-    toast.success("All your data has been deleted.");
+    toast.success("Your account and all your data have been permanently deleted.");
     setDeleting(false);
     closeDelete();
   };
@@ -229,9 +245,9 @@ export function AccountScreen() {
     },
     {
       label: "Flashcards",
-      blurb: "15-card decks from your upload.",
+      blurb: "Coming soon.",
       icon: Layers,
-      onClick: () => navigate("flashcards"),
+      onClick: () => navigate("flashcards-soon"),
     },
   ];
 
