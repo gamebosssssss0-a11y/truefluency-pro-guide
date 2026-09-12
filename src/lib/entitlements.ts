@@ -41,6 +41,7 @@ export type AccessSummary = {
   libraryUploadsUnlocked: boolean;
   usageToday: Record<GatedFeature, number>;
   dailyLimits: Record<GatedFeature, number | null>;
+  watToday: string;
 };
 
 export type QuotaVerdict = {

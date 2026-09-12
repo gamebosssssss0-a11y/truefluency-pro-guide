@@ -35,6 +35,15 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function todayInLagos(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -148,6 +157,7 @@ export async function resolveAccess(userId: string): Promise<AccessSummary> {
       flashcard_decks: fullAccess ? null : FREE_DAILY_LIMITS.flashcard_decks,
       library_uploads: fullAccess ? null : FREE_DAILY_LIMITS.library_uploads,
     },
+    watToday: todayInLagos(),
   };
 }
 

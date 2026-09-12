@@ -120,7 +120,10 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
     // has already been completed, so it is never asked for twice.
     profileCompleted: !!(row.display_name ?? "").trim(),
     streakDays: row.streak_days ?? 0,
-    lastQualifyingDay: row.last_qualifying_day ?? null,
+    lastActiveDate: (row as typeof row & { last_active_date?: string | null }).last_active_date ?? row.last_qualifying_day ?? null,
+    freezesAvailable: (row as typeof row & { freezes_available?: number }).freezes_available ?? 1,
+    freezeUsedOn: (row as typeof row & { freeze_used_on?: string | null }).freeze_used_on ?? null,
+    tourSeen: (row as typeof row & { tour_seen?: boolean }).tour_seen ?? false,
     hasCompletedFirstMock: !!row.has_completed_first_mock,
     masteredCourses: (row.mastered_courses as unknown as string[]) ?? [],
     cgpaInputs: (row.cgpa_inputs as unknown as CgpaInputs) ?? null,
@@ -161,14 +164,13 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         setup_complete: profile.setupComplete,
         disclaimer_accepted: profile.disclaimerAccepted,
         cgpa_intro_seen: profile.cgpaIntroSeen,
-        streak_days: profile.streakDays,
-        last_qualifying_day: profile.lastQualifyingDay,
+        tour_seen: profile.tourSeen,
         has_completed_first_mock: profile.hasCompletedFirstMock,
         mastered_courses: profile.masteredCourses,
         cgpa_inputs: profile.cgpaInputs as never,
         cgpa_plan: profile.cgpaPlan as never,
         cgpa_actual: profile.cgpaActual as never,
-      },
+      } as never,
       { onConflict: "user_id" },
     );
     if (pErr) throw pErr;

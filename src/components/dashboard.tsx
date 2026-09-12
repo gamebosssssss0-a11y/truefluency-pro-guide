@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useProfile, hasQualifyingActivityToday } from "@/lib/profile-store";
+import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight, Flame, Quote as QuoteIcon, Lightbulb, Calculator, Target,
@@ -226,6 +226,7 @@ function StrengthsCard() {
 
 export function HomeScreen() {
   const { profile, navigate } = useProfile();
+  const { access } = useEntitlement();
   /** First name only, in title case: never the full legal name, never ALL-CAPS. */
   const name = (() => {
     const raw = (profile.identity?.name ?? "").trim();
@@ -244,7 +245,7 @@ export function HomeScreen() {
     return () => { alive = false; };
   }, []);
 
-  const activeToday = hasQualifyingActivityToday(profile);
+  const activeToday = !!access && profile.lastActiveDate === access.watToday;
   const subline = greetingSubline(profile.goal);
   const hasStreak = profile.streakDays > 0;
 
@@ -294,11 +295,9 @@ export function HomeScreen() {
           </div>
         </div>
 
-        <NextStepCard />
-
         <PlanChip />
 
-        {/* Streak: real data only */}
+        {/* Streak: cloud-backed qualifying mock activity only. */}
         {hasStreak ? (
           <div className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
@@ -307,7 +306,7 @@ export function HomeScreen() {
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">Current streak</div>
               <div className="text-[11px] text-muted-foreground">
-                {activeToday ? "Nice, you've qualified for today." : "Keep it going!"}
+                {activeToday ? "Qualified today." : `${profile.freezesAvailable} ${profile.freezesAvailable === 1 ? "freeze" : "freezes"} available`}
               </div>
             </div>
             <div className="text-right">
@@ -318,6 +317,24 @@ export function HomeScreen() {
             </div>
           </div>
         ) : null}
+
+        {access ? (
+          <div className="mb-5 rounded-2xl border border-border bg-card p-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Daily goal</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  {access.usageToday.mock_sets >= 2 ? "Daily target reached." : "Mock sets completed today"}
+                </div>
+              </div>
+              <div className="shrink-0 font-display text-lg font-semibold text-accent">
+                {Math.min(access.usageToday.mock_sets, 2)} of 2 mocks today
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <NextStepCard />
 
         <ContinueFileCard />
         <StrengthsCard />
