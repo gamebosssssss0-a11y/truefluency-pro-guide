@@ -1,0 +1,670 @@
+import { useEffect, useRef, useState } from "react";
+import { useProfile } from "@/lib/profile-store";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
+  LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor, Compass,
+} from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { HeaderLogo } from "@/components/brand";
+import {
+  deleteMaterial, listAllUserMaterials,
+  type CourseMaterial,
+} from "@/lib/course-materials";
+import { MaterialRow } from "@/components/course-detail";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { PRICE_LINE } from "@/lib/pricing-copy";
+import { useEntitlement } from "@/hooks/use-entitlement";
+import { getMyAvatar, removeMyAvatar, uploadMyAvatar } from "@/lib/avatar";
+import { deleteAccount } from "@/lib/backend-api";
+
+/**
+ * Account photo. The image is cropped to a square in the browser, stored in the
+ * student's own folder in the existing private materials bucket, and only ever
+ * shown to coursemates on a file where they ticked "show my photo".
+ */
+function AccountPhotoCard() {
+  const { profile } = useProfile();
+  const [url, setUrl] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const letter = (profile.identity?.name ?? "").trim().charAt(0).toUpperCase() || "S";
+
+  useEffect(() => {
+    let alive = true;
+    void getMyAvatar()
+      .then((r) => { if (alive) setUrl(r.url); })
+      .catch(() => { if (alive) setUrl(null); });
+    return () => { alive = false; };
+  }, []);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setWorking(true);
+    try {
+      const result = await uploadMyAvatar(file);
+      setUrl(result.url);
+      toast.success("Photo saved.");
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't save that photo. Try again.");
+    } finally {
+      setWorking(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const clear = async () => {
+    setWorking(true);
+    try {
+      await removeMyAvatar();
+      setUrl(null);
+      toast.success("Photo removed.");
+    } catch {
+      toast.error("Couldn't remove that photo. Try again.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        {url ? (
+          <img src={url} alt="Your photo" className="h-14 w-14 rounded-full object-cover" />
+        ) : (
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-secondary font-display text-lg font-semibold text-primary">
+            {letter}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-foreground">Your photo</div>
+          <div className="text-[11px] text-muted-foreground">
+            Optional. Square crop. Coursemates see it only on files where you tick the box.
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button
+          variant="outline"
+          className="h-10"
+          disabled={working}
+          onClick={() => inputRef.current?.click()}
+        >
+          {working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+          {url ? "Change photo" : "Add photo"}
+        </Button>
+        {url ? (
+          <Button variant="ghost" className="h-10" disabled={working} onClick={() => void clear()}>
+            Remove
+          </Button>
+        ) : null}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => void pick(e.target.files?.[0])}
+      />
+    </div>
+  );
+}
+
+export function AccountScreen() {
+  const { profile, navigate, update, resetSetup } = useProfile();
+  const { theme, setTheme } = useTheme();
+  const { access } = useEntitlement();
+  const planLabel =
+    access?.tier === "paid" ? "Premium" : access?.tier === "trial" ? "Free trial" : "Free";
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  /** Two-tap confirmation: 1 = warning, 2 = final confirm. No typing required. */
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [deleting, setDeleting] = useState(false);
+
+  const closeDelete = () => {
+    setDeleteAllOpen(false);
+    setDeleteStep(1);
+  };
+
+  const handleDeleteAll = async () => {
+    setDeleting(true);
+    try {
+      // Real, complete deletion — every file, every table row (materials,
+      // mock history, subscription, usage, profile), and the actual auth
+      // account itself. The old client-side deleteAllUserMaterials() +
+      // signOut() only ever removed uploaded files and ended the session;
+      // the account, profile, subscription, and mock test history all
+      // silently survived and came right back on next sign-in.
+      const result = await deleteAccount();
+      if (result.status === "partial") {
+        console.error("[account] deletion was partial", result);
+        toast.error(
+          result.tables_failed.length > 0
+            ? `Most of your data was deleted, but ${result.tables_failed.join(", ")} couldn't be cleared. Contact support to finish this.`
+            : "Your data was deleted, but the account itself couldn't be removed. Contact support to finish this."
+        );
+        setDeleting(false);
+        closeDelete();
+        return;
+      }
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        console.error("[account] sign-out after deletion failed", signOutError);
+      }
+    } catch (e) {
+      console.error("[account] delete all failed", e);
+      toast.error((e as Error).message || "Couldn't delete everything. Try again.");
+      setDeleting(false);
+      closeDelete();
+      return;
+    }
+    resetSetup();
+    toast.success("Your account and all your data have been permanently deleted.");
+    setDeleting(false);
+    closeDelete();
+  };
+
+  /**
+   * Sign out. The cloud snapshot is pushed first so nothing that only existed
+   * locally is lost, then the session ends and the local cache is cleared.
+   * The data itself stays in the account and comes back on next sign-in.
+   */
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      const { pushCloudProfile } = await import("@/lib/cloud-sync");
+      const saved = await pushCloudProfile(profile);
+      if (!saved) {
+        toast.error("Couldn't save your latest changes to your account. Check your connection and try again.");
+        setSigningOut(false);
+        return;
+      }
+    } catch (e) {
+      console.error("[account] pre-sign-out save failed", e);
+      toast.error("Couldn't save your latest changes to your account. Check your connection and try again.");
+      setSigningOut(false);
+      return;
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("[account] sign-out failed", e);
+    }
+
+    resetSetup();
+    toast.success("Signed out. Your data is saved to your account.");
+    setSigningOut(false);
+    setSignOutOpen(false);
+  };
+
+  const tools = [
+    {
+      label: "CGPA calculator",
+      blurb: "Enter real scores, get your semester GPA and cumulative CGPA.",
+      icon: Calculator,
+      onClick: () => navigate("cgpa"),
+    },
+    {
+      label: "CGPA goal setter",
+      blurb: "Set a target CGPA and get the grades plus daily plan it needs.",
+      icon: Target,
+      onClick: () => navigate("cgpa-goal"),
+    },
+    {
+      label: "Test history",
+      blurb: "Every attempt, with question-by-question review.",
+      icon: ClipboardList,
+      onClick: () => navigate("test-history"),
+    },
+    {
+      label: "Show me around again",
+      blurb: "Replay the short four-step tour of the app on Home.",
+      icon: Compass,
+      onClick: () => {
+        update({ tourSeen: false });
+        navigate("home");
+      },
+    },
+    {
+      label: "Support",
+      blurb: "Common questions, and how to reach us directly.",
+      icon: LifeBuoy,
+      onClick: () => navigate("support"),
+    },
+    {
+      label: "Flashcards",
+      blurb: "Quick recall practice from your own uploads.",
+      icon: Layers,
+      onClick: () => navigate("flashcards"),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Account
+          </span>
+        </div>
+        <h1 className="font-display text-3xl font-semibold text-foreground">Account</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your profile, your tools, and your data.
+        </p>
+
+        <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-foreground">Your plan</span>
+            <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+              {planLabel}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{PRICE_LINE}</p>
+          <button
+            type="button"
+            onClick={() => navigate("upgrade")}
+            className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:text-accent/80"
+          >
+            View premium <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+
+        <AccountPhotoCard />
+
+        <div className="mt-2 flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            <Monitor className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">Notify me when ready</div>
+            <div className="text-[11px] text-muted-foreground">
+              Browser extension. On this phone, use Upload.
+            </div>
+          </div>
+        </div>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Tools
+        </h2>
+
+        <div className="space-y-2">
+          {tools.map((t) => (
+            <button
+              key={t.label}
+              onClick={t.onClick}
+              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+                <t.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-foreground">{t.label}</div>
+                <div className="text-[11px] text-muted-foreground">{t.blurb}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          My courses
+        </h2>
+        <div className="space-y-2">
+          <button
+            onClick={() => navigate("all-uploads")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+          >
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <FolderOpen className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-foreground">All my uploads</div>
+              <div className="text-[11px] text-muted-foreground">
+                Every file you've uploaded, across every course.
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={() => navigate("add-course")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+          >
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <PlusCircle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-foreground">Add a course</div>
+              <div className="text-[11px] text-muted-foreground">
+                Anything your department list missed.
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Your profile
+        </h2>
+        <div className="space-y-2">
+          <button
+            onClick={() => navigate("edit-identity")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
+          >
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <User className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Identity</div>
+              <div className="truncate text-sm font-medium text-foreground">
+                {profile.identity?.name ?? "Not set"}
+              </div>
+              {profile.identity?.email ? (
+                <div className="truncate text-[11px] text-muted-foreground">{profile.identity.email}</div>
+              ) : null}
+            </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent">
+              <Pencil className="h-3 w-3" /> Edit
+            </span>
+          </button>
+          <Row icon={Building2} label="Faculty" value={profile.faculty ?? "Not set"} />
+          <Row icon={Layers} label="Department · Level" value={`${profile.department ?? "Not set"} · ${profile.level ?? "?"}L`} />
+          <Row icon={BookOpen} label="Courses" value={`${profile.courses.length} on file`} />
+        </div>
+
+        <button
+          onClick={() => navigate("edit-identity")}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent/80"
+        >
+          <Pencil className="h-3 w-3" /> Edit faculty, department or level
+        </button>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Appearance
+        </h2>
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">Theme</div>
+            <div className="text-[11px] text-muted-foreground">
+              {theme === "dark" ? "Dark, easier at night." : "Light, easier in daylight."}
+            </div>
+          </div>
+          <div className="flex overflow-hidden rounded-full border border-border">
+            <button
+              type="button"
+              aria-pressed={theme === "light"}
+              onClick={() => setTheme("light")}
+              className={
+                "px-2.5 py-1.5 text-[11px] font-semibold transition " +
+                (theme === "light" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              aria-pressed={theme === "dark"}
+              onClick={() => setTheme("dark")}
+              className={
+                "px-2.5 py-1.5 text-[11px] font-semibold transition " +
+                (theme === "dark" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              Dark
+            </button>
+          </div>
+        </div>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Legal
+        </h2>
+        <button
+          onClick={() => navigate("disclaimer-view")}
+          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+        >
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
+            <ShieldAlert className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">Review the disclaimer</div>
+            <div className="text-[11px] text-muted-foreground">
+              Study aid, not a substitute for lectures.
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+
+        {/* Session */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Session
+        </h2>
+        <Button variant="outline" className="w-full" onClick={() => setSignOutOpen(true)}>
+          <LogOut className="mr-2 h-4 w-4" /> Sign out
+        </Button>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Your profile, courses, uploads and test history stay saved to your account and come back
+          when you sign in again, on this phone or any other.
+        </p>
+
+        {/* Reset, clears local profile only, keeps uploaded files */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Reset
+        </h2>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            if (confirm("Reset your profile? This clears your faculty, department, level, confirmed courses, and streak. Your uploaded past papers, slides, and mock test history are kept — find your files under 'All my uploads'.")) {
+              resetSetup();
+            }
+          }}
+        >
+          <RotateCcw className="mr-2 h-4 w-4" /> Reset profile
+        </Button>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Keeps your uploaded files. Only clears profile and course selection.
+        </p>
+
+        {/* Danger, deletes everything including files in storage */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-destructive">
+          Danger zone
+        </h2>
+        <Button variant="destructive" className="w-full" onClick={() => { setDeleteStep(1); setDeleteAllOpen(true); }}>
+          <Trash2 className="mr-2 h-4 w-4" /> Delete all my data
+        </Button>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Permanently deletes your uploaded past papers, slides, pasted notes, and profile.
+        </p>
+
+        <AlertDialog open={signOutOpen} onOpenChange={(o) => { if (!o && !signingOut) setSignOutOpen(false); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out of TrueFluency Pro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your profile, courses, uploads, mock attempts and streak are saved to your account
+                first, so nothing is lost. Sign back in with the same account to pick up exactly
+                where you left off.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={signingOut}>Stay signed in</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={signingOut}
+                onClick={(e) => { e.preventDefault(); void handleSignOut(); }}
+              >
+                {signingOut ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                Save and sign out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+          open={deleteAllOpen}
+          onOpenChange={(o) => { if (!o && !deleting) closeDelete(); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {deleteStep === 1 ? "Delete all my data" : "Last check, this is permanent"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteStep === 1
+                  ? "This permanently deletes your uploaded past papers, slides, pasted notes, mock test history, and profile. It cannot be undone."
+                  : "Tap Delete everything to confirm. Your files are removed from storage first, then your profile is cleared on this device."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              {deleteStep === 1 ? (
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDeleteStep(2);
+                  }}
+                >
+                  Continue
+                </AlertDialogAction>
+              ) : (
+                <AlertDialogAction
+                  disabled={deleting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void handleDeleteAll();
+                  }}
+                >
+                  {deleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                  Delete everything
+                </AlertDialogAction>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+}
+
+/** Back-compat alias for older navigation that still says "settings". */
+export const SettingsScreen = AccountScreen;
+
+function Row({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="truncate text-sm font-medium text-foreground">{value}</div>
+        {sub ? <div className="truncate text-[11px] text-muted-foreground">{sub}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+/* -------- All my uploads screen -------- */
+
+export function AllUploadsScreen() {
+  const { profile, navigate } = useProfile();
+  const [items, setItems] = useState<CourseMaterial[] | null>(null);
+  const activeCodes = new Set(profile.courses.map((c) => c.code));
+
+  const load = async () => {
+    try {
+      const rows = await listAllUserMaterials();
+      setItems(rows);
+    } catch {
+      setItems([]);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    const h = () => void load();
+    window.addEventListener("course-materials-refresh", h);
+    return () => window.removeEventListener("course-materials-refresh", h);
+  }, []);
+
+  const grouped: Record<string, CourseMaterial[]> = {};
+  (items ?? []).forEach((m) => {
+    (grouped[m.course_code] ??= []).push(m);
+  });
+  const codes = Object.keys(grouped).sort();
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <HeaderLogo />
+          <button
+            onClick={() => navigate("account")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Account
+          </button>
+        </div>
+        <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Everything you've uploaded stays with you, even if you change department or level later.
+        </p>
+
+        {items === null ? (
+          <Progress value={40} className="mt-6 h-1.5" />
+        ) : items.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/60 p-6 text-center text-xs text-muted-foreground">
+            You haven't uploaded anything yet.
+          </div>
+        ) : (
+          <div className="mt-6 space-y-6">
+            {codes.map((code) => {
+              const isActive = activeCodes.has(code);
+              return (
+                <div key={code}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {code}
+                    </h2>
+                    {!isActive ? (
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Previous selection
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    {grouped[code].map((m) => (
+                      <MaterialRow
+                        key={m.id}
+                        m={m}
+                        isFromInactiveCourse={!isActive}
+                        onDelete={async () => {
+                          await deleteMaterial(m);
+                          window.dispatchEvent(new Event("course-materials-refresh"));
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

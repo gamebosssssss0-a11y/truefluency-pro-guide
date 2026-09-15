@@ -1,0 +1,275 @@
+/**
+ * Cloud sync: the database is the source of truth for a signed-in user's
+ * profile, courses, attempts, streaks, AI question sets and topic analysis.
+ * localStorage stays as an offline cache so the app renders instantly.
+ *
+ * Guest (anonymous) sessions are real auth users, so their rows are isolated
+ * by the same RLS policies.
+ */
+import { supabase } from "@/integrations/supabase/client";
+import type { Level, CatalogStatus } from "@/lib/uni-data";
+import type {
+  Profile,
+  UserCourse,
+  MockAttempt,
+  AIQuestion,
+  CourseTestSettings,
+  CourseTopicAnalysis,
+  Goal,
+  Timeline,
+  StudyPreference,
+  CgpaInputs,
+  CgpaPlan,
+  CgpaActual,
+} from "@/lib/profile-store";
+
+
+export type CloudSnapshot = Partial<Profile> | null;
+
+async function currentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
+/* ---------------- Load ---------------- */
+
+/**
+ * Pull everything for the signed-in user. Returns null when the user has no
+ * cloud profile row yet (first sign-in), so the caller can migrate local data.
+ */
+export async function loadCloudProfile(): Promise<CloudSnapshot> {
+  const userId = await currentUserId();
+  if (!userId) return null;
+
+  const [profileRes, coursesRes, attemptsRes, questionsRes, analysisRes] = await Promise.all([
+    supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("user_courses").select("*").eq("user_id", userId),
+    supabase.from("mock_attempts").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }),
+    supabase.from("ai_question_sets").select("*").eq("user_id", userId).order("generated_at", { ascending: false }),
+    supabase.from("course_topic_analysis").select("*").eq("user_id", userId),
+  ]);
+
+  if (profileRes.error) {
+    console.error("[cloud-sync] profile load failed", profileRes.error);
+    return null;
+  }
+  const row = profileRes.data;
+  if (!row) return null;
+
+  const courses: UserCourse[] = (coursesRes.data ?? []).map((c) => ({
+    code: c.course_code,
+    name: c.title ?? "",
+    status: (c.status ?? "Compulsory") as CatalogStatus,
+    ...(c.label_override
+      ? { labelOverride: c.label_override as "stem" | "humanities" | "neutral" }
+      : {}),
+    source: c.source === "verified" ? "verified" : "manual",
+  }));
+
+
+  const courseTestSettings: Record<string, CourseTestSettings> = {};
+  for (const c of coursesRes.data ?? []) {
+    if (c.test_settings) courseTestSettings[c.course_code] = c.test_settings as unknown as CourseTestSettings;
+  }
+
+  const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => ({
+    id: a.id,
+    courseCode: a.course_code,
+    courseTitle: a.course_title ?? "",
+    score: a.score ?? 0,
+    correct: a.correct ?? 0,
+    total: a.total ?? 0,
+    submittedAt: new Date(a.submitted_at).getTime(),
+    topics: (a.topics as unknown as MockAttempt["topics"]) ?? [],
+    questions: (a.questions as unknown as AIQuestion[]) ?? undefined,
+    answers: (a.answers as unknown as (number | null)[]) ?? undefined,
+    settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
+  }));
+
+  // Keyed by course code so each course only ever sees its own question set.
+  const aiQuestionsByCourse: Record<string, AIQuestion[]> = {};
+  for (const row of questionsRes.data ?? []) {
+    const qs = (row.questions as unknown as AIQuestion[]) ?? [];
+    if (row.course_code && qs.length) aiQuestionsByCourse[row.course_code] = qs;
+  }
+
+  const courseTopicAnalysis: Record<string, CourseTopicAnalysis> = {};
+  for (const t of analysisRes.data ?? []) {
+    courseTopicAnalysis[t.course_code] = {
+      materialId: t.material_id ?? "",
+      analyzedAt: new Date(t.analyzed_at).getTime(),
+      topics: (t.topics as unknown as CourseTopicAnalysis["topics"]) ?? [],
+    };
+  }
+
+  const topicScores = attempts.flatMap((a) =>
+    a.topics.map((t) => ({ course: a.courseCode, topic: t.topic, score: t.score })),
+  );
+
+  return {
+    goal: (row.goal as Goal | null) ?? null,
+    timeline: (row.timeline as Timeline | null) ?? null,
+    studyPreference: (row.study_preference as StudyPreference | null) ?? null,
+    faculty: row.faculty ?? null,
+    department: row.department ?? null,
+    level: (row.level as Level | null) ?? null,
+    setupComplete: !!row.setup_complete,
+    disclaimerAccepted: !!row.disclaimer_accepted,
+    cgpaIntroSeen: !!row.cgpa_intro_seen,
+    // A saved display name is the account-level proof that the welcome screen
+    // has already been completed, so it is never asked for twice.
+    profileCompleted: !!(row.display_name ?? "").trim(),
+    streakDays: row.streak_days ?? 0,
+    // Prefer the new last_active_date column; fall back to the legacy
+    // last_qualifying_day for existing rows that haven't been migrated yet.
+    lastActiveDate: row.last_active_date ?? row.last_qualifying_day ?? null,
+    freezesAvailable: row.freezes_available ?? 1,
+    freezeUsedOn: row.freeze_used_on ?? null,
+    tourSeen: row.tour_seen ?? false,
+    hasCompletedFirstMock: !!row.has_completed_first_mock,
+    masteredCourses: (row.mastered_courses as unknown as string[]) ?? [],
+    cgpaInputs: (row.cgpa_inputs as unknown as CgpaInputs) ?? null,
+    cgpaPlan: (row.cgpa_plan as unknown as CgpaPlan) ?? null,
+    cgpaActual: (row.cgpa_actual as unknown as CgpaActual) ?? null,
+    courses,
+    courseTestSettings,
+    attempts,
+    topicScores,
+    aiQuestionsByCourse,
+    courseTopicAnalysis,
+  };
+}
+
+/* ---------------- Push ---------------- */
+
+/**
+ * Write-through the whole profile for the signed-in user. Idempotent, so it
+ * doubles as the "migrate my existing local data" path on first sign-in and as
+ * the retry when an earlier write failed offline.
+ */
+export async function pushCloudProfile(profile: Profile): Promise<boolean> {
+  const userId = await currentUserId();
+  if (!userId) return false;
+
+  try {
+    const { error: pErr } = await supabase.from("profiles").upsert(
+      {
+        user_id: userId,
+        display_name: profile.identity?.name ?? null,
+        email: profile.identity?.email ?? null,
+        goal: profile.goal,
+        timeline: profile.timeline,
+        study_preference: profile.studyPreference,
+        faculty: profile.faculty,
+        department: profile.department,
+        level: profile.level as number | null,
+        setup_complete: profile.setupComplete,
+        disclaimer_accepted: profile.disclaimerAccepted,
+        cgpa_intro_seen: profile.cgpaIntroSeen,
+        tour_seen: profile.tourSeen,
+        has_completed_first_mock: profile.hasCompletedFirstMock,
+        mastered_courses: profile.masteredCourses,
+        cgpa_inputs: profile.cgpaInputs as never,
+        cgpa_plan: profile.cgpaPlan as never,
+        cgpa_actual: profile.cgpaActual as never,
+      },
+      { onConflict: "user_id" },
+    );
+    if (pErr) throw pErr;
+
+    if (profile.courses.length) {
+      const { error } = await supabase.from("user_courses").upsert(
+        profile.courses.map((c) => ({
+          user_id: userId,
+          course_code: c.code,
+          title: c.name ?? "",
+          status: c.status,
+          label_override: c.labelOverride ?? null,
+          units: null,
+
+          source: c.source,
+          test_settings: (profile.courseTestSettings[c.code] ?? null) as never,
+        })),
+        { onConflict: "user_id,course_code" },
+      );
+      if (error) throw error;
+    }
+
+    // Cleanup runs even when the local list is now empty, otherwise removing
+    // the last course leaves it in the cloud and it reappears on next load.
+    {
+      const codes = profile.courses.map((c) => c.code);
+      let del = supabase.from("user_courses").delete().eq("user_id", userId);
+      if (codes.length) {
+        del = del.not("course_code", "in", `(${codes.map((c) => `"${c}"`).join(",")})`);
+      }
+      const { error: delErr } = await del;
+      if (delErr) console.error("[cloud-sync] course cleanup failed", delErr);
+    }
+
+    if (profile.attempts.length) {
+      const { error } = await supabase.from("mock_attempts").upsert(
+        profile.attempts.map((a) => ({
+          id: a.id,
+          user_id: userId,
+          course_code: a.courseCode,
+          course_title: a.courseTitle,
+          score: a.score,
+          correct: a.correct,
+          total: a.total,
+          submitted_at: new Date(a.submittedAt).toISOString(),
+          topics: a.topics as never,
+          questions: (a.questions ?? null) as never,
+          answers: (a.answers ?? null) as never,
+          settings: (a.settings ?? null) as never,
+        })),
+        { onConflict: "user_id,id" },
+      );
+      if (error) throw error;
+    }
+
+    // One row per course: a question set generated for GST 111 must never be
+    // served during a CHM 102 test.
+    const questionRows = Object.entries(profile.aiQuestionsByCourse)
+      .filter(([, qs]) => Array.isArray(qs) && qs.length > 0)
+      .map(([code, qs]) => ({
+        user_id: userId,
+        course_code: code,
+        questions: qs as never,
+        generated_at: new Date().toISOString(),
+      }));
+    if (questionRows.length) {
+      const { error } = await supabase
+        .from("ai_question_sets")
+        .upsert(questionRows, { onConflict: "user_id,course_code" });
+      if (error) throw error;
+    }
+
+    const analysisRows = Object.entries(profile.courseTopicAnalysis).map(([code, a]) => ({
+      user_id: userId,
+      course_code: code,
+      material_id: a.materialId,
+      topics: a.topics as never,
+      analyzed_at: new Date(a.analyzedAt).toISOString(),
+    }));
+    if (analysisRows.length) {
+      const { error } = await supabase
+        .from("course_topic_analysis")
+        .upsert(analysisRows, { onConflict: "user_id,course_code" });
+      if (error) throw error;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("[cloud-sync] push failed, keeping local cache", err);
+    return false;
+  }
+}
+
+/** True when the signed-in user has no cloud profile row yet. */
+export async function hasCloudProfile(): Promise<boolean> {
+  const userId = await currentUserId();
+  if (!userId) return false;
+  const { data } = await supabase.from("profiles").select("user_id").eq("user_id", userId).maybeSingle();
+  return !!data;
+}

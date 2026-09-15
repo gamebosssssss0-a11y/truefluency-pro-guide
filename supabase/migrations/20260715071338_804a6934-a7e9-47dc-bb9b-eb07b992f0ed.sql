@@ -1,0 +1,2 @@
+ALTER TABLE public.course_materials DROP CONSTRAINT IF EXISTS course_materials_extraction_status_check;
+ALTER TABLE public.course_materials ADD CONSTRAINT course_materials_extraction_status_check CHECK (extraction_status IN ('not_applicable','pending','success','failed','scanned_pdf','timeout'));

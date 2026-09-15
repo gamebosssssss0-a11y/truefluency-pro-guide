@@ -1,0 +1,380 @@
+/**
+ * Client for the TrueFluency AI backend (FastAPI on Render).
+ * All generation goes through Render ONLY — no Gemini/Lovable AI fallback.
+ */
+import { supabase } from "@/integrations/supabase/client";
+import type { AIQuestion, Difficulty, Profile } from "@/lib/profile-store";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
+
+export const NOT_CONFIGURED_MESSAGE = "Prediction service isn't configured yet";
+
+export function isBackendConfigured(): boolean {
+  return typeof BACKEND_URL === "string" && BACKEND_URL.trim().length > 0;
+}
+
+export type PredictedTopic = { topic: string; confidence: number };
+
+function base(): string {
+  if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+  return BACKEND_URL!.replace(/\/+$/, "");
+}
+
+function readErrorDetail(text: string, status: number): string {
+  try {
+    const parsed = JSON.parse(text) as { detail?: unknown };
+    const detail = parsed?.detail;
+    if (typeof detail === "string" && detail.trim()) return detail.trim();
+    if (Array.isArray(detail) && detail.length) {
+      const first = detail[0] as { msg?: unknown };
+      if (typeof first?.msg === "string") return first.msg;
+    }
+  } catch { /* not JSON */ }
+  if (status === 402) return "You've hit your free limit for today.";
+  if (status === 404) return "We couldn't find that upload on the analysis service.";
+  if (status === 503) return "The analysis service isn't fully configured yet.";
+  if (status >= 500) return "The analysis service had a problem. Please try again.";
+  return `The analysis service rejected the request (${status}).`;
+}
+
+/** Pauses for ms milliseconds — used between polling attempts. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Starts (or resumes) a mock generation job.
+ *
+ * A plain postJson() call would throw on the 409 the backend sends when this
+ * user already has a job running — most commonly because they refreshed the
+ * page mid-generation and lost track of the previous job_id. That 409 body
+ * carries an `existing_job_id` specifically so the SAME job can be resumed
+ * instead of the student hitting a dead-end error with no way to see their
+ * result or start over. This function is the only place that needs to know
+ * about that — it reads the 409 body directly instead of using postJson's
+ * generic throw-on-!ok behavior, then returns the job_id either way so the
+ * caller doesn't need to care whether it was a fresh start or a resume.
+ */
+async function startMockJob(body: unknown): Promise<{ job_id: string; resumed: boolean }> {
+  const url = `${base()}/generate-mock/start`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const payload = await res.json().catch(() => ({}));
+
+    if (res.status === 409 && typeof payload?.existing_job_id === "string") {
+      return { job_id: payload.existing_job_id, resumed: true };
+    }
+    if (!res.ok) {
+      console.error("[backend] request failed", { path: "/generate-mock/start", status: res.status, payload });
+      throw new Error(readErrorDetail(JSON.stringify(payload), res.status));
+    }
+    return { job_id: payload.job_id as string, resumed: false };
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function postJson<T>(path: string, body: unknown, timeoutMs = 180_000): Promise<T> {
+  const url = `${base()}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[backend] request failed", { path, status: res.status, text });
+      throw new Error(readErrorDetail(text, res.status));
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      console.error("[backend] network error", { path, error: e });
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * GET request helper for polling — deliberately short per-call timeout
+ * (15s), since a status check should always be near-instant. This is NOT
+ * the same as waiting for the whole generation to finish.
+ */
+async function getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
+  const url = `${base()}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Sign in to use the analysis service.");
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[backend] status check failed", { path, status: res.status, text });
+      throw new Error(readErrorDetail(text, res.status));
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw new Error("Status check timed out — will retry.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach the analysis service. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Topic prediction — Render backend only, no in-app fallback.
+ */
+export async function predictTopics(input: {
+  materialId: string;
+  courseCode: string;
+  courseName: string;
+  level?: string | null;
+  department?: string | null;
+}): Promise<PredictedTopic[]> {
+  if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+
+  const data = await postJson<{ topics: unknown }>("/predict-topics", {
+    material_id: input.materialId,
+    course_code: input.courseCode,
+    course_name: input.courseName,
+    user_level: input.level ? String(input.level) : null,
+    user_department: input.department ?? null,
+  });
+
+  const raw = Array.isArray(data?.topics) ? data.topics : [];
+  if (raw.length === 0) throw new Error("The analysis came back empty.");
+
+  const topics: PredictedTopic[] = raw
+    .map((t) => {
+      const o = t as { topic?: unknown; confidence?: unknown };
+      const topic = typeof o.topic === "string" ? o.topic.trim() : "";
+      const confidence = typeof o.confidence === "number" ? o.confidence : Number(o.confidence);
+      if (!topic || !Number.isFinite(confidence)) return null;
+      return { topic, confidence: Math.max(0, Math.min(1, confidence)) };
+    })
+    .filter((t): t is PredictedTopic => t !== null);
+
+  if (topics.length === 0) throw new Error("The analysis came back empty.");
+  return topics;
+}
+
+/**
+ * Mock generation — Render backend only, no in-app fallback.
+ *
+ * Uses the start+poll job pattern, NOT a single long-running request.
+ * Reason: Render's own platform-level request timeout (independent of
+ * anything the backend code does) can cut the connection to the frontend
+ * on a slow generation, while the backend keeps running anyway — the
+ * request just becomes orphaned, and the frontend sees a generic timeout
+ * even though a real result may still be coming. Since no single request
+ * in this flow needs to stay open more than a few seconds, that whole
+ * class of failure goes away.
+ */
+export async function generateMock(
+  input: {
+    materialId: string;
+    courseCode: string;
+    courseName: string;
+    questionCount: number;
+    difficulty: Difficulty;
+    topicFocus: string[];
+    profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
+  },
+  options?: {
+    /**
+     * Called each time a poll comes back "processing". When the service reports
+     * how many questions are done, those counts are passed through so the
+     * loading screen can show "n of total ready".
+     */
+    onProgress?: (progress: { ready: number | null; total: number | null }) => void;
+    /** Max total time to keep polling before giving up. Default 5 minutes. */
+    maxWaitMs?: number;
+  }
+): Promise<AIQuestion[]> {
+  if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
+
+  const body = {
+    material_id: input.materialId,
+    course_code: input.courseCode,
+    course_name: input.courseName,
+    question_count: input.questionCount,
+    difficulty: input.difficulty,
+    topic_focus: input.topicFocus,
+    user_goal: input.profile.goal,
+    user_timeline: input.profile.timeline,
+    user_level: input.profile.level ? String(input.profile.level) : null,
+    user_department: input.profile.department,
+  };
+
+  // Step 1: kick off the job (or resume one already running for this user —
+  // see startMockJob's docstring for why a plain postJson() call here would
+  // have silently broken the resume-after-refresh flow).
+  const started = await startMockJob(body);
+  if (started.resumed) {
+    console.info("[mock] resuming an in-progress job from before a refresh, instead of starting a new one");
+  }
+
+  // Step 2: poll for the result.
+  const maxWaitMs = options?.maxWaitMs ?? 5 * 60_000; // 5 minutes default ceiling
+  const pollIntervalMs = 1_500; // tightened from 3000ms — a completed job now shows up to 1.5s sooner instead of up to 3s late
+  const deadline = Date.now() + maxWaitMs;
+
+  let data: {
+    status: string;
+    result?: { questions: unknown };
+    error?: string;
+    ready?: unknown;
+    questions_ready?: unknown;
+    total?: unknown;
+    question_count?: unknown;
+  } | null = null;
+
+  const readCount = (...candidates: unknown[]): number | null => {
+    for (const c of candidates) {
+      const n = Number(c);
+      if (Number.isFinite(n) && n >= 0) return Math.round(n);
+    }
+    return null;
+  };
+
+  while (Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    try {
+      data = await getJson(`/generate-mock/status/${started.job_id}`);
+    } catch {
+      // A single poll failing (brief network blip) shouldn't kill the whole
+      // flow — just try again next interval rather than aborting immediately.
+      continue;
+    }
+
+    if (data?.status === "completed") break;
+    if (data?.status === "failed") {
+      throw new Error(data.error || "Mock generation failed.");
+    }
+    options?.onProgress?.({
+      ready: readCount(data?.ready, data?.questions_ready),
+      total: readCount(data?.total, data?.question_count, input.questionCount),
+    });
+    // status is "processing" — loop again
+  }
+
+  if (!data || data.status !== "completed") {
+    throw new Error("This is taking longer than expected. Your mock test may still finish in the background — try checking back in a minute.");
+  }
+
+  const raw = Array.isArray(data.result?.questions) ? (data.result!.questions as unknown[]) : [];
+  if (raw.length === 0) throw new Error("No questions came back from the generator.");
+
+  const questions: AIQuestion[] = raw
+    .map((q, i) => {
+      const o = q as Partial<AIQuestion> & { correct_index?: unknown };
+      const options: string[] = Array.isArray(o.options)
+        ? (o.options as unknown[]).filter((x): x is string => typeof x === "string")
+        : [];
+      const correct = Number(o.correct_index);
+      if (typeof o.question !== "string" || options.length < 2) return null;
+      if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) return null;
+      return {
+        id: typeof o.id === "number" ? o.id : i + 1,
+        topic: typeof o.topic === "string" && o.topic.trim() ? o.topic : "General",
+        question: o.question,
+        options,
+        correct_index: correct,
+        explanation: typeof o.explanation === "string" ? o.explanation : "",
+      } satisfies AIQuestion;
+    })
+    .filter((q): q is AIQuestion => q !== null)
+    .map((q, i) => ({ ...q, id: i + 1 }));
+
+  if (questions.length === 0) throw new Error("No questions came back from the generator.");
+  return questions;
+}
+
+/**
+ * Submit mock test results to the feedback loop — Render backend only.
+ * Fire-and-forget: never throws, never blocks the results screen.
+ */
+export async function submitResults(input: {
+  courseCode: string;
+  results: Array<{
+    topic: string;
+    item_type?: string;
+    difficulty?: string;
+    was_correct: boolean;
+  }>;
+}): Promise<void> {
+  if (!isBackendConfigured()) return;
+  try {
+    await postJson("/submit-results", {
+      course_code: input.courseCode,
+      results: input.results,
+    });
+  } catch {
+    // fire-and-forget — never block the student from seeing their results
+  }
+}
+
+/**
+ * Permanently deletes the signed-in user's ENTIRE account — every uploaded
+ * file, every table row (materials, mock history, subscription, usage,
+ * profile), and the actual Supabase auth account itself.
+ *
+ * This exists because client-side JS can never delete an auth user — that
+ * always requires the service role key, which only lives on the backend.
+ * The old client-side "delete everything" only ever removed uploaded
+ * materials; the account, profile, subscription, and mock test history all
+ * silently survived. This is the real, complete version.
+ */
+export async function deleteAccount(): Promise<{
+  status: "complete" | "partial";
+  auth_account_deleted: boolean;
+  tables_cleared: string[];
+  tables_failed: string[];
+}> {
+  return postJson("/account/delete", {}, 30_000);
+}
