@@ -238,15 +238,27 @@ export function TestHistoryScreen() {
                       <div className="text-sm font-semibold text-foreground">{a.courseCode}</div>
                       <div className="break-words text-[11px] text-muted-foreground">{a.courseTitle}</div>
                       <div className="mt-1 text-[11px] text-muted-foreground">
-                        {new Date(a.submittedAt).toLocaleString()} · {a.score}%
+                        {new Date(a.submittedAt).toLocaleString("en-GB", {
+                          timeZone: "Africa/Lagos",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        · {a.score}%
                       </div>
 
-                      {a.settings ? (
-                        <div className="mt-1 text-[11px] text-muted-foreground">
-                          {a.settings.questionCount} questions · {a.settings.minutes} min ·{" "}
-                          <span className="capitalize">{a.settings.difficulty}</span>
-                        </div>
-                      ) : null}
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        {a.settings ? (
+                          <span>
+                            {a.settings.questionCount} questions · {a.settings.minutes} min
+                          </span>
+                        ) : null}
+                        <span className="rounded-full bg-sand px-2 py-0.5 font-semibold text-navy">
+                          {difficultyLabelOf(a.settings?.difficulty)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
