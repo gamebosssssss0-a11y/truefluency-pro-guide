@@ -19,6 +19,7 @@ import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
+import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
@@ -1131,6 +1132,9 @@ export function MockResultScreen() {
           <div className="mt-1 text-xs text-muted-foreground">
             {attempt.score}% · {attempt.courseCode}
           </div>
+          <div className="mt-2">
+            <DifficultyChip difficulty={attempt.settings?.difficulty} />
+          </div>
           {profile.streakDays > 0 ? (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
               🔥 {profile.streakDays}-day streak
@@ -1228,7 +1232,18 @@ export function AttemptReviewScreen() {
             {attempt.courseTitle}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            Completed {new Date(attempt.submittedAt).toLocaleString()}
+            Completed{" "}
+            {new Date(attempt.submittedAt).toLocaleString("en-GB", {
+              timeZone: "Africa/Lagos",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+          <div className="mt-2">
+            <DifficultyChip difficulty={attempt.settings?.difficulty} />
           </div>
           <div className="mt-4 flex items-baseline gap-2 border-t border-border pt-4">
             <span className="font-display text-4xl font-semibold leading-none text-navy">
@@ -1237,6 +1252,15 @@ export function AttemptReviewScreen() {
             <span className="text-xs text-muted-foreground">{attempt.score}%</span>
           </div>
         </div>
+
+        {!explanationsUnlocked ? (
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-accent/40 bg-accent/10 p-3">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+            <p className="min-w-0 text-xs leading-relaxed text-foreground">
+              {PRICE_LINE} Unlock WHY for this set.
+            </p>
+          </div>
+        ) : null}
 
         {questions.length > 0 ? (
           <ReviewMiniMap
@@ -1339,25 +1363,12 @@ export function AttemptReviewScreen() {
                   ) : null}
 
                   {explanationsUnlocked && q.explanation?.trim() ? (
-                    <div className="mt-3 rounded-xl border border-border bg-background p-3">
-                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Why this is the answer
-                      </div>
-                      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
-                        <MathText>{q.explanation}</MathText>
-                      </p>
-                    </div>
+                    <WhyPanel explanation={q.explanation} wasWrong={!isCorrect} />
                   ) : (
-                    /* Locked: the WHY panel replaces the explanation entirely, so no
-                       step-by-step working ever sits beside the lock. */
-                    <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent/10 p-3">
-                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Why</div>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                          {PRICE_LINE} Your score and the correct answers stay free.
-                        </p>
-                      </div>
+                    /* Locked: lock icon only. The single price banner sits at the top. */
+                    <div className="mt-3 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
+                      <Lock className="h-4 w-4 shrink-0 text-accent" aria-label="Explanation locked" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Why</span>
                     </div>
                   )}
 
@@ -1433,6 +1444,50 @@ function ReviewMiniMap({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ---------- Difficulty chip + WHY panel ---------- */
+
+function DifficultyChip({ difficulty }: { difficulty?: Difficulty | string | null }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-sand px-2.5 py-1 text-[11px] font-semibold text-navy">
+      {difficultyLabelOf(difficulty)}
+    </span>
+  );
+}
+
+function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: boolean }) {
+  if (failsQualityCheck(explanation)) {
+    return (
+      <div className="mt-3 rounded-xl border border-border bg-background p-3">
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {QUALITY_FAIL_NOTICE} Try another set.
+        </p>
+      </div>
+    );
+  }
+
+  const blocks = toWhyBlocks(explanation, wasWrong);
+  const rows: { label: string; body: string }[] = [
+    { label: "Correct", body: blocks.correct },
+    ...(wasWrong && blocks.wrong ? [{ label: "Why your pick was wrong", body: blocks.wrong }] : []),
+    ...(blocks.concept ? [{ label: "Key concept", body: blocks.concept }] : []),
+  ];
+
+  return (
+    <div className="mt-3 space-y-3 rounded-xl border border-border bg-background p-3">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {row.label}
+          </div>
+          <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-foreground">
+            <MathText>{row.body}</MathText>
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
