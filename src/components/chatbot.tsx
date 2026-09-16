@@ -254,6 +254,7 @@ export function ChatbotScreen() {
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            maxLength={2000}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
