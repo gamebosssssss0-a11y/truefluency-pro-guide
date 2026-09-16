@@ -9,6 +9,7 @@ import {
   Minus, AlertTriangle, RotateCcw, Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { difficultyLabelOf } from "@/lib/why-blocks";
 
 /* ================= Tab 2: Mock Tests ================= */
 

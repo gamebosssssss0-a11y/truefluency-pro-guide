@@ -19,6 +19,7 @@ import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
+import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
@@ -1130,6 +1131,9 @@ export function MockResultScreen() {
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             {attempt.score}% · {attempt.courseCode}
+          </div>
+          <div className="mt-2">
+            <DifficultyChip difficulty={attempt.settings?.difficulty} />
           </div>
           {profile.streakDays > 0 ? (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
