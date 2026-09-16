@@ -20,7 +20,8 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  let supabase: ReturnType<typeof createClient> | null = null;
+  // deno-lint-ignore no-explicit-any
+  let supabase: any = null;
   let materialId: string | null = null;
 
   try {
@@ -126,7 +127,8 @@ Deno.serve(async (req) => {
 });
 
 async function persistFailure(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   materialId: string,
   error: string,
 ) {
