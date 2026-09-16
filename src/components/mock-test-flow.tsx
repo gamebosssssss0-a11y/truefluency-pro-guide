@@ -1447,3 +1447,47 @@ function ReviewMiniMap({
     </div>
   );
 }
+
+/* ---------- Difficulty chip + WHY panel ---------- */
+
+function DifficultyChip({ difficulty }: { difficulty?: Difficulty | string | null }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-sand px-2.5 py-1 text-[11px] font-semibold text-navy">
+      {difficultyLabelOf(difficulty)}
+    </span>
+  );
+}
+
+function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: boolean }) {
+  if (failsQualityCheck(explanation)) {
+    return (
+      <div className="mt-3 rounded-xl border border-border bg-background p-3">
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {QUALITY_FAIL_NOTICE} Try another set.
+        </p>
+      </div>
+    );
+  }
+
+  const blocks = toWhyBlocks(explanation, wasWrong);
+  const rows: { label: string; body: string }[] = [
+    { label: "Correct", body: blocks.correct },
+    ...(wasWrong && blocks.wrong ? [{ label: "Why your pick was wrong", body: blocks.wrong }] : []),
+    ...(blocks.concept ? [{ label: "Key concept", body: blocks.concept }] : []),
+  ];
+
+  return (
+    <div className="mt-3 space-y-3 rounded-xl border border-border bg-background p-3">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {row.label}
+          </div>
+          <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-foreground">
+            <MathText>{row.body}</MathText>
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
