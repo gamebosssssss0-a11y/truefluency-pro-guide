@@ -26,14 +26,33 @@ function split(input: string): Segment[] {
   return out;
 }
 
+// Rendered content originates from an LLM response, which is itself grounded
+// in a student-uploaded document — so it is attacker-influenceable (a PDF
+// containing prompt-injection text could try to make the model emit
+// pathological LaTeX). KaTeX's `trust` already defaults to false, which is
+// what blocks \href / \includegraphics / \class from injecting arbitrary
+// HTML or URLs — set explicitly here so that stays true even if a future
+// KaTeX version changes its default. maxExpand and maxSize cap macro-
+// expansion and rendered-element size, which is what stops a deeply nested
+// expression from hanging the tab (a real, documented KaTeX DoS class).
+const KATEX_OPTIONS = {
+  throwOnError: false,
+  strict: false,
+  output: "html" as const,
+  trust: false,
+  maxExpand: 1000,
+  maxSize: 25,
+};
+
+// A legitimate equation is never this long. Anything past this is either a
+// pathological input or a rendering bug upstream — render it as plain text
+// instead of handing KaTeX a huge string to chew on.
+const MAX_TEX_LENGTH = 2000;
+
 function render(tex: string, display: boolean): string | null {
+  if (tex.length > MAX_TEX_LENGTH) return null;
   try {
-    return katex.renderToString(tex, {
-      displayMode: display,
-      throwOnError: false,
-      strict: false,
-      output: "html",
-    });
+    return katex.renderToString(tex, { ...KATEX_OPTIONS, displayMode: display });
   } catch {
     return null;
   }
