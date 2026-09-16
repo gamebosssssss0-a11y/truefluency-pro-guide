@@ -1232,7 +1232,18 @@ export function AttemptReviewScreen() {
             {attempt.courseTitle}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            Completed {new Date(attempt.submittedAt).toLocaleString()}
+            Completed{" "}
+            {new Date(attempt.submittedAt).toLocaleString("en-GB", {
+              timeZone: "Africa/Lagos",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+          <div className="mt-2">
+            <DifficultyChip difficulty={attempt.settings?.difficulty} />
           </div>
           <div className="mt-4 flex items-baseline gap-2 border-t border-border pt-4">
             <span className="font-display text-4xl font-semibold leading-none text-navy">
@@ -1241,6 +1252,15 @@ export function AttemptReviewScreen() {
             <span className="text-xs text-muted-foreground">{attempt.score}%</span>
           </div>
         </div>
+
+        {!explanationsUnlocked ? (
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-accent/40 bg-accent/10 p-3">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+            <p className="min-w-0 text-xs leading-relaxed text-foreground">
+              {PRICE_LINE} Unlock WHY for this set.
+            </p>
+          </div>
+        ) : null}
 
         {questions.length > 0 ? (
           <ReviewMiniMap
