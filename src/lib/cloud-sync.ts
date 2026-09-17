@@ -5,6 +5,10 @@
  *
  * Guest (anonymous) sessions are real auth users, so their rows are isolated
  * by the same RLS policies.
+ *
+ * DATA SAFETY: a failed query must never be read as "the user has nothing".
+ * Every read checks `.error` and, when a table errored, that part of the
+ * snapshot is simply omitted so the caller keeps its existing local value.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Level, CatalogStatus } from "@/lib/uni-data";
@@ -36,6 +40,9 @@ async function currentUserId(): Promise<string | null> {
 /**
  * Pull everything for the signed-in user. Returns null when the user has no
  * cloud profile row yet (first sign-in), so the caller can migrate local data.
+ *
+ * Tables that fail are left OUT of the returned partial, so merging it over
+ * the local profile keeps the local value instead of blanking it.
  */
 export async function loadCloudProfile(): Promise<CloudSnapshot> {
   const userId = await currentUserId();
@@ -50,63 +57,13 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
   ]);
 
   if (profileRes.error) {
-    console.error("[cloud-sync] profile load failed", profileRes.error);
+    console.error("[cloud-sync] profiles load failed", profileRes.error.message, profileRes.error);
     return null;
   }
   const row = profileRes.data;
   if (!row) return null;
 
-  const courses: UserCourse[] = (coursesRes.data ?? []).map((c) => ({
-    code: c.course_code,
-    name: c.title ?? "",
-    status: (c.status ?? "Compulsory") as CatalogStatus,
-    ...(c.label_override
-      ? { labelOverride: c.label_override as "stem" | "humanities" | "neutral" }
-      : {}),
-    source: c.source === "verified" ? "verified" : "manual",
-  }));
-
-
-  const courseTestSettings: Record<string, CourseTestSettings> = {};
-  for (const c of coursesRes.data ?? []) {
-    if (c.test_settings) courseTestSettings[c.course_code] = c.test_settings as unknown as CourseTestSettings;
-  }
-
-  const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => ({
-    id: a.id,
-    courseCode: a.course_code,
-    courseTitle: a.course_title ?? "",
-    score: a.score ?? 0,
-    correct: a.correct ?? 0,
-    total: a.total ?? 0,
-    submittedAt: new Date(a.submitted_at).getTime(),
-    topics: (a.topics as unknown as MockAttempt["topics"]) ?? [],
-    questions: (a.questions as unknown as AIQuestion[]) ?? undefined,
-    answers: (a.answers as unknown as (number | null)[]) ?? undefined,
-    settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
-  }));
-
-  // Keyed by course code so each course only ever sees its own question set.
-  const aiQuestionsByCourse: Record<string, AIQuestion[]> = {};
-  for (const row of questionsRes.data ?? []) {
-    const qs = (row.questions as unknown as AIQuestion[]) ?? [];
-    if (row.course_code && qs.length) aiQuestionsByCourse[row.course_code] = qs;
-  }
-
-  const courseTopicAnalysis: Record<string, CourseTopicAnalysis> = {};
-  for (const t of analysisRes.data ?? []) {
-    courseTopicAnalysis[t.course_code] = {
-      materialId: t.material_id ?? "",
-      analyzedAt: new Date(t.analyzed_at).getTime(),
-      topics: (t.topics as unknown as CourseTopicAnalysis["topics"]) ?? [],
-    };
-  }
-
-  const topicScores = attempts.flatMap((a) =>
-    a.topics.map((t) => ({ course: a.courseCode, topic: t.topic, score: t.score })),
-  );
-
-  return {
+  const snapshot: Partial<Profile> = {
     goal: (row.goal as Goal | null) ?? null,
     timeline: (row.timeline as Timeline | null) ?? null,
     studyPreference: (row.study_preference as StudyPreference | null) ?? null,
@@ -131,13 +88,81 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
     cgpaInputs: (row.cgpa_inputs as unknown as CgpaInputs) ?? null,
     cgpaPlan: (row.cgpa_plan as unknown as CgpaPlan) ?? null,
     cgpaActual: (row.cgpa_actual as unknown as CgpaActual) ?? null,
-    courses,
-    courseTestSettings,
-    attempts,
-    topicScores,
-    aiQuestionsByCourse,
-    courseTopicAnalysis,
   };
+
+  if (coursesRes.error) {
+    console.error("[cloud-sync] user_courses load failed, keeping local courses", coursesRes.error.message);
+  } else {
+    const courses: UserCourse[] = (coursesRes.data ?? []).map((c) => ({
+      code: c.course_code,
+      name: c.title ?? "",
+      status: (c.status ?? "Compulsory") as CatalogStatus,
+      ...(c.label_override
+        ? { labelOverride: c.label_override as "stem" | "humanities" | "neutral" }
+        : {}),
+      source: c.source === "verified" ? "verified" : "manual",
+    }));
+
+    const courseTestSettings: Record<string, CourseTestSettings> = {};
+    for (const c of coursesRes.data ?? []) {
+      if (c.test_settings) courseTestSettings[c.course_code] = c.test_settings as unknown as CourseTestSettings;
+    }
+    snapshot.courses = courses;
+    snapshot.courseTestSettings = courseTestSettings;
+  }
+
+  if (attemptsRes.error) {
+    console.error("[cloud-sync] mock_attempts load failed, keeping local history", attemptsRes.error.message);
+  } else {
+    const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => ({
+      id: a.id,
+      courseCode: a.course_code,
+      courseTitle: a.course_title ?? "",
+      score: a.score ?? 0,
+      correct: a.correct ?? 0,
+      total: a.total ?? 0,
+      submittedAt: new Date(a.submitted_at).getTime(),
+      topics: (a.topics as unknown as MockAttempt["topics"]) ?? [],
+      questions: (a.questions as unknown as AIQuestion[]) ?? undefined,
+      answers: (a.answers as unknown as (number | null)[]) ?? undefined,
+      settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
+    }));
+    snapshot.attempts = attempts;
+    snapshot.topicScores = attempts.flatMap((a) =>
+      a.topics.map((t) => ({ course: a.courseCode, topic: t.topic, score: t.score })),
+    );
+  }
+
+  if (questionsRes.error) {
+    console.error("[cloud-sync] ai_question_sets load failed, keeping local sets", questionsRes.error.message);
+  } else {
+    // Keyed by course code so each course only ever sees its own question set.
+    const aiQuestionsByCourse: Record<string, AIQuestion[]> = {};
+    for (const qrow of questionsRes.data ?? []) {
+      const qs = (qrow.questions as unknown as AIQuestion[]) ?? [];
+      if (qrow.course_code && qs.length) aiQuestionsByCourse[qrow.course_code] = qs;
+    }
+    snapshot.aiQuestionsByCourse = aiQuestionsByCourse;
+  }
+
+  if (analysisRes.error) {
+    console.error(
+      "[cloud-sync] course_topic_analysis load failed, keeping local analysis",
+      analysisRes.error.message,
+    );
+  } else {
+    const courseTopicAnalysis: Record<string, CourseTopicAnalysis> = {};
+    for (const t of analysisRes.data ?? []) {
+      courseTopicAnalysis[t.course_code] = {
+        materialId: t.material_id ?? "",
+        analyzedAt: new Date(t.analyzed_at).getTime(),
+        topics: (t.topics as unknown as CourseTopicAnalysis["topics"]) ?? [],
+      };
+    }
+    snapshot.courseTopicAnalysis = courseTopicAnalysis;
+  }
+
+  return snapshot;
 }
 
 /* ---------------- Push ---------------- */
@@ -146,13 +171,19 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
  * Write-through the whole profile for the signed-in user. Idempotent, so it
  * doubles as the "migrate my existing local data" path on first sign-in and as
  * the retry when an earlier write failed offline.
+ *
+ * Every table is written in its own try: a failure on one table must never
+ * stop the others (in particular, a profiles failure must not stop the mock
+ * history from being saved).
  */
 export async function pushCloudProfile(profile: Profile): Promise<boolean> {
   const userId = await currentUserId();
   if (!userId) return false;
 
+  const failed: string[] = [];
+
   try {
-    const { error: pErr } = await supabase.from("profiles").upsert(
+    const { error } = await supabase.from("profiles").upsert(
       {
         user_id: userId,
         display_name: profile.identity?.name ?? null,
@@ -175,8 +206,13 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
       },
       { onConflict: "user_id" },
     );
-    if (pErr) throw pErr;
+    if (error) throw error;
+  } catch (err) {
+    failed.push("profiles");
+    console.error("[cloud-sync] profiles push failed", err);
+  }
 
+  try {
     if (profile.courses.length) {
       const { error } = await supabase.from("user_courses").upsert(
         profile.courses.map((c) => ({
@@ -197,16 +233,19 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
 
     // Cleanup runs even when the local list is now empty, otherwise removing
     // the last course leaves it in the cloud and it reappears on next load.
-    {
-      const codes = profile.courses.map((c) => c.code);
-      let del = supabase.from("user_courses").delete().eq("user_id", userId);
-      if (codes.length) {
-        del = del.not("course_code", "in", `(${codes.map((c) => `"${c}"`).join(",")})`);
-      }
-      const { error: delErr } = await del;
-      if (delErr) console.error("[cloud-sync] course cleanup failed", delErr);
+    const codes = profile.courses.map((c) => c.code);
+    let del = supabase.from("user_courses").delete().eq("user_id", userId);
+    if (codes.length) {
+      del = del.not("course_code", "in", `(${codes.map((c) => `"${c}"`).join(",")})`);
     }
+    const { error: delErr } = await del;
+    if (delErr) console.error("[cloud-sync] course cleanup failed", delErr);
+  } catch (err) {
+    failed.push("user_courses");
+    console.error("[cloud-sync] user_courses push failed", err);
+  }
 
+  try {
     if (profile.attempts.length) {
       const { error } = await supabase.from("mock_attempts").upsert(
         profile.attempts.map((a) => ({
@@ -227,7 +266,12 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
       );
       if (error) throw error;
     }
+  } catch (err) {
+    failed.push("mock_attempts");
+    console.error("[cloud-sync] mock_attempts push failed", err);
+  }
 
+  try {
     // One row per course: a question set generated for GST 111 must never be
     // served during a CHM 102 test.
     const questionRows = Object.entries(profile.aiQuestionsByCourse)
@@ -244,7 +288,12 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         .upsert(questionRows, { onConflict: "user_id,course_code" });
       if (error) throw error;
     }
+  } catch (err) {
+    failed.push("ai_question_sets");
+    console.error("[cloud-sync] ai_question_sets push failed", err);
+  }
 
+  try {
     const analysisRows = Object.entries(profile.courseTopicAnalysis).map(([code, a]) => ({
       user_id: userId,
       course_code: code,
@@ -258,12 +307,16 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         .upsert(analysisRows, { onConflict: "user_id,course_code" });
       if (error) throw error;
     }
-
-    return true;
   } catch (err) {
-    console.error("[cloud-sync] push failed, keeping local cache", err);
+    failed.push("course_topic_analysis");
+    console.error("[cloud-sync] course_topic_analysis push failed", err);
+  }
+
+  if (failed.length) {
+    console.error("[cloud-sync] push finished with failures on:", failed.join(", "));
     return false;
   }
+  return true;
 }
 
 /** True when the signed-in user has no cloud profile row yet. */
