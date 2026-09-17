@@ -151,9 +151,7 @@ function SharedFilePage() {
               <Button
                 className="mt-4 h-12 w-full text-white"
                 style={{ backgroundColor: "#B86E0A" }}
-                onClick={() => {
-                  window.location.href = "/";
-                }}
+                onClick={goSignIn}
               >
                 Go to TrueFluency Pro
               </Button>
@@ -216,7 +214,7 @@ function SharedFilePage() {
                 onClick={() => void onSave()}
                 disabled={saving}
               >
-                {saving ? "Saving..." : "Save to my locker"}
+                {saving ? "Saving..." : signedIn ? "Save to my locker" : "Sign in to save to locker"}
               </Button>
               <p className="mt-2 text-[11px] text-[#5C5C70]">
                 Viewing happens in the app. There is no download.
