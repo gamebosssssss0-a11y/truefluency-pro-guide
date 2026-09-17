@@ -729,6 +729,38 @@ export function MockRunScreen() {
       masteredCourses: mastered,
     });
 
+    // Three writes belong to a submitted mock, in the same handler:
+    // 1. the attempt row (History reads this), 2. the daily mock-set count,
+    // 3. the study streak when at least five answers were given.
+    try {
+      const { pushMockAttempt } = await import("@/lib/cloud-sync");
+      await pushMockAttempt(attempt);
+    } catch (error) {
+      toast.error((error as Error)?.message || "This result couldn't be saved to your history.");
+    }
+
+    const COUNTED_KEY = "tf.counted.mock_sets";
+    const alreadyCounted = (() => {
+      try {
+        return (JSON.parse(localStorage.getItem(COUNTED_KEY) || "[]") as string[]).includes(attempt.id);
+      } catch {
+        return false;
+      }
+    })();
+    if (!alreadyCounted) {
+      try {
+        await consumeFeatureQuota({ data: { feature: "mock_sets" } });
+        try {
+          const prev = JSON.parse(localStorage.getItem(COUNTED_KEY) || "[]") as string[];
+          localStorage.setItem(COUNTED_KEY, JSON.stringify([...prev.slice(-40), attempt.id]));
+        } catch {
+          /* bookkeeping only */
+        }
+      } catch (error) {
+        toast.error((error as Error)?.message || "Your daily mock count couldn't be updated.");
+      }
+    }
+
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
     if (answeredCount >= 5) {
       try {
@@ -746,6 +778,7 @@ export function MockRunScreen() {
         console.warn("[streak] couldn't save qualifying mock", error);
       }
     }
+
     // Fire-and-forget: send results to backend feedback loop
     // Never blocks or throws — student always sees their results regardless
     submitResults({
