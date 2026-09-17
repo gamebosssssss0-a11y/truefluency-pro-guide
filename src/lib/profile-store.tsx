@@ -474,6 +474,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             setAuthPending(false);
             if (!syncedProfile || cancelled) return;
 
+            // A shared one-file link the student opened before signing in wins
+            // over onboarding: send them straight back to that file.
+            try {
+              const returnTo = sessionStorage.getItem("returnTo");
+              if (returnTo && returnTo.startsWith("/s/")) {
+                sessionStorage.removeItem("returnTo");
+                window.location.assign(returnTo);
+                return;
+              }
+            } catch {
+              /* private mode: fall through to normal routing */
+            }
+
             // Google's account often carries no usable name, which used to
             // leave the greeting empty. Ask once per account: the saved cloud
             // display name is what marks it done, so a second device or a
@@ -485,6 +498,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               return;
             }
             go(syncedProfile.setupComplete ? "dashboard" : "goal");
+
           })();
         }
       }
