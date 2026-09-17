@@ -326,3 +326,36 @@ export async function hasCloudProfile(): Promise<boolean> {
   const { data } = await supabase.from("profiles").select("user_id").eq("user_id", userId).maybeSingle();
   return !!data;
 }
+
+/* ---------------- Single attempt write ---------------- */
+
+/**
+ * Write ONE finished attempt immediately, so History is never empty after a
+ * refresh even if the debounced full-profile write hasn't run yet. Throws the
+ * real PostgREST message so the caller can surface it.
+ */
+export async function pushMockAttempt(attempt: MockAttempt): Promise<void> {
+  const userId = await currentUserId();
+  if (!userId) throw new Error("You're signed out, so this result wasn't saved.");
+  const { error } = await supabase.from("mock_attempts").upsert(
+    {
+      id: attempt.id,
+      user_id: userId,
+      course_code: attempt.courseCode,
+      course_title: attempt.courseTitle,
+      score: attempt.score,
+      correct: attempt.correct,
+      total: attempt.total,
+      submitted_at: new Date(attempt.submittedAt).toISOString(),
+      topics: attempt.topics as never,
+      questions: (attempt.questions ?? null) as never,
+      answers: (attempt.answers ?? null) as never,
+      settings: (attempt.settings ?? null) as never,
+    },
+    { onConflict: "user_id,id" },
+  );
+  if (error) {
+    console.error("[cloud-sync] mock_attempts write failed", error.message, error);
+    throw new Error(error.message);
+  }
+}
