@@ -60,13 +60,31 @@ function SharedFilePage() {
   const [state, setState] = useState<"loading" | "ready" | "gone" | "signin">("loading");
   const [share, setShare] = useState<Share | null>(null);
   const [saving, setSaving] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   // Cancelling the preview load keeps the share card, just without the frame.
   const [previewOff, setPreviewOff] = useState(false);
 
+  /** Remember this exact link, then hand over to sign-in. */
+  const goSignIn = () => {
+    try {
+      sessionStorage.setItem("returnTo", `/s/${token}`);
+    } catch {
+      /* private mode: the link just won't be restored */
+    }
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     let alive = true;
     void (async () => {
+      // Viewing never needs an account; only saving does.
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data } = await supabase.auth.getSession();
+        if (alive) setSignedIn(!!data.session);
+      } catch {
+        /* treat as signed out */
+      }
       try {
         const result = await readOneFileLink({ data: { token } });
         if (!alive) return;
@@ -77,7 +95,7 @@ function SharedFilePage() {
         setShare(result.share);
         setState("ready");
       } catch {
-        if (alive) setState("signin");
+        if (alive) setState("gone");
       }
     })();
     return () => {
@@ -86,6 +104,10 @@ function SharedFilePage() {
   }, [token]);
 
   const onSave = async () => {
+    if (!signedIn) {
+      goSignIn();
+      return;
+    }
     setSaving(true);
     const result = await savePeerFile({ data: { token, courseCode: share?.course_code } });
     setSaving(false);
@@ -95,6 +117,7 @@ function SharedFilePage() {
     }
     toast.success("Saved to your locker.");
   };
+
 
   return (
     <div className="min-h-screen bg-[#F7F3EA]">
