@@ -130,8 +130,9 @@ export const getShelfPreview = createServerFn({ method: "POST" })
     return { ok: true as const, ...preview };
   });
 
+// PUBLIC on purpose: a one-file link must open for someone who is not signed
+// in yet (they see the file, and are invited to sign in only to save it).
 export const readOneFileLink = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: { token: string }) => ({ token: cleanToken(input?.token) }))
   .handler(async ({ data }) => {
     if (!sharingLive()) return { ok: false as const, reason: SHARING_OFFLINE_MESSAGE };
