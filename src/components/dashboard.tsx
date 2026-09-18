@@ -133,9 +133,12 @@ function NextStepCard() {
         setOwnCount(own.length);
         setFirstOwn(own[0] ?? null);
       })
-      .catch(() => { if (live) setOwnCount(0); });
+      // A failed read must never be read as "this student has no files".
+      .catch((e) => { console.warn("[home] couldn't read uploads", e); });
     return () => { live = false; };
   }, []);
+
+  const lastAttempt = profile.attempts[0];
 
   const next = (() => {
     if (!profile.courses.length) {
