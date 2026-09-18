@@ -424,7 +424,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const sync = async (): Promise<Profile | null> => {
       const { loadCloudProfile, pushCloudProfile } = await import("@/lib/cloud-sync");
       try {
-        const snapshot = await loadCloudProfile();
+        // Pass the local profile so an empty server list can never wipe rows
+        // this device still holds (history, courses).
+        const snapshot = await loadCloudProfile(profileRef.current);
         if (cancelled) return null;
         let syncedProfile = profileRef.current;
         if (snapshot) {
