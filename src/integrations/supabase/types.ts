@@ -7,53 +7,131 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       ai_question_sets: {
         Row: {
-          course_code: string
-          created_at: string
-          generated_at: string
+          course_code: string | null
+          data: Json | null
+          generated_at: string | null
           id: string
-          questions: Json
-          updated_at: string
+          questions: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          course_code?: string | null
+          data?: Json | null
+          generated_at?: string | null
+          id?: string
+          questions?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          course_code?: string | null
+          data?: Json | null
+          generated_at?: string | null
+          id?: string
+          questions?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_conversations: {
+        Row: {
+          conversation_id: string
+          course_code: string
+          created_at: string | null
+          id: string
           user_id: string
         }
         Insert: {
-          course_code?: string
-          created_at?: string
-          generated_at?: string
+          conversation_id: string
+          course_code: string
+          created_at?: string | null
           id?: string
-          questions?: Json
-          updated_at?: string
           user_id: string
         }
         Update: {
+          conversation_id?: string
           course_code?: string
-          created_at?: string
-          generated_at?: string
+          created_at?: string | null
           id?: string
-          questions?: Json
-          updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_question_sets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      course_context: {
+        Row: {
+          content: string
+          course_code: string
+          created_at: string | null
+          embedding: string | null
+          id: string
+          source_url: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          content: string
+          course_code: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          source_url?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          content?: string
+          course_code?: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          source_url?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: []
       }
       course_materials: {
         Row: {
           course_code: string
-          created_at: string
+          created_at: string | null
           extracted_content: string | null
           extraction_error: string | null
-          extraction_status: string
+          extraction_status: string | null
           file_name: string
           file_path: string
           file_type: string
@@ -66,14 +144,14 @@ export type Database = {
           show_owner_name: boolean
           show_owner_photo: boolean
           size_bytes: number
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           course_code: string
-          created_at?: string
+          created_at?: string | null
           extracted_content?: string | null
           extraction_error?: string | null
-          extraction_status?: string
+          extraction_status?: string | null
           file_name: string
           file_path: string
           file_type: string
@@ -86,14 +164,14 @@ export type Database = {
           show_owner_name?: boolean
           show_owner_photo?: boolean
           size_bytes: number
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           course_code?: string
-          created_at?: string
+          created_at?: string | null
           extracted_content?: string | null
           extraction_error?: string | null
-          extraction_status?: string
+          extraction_status?: string | null
           file_name?: string
           file_path?: string
           file_type?: string
@@ -106,58 +184,152 @@ export type Database = {
           show_owner_name?: boolean
           show_owner_photo?: boolean
           size_bytes?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      course_topic_analysis: {
+        Row: {
+          analyzed_at: string | null
+          course_code: string | null
+          created_at: string | null
+          id: string
+          material_id: string | null
+          topics: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          analyzed_at?: string | null
+          course_code?: string | null
+          created_at?: string | null
+          id?: string
+          material_id?: string | null
+          topics?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          analyzed_at?: string | null
+          course_code?: string | null
+          created_at?: string | null
+          id?: string
+          material_id?: string | null
+          topics?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      flashcard_decks: {
+        Row: {
+          card_count: number
+          course_code: string | null
+          created_at: string | null
+          id: string
+          material_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          card_count?: number
+          course_code?: string | null
+          created_at?: string | null
+          id?: string
+          material_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          card_count?: number
+          course_code?: string | null
+          created_at?: string | null
+          id?: string
+          material_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flashcards: {
+        Row: {
+          back: string
+          created_at: string | null
+          deck_id: string
+          difficulty: number | null
+          due_at: string
+          front: string
+          id: string
+          lapses: number
+          last_reviewed_at: string | null
+          reps: number
+          source_excerpt: string | null
+          stability: number | null
+          user_id: string
+        }
+        Insert: {
+          back: string
+          created_at?: string | null
+          deck_id: string
+          difficulty?: number | null
+          due_at?: string
+          front: string
+          id?: string
+          lapses?: number
+          last_reviewed_at?: string | null
+          reps?: number
+          source_excerpt?: string | null
+          stability?: number | null
+          user_id: string
+        }
+        Update: {
+          back?: string
+          created_at?: string | null
+          deck_id?: string
+          difficulty?: number | null
+          due_at?: string
+          front?: string
+          id?: string
+          lapses?: number
+          last_reviewed_at?: string | null
+          reps?: number
+          source_excerpt?: string | null
+          stability?: number | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "course_materials_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "flashcards_deck_id_fkey"
+            columns: ["deck_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "flashcard_decks"
             referencedColumns: ["id"]
           },
         ]
       }
-      course_topic_analysis: {
+      generated_question_log: {
         Row: {
-          analyzed_at: string
-          course_code: string
-          created_at: string
+          created_at: string | null
           id: string
-          material_id: string | null
-          topics: Json
-          updated_at: string
+          material_id: string
+          question_stem: string
+          topic: string | null
           user_id: string
         }
         Insert: {
-          analyzed_at?: string
-          course_code: string
-          created_at?: string
+          created_at?: string | null
           id?: string
-          material_id?: string | null
-          topics?: Json
-          updated_at?: string
+          material_id: string
+          question_stem: string
+          topic?: string | null
           user_id: string
         }
         Update: {
-          analyzed_at?: string
-          course_code?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
-          material_id?: string | null
-          topics?: Json
-          updated_at?: string
+          material_id?: string
+          question_stem?: string
+          topic?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "course_topic_analysis_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       library_shares: {
         Row: {
@@ -201,312 +373,335 @@ export type Database = {
             referencedRelation: "course_materials"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "library_shares_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
+      }
+      mock_attempt_results: {
+        Row: {
+          course_code: string
+          created_at: string | null
+          difficulty: string | null
+          id: string
+          item_type: string | null
+          topic: string
+          user_id: string
+          was_correct: boolean
+        }
+        Insert: {
+          course_code: string
+          created_at?: string | null
+          difficulty?: string | null
+          id?: string
+          item_type?: string | null
+          topic: string
+          user_id: string
+          was_correct: boolean
+        }
+        Update: {
+          course_code?: string
+          created_at?: string | null
+          difficulty?: string | null
+          id?: string
+          item_type?: string | null
+          topic?: string
+          user_id?: string
+          was_correct?: boolean
+        }
+        Relationships: []
       }
       mock_attempts: {
         Row: {
           answers: Json | null
-          correct: number
-          course_code: string
-          course_title: string
-          created_at: string
+          correct: number | null
+          course_code: string | null
+          course_title: string | null
+          data: Json | null
           id: string
           questions: Json | null
-          score: number
+          score: number | null
           settings: Json | null
-          submitted_at: string
-          topics: Json
-          total: number
-          updated_at: string
-          user_id: string
+          submitted_at: string | null
+          topics: Json | null
+          total: number | null
+          user_id: string | null
         }
         Insert: {
           answers?: Json | null
-          correct?: number
-          course_code: string
-          course_title?: string
-          created_at?: string
-          id: string
+          correct?: number | null
+          course_code?: string | null
+          course_title?: string | null
+          data?: Json | null
+          id?: string
           questions?: Json | null
-          score?: number
+          score?: number | null
           settings?: Json | null
-          submitted_at?: string
-          topics?: Json
-          total?: number
-          updated_at?: string
-          user_id: string
+          submitted_at?: string | null
+          topics?: Json | null
+          total?: number | null
+          user_id?: string | null
         }
         Update: {
           answers?: Json | null
-          correct?: number
-          course_code?: string
-          course_title?: string
-          created_at?: string
+          correct?: number | null
+          course_code?: string | null
+          course_title?: string | null
+          data?: Json | null
           id?: string
           questions?: Json | null
-          score?: number
+          score?: number | null
           settings?: Json | null
-          submitted_at?: string
-          topics?: Json
-          total?: number
-          updated_at?: string
+          submitted_at?: string | null
+          topics?: Json | null
+          total?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      mock_jobs: {
+        Row: {
+          created_at: string | null
+          error: string | null
+          job_id: string
+          result: Json | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          error?: string | null
+          job_id: string
+          result?: Json | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          error?: string | null
+          job_id?: string
+          result?: Json | null
+          status?: string
+          updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "mock_attempts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
           avatar_path: string | null
           cgpa_actual: Json | null
           cgpa_inputs: Json | null
-          cgpa_intro_seen: boolean
+          cgpa_intro_seen: boolean | null
           cgpa_plan: Json | null
-          created_at: string
+          data: Json | null
           department: string | null
-          disclaimer_accepted: boolean
+          disclaimer_accepted: boolean | null
           display_name: string | null
           email: string | null
           faculty: string | null
           freeze_used_on: string | null
           freezes_available: number
-          goal: string | null
-          has_completed_first_mock: boolean
+          goal: Json | null
+          has_completed_first_mock: boolean | null
           last_active_date: string | null
           last_qualifying_day: string | null
           level: number | null
-          mastered_courses: Json
-          setup_complete: boolean
-          streak_days: number
-          study_preference: string | null
-          timeline: string | null
+          mastered_courses: Json | null
+          setup_complete: boolean | null
+          streak_days: number | null
+          study_preference: Json | null
+          timeline: Json | null
           tour_seen: boolean
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           avatar_path?: string | null
           cgpa_actual?: Json | null
           cgpa_inputs?: Json | null
-          cgpa_intro_seen?: boolean
+          cgpa_intro_seen?: boolean | null
           cgpa_plan?: Json | null
-          created_at?: string
+          data?: Json | null
           department?: string | null
-          disclaimer_accepted?: boolean
+          disclaimer_accepted?: boolean | null
           display_name?: string | null
           email?: string | null
           faculty?: string | null
           freeze_used_on?: string | null
           freezes_available?: number
-          goal?: string | null
-          has_completed_first_mock?: boolean
+          goal?: Json | null
+          has_completed_first_mock?: boolean | null
           last_active_date?: string | null
           last_qualifying_day?: string | null
           level?: number | null
-          mastered_courses?: Json
-          setup_complete?: boolean
-          streak_days?: number
-          study_preference?: string | null
-          timeline?: string | null
+          mastered_courses?: Json | null
+          setup_complete?: boolean | null
+          streak_days?: number | null
+          study_preference?: Json | null
+          timeline?: Json | null
           tour_seen?: boolean
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           avatar_path?: string | null
           cgpa_actual?: Json | null
           cgpa_inputs?: Json | null
-          cgpa_intro_seen?: boolean
+          cgpa_intro_seen?: boolean | null
           cgpa_plan?: Json | null
-          created_at?: string
+          data?: Json | null
           department?: string | null
-          disclaimer_accepted?: boolean
+          disclaimer_accepted?: boolean | null
           display_name?: string | null
           email?: string | null
           faculty?: string | null
           freeze_used_on?: string | null
           freezes_available?: number
-          goal?: string | null
-          has_completed_first_mock?: boolean
+          goal?: Json | null
+          has_completed_first_mock?: boolean | null
           last_active_date?: string | null
           last_qualifying_day?: string | null
           level?: number | null
-          mastered_courses?: Json
-          setup_complete?: boolean
-          streak_days?: number
-          study_preference?: string | null
-          timeline?: string | null
+          mastered_courses?: Json | null
+          setup_complete?: boolean | null
+          streak_days?: number | null
+          study_preference?: Json | null
+          timeline?: Json | null
           tour_seen?: boolean
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       subscriptions: {
         Row: {
-          created_at: string
+          created_at: string | null
+          id: string
           paid_until: string | null
           paying_user_number: number | null
-          tier: string
-          trial_ends_at: string
-          trial_started_at: string
-          updated_at: string
-          user_id: string
+          tier: string | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
+          user_id: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
+          id?: string
           paid_until?: string | null
           paying_user_number?: number | null
-          tier?: string
-          trial_ends_at?: string
-          trial_started_at?: string
-          updated_at?: string
-          user_id: string
+          tier?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          user_id?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
+          id?: string
           paid_until?: string | null
           paying_user_number?: number | null
-          tier?: string
-          trial_ends_at?: string
-          trial_started_at?: string
-          updated_at?: string
-          user_id?: string
+          tier?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       usage_counters: {
         Row: {
-          count: number
-          created_at: string
+          count: number | null
+          created_at: string | null
           day: string
           feature: string
           id: string
-          updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
-          count?: number
-          created_at?: string
-          day?: string
+          count?: number | null
+          created_at?: string | null
+          day: string
           feature: string
           id?: string
-          updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
-          count?: number
-          created_at?: string
+          count?: number | null
+          created_at?: string | null
           day?: string
           feature?: string
           id?: string
-          updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "usage_counters_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_courses: {
         Row: {
-          course_code: string
-          created_at: string
+          course_code: string | null
+          course_name: string | null
+          created_at: string | null
           id: string
           label_override: string | null
-          source: string
-          status: string
+          source: string | null
+          status: string | null
           test_settings: Json | null
-          title: string
+          title: string | null
           units: number | null
-          updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
-          course_code: string
-          created_at?: string
+          course_code?: string | null
+          course_name?: string | null
+          created_at?: string | null
           id?: string
           label_override?: string | null
-          source?: string
-          status?: string
+          source?: string | null
+          status?: string | null
           test_settings?: Json | null
-          title?: string
+          title?: string | null
           units?: number | null
-          updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
-          course_code?: string
-          created_at?: string
+          course_code?: string | null
+          course_name?: string | null
+          created_at?: string | null
           id?: string
           label_override?: string | null
-          source?: string
-          status?: string
+          source?: string | null
+          status?: string | null
           test_settings?: Json | null
-          title?: string
+          title?: string | null
           units?: number | null
-          updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_courses_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      has_full_access: {
+      match_course_context: {
         Args: {
-          _user_id: string
+          match_count?: number
+          match_course_code: string
+          query_embedding: string
         }
-        Returns: boolean
+        Returns: {
+          content: string
+          similarity: number
+          title: string
+        }[]
       }
-      set_updated_at: {
-        Args: Record<string, never>
-        Returns: undefined
+      record_mock_streak: {
+        Args: { answered_count: number }
+        Returns: {
+          event: string
+          freeze_used_on: string
+          freezes_available: number
+          last_active_date: string
+          streak_days: number
+          today_wat: string
+        }[]
       }
     }
     Enums: {
@@ -518,38 +713,125 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database["public"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] & PublicSchema["Views"]),
-> = (PublicSchema["Tables"] & PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-    Row: infer R
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
-  ? R
-  : never
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends keyof PublicSchema["Tables"],
-> = PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-    Insert: infer I
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
-  ? I
-  : never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends keyof PublicSchema["Tables"],
-> = PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-    Update: infer U
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
-  ? U
-  : never
-
-export type TablesRow<T extends keyof PublicSchema["Tables"]> = PublicSchema["Tables"][T]["Row"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends keyof PublicSchema["Enums"],
-> = PublicSchema["Enums"][PublicEnumNameOrOptions]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"],
-> = PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
