@@ -454,10 +454,16 @@ export async function saveSharedFile(opts: {
       .eq("id", opts.materialId)
       .maybeSingle();
     if (!data || !data.published) return { ok: false, reason: REDEEM_MISS_MESSAGE };
-    source = data;
+    source = {
+      ...data,
+      user_id: data.user_id ?? "",
+      extraction_status: data.extraction_status ?? "",
+    };
   } else {
     return { ok: false, reason: REDEEM_MISS_MESSAGE };
   }
+
+  if (!source) return { ok: false, reason: REDEEM_MISS_MESSAGE };
 
   if (source.user_id === opts.recipientId) {
     return { ok: false, reason: "This file is already in your locker." };
