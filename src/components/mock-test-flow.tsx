@@ -736,7 +736,8 @@ export function MockRunScreen() {
       const { pushMockAttempt } = await import("@/lib/cloud-sync");
       await pushMockAttempt(attempt);
     } catch (error) {
-      toast.error((error as Error)?.message || "This result couldn't be saved to your history.");
+      console.error("[mock] attempt save failed", error);
+      toast.error("Couldn't save this test to your account.");
     }
 
     const COUNTED_KEY = "tf.counted.mock_sets";
@@ -775,7 +776,8 @@ export function MockRunScreen() {
           if (streak.event === "protected") toast.success("Streak protected. 1 freeze used.");
         }
       } catch (error) {
-        console.warn("[streak] couldn't save qualifying mock", error);
+        console.error("[streak] couldn't save qualifying mock", error);
+        toast.error((error as Error)?.message || "Your study streak couldn't be updated.");
       }
     }
 

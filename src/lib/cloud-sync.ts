@@ -44,7 +44,7 @@ async function currentUserId(): Promise<string | null> {
  * Tables that fail are left OUT of the returned partial, so merging it over
  * the local profile keeps the local value instead of blanking it.
  */
-export async function loadCloudProfile(): Promise<CloudSnapshot> {
+export async function loadCloudProfile(local?: Partial<Profile> | null): Promise<CloudSnapshot> {
   const userId = await currentUserId();
   if (!userId) return null;
 
@@ -108,8 +108,15 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
       if (c.test_settings && c.course_code)
         courseTestSettings[c.course_code] = c.test_settings as unknown as CourseTestSettings;
     }
-    snapshot.courses = courses;
-    snapshot.courseTestSettings = courseTestSettings;
+    // An empty successful SELECT must never wipe courses this device already
+    // has (e.g. a push that failed or hasn't run yet).
+    const localCourses = local?.courses ?? [];
+    if (!courses.length && localCourses.length) {
+      console.warn("[cloud-sync] server returned 0 courses; keeping local courses");
+    } else {
+      snapshot.courses = courses;
+      snapshot.courseTestSettings = courseTestSettings;
+    }
   }
 
   if (attemptsRes.error) {
@@ -128,8 +135,20 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
       answers: (a.answers as unknown as (number | null)[]) ?? undefined,
       settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
     }));
-    snapshot.attempts = attempts;
-    snapshot.topicScores = attempts.flatMap((a) =>
+    // History is append-only from the student's point of view: union local and
+    // server by attempt id, and never let an empty server list erase local rows.
+    const localAttempts = local?.attempts ?? [];
+    const byId = new Map<string, MockAttempt>();
+    for (const a of localAttempts) byId.set(a.id, a);
+    for (const a of attempts) byId.set(a.id, a);
+    const merged = Array.from(byId.values()).sort((x, y) => y.submittedAt - x.submittedAt);
+
+    if (!attempts.length && localAttempts.length) {
+      console.warn("[cloud-sync] server returned 0 attempts; keeping local history");
+    }
+
+    snapshot.attempts = merged;
+    snapshot.topicScores = merged.flatMap((a) =>
       a.topics.map((t) => ({ course: a.courseCode, topic: t.topic, score: t.score })),
     );
   }
