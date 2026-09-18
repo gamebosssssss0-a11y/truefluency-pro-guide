@@ -147,7 +147,7 @@ export function LibraryScreen() {
         file_name: r.file_name,
         file_type: r.file_type,
         size_bytes: r.size_bytes,
-        created_at: r.created_at,
+        created_at: r.created_at ?? "",
         published: r.published,
         is_peer_copy: r.is_peer_copy,
         peer_alias: r.peer_alias,
