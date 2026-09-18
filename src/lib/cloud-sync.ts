@@ -94,7 +94,7 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
     console.error("[cloud-sync] user_courses load failed, keeping local courses", coursesRes.error.message);
   } else {
     const courses: UserCourse[] = (coursesRes.data ?? []).map((c) => ({
-      code: c.course_code,
+      code: c.course_code ?? "",
       name: c.title ?? "",
       status: (c.status ?? "Compulsory") as CatalogStatus,
       ...(c.label_override
@@ -105,7 +105,8 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
 
     const courseTestSettings: Record<string, CourseTestSettings> = {};
     for (const c of coursesRes.data ?? []) {
-      if (c.test_settings) courseTestSettings[c.course_code] = c.test_settings as unknown as CourseTestSettings;
+      if (c.test_settings && c.course_code)
+        courseTestSettings[c.course_code] = c.test_settings as unknown as CourseTestSettings;
     }
     snapshot.courses = courses;
     snapshot.courseTestSettings = courseTestSettings;
@@ -116,12 +117,12 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
   } else {
     const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => ({
       id: a.id,
-      courseCode: a.course_code,
+      courseCode: a.course_code ?? "",
       courseTitle: a.course_title ?? "",
       score: a.score ?? 0,
       correct: a.correct ?? 0,
       total: a.total ?? 0,
-      submittedAt: new Date(a.submitted_at).getTime(),
+      submittedAt: new Date(a.submitted_at ?? 0).getTime(),
       topics: (a.topics as unknown as MockAttempt["topics"]) ?? [],
       questions: (a.questions as unknown as AIQuestion[]) ?? undefined,
       answers: (a.answers as unknown as (number | null)[]) ?? undefined,
@@ -153,9 +154,10 @@ export async function loadCloudProfile(): Promise<CloudSnapshot> {
   } else {
     const courseTopicAnalysis: Record<string, CourseTopicAnalysis> = {};
     for (const t of analysisRes.data ?? []) {
+      if (!t.course_code) continue;
       courseTopicAnalysis[t.course_code] = {
         materialId: t.material_id ?? "",
-        analyzedAt: new Date(t.analyzed_at).getTime(),
+        analyzedAt: new Date(t.analyzed_at ?? 0).getTime(),
         topics: (t.topics as unknown as CourseTopicAnalysis["topics"]) ?? [],
       };
     }

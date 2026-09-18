@@ -153,7 +153,7 @@ export async function listShelf(opts: {
     const key = `${r.user_id}|${r.show_owner_name ? 1 : 0}|${r.show_owner_photo ? 1 : 0}`;
     let attribution = cache.get(key);
     if (!attribution) {
-      attribution = await attributionFor(r.user_id, r.show_owner_name, r.show_owner_photo);
+      attribution = await attributionFor(r.user_id ?? "", r.show_owner_name, r.show_owner_photo);
       cache.set(key, attribution);
     }
     items.push({
@@ -162,7 +162,7 @@ export async function listShelf(opts: {
       file_name: r.file_name,
       file_type: r.file_type,
       size_bytes: r.size_bytes,
-      created_at: r.created_at,
+      created_at: r.created_at ?? "",
       peer_alias: attribution.peer_alias,
       avatar_url: attribution.avatar_url,
       readyForMocks: ready(r.extracted_content),
@@ -343,7 +343,14 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
     .eq("id", share.material_id)
     .maybeSingle();
   if (!material) return null;
-  return { share, material };
+  return {
+    share,
+    material: {
+      ...material,
+      user_id: material.user_id ?? "",
+      extraction_status: material.extraction_status ?? "",
+    },
+  };
 }
 
 export type RedeemedShare = {
@@ -447,10 +454,16 @@ export async function saveSharedFile(opts: {
       .eq("id", opts.materialId)
       .maybeSingle();
     if (!data || !data.published) return { ok: false, reason: REDEEM_MISS_MESSAGE };
-    source = data;
+    source = {
+      ...data,
+      user_id: data.user_id ?? "",
+      extraction_status: data.extraction_status ?? "",
+    };
   } else {
     return { ok: false, reason: REDEEM_MISS_MESSAGE };
   }
+
+  if (!source) return { ok: false, reason: REDEEM_MISS_MESSAGE };
 
   if (source.user_id === opts.recipientId) {
     return { ok: false, reason: "This file is already in your locker." };
