@@ -252,6 +252,14 @@ export function HomeScreen() {
   const subline = greetingSubline(profile.goal);
   const hasStreak = profile.streakDays > 0;
 
+  // Saved history is the source of truth for today's mocks: the server counter
+  // stays at 0 on trial / full access, which used to zero the meter.
+  const mocksToday = useMemo(() => {
+    const today = lagosDay(Date.now());
+    const fromHistory = profile.attempts.filter((a) => lagosDay(a.submittedAt) === today).length;
+    return Math.max(fromHistory, access?.usageToday.mock_sets ?? 0);
+  }, [profile.attempts, access]);
+
   const meta = useMemo(
     () =>
       [profile.department ?? profile.faculty, profile.level ? `${profile.level} level` : null]
@@ -346,7 +354,7 @@ export function HomeScreen() {
         {/* Straight routes to the two lists students look for most. */}
         <div className="mb-5 grid gap-2">
           <HomeRowLink label="Your courses" onClick={() => navigate("courses")} />
-          <HomeRowLink label="Test history" onClick={() => navigate("mock-tests")} />
+          <HomeRowLink label="Test history" onClick={() => navigate("test-history")} />
         </div>
 
         <NextStepCard />
