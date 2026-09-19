@@ -255,7 +255,9 @@ export function TestHistoryScreen() {
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                         <span>
                           {a.total} questions
-                          {a.settings?.minutes ? ` · ${a.settings.minutes} min` : ""}
+                          {a.settings?.minutes && a.settings?.questionCount === a.total
+                            ? ` · ${a.settings.minutes} min`
+                            : ""}
                         </span>
                         <span className="rounded-full bg-sand px-2 py-0.5 font-semibold text-navy">
                           {difficultyLabelOf(a.settings?.difficulty)}
