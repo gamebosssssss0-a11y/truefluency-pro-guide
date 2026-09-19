@@ -250,12 +250,13 @@ export function TestHistoryScreen() {
                         · {a.score}%
                       </div>
 
+                      {/* Counts come from the SAVED attempt: a 45-question row
+                          must never print the current setting's 60. */}
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                        {a.settings ? (
-                          <span>
-                            {a.settings.questionCount} questions · {a.settings.minutes} min
-                          </span>
-                        ) : null}
+                        <span>
+                          {a.total} questions
+                          {a.settings?.minutes ? ` · ${a.settings.minutes} min` : ""}
+                        </span>
                         <span className="rounded-full bg-sand px-2 py-0.5 font-semibold text-navy">
                           {difficultyLabelOf(a.settings?.difficulty)}
                         </span>
