@@ -47,6 +47,9 @@ export const consumeFeatureQuota = createServerFn({ method: "POST" })
       requestedQuestions: data.requestedQuestions,
       dryRun: data.dryRun,
     });
-    const { access: _access, ...verdict } = result;
-    return verdict;
+    // Never destructure a possibly-missing result: an empty answer must read as
+    // "allowed", not crash the submit handler.
+    if (!result || typeof result !== "object") return { allowed: true } as QuotaVerdict;
+    const { access: _access, ...verdict } = result as Record<string, unknown> & QuotaVerdict;
+    return verdict as QuotaVerdict & { allowedQuestions?: number };
   });

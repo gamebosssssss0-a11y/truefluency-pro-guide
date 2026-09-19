@@ -176,23 +176,33 @@ export function AccountScreen() {
   };
 
   /**
-   * Sign out. The cloud snapshot is pushed first so nothing that only existed
-   * locally is lost, then the session ends and the local cache is cleared.
-   * The data itself stays in the account and comes back on next sign-in.
+   * Sign out. The cloud snapshot is pushed first; ONLY when that succeeds does
+   * the session end. If the save fails the student stays signed in, keeps their
+   * local history, and sees the real reason — never a false "nothing is lost".
    */
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
-      const { pushCloudProfile } = await import("@/lib/cloud-sync");
+      const { pushCloudProfile, describePushFailures, lastPushFailures } = await import(
+        "@/lib/cloud-sync"
+      );
       const saved = await pushCloudProfile(profile);
       if (!saved) {
-        toast.error("Couldn't save your latest changes to your account. Check your connection and try again.");
+        const detail = describePushFailures(lastPushFailures());
+        toast.error(
+          detail
+            ? `Couldn't save to your account — ${detail}. You're still signed in, nothing was deleted.`
+            : "Couldn't save to your account. You're still signed in, nothing was deleted.",
+        );
         setSigningOut(false);
         return;
       }
     } catch (e) {
       console.error("[account] pre-sign-out save failed", e);
-      toast.error("Couldn't save your latest changes to your account. Check your connection and try again.");
+      const detail = (e as { message?: string })?.message ?? String(e);
+      toast.error(
+        `Couldn't save to your account — ${detail}. You're still signed in, nothing was deleted.`,
+      );
       setSigningOut(false);
       return;
     }
@@ -496,9 +506,10 @@ export function AccountScreen() {
             <AlertDialogHeader>
               <AlertDialogTitle>Sign out of TrueFluency Pro?</AlertDialogTitle>
               <AlertDialogDescription>
-                Your profile, courses, uploads, mock attempts and streak are saved to your account
-                first, so nothing is lost. Sign back in with the same account to pick up exactly
-                where you left off.
+                We save your profile, courses, uploads, mock attempts and streak to your account
+                first. If that save cannot go through, you stay signed in and nothing is removed
+                from this device. Once it saves, sign back in with the same account to pick up
+                exactly where you left off.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

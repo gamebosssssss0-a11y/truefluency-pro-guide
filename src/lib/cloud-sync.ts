@@ -197,11 +197,36 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
  * stop the others (in particular, a profiles failure must not stop the mock
  * history from being saved).
  */
+export type PushFailure = { table: string; message: string; code?: string };
+
+let LAST_PUSH_FAILURES: PushFailure[] = [];
+
+/** Details of the most recent failed push, so callers can show the real cause. */
+export function lastPushFailures(): PushFailure[] {
+  return LAST_PUSH_FAILURES;
+}
+
+/** One readable line: "mock_attempts: permission denied (42501)". */
+export function describePushFailures(failures: PushFailure[] = LAST_PUSH_FAILURES): string {
+  return failures
+    .map((f) => `${f.table}: ${f.message}${f.code ? ` (${f.code})` : ""}`)
+    .join("; ");
+}
+
+function toFailure(table: string, err: unknown): PushFailure {
+  const e = (err ?? {}) as { message?: string; code?: string; details?: string; hint?: string };
+  const message = e.message || e.details || e.hint || String(err);
+  return { table, message, ...(e.code ? { code: e.code } : {}) };
+}
+
 export async function pushCloudProfile(profile: Profile): Promise<boolean> {
   const userId = await currentUserId();
-  if (!userId) return false;
+  if (!userId) {
+    LAST_PUSH_FAILURES = [{ table: "auth", message: "No signed-in session." }];
+    return false;
+  }
 
-  const failed: string[] = [];
+  const failed: PushFailure[] = [];
 
   try {
     const { error } = await supabase.from("profiles").upsert(
@@ -229,7 +254,7 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
     );
     if (error) throw error;
   } catch (err) {
-    failed.push("profiles");
+    failed.push(toFailure("profiles", err));
     console.error("[cloud-sync] profiles push failed", err);
   }
 
@@ -262,7 +287,7 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
     const { error: delErr } = await del;
     if (delErr) console.error("[cloud-sync] course cleanup failed", delErr);
   } catch (err) {
-    failed.push("user_courses");
+    failed.push(toFailure("user_courses", err));
     console.error("[cloud-sync] user_courses push failed", err);
   }
 
@@ -288,7 +313,7 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
       if (error) throw error;
     }
   } catch (err) {
-    failed.push("mock_attempts");
+    failed.push(toFailure("mock_attempts", err));
     console.error("[cloud-sync] mock_attempts push failed", err);
   }
 
@@ -310,7 +335,7 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
       if (error) throw error;
     }
   } catch (err) {
-    failed.push("ai_question_sets");
+    failed.push(toFailure("ai_question_sets", err));
     console.error("[cloud-sync] ai_question_sets push failed", err);
   }
 
@@ -329,12 +354,13 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
       if (error) throw error;
     }
   } catch (err) {
-    failed.push("course_topic_analysis");
+    failed.push(toFailure("course_topic_analysis", err));
     console.error("[cloud-sync] course_topic_analysis push failed", err);
   }
 
+  LAST_PUSH_FAILURES = failed;
   if (failed.length) {
-    console.error("[cloud-sync] push finished with failures on:", failed.join(", "));
+    console.error("[cloud-sync] push finished with failures:", describePushFailures(failed));
     return false;
   }
   return true;
