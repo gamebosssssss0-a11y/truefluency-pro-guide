@@ -321,21 +321,33 @@ export function HomeScreen() {
           </div>
         ) : null}
 
-        {access ? (
+        {access || mocksToday > 0 ? (
           <div className="mb-5 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>
                 <div className="mt-0.5 text-[11px] text-muted-foreground">
-                  {access.usageToday.mock_sets >= 2 ? "Daily target reached." : "Mock sets completed today"}
+                  {mocksToday >= 2 ? "Daily target reached." : "Mock sets completed today"}
                 </div>
               </div>
               <div className="shrink-0 font-display text-lg font-semibold text-accent">
-                {Math.min(access.usageToday.mock_sets, 2)} of 2 mocks today
+                {Math.min(mocksToday, 2)} of 2 mocks today
               </div>
+            </div>
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-sand">
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-200"
+                style={{ width: `${Math.min(mocksToday, 2) * 50}%` }}
+              />
             </div>
           </div>
         ) : null}
+
+        {/* Straight routes to the two lists students look for most. */}
+        <div className="mb-5 grid gap-2">
+          <HomeRowLink label="Your courses" onClick={() => navigate("courses")} />
+          <HomeRowLink label="Test history" onClick={() => navigate("mock-tests")} />
+        </div>
 
         <NextStepCard />
 
