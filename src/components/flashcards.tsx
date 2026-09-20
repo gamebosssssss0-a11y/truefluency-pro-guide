@@ -60,6 +60,7 @@ export function FlashcardsScreen() {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const courseOptions = [
