@@ -7,10 +7,11 @@
  * never loses anything.
  */
 import { useEffect, useRef, useState } from "react";
-import { FileText, Send } from "lucide-react";
+import { Camera, FileText, Image as ImageIcon, Send, Volume2, VolumeX, X } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
+import { RichText, plainText } from "@/components/rich-text";
 import { ALL_SCOPE, getAllMergedThread, getCourseThread, sendChatMessage } from "@/lib/chat-api";
 
 type Message = {
@@ -27,8 +28,16 @@ const EXAMPLE_PROMPTS = [
   "Quiz me on one idea",
 ];
 
+/** UI field only — the backend has no mode parameter, so nothing is invented here. */
+const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
+type Mode = (typeof MODES)[number];
+
 function displayCode(code: string) {
   return code.replace(/^C-/, "");
+}
+
+function speechSupported() {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
 export function ChatbotScreen() {
@@ -43,8 +52,13 @@ export function ChatbotScreen() {
   const [isLoadingThread, setIsLoadingThread] = useState(true);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [mode, setMode] = useState<Mode>("Explain");
+  const [photoName, setPhotoName] = useState<string | null>(null);
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
   const nextId = useRef(1);
   const loadToken = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
 
   const courseOptions = [
     ALL_SCOPE,
@@ -53,9 +67,7 @@ export function ChatbotScreen() {
 
   // Load the real thread for whichever scope is selected — a course chip
   // gets its own persistent thread; "all" shows every course's messages
-  // merged into one feed. Runs on mount and every time `selected` changes,
-  // so switching chips (or tabs, or reopening the app) restores history
-  // instead of starting from a blank screen.
+  // merged into one feed.
   useEffect(() => {
     const token = ++loadToken.current;
     setIsLoadingThread(true);
@@ -90,10 +102,39 @@ export function ChatbotScreen() {
     run();
   }, [selected]);
 
+  // Stop any reading aloud when leaving the screen.
+  useEffect(() => {
+    return () => {
+      if (speechSupported()) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const messagesUsed = access?.usageToday.chatbot_messages ?? 0;
+  const messageLimit = access?.dailyLimits.chatbot_messages ?? 10;
+  const chatCapReached = !!access && !access.fullAccess && messagesUsed >= messageLimit;
+
+  const notice = (text: string) =>
+    setMessages((cur) => [...cur, { id: nextId.current++, from: "notice", text }]);
+
   const send = async () => {
     const text = draft.trim();
-    if (!text || isSending) return; // empty or already sending → do nothing
+
+    // A photo with no words never reaches the backend and never costs a reply.
+    if (!text && photoName) {
+      notice("Photo notes|Photo notes connect when chat OCR is live.");
+      setPhotoName(null);
+      return;
+    }
+    if (!text || isSending) return;
+
+    // Free students out of replies: no POST, no quota spend.
+    if (chatCapReached) {
+      notice(`Out of replies today|You've used ${messagesUsed} of ${messageLimit} replies today.`);
+      return;
+    }
+
     setDraft("");
+    setPhotoName(null);
     setMessages((cur) => [...cur, { id: nextId.current++, from: "student", text }]);
     setIsSending(true);
 
@@ -101,26 +142,35 @@ export function ChatbotScreen() {
       const { reply } = await sendChatMessage(text, selected);
       setMessages((cur) => [...cur, { id: nextId.current++, from: "assistant", text: reply }]);
     } catch (e) {
-      setMessages((cur) => [
-        ...cur,
-        {
-          id: nextId.current++,
-          from: "notice",
-          text: `Couldn't send that|${(e as Error)?.message || "Something went wrong. Try again."}`,
-        },
-      ]);
+      notice(
+        `Couldn't send that|${(e as Error)?.message || "Something went wrong. Try again."}`,
+      );
     } finally {
       setIsSending(false);
     }
+  };
+
+  const toggleSpeak = (m: Message) => {
+    if (!speechSupported()) return;
+    const synth = window.speechSynthesis;
+    if (speakingId === m.id) {
+      synth.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(plainText(m.text));
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(m.id);
+    synth.speak(utterance);
   };
 
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
   const capText = (() => {
     if (!access) return null;
     if (access.fullAccess) return "Full access";
-    const used = access.usageToday.chatbot_messages ?? 0;
-    const limit = access.dailyLimits.chatbot_messages ?? 10;
-    return `${used} of ${limit} messages today`;
+    return `${messagesUsed} of ${messageLimit} replies today`;
   })();
 
   const headerLabel = selected === ALL_SCOPE ? "All my notes" : displayCode(selected);
@@ -128,7 +178,7 @@ export function ChatbotScreen() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-24 pt-6 md:pb-8">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-28 pt-6 md:pb-10">
         {/* Header card: white, cream border, 4px navy left edge */}
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-card p-4">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
@@ -148,7 +198,7 @@ export function ChatbotScreen() {
         </div>
 
         {/* Optional course scope chips */}
-        <div className="mb-6 flex flex-wrap gap-2">
+        <div className="mb-3 flex flex-wrap gap-2">
           {courseOptions.map((code) => {
             const isAll = code === ALL_SCOPE;
             const active = selected === code;
@@ -166,6 +216,28 @@ export function ChatbotScreen() {
                 }
               >
                 {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* How the student wants the reply framed. */}
+        <div className="mb-5 flex flex-wrap gap-2">
+          {MODES.map((m) => {
+            const active = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={
+                  "rounded-full border px-3 py-1 text-xs font-medium transition " +
+                  (active
+                    ? "border-[#B86E0A] bg-[#F3E6C8] text-[#B86E0A]"
+                    : "border-[#1B2A4A] bg-card text-[#1B2A4A]")
+                }
+              >
+                {m}
               </button>
             );
           })}
@@ -224,8 +296,26 @@ export function ChatbotScreen() {
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="whitespace-pre-wrap rounded-2xl border border-border bg-sand/40 p-4 text-sm text-foreground">
-                      {m.text}
+                    <div className="rounded-2xl border border-border bg-card p-4 text-sm text-[#1B2A4A]">
+                      <RichText>{m.text}</RichText>
+                      {speechSupported() ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleSpeak(m)}
+                          aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"}
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[#B86E0A]"
+                        >
+                          {speakingId === m.id ? (
+                            <>
+                              <VolumeX className="h-3.5 w-3.5" /> Stop
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="h-3.5 w-3.5" /> Read aloud
+                            </>
+                          )}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ) : (
@@ -249,31 +339,77 @@ export function ChatbotScreen() {
           )}
         </div>
 
-        {/* Composer */}
-        <div className="mt-4 flex items-center gap-2 mb-3">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={2000}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            disabled={isSending || isLoadingThread}
-            placeholder={`Ask about ${placeholderCourse}…`}
-            className="h-12 flex-1 rounded-2xl border border-border bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
-          />
-          <button
-            type="button"
-            onClick={send}
-            disabled={isSending || isLoadingThread}
-            aria-label="Send"
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
-          >
-            <Send className="h-5 w-5" />
-          </button>
+        {/* Composer — sits clear of the bottom tab bar */}
+        <div className="mt-4 mb-3">
+          {photoName ? (
+            <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-navy">
+              <span className="truncate">Note · {photoName}</span>
+              <button type="button" onClick={() => setPhotoName(null)} aria-label="Remove photo">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : null}
+          <div className="mb-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => cameraInput.current?.click()}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-medium text-navy"
+            >
+              <Camera className="h-3.5 w-3.5" /> Camera
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-medium text-navy"
+            >
+              <ImageIcon className="h-3.5 w-3.5" /> Gallery
+            </button>
+            <input
+              ref={cameraInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
+            />
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={2000}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              disabled={isSending || isLoadingThread}
+              placeholder={`Ask about ${placeholderCourse}…`}
+              className="h-12 flex-1 rounded-2xl border border-border bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={send}
+              disabled={isSending || isLoadingThread}
+              aria-label="Send"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+          {chatCapReached ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              You've used {messagesUsed} of {messageLimit} replies today.
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
