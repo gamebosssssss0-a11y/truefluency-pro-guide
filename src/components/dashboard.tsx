@@ -15,6 +15,7 @@ import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
 import { getMyAvatar } from "@/lib/avatar";
 import { FirstRunTourHost } from "@/components/first-run-tour";
+import { lagosDay } from "@/lib/wat-day";
 
 /* ================= Tab 1: Home ================= */
 
@@ -353,7 +354,7 @@ export function HomeScreen() {
 
         {/* Straight routes to the two lists students look for most. */}
         <div className="mb-5 grid gap-2">
-          <HomeRowLink label="Your courses" onClick={() => navigate("courses")} />
+          <HomeRowLink label="Your courses" onClick={() => navigate("add-course")} />
           <HomeRowLink label="Test history" onClick={() => navigate("test-history")} />
         </div>
 
@@ -402,6 +403,19 @@ export function HomeScreen() {
       </div>
       <FirstRunTourHost />
     </div>
+  );
+}
+
+/** Single full-width row: white card, cream hairline, navy label, amber chevron. */
+function HomeRowLink({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-xl border border-[#E4DCC8] bg-white p-3.5 text-left"
+    >
+      <span className="min-w-0 flex-1 text-sm font-medium text-[#1B2A4A]">{label}</span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[#B86E0A]" />
+    </button>
   );
 }
 
