@@ -10,6 +10,8 @@ import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
+import { getMyAccess } from "@/lib/entitlements.functions";
+import { PRICE_LINE } from "@/lib/pricing-copy";
 import {
   generateFlashcards,
   getDeckCards,
@@ -23,6 +25,32 @@ const ALL_SCOPE = "all";
 
 function displayCode(code: string) {
   return code.replace(/^C-/, "");
+}
+
+/**
+ * One row per deck id, and one row per (course, card_count) burst: the backend
+ * can return two decks for one long upload, which used to show as duplicates.
+ */
+function dedupeDecks(list: FlashcardDeck[]): FlashcardDeck[] {
+  const byId = new Map<string, FlashcardDeck>();
+  for (const d of list) if (!byId.has(d.id)) byId.set(d.id, d);
+  const seenBurst = new Set<string>();
+  const out: FlashcardDeck[] = [];
+  for (const d of byId.values()) {
+    const burst = `${d.course_code}|${d.card_count}|${(d.created_at ?? "").slice(0, 16)}`;
+    if (seenBurst.has(burst)) continue;
+    seenBurst.add(burst);
+    out.push(d);
+  }
+  return out;
+}
+
+/** Course code + a short name — never three lines of a long course title. */
+function deckLabel(deck: FlashcardDeck): string {
+  const code = displayCode(deck.course_code);
+  const raw = (deck.title ?? "").replace(new RegExp(`^${code}\\s*[·-]?\\s*`, "i"), "").trim();
+  const short = raw.split(/\s+/).slice(0, 3).join(" ");
+  return short ? `${code} · ${short}` : code;
 }
 
 export function FlashcardsScreen() {
@@ -43,7 +71,8 @@ export function FlashcardsScreen() {
     setIsLoadingDecks(true);
     try {
       const all = await listDecks();
-      setDecks(selected === ALL_SCOPE ? all : all.filter((d) => d.course_code === selected));
+      const scoped = selected === ALL_SCOPE ? all : all.filter((d) => d.course_code === selected);
+      setDecks(dedupeDecks(scoped));
     } catch (e) {
       setError((e as Error)?.message || "Couldn't load your decks.");
     } finally {
