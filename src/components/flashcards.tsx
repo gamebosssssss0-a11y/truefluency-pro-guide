@@ -206,9 +206,12 @@ export function FlashcardsScreen() {
               >
                 <div className="min-w-0">
                   <p className="truncate font-display text-base font-semibold text-navy">
-                    {deck.title}
+                    {deckLabel(deck)}
                   </p>
-                  <p className="text-xs text-muted-foreground">{deck.card_count} cards</p>
+                  <p className="text-xs text-muted-foreground">
+                    {displayCode(deck.course_code)} · {deck.card_count} cards
+                    {dueCounts[deck.id] !== undefined ? ` · ${dueCounts[deck.id]} due` : ""}
+                  </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-sand px-3 py-1 text-xs font-medium text-amber">
                   Review
@@ -216,7 +219,7 @@ export function FlashcardsScreen() {
               </button>
             ))}
 
-            {selected !== ALL_SCOPE ? (
+            {selected !== ALL_SCOPE && !deckCapReached ? (
               <button
                 type="button"
                 onClick={generate}
@@ -226,6 +229,9 @@ export function FlashcardsScreen() {
                 {isGenerating ? "Generating…" : "Make another 15-card deck"}
               </button>
             ) : null}
+            {deckCapReached ? (
+              <p className="mt-2 text-center text-xs text-muted-foreground">{PRICE_LINE}</p>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col items-center text-center">
@@ -234,17 +240,23 @@ export function FlashcardsScreen() {
             </div>
             <p className="mb-5 font-display text-2xl font-semibold text-navy">No deck yet</p>
 
-            <button
-              type="button"
-              onClick={generate}
-              disabled={isGenerating}
-              className="h-12 w-full max-w-xs rounded-full bg-amber text-sm font-semibold text-cream transition hover:bg-amber/90 disabled:opacity-60"
-            >
-              {isGenerating ? "Generating…" : "Make a 15-card deck"}
-            </button>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Uses one of today's two free decks.
-            </p>
+            {deckCapReached ? (
+              <p className="max-w-xs text-xs text-muted-foreground">{PRICE_LINE}</p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={generate}
+                  disabled={isGenerating}
+                  className="h-12 w-full max-w-xs rounded-full bg-amber text-sm font-semibold text-cream transition hover:bg-amber/90 disabled:opacity-60"
+                >
+                  {isGenerating ? "Generating…" : "Make a 15-card deck"}
+                </button>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Uses one of today's two free decks.
+                </p>
+              </>
+            )}
           </div>
         )}
 
