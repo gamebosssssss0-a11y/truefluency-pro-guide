@@ -10,6 +10,8 @@ import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
+import { getMyAccess } from "@/lib/entitlements.functions";
+import { PRICE_LINE } from "@/lib/pricing-copy";
 import {
   generateFlashcards,
   getDeckCards,
@@ -25,6 +27,32 @@ function displayCode(code: string) {
   return code.replace(/^C-/, "");
 }
 
+/**
+ * One row per deck id, and one row per (course, card_count) burst: the backend
+ * can return two decks for one long upload, which used to show as duplicates.
+ */
+function dedupeDecks(list: FlashcardDeck[]): FlashcardDeck[] {
+  const byId = new Map<string, FlashcardDeck>();
+  for (const d of list) if (!byId.has(d.id)) byId.set(d.id, d);
+  const seenBurst = new Set<string>();
+  const out: FlashcardDeck[] = [];
+  for (const d of byId.values()) {
+    const burst = `${d.course_code}|${d.card_count}|${(d.created_at ?? "").slice(0, 16)}`;
+    if (seenBurst.has(burst)) continue;
+    seenBurst.add(burst);
+    out.push(d);
+  }
+  return out;
+}
+
+/** Course code + a short name — never three lines of a long course title. */
+function deckLabel(deck: FlashcardDeck): string {
+  const code = displayCode(deck.course_code);
+  const raw = (deck.title ?? "").replace(new RegExp(`^${code}\\s*[·-]?\\s*`, "i"), "").trim();
+  const short = raw.split(/\s+/).slice(0, 3).join(" ");
+  return short ? `${code} · ${short}` : code;
+}
+
 export function FlashcardsScreen() {
   const { profile, activeCourseCode, navigate } = useProfile();
   const { access } = useEntitlement();
@@ -32,6 +60,7 @@ export function FlashcardsScreen() {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const courseOptions = [
@@ -43,7 +72,24 @@ export function FlashcardsScreen() {
     setIsLoadingDecks(true);
     try {
       const all = await listDecks();
-      setDecks(selected === ALL_SCOPE ? all : all.filter((d) => d.course_code === selected));
+      const scoped = selected === ALL_SCOPE ? all : all.filter((d) => d.course_code === selected);
+      const rows = dedupeDecks(scoped);
+      setDecks(rows);
+      // Counts only, on the first few rows — never every card body.
+      void Promise.all(
+        rows.slice(0, 8).map(async (d) => {
+          try {
+            const due = await getDeckCards(d.id, { dueOnly: true });
+            return [d.id, due.length] as const;
+          } catch {
+            return null;
+          }
+        }),
+      ).then((pairs) => {
+        const next: Record<string, number> = {};
+        for (const p of pairs) if (p) next[p[0]] = p[1];
+        setDueCounts(next);
+      });
     } catch (e) {
       setError((e as Error)?.message || "Couldn't load your decks.");
     } finally {
@@ -65,6 +111,12 @@ export function FlashcardsScreen() {
     return `${used} of ${limit} decks today`;
   })();
 
+  // Free students get two decks a day. Read the real entitlement before any
+  // generate call so a blocked student never hits the backend or inserts a row.
+  const deckLimit = access?.dailyLimits.flashcard_decks ?? 2;
+  const decksUsed = access?.usageToday.flashcard_decks ?? 0;
+  const deckCapReached = !!access && !access.fullAccess && decksUsed >= deckLimit;
+
   const generate = async () => {
     if (selected === ALL_SCOPE) {
       setError(
@@ -75,6 +127,15 @@ export function FlashcardsScreen() {
     setError(null);
     setIsGenerating(true);
     try {
+      const fresh = await getMyAccess();
+      if (fresh && !fresh.fullAccess) {
+        const used = fresh.usageToday.flashcard_decks ?? 0;
+        const limit = fresh.dailyLimits.flashcard_decks ?? 2;
+        if (used >= limit) {
+          setError(PRICE_LINE);
+          return;
+        }
+      }
       const materials = await listMaterialsForCourse(selected);
       const ready = pickAnalyzableMaterial(materials);
       if (!ready) {
@@ -162,9 +223,12 @@ export function FlashcardsScreen() {
               >
                 <div className="min-w-0">
                   <p className="truncate font-display text-base font-semibold text-navy">
-                    {deck.title}
+                    {deckLabel(deck)}
                   </p>
-                  <p className="text-xs text-muted-foreground">{deck.card_count} cards</p>
+                  <p className="text-xs text-muted-foreground">
+                    {displayCode(deck.course_code)} · {deck.card_count} cards
+                    {dueCounts[deck.id] !== undefined ? ` · ${dueCounts[deck.id]} due` : ""}
+                  </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-sand px-3 py-1 text-xs font-medium text-amber">
                   Review
@@ -172,7 +236,7 @@ export function FlashcardsScreen() {
               </button>
             ))}
 
-            {selected !== ALL_SCOPE ? (
+            {selected !== ALL_SCOPE && !deckCapReached ? (
               <button
                 type="button"
                 onClick={generate}
@@ -182,6 +246,9 @@ export function FlashcardsScreen() {
                 {isGenerating ? "Generating…" : "Make another 15-card deck"}
               </button>
             ) : null}
+            {deckCapReached ? (
+              <p className="mt-2 text-center text-xs text-muted-foreground">{PRICE_LINE}</p>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col items-center text-center">
@@ -190,17 +257,23 @@ export function FlashcardsScreen() {
             </div>
             <p className="mb-5 font-display text-2xl font-semibold text-navy">No deck yet</p>
 
-            <button
-              type="button"
-              onClick={generate}
-              disabled={isGenerating}
-              className="h-12 w-full max-w-xs rounded-full bg-amber text-sm font-semibold text-cream transition hover:bg-amber/90 disabled:opacity-60"
-            >
-              {isGenerating ? "Generating…" : "Make a 15-card deck"}
-            </button>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Uses one of today's two free decks.
-            </p>
+            {deckCapReached ? (
+              <p className="max-w-xs text-xs text-muted-foreground">{PRICE_LINE}</p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={generate}
+                  disabled={isGenerating}
+                  className="h-12 w-full max-w-xs rounded-full bg-amber text-sm font-semibold text-cream transition hover:bg-amber/90 disabled:opacity-60"
+                >
+                  {isGenerating ? "Generating…" : "Make a 15-card deck"}
+                </button>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Uses one of today's two free decks.
+                </p>
+              </>
+            )}
           </div>
         )}
 
