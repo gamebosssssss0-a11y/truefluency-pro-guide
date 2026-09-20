@@ -73,7 +73,23 @@ export function FlashcardsScreen() {
     try {
       const all = await listDecks();
       const scoped = selected === ALL_SCOPE ? all : all.filter((d) => d.course_code === selected);
-      setDecks(dedupeDecks(scoped));
+      const rows = dedupeDecks(scoped);
+      setDecks(rows);
+      // Counts only, on the first few rows — never every card body.
+      void Promise.all(
+        rows.slice(0, 8).map(async (d) => {
+          try {
+            const due = await getDeckCards(d.id, { dueOnly: true });
+            return [d.id, due.length] as const;
+          } catch {
+            return null;
+          }
+        }),
+      ).then((pairs) => {
+        const next: Record<string, number> = {};
+        for (const p of pairs) if (p) next[p[0]] = p[1];
+        setDueCounts(next);
+      });
     } catch (e) {
       setError((e as Error)?.message || "Couldn't load your decks.");
     } finally {
