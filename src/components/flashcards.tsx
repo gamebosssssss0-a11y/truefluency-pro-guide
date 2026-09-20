@@ -94,6 +94,12 @@ export function FlashcardsScreen() {
     return `${used} of ${limit} decks today`;
   })();
 
+  // Free students get two decks a day. Read the real entitlement before any
+  // generate call so a blocked student never hits the backend or inserts a row.
+  const deckLimit = access?.dailyLimits.flashcard_decks ?? 2;
+  const decksUsed = access?.usageToday.flashcard_decks ?? 0;
+  const deckCapReached = !!access && !access.fullAccess && decksUsed >= deckLimit;
+
   const generate = async () => {
     if (selected === ALL_SCOPE) {
       setError(
@@ -104,6 +110,15 @@ export function FlashcardsScreen() {
     setError(null);
     setIsGenerating(true);
     try {
+      const fresh = await getMyAccess();
+      if (fresh && !fresh.fullAccess) {
+        const used = fresh.usageToday.flashcard_decks ?? 0;
+        const limit = fresh.dailyLimits.flashcard_decks ?? 2;
+        if (used >= limit) {
+          setError(PRICE_LINE);
+          return;
+        }
+      }
       const materials = await listMaterialsForCourse(selected);
       const ready = pickAnalyzableMaterial(materials);
       if (!ready) {
