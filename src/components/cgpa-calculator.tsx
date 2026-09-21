@@ -162,8 +162,80 @@ export function CgpaCalculatorScreen() {
       classification: classify(cumulative),
     };
     setResult(next);
+    update({ cgpaActual: { ...next, semesters } });
+  };
+
+  /* ---------- Saved semesters (inside the existing cgpa_actual field) ---------- */
+
+  const semesters = profile.cgpaActual?.semesters ?? [];
+
+  const writeSemesters = (list: CgpaSemester[]) => {
+    const base = result ?? profile.cgpaActual;
+    if (!base) return;
+    const next: CgpaActual = { ...base, semesters: list };
+    setResult(next);
     update({ cgpaActual: next });
   };
+
+  const saveSemester = () => {
+    if (!result || session.trim() === "") return;
+    const row: CgpaSemester = {
+      id: `${session.trim()}-${term}`,
+      session: session.trim(),
+      term,
+      courses: perCourse.map((r) => ({
+        code: r.course.code,
+        units: r.units,
+        points: r.points ?? 0,
+        percent: r.percent ?? 0,
+      })),
+      units: result.semesterUnits,
+      gpa: result.semesterGpa,
+    };
+    writeSemesters([row, ...semesters.filter((s) => s.id !== row.id)]);
+  };
+
+  const openSemester = (s: CgpaSemester) => {
+    setSession(s.session);
+    setTerm(s.term);
+    setUnits((u) => {
+      const next = { ...u };
+      s.courses.forEach((c) => { next[c.code] = c.units; });
+      return next;
+    });
+    setPercents((p) => {
+      const next = { ...p };
+      s.courses.forEach((c) => { next[c.code] = String(c.percent); });
+      return next;
+    });
+    setLetters((l) => {
+      const next = { ...l };
+      s.courses.forEach((c) => { next[c.code] = gradeForPercent(c.percent); });
+      return next;
+    });
+  };
+
+  /** Weighted merge: total quality points ÷ total credit units. Never an average of GPAs. */
+  const weighted = (list: CgpaSemester[]) => {
+    const units = list.reduce((s, r) => s + r.units, 0);
+    const qp = list.reduce((s, r) => s + r.gpa * r.units, 0);
+    return units > 0 ? { gpa: qp / units, units } : null;
+  };
+
+  const sessionMerges = useMemo(() => {
+    const bySession = new Map<string, CgpaSemester[]>();
+    semesters.forEach((s) => {
+      bySession.set(s.session, [...(bySession.get(s.session) ?? []), s]);
+    });
+    return [...bySession.entries()]
+      .filter(([, list]) => list.some((s) => s.term === "1st") && list.some((s) => s.term === "2nd"))
+      .map(([sessionName, list]) => {
+        const w = weighted(list)!;
+        return { session: sessionName, gpa: w.gpa, units: w.units };
+      });
+  }, [semesters]);
+
+  const allYears = weighted(semesters);
 
   return (
     <div className="min-h-screen bg-background">
