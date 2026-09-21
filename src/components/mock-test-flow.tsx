@@ -889,22 +889,22 @@ export function MockRunScreen() {
 
 
         {q ? (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="font-display text-lg font-semibold text-foreground"><MathText>{q.question}</MathText></div>
+            <div className="font-display text-[17px] font-semibold leading-snug text-navy"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
                 const on = t.answers[idx] === i;
                 return (
                   <button key={i} onClick={() => setAnswer(i)}
-                    className={cn("flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition",
-                      on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50")}>
-                    <div className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+                    className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition",
+                      on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
+                    <div className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="text-sm text-foreground"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 break-words text-sm text-navy"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
@@ -1327,7 +1327,7 @@ export function AttemptReviewScreen() {
                   key={`${q.id}-${i}`}
                   ref={(el) => { questionRefs.current[i] = el; }}
                   className={cn(
-                    "rounded-2xl border bg-card p-4 shadow-sm",
+                    "rounded-xl border bg-card p-4 shadow-sm",
                     reviewIndex === i ? "border-amber ring-2 ring-amber/60" : "border-border",
                   )}
                 >
@@ -1347,36 +1347,41 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="font-display text-base font-semibold text-foreground"><MathText>{q.question}</MathText></div>
+                  <div className="font-display text-[17px] font-semibold leading-snug text-navy"><MathText>{q.question}</MathText></div>
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
                       const isAnswer = oi === q.correct_index;
                       const isPicked = oi === selected;
+                      const wrongPick = isPicked && !isAnswer;
                       return (
                         <div
                           key={oi}
                           className={cn(
-                            "flex items-start gap-2.5 rounded-xl border p-2.5 text-sm",
-                            isAnswer
-                              ? "border-success/50 bg-success/10"
-                              : isPicked
-                                ? "border-destructive/50 bg-destructive/10"
-                                : "border-border bg-background",
+                            "flex items-start gap-2.5 rounded-xl border border-border bg-card p-2.5 text-sm",
+                            isAnswer && "border-l-[3px] border-l-navy",
+                            wrongPick && "border-l-[3px] border-l-wine",
                           )}
                         >
                           <span className="mt-0.5 shrink-0">
                             {isAnswer ? (
-                              <Check className="h-4 w-4 text-success" aria-label="Correct answer" />
+                              <Check className="h-4 w-4 text-navy" aria-label="Correct answer" />
                             ) : isPicked ? (
-                              <X className="h-4 w-4 text-destructive" aria-label="Your incorrect answer" />
+                              <X className="h-4 w-4 text-wine" aria-label="Your incorrect answer" />
                             ) : (
                               <span className="grid h-4 w-4 place-items-center text-[10px] font-semibold text-muted-foreground">
                                 {String.fromCharCode(65 + oi)}
                               </span>
                             )}
                           </span>
-                          <span className="min-w-0 flex-1 text-foreground"><MathText>{opt}</MathText></span>
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 break-words",
+                              isAnswer || wrongPick ? "text-navy" : "text-muted-foreground",
+                            )}
+                          >
+                            <MathText>{opt}</MathText>
+                          </span>
                           {isPicked ? (
                             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Your answer
@@ -1469,8 +1474,8 @@ function ReviewMiniMap({
               onClick={() => onPick(i)}
               aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}`}
               className={cn(
-                "grid h-8 place-items-center rounded-lg text-[11px] font-semibold text-white",
-                right ? "bg-good" : "bg-wine",
+                "grid h-8 place-items-center rounded-lg border bg-card text-[11px] font-semibold",
+                right ? "border-good/50 text-good" : "border-wine/50 text-wine",
                 current === i && "ring-2 ring-amber ring-offset-1 ring-offset-cream",
               )}
             >
@@ -1512,13 +1517,13 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
   ];
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-border bg-background p-3">
+    <div className="mt-3 space-y-3 rounded-xl border border-border bg-card p-3">
       {rows.map((row) => (
         <div key={row.label}>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
-          <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-foreground">
+          <p className="mt-1 line-clamp-4 break-words text-sm leading-[1.45] text-navy">
             <MathText>{row.body}</MathText>
           </p>
         </div>

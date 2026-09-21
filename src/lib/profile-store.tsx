@@ -173,6 +173,19 @@ export type CgpaPlan = {
 };
 
 /** Result of the real CGPA Calculator (actual scores, not a target). */
+/**
+ * One saved semester, stored inside the existing `cgpa_actual` jsonb column, so
+ * no new table or column is needed.
+ */
+export type CgpaSemester = {
+  id: string;
+  session: string;
+  term: "1st" | "2nd";
+  courses: { code: string; units: number; points: number; percent: number }[];
+  units: number;
+  gpa: number;
+};
+
 export type CgpaActual = {
   calculatedAt: number;
   /** course code -> percentage score entered (or derived from a letter grade) */
@@ -186,6 +199,8 @@ export type CgpaActual = {
   cumulativeCgpa: number;
   totalUnits: number;
   classification: string;
+  /** Saved semesters (session + term), newest first. */
+  semesters?: CgpaSemester[];
 };
 
 /* ---------- Profile ---------- */

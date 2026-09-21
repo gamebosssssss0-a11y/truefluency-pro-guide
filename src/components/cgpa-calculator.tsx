@@ -75,6 +75,8 @@ export function CgpaCalculatorScreen() {
   });
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CgpaActual | null>(saved);
+  const [session, setSession] = useState("");
+  const [term, setTerm] = useState<"1st" | "2nd">("1st");
 
   const { selected: rows } = useCgpaCourseSelection("cgpaCalcCourses");
 
@@ -160,8 +162,80 @@ export function CgpaCalculatorScreen() {
       classification: classify(cumulative),
     };
     setResult(next);
+    update({ cgpaActual: { ...next, semesters } });
+  };
+
+  /* ---------- Saved semesters (inside the existing cgpa_actual field) ---------- */
+
+  const semesters = profile.cgpaActual?.semesters ?? [];
+
+  const writeSemesters = (list: CgpaSemester[]) => {
+    const base = result ?? profile.cgpaActual;
+    if (!base) return;
+    const next: CgpaActual = { ...base, semesters: list };
+    setResult(next);
     update({ cgpaActual: next });
   };
+
+  const saveSemester = () => {
+    if (!result || session.trim() === "") return;
+    const row: CgpaSemester = {
+      id: `${session.trim()}-${term}`,
+      session: session.trim(),
+      term,
+      courses: perCourse.map((r) => ({
+        code: r.course.code,
+        units: r.units,
+        points: r.points ?? 0,
+        percent: r.percent ?? 0,
+      })),
+      units: result.semesterUnits,
+      gpa: result.semesterGpa,
+    };
+    writeSemesters([row, ...semesters.filter((s) => s.id !== row.id)]);
+  };
+
+  const openSemester = (s: CgpaSemester) => {
+    setSession(s.session);
+    setTerm(s.term);
+    setUnits((u) => {
+      const next = { ...u };
+      s.courses.forEach((c) => { next[c.code] = c.units; });
+      return next;
+    });
+    setPercents((p) => {
+      const next = { ...p };
+      s.courses.forEach((c) => { next[c.code] = String(c.percent); });
+      return next;
+    });
+    setLetters((l) => {
+      const next = { ...l };
+      s.courses.forEach((c) => { next[c.code] = gradeForPercent(c.percent); });
+      return next;
+    });
+  };
+
+  /** Weighted merge: total quality points ÷ total credit units. Never an average of GPAs. */
+  const weighted = (list: CgpaSemester[]) => {
+    const units = list.reduce((s, r) => s + r.units, 0);
+    const qp = list.reduce((s, r) => s + r.gpa * r.units, 0);
+    return units > 0 ? { gpa: qp / units, units } : null;
+  };
+
+  const sessionMerges = useMemo(() => {
+    const bySession = new Map<string, CgpaSemester[]>();
+    semesters.forEach((s) => {
+      bySession.set(s.session, [...(bySession.get(s.session) ?? []), s]);
+    });
+    return [...bySession.entries()]
+      .filter(([, list]) => list.some((s) => s.term === "1st") && list.some((s) => s.term === "2nd"))
+      .map(([sessionName, list]) => {
+        const w = weighted(list)!;
+        return { session: sessionName, gpa: w.gpa, units: w.units };
+      });
+  }, [semesters]);
+
+  const allYears = weighted(semesters);
 
   return (
     <div className="min-h-screen bg-background">
@@ -326,6 +400,121 @@ export function CgpaCalculatorScreen() {
         ) : null}
 
         {result ? <ResultBlock result={result} /> : null}
+
+        {/* Save this semester + saved history */}
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Save this semester
+        </h2>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Session
+              </span>
+              <Input
+                placeholder="e.g. 2024/2025"
+                value={session}
+                onChange={(e) => setSession(e.target.value)}
+              />
+            </label>
+            <div>
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Semester
+              </span>
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-border p-1">
+                {(["1st", "2nd"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTerm(t)}
+                    className={cn(
+                      "rounded-lg px-2 py-1.5 text-xs font-semibold transition",
+                      term === t ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <Button
+            className="mt-3 w-full"
+            size="lg"
+            variant="outline"
+            disabled={!result || session.trim() === ""}
+            onClick={saveSemester}
+          >
+            Save {term} semester
+          </Button>
+          {!result ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Calculate first, then save this semester to your history.
+            </p>
+          ) : null}
+        </div>
+
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Saved semesters
+        </h2>
+        {semesters.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
+            No semester saved yet.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {semesters.map((s) => (
+              <div key={s.id} className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-navy">
+                      {s.session} · {s.term} semester
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      GPA {s.gpa.toFixed(2)} · {s.units} credits
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => openSemester(s)}>Open</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-wine"
+                    onClick={() => writeSemesters(semesters.filter((x) => x.id !== s.id))}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {sessionMerges.map((m) => (
+              <div key={m.session} className="rounded-2xl border border-border bg-sand p-3.5">
+                <div className="text-sm font-semibold text-navy">
+                  {m.session} combined GPA {m.gpa.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-navy/70">
+                  Both semesters weighted by credits · {m.units} credits
+                </div>
+              </div>
+            ))}
+
+            {allYears ? (
+              <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+                <div className="text-sm font-semibold text-navy">
+                  All saved semesters: {allYears.gpa.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {allYears.units} credits · {classify(allYears.gpa)}
+                </div>
+              </div>
+            ) : null}
+            {sessionMerges.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                A combined session GPA appears once both 1st and 2nd semester are saved for that session.
+              </p>
+            ) : null}
+          </div>
+        )}
 
         {/* Grade scale reference */}
         <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
