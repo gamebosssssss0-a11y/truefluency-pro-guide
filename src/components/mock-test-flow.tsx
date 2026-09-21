@@ -1327,7 +1327,7 @@ export function AttemptReviewScreen() {
                   key={`${q.id}-${i}`}
                   ref={(el) => { questionRefs.current[i] = el; }}
                   className={cn(
-                    "rounded-2xl border bg-card p-4 shadow-sm",
+                    "rounded-xl border bg-card p-4 shadow-sm",
                     reviewIndex === i ? "border-amber ring-2 ring-amber/60" : "border-border",
                   )}
                 >
