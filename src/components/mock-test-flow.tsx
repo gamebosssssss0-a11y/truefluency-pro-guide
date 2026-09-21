@@ -1517,13 +1517,13 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
   ];
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-border bg-background p-3">
+    <div className="mt-3 space-y-3 rounded-xl border border-border bg-card p-3">
       {rows.map((row) => (
         <div key={row.label}>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
-          <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-foreground">
+          <p className="mt-1 line-clamp-4 break-words text-sm leading-[1.45] text-navy">
             <MathText>{row.body}</MathText>
           </p>
         </div>
