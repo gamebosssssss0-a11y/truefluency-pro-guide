@@ -199,6 +199,8 @@ export type CgpaActual = {
   cumulativeCgpa: number;
   totalUnits: number;
   classification: string;
+  /** Saved semesters (session + term), newest first. */
+  semesters?: CgpaSemester[];
 };
 
 /* ---------- Profile ---------- */
