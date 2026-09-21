@@ -889,9 +889,9 @@ export function MockRunScreen() {
 
 
         {q ? (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="font-display text-lg font-semibold text-foreground"><MathText>{q.question}</MathText></div>
+            <div className="font-display text-[17px] font-semibold leading-snug text-navy"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
