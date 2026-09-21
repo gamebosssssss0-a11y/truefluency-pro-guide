@@ -75,6 +75,8 @@ export function CgpaCalculatorScreen() {
   });
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CgpaActual | null>(saved);
+  const [session, setSession] = useState("");
+  const [term, setTerm] = useState<"1st" | "2nd">("1st");
 
   const { selected: rows } = useCgpaCourseSelection("cgpaCalcCourses");
 
