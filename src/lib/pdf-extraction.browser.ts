@@ -17,9 +17,13 @@ function tidyPdfText(raw: string): string {
 }
 
 export async function extractSelectablePdfText(file: Blob): Promise<string> {
-  const { getDocumentProxy } = await import("unpdf");
+  // Uses pdfjs-dist (already bundled for the in-app viewer) rather than unpdf,
+  // which is a server-side module and breaks the client build.
+  const pdfjs = await import("pdfjs-dist");
+  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const pdf = await getDocumentProxy(bytes);
+  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
   const pageCount = Number(pdf.numPages ?? 0);
   const limit = Math.min(pageCount, MAX_PDF_PAGES);
   const pages: string[] = [];
