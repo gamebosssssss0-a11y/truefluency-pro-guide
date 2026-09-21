@@ -1474,8 +1474,8 @@ function ReviewMiniMap({
               onClick={() => onPick(i)}
               aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}`}
               className={cn(
-                "grid h-8 place-items-center rounded-lg text-[11px] font-semibold text-white",
-                right ? "bg-good" : "bg-wine",
+                "grid h-8 place-items-center rounded-lg border bg-card text-[11px] font-semibold",
+                right ? "border-good/50 text-good" : "border-wine/50 text-wine",
                 current === i && "ring-2 ring-amber ring-offset-1 ring-offset-cream",
               )}
             >
