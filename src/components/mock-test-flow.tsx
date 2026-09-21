@@ -898,13 +898,13 @@ export function MockRunScreen() {
                 const on = t.answers[idx] === i;
                 return (
                   <button key={i} onClick={() => setAnswer(i)}
-                    className={cn("flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition",
-                      on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50")}>
-                    <div className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+                    className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition",
+                      on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
+                    <div className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="text-sm text-foreground"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 break-words text-sm text-navy"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
