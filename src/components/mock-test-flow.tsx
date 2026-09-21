@@ -1347,36 +1347,41 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="font-display text-base font-semibold text-foreground"><MathText>{q.question}</MathText></div>
+                  <div className="font-display text-[17px] font-semibold leading-snug text-navy"><MathText>{q.question}</MathText></div>
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
                       const isAnswer = oi === q.correct_index;
                       const isPicked = oi === selected;
+                      const wrongPick = isPicked && !isAnswer;
                       return (
                         <div
                           key={oi}
                           className={cn(
-                            "flex items-start gap-2.5 rounded-xl border p-2.5 text-sm",
-                            isAnswer
-                              ? "border-success/50 bg-success/10"
-                              : isPicked
-                                ? "border-destructive/50 bg-destructive/10"
-                                : "border-border bg-background",
+                            "flex items-start gap-2.5 rounded-xl border border-border bg-card p-2.5 text-sm",
+                            isAnswer && "border-l-[3px] border-l-navy",
+                            wrongPick && "border-l-[3px] border-l-wine",
                           )}
                         >
                           <span className="mt-0.5 shrink-0">
                             {isAnswer ? (
-                              <Check className="h-4 w-4 text-success" aria-label="Correct answer" />
+                              <Check className="h-4 w-4 text-navy" aria-label="Correct answer" />
                             ) : isPicked ? (
-                              <X className="h-4 w-4 text-destructive" aria-label="Your incorrect answer" />
+                              <X className="h-4 w-4 text-wine" aria-label="Your incorrect answer" />
                             ) : (
                               <span className="grid h-4 w-4 place-items-center text-[10px] font-semibold text-muted-foreground">
                                 {String.fromCharCode(65 + oi)}
                               </span>
                             )}
                           </span>
-                          <span className="min-w-0 flex-1 text-foreground"><MathText>{opt}</MathText></span>
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 break-words",
+                              isAnswer || wrongPick ? "text-navy" : "text-muted-foreground",
+                            )}
+                          >
+                            <MathText>{opt}</MathText>
+                          </span>
                           {isPicked ? (
                             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Your answer
