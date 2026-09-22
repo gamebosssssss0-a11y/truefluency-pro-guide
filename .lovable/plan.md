@@ -1,30 +1,17 @@
-# Gamification finish and review UI
+# Price, Library theme, Study Chat, and math rendering
 
-## Scope
-- Keep the app connected to the existing `ikwhfcxfzoammhmwmzxy` project and current Render service. Do not create or reconnect any backend, change environment values, AI prompts, mock generation/polling, entitlements, PDFs, or locked screens.
-- Finish the existing streak presentation and make the review screen consistent, concise, and safe when explanations fail quality checks.
+## Build
+- Fix the existing CGPA type error only because the current build is red; do not change calculator formulas or behavior.
+- Change student-facing payment periods from semester to month while keeping the exact naira amounts, founding-student count, and trial length.
+- Convert Library, locker, shelf, sheets, dialogs, and preview chrome to existing theme tokens so light and dark follow the app theme without altering PDF pixels or file-type colors.
+- Tighten the existing `chatbot.tsx` layout: keep all current controls, move loading to a muted header status, center the empty state, place Camera/Gallery with the bottom composer, and add the Camera/Gallery attachment sheet without OCR.
+- Improve the existing KaTeX presentation through `math-text.tsx` and the current rich-text path: centered display equations, spacing, whole-formula display, step-title styling when supplied, and boxed final lines. Keep mock/review guards and generation unchanged.
 
-## Implementation
-1. **Streak reliability**
-   - Keep the existing authenticated `record_mock_streak` call only after a successful mock submission with at least five answered questions.
-   - Treat a missing RPC as unavailable rather than an app error: do not crash, toast, or fabricate a streak; keep the displayed streak at zero.
-   - Preserve WAT-backed values returned by the RPC and show the existing protection toast only for `protected`.
-   - Show a one-time `+1` result tick only when the returned event is `incremented`.
+## Verification
+- Confirm Study Chat still mounts the existing screen and no coming-soon screen is routed.
+- Check the requested light/dark Library and Chat states at 360px, plus chat attachment and equation rendering.
+- Check the current build result and report exact remaining semester-money strings.
+- Restrict the two exposed billing/usage policies to service access plus each signed-in user’s own row, then mark the security findings fixed.
 
-2. **Home order and motion**
-   - Keep the top order as Welcome, trial/plan chip, nonzero streak, daily goal from `usageToday.mock_sets`, then a filled amber “Take a mock” action, followed by the existing Home content.
-   - Add the specified 180ms streak entrance and 200ms daily-bar width transition, with reduced-motion removing movement while retaining the fade.
-   - Preserve the amber and navy palette roles exactly.
-
-3. **Result and review headers**
-   - Add a sand/navy difficulty chip using the saved attempt settings on both the result and review headers.
-
-4. **WHY and paywall behavior**
-   - Use only the explanation already returned with each question; do not change prompts or generate replacement content.
-   - Present unlocked explanations as labeled `CORRECT`, conditional `WHY YOUR PICK WAS WRONG`, and `KEY CONCEPT` blocks, with concise line limits and vertical calculation steps when the source contains working.
-   - Apply the requested case-insensitive hedge filter and replace rejected explanation bodies with the exact quality-check notice.
-   - For locked reviews, show `PRICE_LINE + "Unlock WHY for this set."` once above the questions and show only a lock icon per question. Continue deriving access solely from `getMyAccess`.
-
-5. **Verification**
-   - Restore the complete generated database type surface if needed so unrelated existing tables still compile, without changing the connected backend.
-   - Verify type/build output, static counts of `PRICE_LINE`, project binding, and the review/streak UI behavior in the preview.
+## Locked areas
+No environment, project, Cloud, PDF engine, Vite exclusions, mock generation/polling, caps, OCR, new chat service, CGPA formulas, or cloud-sync history merge changes.
