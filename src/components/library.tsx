@@ -91,7 +91,7 @@ function ReadyPill({ ready }: { ready: boolean }) {
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-[#E4DCC8] bg-white p-4 ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-border bg-card p-4 text-card-foreground ${className}`}>{children}</div>
   );
 }
 
@@ -304,27 +304,26 @@ export function LibraryScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F3EA]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-28 pt-6 md:max-w-3xl">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#5C5C70]">My Files</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">My Files</span>
         </div>
 
-        <h1 className="font-display text-2xl font-semibold text-[#1B2A4A]">My files</h1>
-        <p className="mt-1 text-sm text-[#5C5C70]">
+        <h1 className="font-display text-2xl font-semibold text-foreground">My files</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Upload past papers and notes here. Your locker is private; the course shelf only shows
           what coursemates chose to publish.
         </p>
 
         {/* Rails */}
-        <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-white p-1 ring-1 ring-[#E4DCC8]">
+        <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-card p-1 ring-1 ring-border">
           {(["locker", "shelf"] as Rail[]).map((r) => (
             <button
               key={r}
               onClick={() => { setRail(r); setOpenFolder(null); }}
-              className="rounded-lg py-2 text-sm font-semibold transition"
-              style={rail === r ? { backgroundColor: "#B86E0A", color: "#FFFFFF" } : { color: "#5C5C70" }}
+              className={rail === r ? "rounded-lg bg-amber py-2 text-sm font-semibold text-cream transition" : "rounded-lg py-2 text-sm font-semibold text-muted-foreground transition"}
             >
               {r === "locker" ? "My locker" : "Course shelf"}
             </button>
@@ -334,8 +333,7 @@ export function LibraryScreen() {
         {rail === "locker" ? (
           <div className="mt-4 space-y-3">
             <Button
-              className="h-12 w-full text-white"
-              style={{ backgroundColor: "#B86E0A" }}
+              className="h-12 w-full bg-amber text-cream hover:bg-amber/90"
               onClick={() => {
                 // Straight to the uploader for the course in front of the
                 // student: the open folder, then their active course, then the
@@ -353,12 +351,12 @@ export function LibraryScreen() {
             </Button>
 
             {locker === null ? (
-              <Card><Loader2 className="h-4 w-4 animate-spin text-[#5C5C70]" /></Card>
+              <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
             ) : openFolder ? (
               <>
                 <button
                   onClick={() => setOpenFolder(null)}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-[#1B2A4A]"
+                  className="flex items-center gap-1.5 text-sm font-semibold text-foreground"
                 >
                   <ArrowLeft className="h-4 w-4" /> My locker
                 </button>
@@ -368,12 +366,12 @@ export function LibraryScreen() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <TypeChip fileType={f.file_type} />
-                          <span className="break-words text-sm font-semibold text-[#1A1A2E]">{f.file_name}</span>
+                          <span className="break-words text-sm font-semibold text-foreground">{f.file_name}</span>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <ReadyPill ready={f.readyForMocks} />
                           {f.published ? (
-                            <span className="rounded-full bg-[#1B2A4A]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1B2A4A]">On shelf</span>
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">On shelf</span>
                           ) : null}
                           {f.is_peer_copy ? (
                             <span className="rounded-full bg-[#1D4E89]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1D4E89]">
@@ -385,7 +383,7 @@ export function LibraryScreen() {
                       <button
                         aria-label="File actions"
                         onClick={() => setOwnerSheet(f)}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#E4DCC8] text-[#5C5C70]"
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
@@ -395,7 +393,7 @@ export function LibraryScreen() {
               </>
             ) : folders.length === 0 ? (
               <Card>
-                <p className="text-sm text-[#5C5C70]">
+                <p className="text-sm text-muted-foreground">
                   Nothing in your locker yet. Upload a past paper or lecture note from a course to get started.
                 </p>
               </Card>
@@ -404,12 +402,12 @@ export function LibraryScreen() {
                 <button key={code} onClick={() => setOpenFolder(code)} className="w-full text-left">
                   <Card>
                     <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#1B2A4A]/8 text-[#1B2A4A]">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-foreground">
                         <FolderOpen className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="break-words font-semibold text-[#1A1A2E]">{code}</div>
-                        <div className="text-xs text-[#5C5C70]">
+                        <div className="break-words font-semibold text-foreground">{code}</div>
+                        <div className="text-xs text-muted-foreground">
                           {files.length} file{files.length === 1 ? "" : "s"}
                           {files.some((f) => f.published) ? " · some on shelf" : ""}
                         </div>
@@ -423,25 +421,25 @@ export function LibraryScreen() {
         ) : (
           <div className="mt-4 space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5C5C70]" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search a course code, e.g. PHY102"
-                className="h-12 border-[#E4DCC8] bg-white pl-9"
+                className="h-12 border-border bg-card pl-9 text-foreground"
               />
             </div>
 
             {shelfOffline ? (
-              <Card><p className="text-sm text-[#5C5C70]">{SHARING_OFFLINE_MESSAGE}</p></Card>
+              <Card><p className="text-sm text-muted-foreground">{SHARING_OFFLINE_MESSAGE}</p></Card>
             ) : shelfLoading ? (
-              <Card><Loader2 className="h-4 w-4 animate-spin text-[#5C5C70]" /></Card>
+              <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
             ) : (
               <>
                 {shelfCourse ? (
                   <button
                     onClick={() => setShelfCourse(null)}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-[#1B2A4A]"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-foreground"
                   >
                     <ArrowLeft className="h-4 w-4" /> Course shelf
                   </button>
@@ -450,8 +448,8 @@ export function LibraryScreen() {
                     <button key={c.course_code} onClick={() => setShelfCourse(c.course_code)} className="w-full text-left">
                       <Card>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="break-words font-semibold text-[#1A1A2E]">{c.course_code}</span>
-                          <span className="text-xs text-[#5C5C70]">{c.count} published</span>
+                          <span className="break-words font-semibold text-foreground">{c.course_code}</span>
+                          <span className="text-xs text-muted-foreground">{c.count} published</span>
                         </div>
                       </Card>
                     </button>
@@ -462,7 +460,7 @@ export function LibraryScreen() {
                   <Card key={it.id}>
                     <div className="flex items-center gap-2">
                       <TypeChip fileType={it.file_type} />
-                      <span className="break-words text-sm font-semibold text-[#1A1A2E]">{it.file_name}</span>
+                      <span className="break-words text-sm font-semibold text-foreground">{it.file_name}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
@@ -478,10 +476,10 @@ export function LibraryScreen() {
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button variant="outline" className="h-10 border-[#E4DCC8]" onClick={() => void openPreview(it, true)} disabled={busy}>
+                      <Button variant="outline" className="h-10 border-border" onClick={() => void openPreview(it, true)} disabled={busy}>
                         <Eye className="mr-2 h-4 w-4" /> View
                       </Button>
-                      <Button className="h-10 text-white" style={{ backgroundColor: "#B86E0A" }} onClick={() => void doSave(it)} disabled={busy}>
+                      <Button className="h-10 bg-amber text-cream hover:bg-amber/90" onClick={() => void doSave(it)} disabled={busy}>
                         Save to locker
                       </Button>
                     </div>
@@ -489,14 +487,14 @@ export function LibraryScreen() {
                 ))}
 
                 {shelf && shelf.courses.length === 0 ? (
-                  <Card><p className="text-sm text-[#5C5C70]">Nothing published for your courses yet.</p></Card>
+                  <Card><p className="text-sm text-muted-foreground">Nothing published for your courses yet.</p></Card>
                 ) : null}
               </>
             )}
           </div>
         )}
 
-        <p className="mt-4 text-[11px] text-[#5C5C70]">
+        <p className="mt-4 text-[11px] text-muted-foreground">
           Files are viewed in the app. There is no download, and you can unpublish at any time.
         </p>
       </div>
