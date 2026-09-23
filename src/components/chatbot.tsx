@@ -7,12 +7,13 @@
  * never loses anything.
  */
 import { useEffect, useRef, useState } from "react";
-import { Camera, FileText, Image as ImageIcon, Send, Volume2, VolumeX, X } from "lucide-react";
+import { Camera, Image as ImageIcon, Paperclip, Send, Volume2, VolumeX, X } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { RichText, plainText } from "@/components/rich-text";
 import { ALL_SCOPE, getAllMergedThread, getCourseThread, sendChatMessage } from "@/lib/chat-api";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type Message = {
   id: number;
@@ -21,12 +22,6 @@ type Message = {
   /** Set only on messages loaded into the merged "All my notes" feed. */
   courseTag?: string;
 };
-
-const EXAMPLE_PROMPTS = [
-  "Explain this in simpler words",
-  "What should I revise first",
-  "Quiz me on one idea",
-];
 
 /** UI field only — the backend has no mode parameter, so nothing is invented here. */
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
@@ -54,6 +49,7 @@ export function ChatbotScreen() {
   const [isSending, setIsSending] = useState(false);
   const [mode, setMode] = useState<Mode>("Explain");
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const nextId = useRef(1);
   const loadToken = useRef(0);
@@ -177,13 +173,13 @@ export function ChatbotScreen() {
   const placeholderCourse = selected === ALL_SCOPE ? "your notes" : displayCode(selected);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-28 pt-6 md:pb-10">
+    <div className="min-h-screen bg-chat-page text-chat-foreground">
+      <div className="mx-auto flex min-h-screen max-w-[640px] flex-col px-4 pb-24 pt-4 sm:px-5 md:pb-8 md:pt-6">
         {/* Header card: white, cream border, 4px navy left edge */}
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-card p-4">
+        <div className="mb-3 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-amber bg-chat-card p-3.5">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
-            <h1 className="font-display text-xl font-semibold leading-tight text-navy">
+            <h1 className="font-display text-xl font-semibold leading-tight text-chat-foreground">
               Study Chat · {headerLabel}
             </h1>
             <p className="text-xs text-muted-foreground">
@@ -196,8 +192,12 @@ export function ChatbotScreen() {
             </span>
           ) : null}
         </div>
+        {isLoadingThread ? (
+          <p className="mb-2 px-1 text-xs text-muted-foreground">Loading this conversation…</p>
+        ) : null}
 
         {/* Optional course scope chips */}
+        <p className="mb-1.5 text-sm font-semibold text-chat-foreground">Course</p>
         <div className="mb-3 flex flex-wrap gap-2">
           {courseOptions.map((code) => {
             const isAll = code === ALL_SCOPE;
@@ -211,8 +211,8 @@ export function ChatbotScreen() {
                 className={
                   "rounded-full border px-3 py-1 text-xs font-medium transition " +
                   (active
-                    ? "border-amber bg-sand text-amber"
-                    : "border-border bg-card text-navy hover:border-navy/30")
+                    ? "border-amber bg-amber text-cream"
+                    : "border-border bg-chat-card text-chat-foreground hover:border-amber/60")
                 }
               >
                 {label}
@@ -222,7 +222,8 @@ export function ChatbotScreen() {
         </div>
 
         {/* How the student wants the reply framed. */}
-        <div className="mb-5 flex flex-wrap gap-2">
+        <p className="mb-1.5 text-sm font-semibold text-chat-foreground">Modes</p>
+        <div className="mb-3 flex flex-wrap gap-2">
           {MODES.map((m) => {
             const active = mode === m;
             return (
@@ -233,8 +234,8 @@ export function ChatbotScreen() {
                 className={
                   "rounded-full border px-3 py-1 text-xs font-medium transition " +
                   (active
-                    ? "border-[#B86E0A] bg-[#F3E6C8] text-[#B86E0A]"
-                    : "border-[#1B2A4A] bg-card text-[#1B2A4A]")
+                    ? "border-amber bg-amber text-cream"
+                    : "border-border bg-chat-card text-chat-foreground")
                 }
               >
                 {m}
@@ -244,38 +245,15 @@ export function ChatbotScreen() {
         </div>
 
         {/* Thread */}
-        <div className="flex-1 space-y-4 overflow-y-auto">
-          {isLoadingThread ? (
-            <div className="mt-10 flex flex-col items-center text-center text-sm text-muted-foreground">
-              Loading this chat…
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="mt-10 flex flex-col items-center text-center">
-              <div className="mb-3 grid h-14 w-14 place-items-center rounded-full bg-sand">
-                <FileText className="h-7 w-7 text-navy" />
-              </div>
-              <p className="mb-4 font-display text-lg font-semibold text-navy">
-                Ask from your notes
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2">
+          {!isLoadingThread && messages.length === 0 ? (
+            <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
+              <p className="font-display text-[22px] font-semibold text-chat-foreground">
+                Ask about {placeholderCourse}
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {EXAMPLE_PROMPTS.map((prompt, idx) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    onClick={() => setDraft(prompt)}
-                    className={
-                      "rounded-full border px-3 py-1.5 text-xs font-medium text-navy transition " +
-                      (idx === 0
-                        ? "border-transparent bg-sand"
-                        : "border-border bg-card hover:border-navy/30")
-                    }
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+              <p className="mt-1 text-sm text-muted-foreground">From your notes. Not the open web.</p>
             </div>
-          ) : (
+          ) : messages.length > 0 ? (
             <>
               {messages.map((m) =>
                 m.from === "student" ? (
@@ -285,7 +263,7 @@ export function ChatbotScreen() {
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-card p-3.5 text-sm text-foreground">
+                    <div className="rounded-2xl border border-border bg-sand p-3.5 text-sm text-navy">
                       {m.text}
                     </div>
                   </div>
@@ -296,14 +274,14 @@ export function ChatbotScreen() {
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-card p-4 text-sm text-[#1B2A4A]">
+                    <div className="rounded-2xl border border-border bg-chat-card p-4 text-sm text-chat-foreground">
                       <RichText>{m.text}</RichText>
                       {speechSupported() ? (
                         <button
                           type="button"
                           onClick={() => toggleSpeak(m)}
                           aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"}
-                          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[#B86E0A]"
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-amber"
                         >
                           {speakingId === m.id ? (
                             <>
@@ -336,7 +314,7 @@ export function ChatbotScreen() {
                 </div>
               ) : null}
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Composer — sits clear of the bottom tab bar */}
@@ -349,20 +327,9 @@ export function ChatbotScreen() {
               </button>
             </div>
           ) : null}
-          <div className="mb-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => cameraInput.current?.click()}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-medium text-navy"
-            >
-              <Camera className="h-3.5 w-3.5" /> Camera
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-medium text-navy"
-            >
-              <ImageIcon className="h-3.5 w-3.5" /> Gallery
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setAttachOpen(true)} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-chat-card text-chat-foreground">
+              <Paperclip className="h-5 w-5" />
             </button>
             <input
               ref={cameraInput}
@@ -379,8 +346,6 @@ export function ChatbotScreen() {
               className="hidden"
               onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
             />
-          </div>
-          <div className="flex items-center gap-2">
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -393,14 +358,14 @@ export function ChatbotScreen() {
               }}
               disabled={isSending || isLoadingThread}
               placeholder={`Ask about ${placeholderCourse}…`}
-              className="h-12 flex-1 rounded-2xl border border-border bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
+              className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
             />
             <button
               type="button"
               onClick={send}
               disabled={isSending || isLoadingThread}
               aria-label="Send"
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
             >
               <Send className="h-5 w-5" />
             </button>
@@ -412,6 +377,23 @@ export function ChatbotScreen() {
           ) : null}
         </div>
       </div>
+      <Sheet open={attachOpen} onOpenChange={setAttachOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl bg-chat-card text-chat-foreground">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-chat-foreground">Attach a photo</SheetTitle>
+            <SheetDescription>Photos attach when chat OCR is live.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 divide-y divide-border border-y border-border">
+            <button type="button" className="flex h-14 w-full items-center gap-3 text-left font-semibold" onClick={() => { setAttachOpen(false); cameraInput.current?.click(); }}>
+              <Camera className="h-5 w-5" /> Camera
+            </button>
+            <button type="button" className="flex h-14 w-full items-center gap-3 text-left font-semibold" onClick={() => { setAttachOpen(false); fileInput.current?.click(); }}>
+              <ImageIcon className="h-5 w-5" /> Gallery
+            </button>
+          </div>
+          <button type="button" onClick={() => setAttachOpen(false)} className="mt-4 w-full rounded-xl border border-border py-3 text-sm font-semibold">Close</button>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

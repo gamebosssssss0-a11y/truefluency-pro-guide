@@ -63,7 +63,7 @@ export function paywallCopy(
   verdict: QuotaVerdict,
 ): { title: string; body: string } {
   const price = formatNaira(verdict.priceNaira);
-  const upsell = `Full access is ${price} for the semester at our founding price, and it unlocks unlimited mock tests, up to ${PAID_MAX_QUESTIONS} questions a set, and the WHY behind every answer.`;
+  const upsell = `Full access is ${price} per month at our founding price, and it unlocks unlimited mock tests, up to ${PAID_MAX_QUESTIONS} questions a set, and the WHY behind every answer.`;
 
   if (verdict.reason === "question_cap") {
     return {

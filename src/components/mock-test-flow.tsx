@@ -1523,9 +1523,9 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
           <div className="text-[11px] font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
-          <p className="mt-1 line-clamp-4 break-words text-sm leading-[1.45] text-navy">
+          <div className="mt-1 break-words text-sm leading-[1.45] text-navy">
             <MathText>{row.body}</MathText>
-          </p>
+          </div>
         </div>
       ))}
     </div>

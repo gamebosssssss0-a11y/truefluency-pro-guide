@@ -4,7 +4,7 @@
  * ever paraphrased, shortened or rounded at the call site.
  */
 export const PRICE_LINE =
-  "₦1,000/semester for the first 25 paying students. Then ₦2,000.";
+  "₦1,000 / month for the first 25 paying students. Then ₦2,000 / month.";
 
 export const TRIAL_LINE = "7-day full-access trial";
 

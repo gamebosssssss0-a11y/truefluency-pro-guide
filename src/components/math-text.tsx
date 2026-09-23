@@ -49,6 +49,18 @@ const KATEX_OPTIONS = {
 // instead of handing KaTeX a huge string to chew on.
 const MAX_TEX_LENGTH = 2000;
 
+function wholeFormula(input: string): { tex: string; display: boolean } | null {
+  const trimmed = input.trim();
+  const block = trimmed.match(/^\\\[([\s\S]+)\\\]$/);
+  if (block?.[1]) return { tex: block[1], display: true };
+  const inline = trimmed.match(/^\\\(([\s\S]+)\\\)$/);
+  if (inline?.[1]) {
+    const needsDisplay = /\\(?:frac|dfrac|tfrac|sqrt)\b/.test(inline[1]) || inline[1].includes("√");
+    return { tex: inline[1], display: needsDisplay };
+  }
+  return null;
+}
+
 function render(tex: string, display: boolean): string | null {
   if (tex.length > MAX_TEX_LENGTH) return null;
   try {
@@ -61,6 +73,18 @@ function render(tex: string, display: boolean): string | null {
 export function MathText({ children }: { children: string | null | undefined }) {
   const text = children ?? "";
   const segments = useMemo(() => split(text), [text]);
+  const whole = useMemo(() => wholeFormula(text), [text]);
+
+  if (whole) {
+    const html = render(whole.tex, whole.display);
+    if (!html) return <>{text}</>;
+    return (
+      <span
+        className={whole.display ? "my-3 block overflow-x-auto text-center text-[1.15em]" : "inline"}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
 
   if (!text.includes("\\(") && !text.includes("\\[")) return <>{text}</>;
 
@@ -76,7 +100,7 @@ export function MathText({ children }: { children: string | null | undefined }) 
         return (
           <span
             key={i}
-            className={seg.kind === "block" ? "block my-1 overflow-x-auto" : "inline"}
+            className={seg.kind === "block" ? "my-3 block overflow-x-auto text-center text-[1.15em]" : "inline"}
             // KaTeX output is generated locally from the question text.
             dangerouslySetInnerHTML={{ __html: html }}
           />

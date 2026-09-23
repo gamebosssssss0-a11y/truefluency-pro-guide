@@ -53,6 +53,8 @@ export const Route = createFileRoute("/")({
           "AI-powered past-paper predictions, mock tests, study plans and CGPA tools for University of Ibadan students.",
       },
       { property: "og:url", content: "https://truefluency.app/" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://truefluency.app/" }],
   }),

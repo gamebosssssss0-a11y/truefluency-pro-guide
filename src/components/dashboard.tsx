@@ -37,7 +37,7 @@ function PlanChip() {
       );
     }
   }
-  if (access.tier === "paid") return <ChipShell>Full access, this semester</ChipShell>;
+  if (access.tier === "paid") return <ChipShell>Full access, this month</ChipShell>;
   return <ChipShell>{PRICE_LINE}</ChipShell>;
 }
 

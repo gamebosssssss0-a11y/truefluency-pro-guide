@@ -52,7 +52,7 @@ export function LockedExplanation({ priceNaira }: { priceNaira: number }) {
     <div className="flex items-start gap-2 text-sm text-muted-foreground">
       <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
-        The WHY behind each answer is part of full access ({formatNaira(priceNaira)} a semester).
+        The WHY behind each answer is part of full access ({formatNaira(priceNaira)} per month).
         Your score and the correct answers stay free.
       </span>
     </div>

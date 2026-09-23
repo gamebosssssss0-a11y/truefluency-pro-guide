@@ -406,7 +406,7 @@ export function PdfViewer({
 
   if (status === "failed") {
     return (
-      <div className="grid h-full place-items-center bg-[#F7F3EA] p-4">
+      <div className="grid h-full place-items-center bg-background p-4">
         <ErrorCard
           title="We couldn't open this PDF here"
           body={HEAVY_PDF_MESSAGE}
@@ -422,23 +422,23 @@ export function PdfViewer({
       data-swipe-lock=""
       className={
         expanded
-          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-[#F7F3EA]"
-          : "flex h-full flex-col bg-[#F7F3EA]"
+          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background"
+          : "flex h-full flex-col bg-background"
       }
     >
 
-      <div className="flex items-center gap-2 border-b border-[#E4DCC8] px-3 py-2">
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#1B2A4A]">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
           {fileName}
         </span>
-        <span className="shrink-0 text-[11px] text-[#5C5C70]">
+        <span className="shrink-0 text-[11px] text-muted-foreground">
           {status === "ready" ? `page ${page} / ${total}` : ""}
         </span>
         <button
           type="button"
           aria-label={expanded ? "Exit full screen" : "Full screen"}
           onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 rounded-md p-1 text-[#5C5C70]"
+          className="shrink-0 rounded-md p-1 text-muted-foreground"
         >
           {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
@@ -450,7 +450,7 @@ export function PdfViewer({
               setExpanded(false);
               onClose();
             }}
-            className="shrink-0 rounded-md p-1 text-[#5C5C70]"
+            className="shrink-0 rounded-md p-1 text-muted-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -464,12 +464,12 @@ export function PdfViewer({
         {status === "loading" ? (
           <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
             <Loader2 className="h-5 w-5 animate-spin text-[#B86E0A]" />
-            <p className="text-sm font-medium text-[#1B2A4A]">Opening your file…</p>
+            <p className="text-sm font-medium text-foreground">Opening your file…</p>
             {onCancel ?? onClose ? (
               <Button
                 size="sm"
                 variant="outline"
-                className="mt-1 border-[#E4DCC8] text-[#1B2A4A]"
+                className="mt-1 border-border text-foreground"
                 onClick={cancelLoad}
               >
                 Cancel
@@ -501,11 +501,11 @@ export function PdfViewer({
       </div>
 
       {status === "ready" ? (
-        <div className="flex items-center justify-between gap-2 border-t border-[#E4DCC8] px-3 py-2">
+        <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
           <Button
             size="sm"
             variant="outline"
-            className="border-[#E4DCC8] text-[#1B2A4A]"
+            className="border-border text-foreground"
             onClick={() => go(page - 1)}
             disabled={page <= 1}
           >
@@ -524,14 +524,14 @@ export function PdfViewer({
               onBlur={() => go(Number(pageInput) || page)}
               inputMode="numeric"
               aria-label="Go to page"
-              className="h-8 w-14 border-[#E4DCC8] bg-white text-center text-[12px] text-[#1B2A4A]"
+              className="h-8 w-14 border-border bg-card text-center text-[12px] text-foreground"
             />
-            <span className="text-[11px] text-[#5C5C70]">/ {total}</span>
+            <span className="text-[11px] text-muted-foreground">/ {total}</span>
           </form>
           <Button
             size="sm"
             variant="outline"
-            className="border-[#E4DCC8] text-[#1B2A4A]"
+            className="border-border text-foreground"
             onClick={() => go(page + 1)}
             disabled={page >= total}
           >
