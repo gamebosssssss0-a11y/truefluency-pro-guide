@@ -501,11 +501,11 @@ export function PdfViewer({
       </div>
 
       {status === "ready" ? (
-        <div className="flex items-center justify-between gap-2 border-t border-[#E4DCC8] px-3 py-2">
+        <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
           <Button
             size="sm"
             variant="outline"
-            className="border-[#E4DCC8] text-[#1B2A4A]"
+            className="border-border text-foreground"
             onClick={() => go(page - 1)}
             disabled={page <= 1}
           >
@@ -524,14 +524,14 @@ export function PdfViewer({
               onBlur={() => go(Number(pageInput) || page)}
               inputMode="numeric"
               aria-label="Go to page"
-              className="h-8 w-14 border-[#E4DCC8] bg-white text-center text-[12px] text-[#1B2A4A]"
+              className="h-8 w-14 border-border bg-card text-center text-[12px] text-foreground"
             />
-            <span className="text-[11px] text-[#5C5C70]">/ {total}</span>
+            <span className="text-[11px] text-muted-foreground">/ {total}</span>
           </form>
           <Button
             size="sm"
             variant="outline"
-            className="border-[#E4DCC8] text-[#1B2A4A]"
+            className="border-border text-foreground"
             onClick={() => go(page + 1)}
             disabled={page >= total}
           >

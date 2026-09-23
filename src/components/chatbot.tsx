@@ -314,7 +314,7 @@ export function ChatbotScreen() {
                 </div>
               ) : null}
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Composer — sits clear of the bottom tab bar */}
