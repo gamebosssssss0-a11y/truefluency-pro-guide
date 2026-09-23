@@ -501,34 +501,34 @@ export function LibraryScreen() {
 
       {/* Owner actions */}
       <Sheet open={ownerSheet !== null} onOpenChange={(o) => !o && setOwnerSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl bg-white">
+        <SheetContent side="bottom" className="rounded-t-2xl bg-card text-card-foreground">
           <SheetHeader>
-            <SheetTitle className="text-[#1B2A4A]">{ownerSheet?.file_name}</SheetTitle>
-            <SheetDescription className="text-[#5C5C70]">
+            <SheetTitle className="text-foreground">{ownerSheet?.file_name}</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               Your locker is private until you publish a file.
             </SheetDescription>
           </SheetHeader>
           <div className="mt-3 space-y-2 pb-4">
-            <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => ownerSheet && void openPreview(ownerSheet, false)} disabled={busy}>
+            <Button variant="outline" className="h-11 w-full justify-start border-border" onClick={() => ownerSheet && void openPreview(ownerSheet, false)} disabled={busy}>
               <Eye className="mr-2 h-4 w-4" /> View
             </Button>
             {ownerSheet && !ownerSheet.is_peer_copy ? (
               ownerSheet.published ? (
-                <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => void doPublish(ownerSheet, false)} disabled={busy}>
+                <Button variant="outline" className="h-11 w-full justify-start border-border" onClick={() => void doPublish(ownerSheet, false)} disabled={busy}>
                   <X className="mr-2 h-4 w-4" /> Unpublish
                 </Button>
               ) : (
-                <Button className="h-11 w-full justify-start text-white" style={{ backgroundColor: "#B86E0A" }} onClick={() => setPublishTarget(ownerSheet)} disabled={busy}>
+                <Button className="h-11 w-full justify-start bg-amber text-cream hover:bg-amber/90" onClick={() => setPublishTarget(ownerSheet)} disabled={busy}>
                   <Share2 className="mr-2 h-4 w-4" /> Publish to course shelf
                 </Button>
               )
             ) : null}
             {ownerSheet && !ownerSheet.is_peer_copy ? (
-              <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8]" onClick={() => void doCopyLink(ownerSheet)} disabled={busy}>
+              <Button variant="outline" className="h-11 w-full justify-start border-border" onClick={() => void doCopyLink(ownerSheet)} disabled={busy}>
                 <Copy className="mr-2 h-4 w-4" /> Copy one-file link
               </Button>
             ) : null}
-            <Button variant="outline" className="h-11 w-full justify-start border-[#E4DCC8] text-[#8B2E2E]" onClick={() => ownerSheet && void doRemove(ownerSheet)} disabled={busy}>
+            <Button variant="outline" className="h-11 w-full justify-start border-border text-wine" onClick={() => ownerSheet && void doRemove(ownerSheet)} disabled={busy}>
               <Trash2 className="mr-2 h-4 w-4" /> Remove
             </Button>
           </div>
@@ -537,16 +537,16 @@ export function LibraryScreen() {
 
       {/* Publish confirm */}
       <Dialog open={publishTarget !== null} onOpenChange={(o) => !o && setPublishTarget(null)}>
-        <DialogContent className="bg-white">
+        <DialogContent className="bg-card text-card-foreground">
           <DialogHeader>
-            <DialogTitle className="text-[#1B2A4A]">Publish to your course shelf?</DialogTitle>
-            <DialogDescription className="text-[#5C5C70]">
+            <DialogTitle className="text-foreground">Publish to your course shelf?</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Coursemates will be able to view this file inside the app. There is no download. You can
               unpublish it at any time and it disappears from the shelf.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 rounded-xl border border-[#E4DCC8] bg-[#F7F3EA] p-3">
-            <label className="flex items-start gap-3 text-sm text-[#1B2A4A]">
+          <div className="space-y-3 rounded-xl border border-border bg-background p-3">
+            <label className="flex items-start gap-3 text-sm text-foreground">
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 accent-[#B86E0A]"
@@ -556,7 +556,7 @@ export function LibraryScreen() {
               <span>Show my first name on this file</span>
             </label>
             {myAvatarUrl ? (
-              <label className="flex items-start gap-3 text-sm text-[#1B2A4A]">
+              <label className="flex items-start gap-3 text-sm text-foreground">
                 <input
                   type="checkbox"
                   className="mt-0.5 h-4 w-4 accent-[#B86E0A]"
@@ -566,13 +566,13 @@ export function LibraryScreen() {
                 <span>Show my photo on this file</span>
               </label>
             ) : null}
-            <p className="text-xs text-[#5C5C70]">
+            <p className="text-xs text-muted-foreground">
               Both are off unless you tick them. Nothing else about you is shown.
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="border-[#E4DCC8]" onClick={() => setPublishTarget(null)}>Cancel</Button>
-            <Button className="text-white" style={{ backgroundColor: "#B86E0A" }} onClick={() => publishTarget && void doPublish(publishTarget, true)} disabled={busy}>
+            <Button variant="outline" className="border-border" onClick={() => setPublishTarget(null)}>Cancel</Button>
+            <Button className="bg-amber text-cream hover:bg-amber/90" onClick={() => publishTarget && void doPublish(publishTarget, true)} disabled={busy}>
               Publish
             </Button>
           </DialogFooter>
@@ -581,23 +581,23 @@ export function LibraryScreen() {
 
       {/* One-file link */}
       <Sheet open={linkSheet !== null} onOpenChange={(o) => !o && setLinkSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl bg-white">
+        <SheetContent side="bottom" className="rounded-t-2xl bg-card text-card-foreground">
           <SheetHeader>
-            <SheetTitle className="text-[#1B2A4A]">One-file link</SheetTitle>
-            <SheetDescription className="text-[#5C5C70]">
+            <SheetTitle className="text-foreground">One-file link</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               This link opens only this one file, nothing else in your locker. It expires in 7 days,
               works for {linkSheet?.maxUses ?? 5} saves, and you can revoke it now.
             </SheetDescription>
           </SheetHeader>
           {linkSheet ? (
             <div className="mt-3 space-y-3 pb-4">
-              <div className="break-all rounded-xl border border-[#E4DCC8] bg-[#F7F3EA] p-3 text-xs text-[#1A1A2E]">
+              <div className="break-all rounded-xl border border-border bg-background p-3 text-xs text-foreground">
                 {`${window.location.origin}/s/${linkSheet.token}`}
               </div>
-              <div className="text-xs text-[#5C5C70]">
+              <div className="text-xs text-muted-foreground">
                 {linkSheet.usesLeft} of {linkSheet.maxUses} saves left
               </div>
-              <Button variant="outline" className="h-11 w-full border-[#E4DCC8] text-[#8B2E2E]" onClick={() => void doRevoke(linkSheet.token)} disabled={busy}>
+              <Button variant="outline" className="h-11 w-full border-border text-wine" onClick={() => void doRevoke(linkSheet.token)} disabled={busy}>
                 Revoke link
               </Button>
             </div>
@@ -607,14 +607,14 @@ export function LibraryScreen() {
 
       {/* In-app preview */}
       <Sheet open={preview !== null} onOpenChange={(o) => !o && setPreview(null)}>
-        <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl bg-white">
+        <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl bg-card text-card-foreground">
           <SheetHeader>
-            <SheetTitle className="break-words text-[#1B2A4A]">{preview?.file_name}</SheetTitle>
-            <SheetDescription className="text-[#5C5C70]">
+            <SheetTitle className="break-words text-foreground">{preview?.file_name}</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               {preview?.course_code} · viewing in app, no download
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-3 h-[64vh] overflow-auto rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
+          <div className="mt-3 h-[64vh] overflow-auto rounded-xl border border-border bg-background">
             {preview?.failed ? (
               <div className="grid h-full place-items-center p-4">
                 <ErrorCard
@@ -638,7 +638,7 @@ export function LibraryScreen() {
                 />
               </div>
             ) : !preview?.url ? (
-              <div className="grid h-full place-items-center px-6 text-center text-sm text-[#5C5C70]">
+              <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
                 {SHARING_OFFLINE_MESSAGE}
               </div>
             ) : preview.file_type === "image" ? (
@@ -646,7 +646,7 @@ export function LibraryScreen() {
             ) : preview.file_type === "pdf" ? (
               <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} />
             ) : (
-              <div className="grid h-full place-items-center bg-[#F7F3EA] p-4">
+              <div className="grid h-full place-items-center bg-background p-4">
                 <ErrorCard
                   title="We can't preview this file type here"
                   body={HEAVY_PDF_MESSAGE}
@@ -658,17 +658,16 @@ export function LibraryScreen() {
           </div>
           {preview?.peer ? (
             <Button
-              className="mt-3 h-12 w-full text-white"
-              style={{ backgroundColor: "#B86E0A" }}
+               className="mt-3 h-12 w-full bg-amber text-cream hover:bg-amber/90"
               onClick={() => preview && void doSave({ id: preview.id, course_code: preview.course_code })}
               disabled={busy}
             >
               Save to locker
             </Button>
           ) : (
-            <p className="mt-3 text-center text-[12px] font-medium text-[#5C5C70]">View only</p>
+            <p className="mt-3 text-center text-[12px] font-medium text-muted-foreground">View only</p>
           )}
-          <p className="mt-2 text-[11px] text-[#5C5C70]">{PRICE_LINE}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{PRICE_LINE}</p>
 
         </SheetContent>
       </Sheet>

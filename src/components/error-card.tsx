@@ -21,15 +21,15 @@ export function ErrorCard({
   onLink?: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-[#E4DCC8] bg-white p-5 text-left">
+    <div className="rounded-2xl border border-border bg-card p-5 text-left">
       <div className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-[#B86E0A]/12 text-[#B86E0A]">
         <AlertTriangle className="h-5 w-5" />
       </div>
-      <h2 className="font-display text-lg font-semibold text-[#1B2A4A]">{title}</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-[#5C5C70]">{body}</p>
+      <h2 className="font-display text-lg font-semibold text-foreground">{title}</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
       {onAction ? (
         <Button
-          className="mt-4 w-full bg-[#B86E0A] text-white hover:bg-[#B86E0A]/90"
+          className="mt-4 w-full bg-amber text-cream hover:bg-amber/90"
           onClick={onAction}
         >
           {actionLabel}
@@ -39,7 +39,7 @@ export function ErrorCard({
         <button
           type="button"
           onClick={onLink}
-          className="mt-3 w-full text-center text-[13px] font-medium text-[#5C5C70] underline underline-offset-4"
+          className="mt-3 w-full text-center text-[13px] font-medium text-muted-foreground underline underline-offset-4"
         >
           {linkLabel}
         </button>
