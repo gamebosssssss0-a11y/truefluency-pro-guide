@@ -51,6 +51,9 @@
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --color-chat-page: var(--chat-page);
+  --color-chat-card: var(--chat-card);
+  --color-chat-foreground: var(--chat-foreground);
 }
 
 
@@ -103,6 +106,9 @@
   --good: #2F6B4F;
   --warn: #B86E0A;
   --bad: #8B2E2E;
+  --chat-page: #F7F3EA;
+  --chat-card: #FFFFFF;
+  --chat-foreground: #1B2A4A;
 
 }
 
@@ -132,6 +138,9 @@
   --cream: #F5F3EE;
   --sand: #3D3729;
   --pill-text-l: 82%;
+  --chat-page: #1B2A4A;
+  --chat-card: #243656;
+  --chat-foreground: #F7F3EA;
 }
 
 

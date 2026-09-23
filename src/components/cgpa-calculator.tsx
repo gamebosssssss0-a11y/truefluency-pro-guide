@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useProfile, type CgpaActual } from "@/lib/profile-store";
+import { useProfile, type CgpaActual, type CgpaSemester } from "@/lib/profile-store";
 import { GRADE_SCALE, classify, PROBATION_THRESHOLD } from "@/lib/cgpa";
 import { HeaderLogo } from "@/components/brand";
 import { Button } from "@/components/ui/button";

@@ -50,7 +50,7 @@ export function UpgradeScreen() {
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Full access</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Everything in TrueFluency Pro, for one semester. {NOT_SECOND_PRODUCT}
+          Everything in TrueFluency Pro, for one month. {NOT_SECOND_PRODUCT}
         </p>
 
         <div className="mt-5 rounded-2xl border-2 border-accent bg-accent/10 p-5 shadow-sm">
@@ -61,7 +61,7 @@ export function UpgradeScreen() {
             <span className="font-display text-4xl font-semibold text-foreground">
               {formatNaira(FOUNDING_PRICE_NAIRA)}
             </span>
-            <span className="pb-1 text-sm text-muted-foreground">/semester</span>
+            <span className="pb-1 text-sm text-muted-foreground">/ month</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             For the first {FOUNDING_USER_LIMIT} paying students.
