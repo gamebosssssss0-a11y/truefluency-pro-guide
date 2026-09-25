@@ -690,7 +690,7 @@ export function MockRunScreen() {
     }));
 
     const attempt: MockAttempt = {
-      id: `att-${Date.now()}`,
+      id: crypto.randomUUID(),
       courseCode: t.courseCode,
       courseTitle: t.courseTitle,
       score,
