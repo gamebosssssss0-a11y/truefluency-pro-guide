@@ -7,10 +7,10 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import * as r2 from "@/lib/storage.server";
 
 /** A file needs this much extracted text before mocks can use it. */
 export const READY_FOR_MOCKS_MIN_CHARS = 50;
-const BUCKET = "course-materials";
 const SHARE_TTL_DAYS = 7;
 export const SHARE_MAX_USES = 5;
 export const REDEEM_MISS_MESSAGE = "This link is no longer available.";
@@ -100,10 +100,11 @@ async function attributionFor(
     const first = showName ? ((data?.display_name ?? "").trim().split(/\s+/)[0] ?? "") : "";
     let avatar_url: string | null = null;
     if (showPhoto && data?.avatar_path) {
-      const { data: signed } = await db.storage
-        .from(BUCKET)
-        .createSignedUrl(data.avatar_path, 60 * 60);
-      avatar_url = signed?.signedUrl ?? null;
+      try {
+        avatar_url = await r2.presignDownload({ path: data.avatar_path, expiresInSeconds: 60 * 60 });
+      } catch {
+        avatar_url = null;
+      }
     }
     return { peer_alias: first ? `${first} (peer)` : "A peer", avatar_url };
   } catch {
@@ -374,10 +375,7 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
 
   let previewUrl: string | null = null;
   try {
-    const { data } = await admin()
-      .storage.from(BUCKET)
-      .createSignedUrl(material.file_path, 60 * 30);
-    previewUrl = data?.signedUrl ?? null;
+    previewUrl = await r2.presignDownload({ path: material.file_path, expiresInSeconds: 60 * 30 });
   } catch {
     previewUrl = null;
   }
@@ -413,9 +411,14 @@ export async function shelfPreviewUrl(materialId: string): Promise<{
     .eq("id", materialId)
     .maybeSingle();
   if (!material || !material.published) return null;
-  const { data } = await db.storage.from(BUCKET).createSignedUrl(material.file_path, 60 * 30);
+  let url: string | null = null;
+  try {
+    url = await r2.presignDownload({ path: material.file_path, expiresInSeconds: 60 * 30 });
+  } catch {
+    url = null;
+  }
   return {
-    url: data?.signedUrl ?? null,
+    url,
     file_name: material.file_name,
     file_type: material.file_type,
     course_code: material.course_code,
@@ -484,8 +487,11 @@ export async function saveSharedFile(opts: {
   ).peer_alias;
   const destPath = `${opts.recipientId}/${source.course_code}/${Date.now()}-${source.file_name}`;
 
-  const { error: copyErr } = await db.storage.from(BUCKET).copy(source.file_path, destPath);
-  if (copyErr) return { ok: false, reason: "We couldn't copy this file. Try again." };
+  try {
+    await r2.copyObject(source.file_path, destPath);
+  } catch {
+    return { ok: false, reason: "We couldn't copy this file. Try again." };
+  }
 
   const { data: inserted, error: insErr } = await db
     .from("course_materials")
@@ -507,7 +513,7 @@ export async function saveSharedFile(opts: {
     .single();
 
   if (insErr || !inserted) {
-    await db.storage.from(BUCKET).remove([destPath]);
+    await r2.deleteObject(destPath).catch(() => {});
     return { ok: false, reason: "We couldn't save this file. Try again." };
   }
 
