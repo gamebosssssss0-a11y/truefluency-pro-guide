@@ -41,6 +41,11 @@ function r2(): S3Client {
   client = new S3Client({
     region: "auto",
     endpoint: `https://${env("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`,
+    // Required for R2 — the SDK defaults to virtual-hosted-style addressing
+    // (bucket-name.account.r2.cloudflarestorage.com), which R2 doesn't
+    // support. Without this, requests go to the wrong URL and R2 reports it
+    // as an invalid bucket even when the bucket name is correct.
+    forcePathStyle: true,
     credentials: {
       accessKeyId: env("R2_ACCESS_KEY_ID"),
       secretAccessKey: env("R2_SECRET_ACCESS_KEY"),
