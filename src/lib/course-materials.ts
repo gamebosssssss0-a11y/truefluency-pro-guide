@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
 import { extractMaterialText } from "@/lib/extraction.functions";
 import { extractSelectablePdfText } from "@/lib/pdf-extraction.browser";
+import { presignMaterialUpload, confirmMaterialUpload, deleteMaterialFiles } from "@/lib/storage.functions";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
@@ -108,6 +109,32 @@ function safeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
 }
 
+/**
+ * Uploads bytes straight to R2 via a presigned PUT the file never passes
+ * through this app's own server for — see storage.functions.ts. Confirms
+ * the object actually landed before returning, so a DB row is never
+ * created pointing at a path that silently failed to upload.
+ */
+async function uploadViaPresignedPut(
+  payload: Blob,
+  courseCode: string,
+  fileName: string,
+  contentType: string,
+): Promise<string> {
+  const { path, uploadUrl } = await presignMaterialUpload({
+    data: { courseCode, fileName, contentType },
+  });
+  const putRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: payload,
+  });
+  if (!putRes.ok) throw new Error("Storage upload failed");
+  const { exists } = await confirmMaterialUpload({ data: { path } });
+  if (!exists) throw new Error("Storage upload failed");
+  return path;
+}
+
 function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     new Compressor(file, {
@@ -202,10 +229,6 @@ export async function uploadCourseMaterial(opts: {
     }
   }
 
-  const path = `${userId}/${courseCode}/${Date.now()}-${safeName(file.name)}`;
-
-  // 4) Upload to Supabase storage
-  emit({ kind: "uploading", pct: didCompress ? 10 : 5 });
   const contentType =
     file.type ||
     (fileType === "docx"
@@ -214,22 +237,16 @@ export async function uploadCourseMaterial(opts: {
         ? PPTX_TYPE
         : "application/octet-stream");
 
-  let upErr: unknown = null;
+  let path: string;
   try {
-    const res = await supabase.storage
-      .from("course-materials")
-      .upload(path, payload, { contentType, upsert: false });
-    upErr = res.error;
+    path = await uploadViaPresignedPut(payload, courseCode, file.name, contentType);
   } catch (e) {
-    upErr = e;
-  }
-  if (upErr) {
-    console.error("[upload] storage upload failed", upErr);
+    console.error("[upload] storage upload failed", e);
     emit({
       kind: "error",
       message: "Upload didn't go through. Try a smaller file or check your connection.",
     });
-    throw upErr instanceof Error ? upErr : new Error("Storage upload failed");
+    throw e instanceof Error ? e : new Error("Storage upload failed");
   }
   emit({ kind: "uploading", pct: 80 });
 
@@ -255,7 +272,7 @@ export async function uploadCourseMaterial(opts: {
   } catch (e) {
     console.error("[upload] db insert failed, rolling back storage", e);
     try {
-      await supabase.storage.from("course-materials").remove([path]);
+      await deleteMaterialFiles({ data: { paths: [path] } });
     } catch (rollbackErr) {
       console.error("[upload] storage rollback also failed", rollbackErr);
     }
@@ -378,27 +395,21 @@ export async function savePastedText(opts: {
   const fileName = safeName(
     opts.title?.trim() || `Pasted text ${new Date(stamp).toLocaleDateString()}`,
   );
-  const path = `${userId}/${courseCode}/${stamp}-${fileName}.txt`;
+  const displayFileName = `${fileName}.txt`;
 
   emit({ kind: "uploading", pct: 20 });
 
   const blob = new Blob([text], { type: "text/plain" });
-  let upErr: unknown = null;
+  let path: string;
   try {
-    const res = await supabase.storage
-      .from("course-materials")
-      .upload(path, blob, { contentType: "text/plain", upsert: false });
-    upErr = res.error;
+    path = await uploadViaPresignedPut(blob, courseCode, displayFileName, "text/plain");
   } catch (e) {
-    upErr = e;
-  }
-  if (upErr) {
-    console.error("[paste] storage upload failed", upErr);
+    console.error("[paste] storage upload failed", e);
     emit({
       kind: "error",
       message: "Couldn't save your text. Check your connection and try again.",
     });
-    throw upErr instanceof Error ? upErr : new Error("Storage upload failed");
+    throw e instanceof Error ? e : new Error("Storage upload failed");
   }
 
   emit({ kind: "uploading", pct: 80 });
@@ -425,7 +436,7 @@ export async function savePastedText(opts: {
   } catch (e) {
     console.error("[paste] db insert failed, rolling back storage", e);
     try {
-      await supabase.storage.from("course-materials").remove([path]);
+      await deleteMaterialFiles({ data: { paths: [path] } });
     } catch (rollbackErr) {
       console.error("[paste] storage rollback also failed", rollbackErr);
     }
@@ -491,7 +502,7 @@ export async function listAllUserMaterials() {
 
 
 export async function deleteMaterial(m: CourseMaterial) {
-  await supabase.storage.from("course-materials").remove([m.file_path]);
+  await deleteMaterialFiles({ data: { paths: [m.file_path] } });
   await supabase.from("course_materials").delete().eq("id", m.id);
 }
 
@@ -501,7 +512,7 @@ export async function deleteAllUserMaterials() {
   if (all.length === 0) return;
   const paths = all.map((m) => m.file_path);
   for (let i = 0; i < paths.length; i += 100) {
-    await supabase.storage.from("course-materials").remove(paths.slice(i, i + 100));
+    await deleteMaterialFiles({ data: { paths: paths.slice(i, i + 100) } });
   }
   await supabase
     .from("course_materials")
