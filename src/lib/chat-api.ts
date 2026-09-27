@@ -59,7 +59,9 @@ export type ChatMessage = {
 export async function sendChatMessage(
   message: string,
   courseCode: string,
-): Promise<{ conversationId: string; reply: string }> {
+  mode: string,
+  imagePath?: string | null,
+): Promise<{ conversationId: string; reply: string; moderated?: boolean }> {
   const url = `${base()}/chat`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 35_000);
@@ -69,7 +71,12 @@ export async function sendChatMessage(
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...auth },
-      body: JSON.stringify({ message, course_code: courseCode }),
+      body: JSON.stringify({
+        message,
+        course_code: courseCode,
+        mode,
+        image_path: imagePath || undefined,
+      }),
       signal: controller.signal,
     });
 
@@ -79,8 +86,12 @@ export async function sendChatMessage(
       throw new Error(readErrorDetail(text, res.status));
     }
 
-    const data = (await res.json()) as { conversation_id: string; reply: string };
-    return { conversationId: data.conversation_id, reply: data.reply };
+    const data = (await res.json()) as {
+      conversation_id: string;
+      reply: string;
+      moderated?: boolean;
+    };
+    return { conversationId: data.conversation_id, reply: data.reply, moderated: data.moderated };
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw new Error("Study chat timed out. Try again.");
     if (e instanceof TypeError) {
