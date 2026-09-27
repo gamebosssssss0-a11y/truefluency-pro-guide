@@ -13,6 +13,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { RichText, plainText } from "@/components/rich-text";
 import { ALL_SCOPE, getAllMergedThread, getCourseThread, sendChatMessage } from "@/lib/chat-api";
+import { uploadChatImage } from "@/lib/chat-image";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type Message = {
@@ -23,7 +24,7 @@ type Message = {
   courseTag?: string;
 };
 
-/** UI field only — the backend has no mode parameter, so nothing is invented here. */
+/** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
 
@@ -48,7 +49,9 @@ export function ChatbotScreen() {
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [mode, setMode] = useState<Mode>("Explain");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const nextId = useRef(1);
@@ -114,14 +117,8 @@ export function ChatbotScreen() {
 
   const send = async () => {
     const text = draft.trim();
-
-    // A photo with no words never reaches the backend and never costs a reply.
-    if (!text && photoName) {
-      notice("Photo notes|Photo notes connect when chat OCR is live.");
-      setPhotoName(null);
-      return;
-    }
-    if (!text || isSending) return;
+    if (!text && !photoFile) return;
+    if (isSending || isUploadingPhoto) return;
 
     // Free students out of replies: no POST, no quota spend.
     if (chatCapReached) {
@@ -129,14 +126,36 @@ export function ChatbotScreen() {
       return;
     }
 
+    const fileToSend = photoFile;
     setDraft("");
+    setPhotoFile(null);
     setPhotoName(null);
-    setMessages((cur) => [...cur, { id: nextId.current++, from: "student", text }]);
+    setMessages((cur) => [
+      ...cur,
+      { id: nextId.current++, from: "student", text: text || "(photo)" },
+    ]);
     setIsSending(true);
 
     try {
-      const { reply } = await sendChatMessage(text, selected);
-      setMessages((cur) => [...cur, { id: nextId.current++, from: "assistant", text: reply }]);
+      let imagePath: string | null = null;
+      if (fileToSend) {
+        setIsUploadingPhoto(true);
+        try {
+          imagePath = await uploadChatImage(fileToSend);
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+
+      const { reply, moderated } = await sendChatMessage(text, selected, mode, imagePath);
+      setMessages((cur) => [
+        ...cur,
+        {
+          id: nextId.current++,
+          from: moderated ? "notice" : "assistant",
+          text: moderated ? `Can't help with that|${reply}` : reply,
+        },
+      ]);
     } catch (e) {
       notice(
         `Couldn't send that|${(e as Error)?.message || "Something went wrong. Try again."}`,
@@ -321,8 +340,18 @@ export function ChatbotScreen() {
         <div className="mt-4 mb-3">
           {photoName ? (
             <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-navy">
-              <span className="truncate">Note · {photoName}</span>
-              <button type="button" onClick={() => setPhotoName(null)} aria-label="Remove photo">
+              <span className="truncate">
+                {isUploadingPhoto ? "Uploading… " : "Photo · "}
+                {photoName}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setPhotoFile(null);
+                  setPhotoName(null);
+                }}
+                aria-label="Remove photo"
+              >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -337,14 +366,22 @@ export function ChatbotScreen() {
               accept="image/*"
               capture="environment"
               className="hidden"
-              onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setPhotoFile(f);
+                setPhotoName(f?.name ?? null);
+              }}
             />
             <input
               ref={fileInput}
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setPhotoFile(f);
+                setPhotoName(f?.name ?? null);
+              }}
             />
             <input
               value={draft}
@@ -356,14 +393,14 @@ export function ChatbotScreen() {
                   send();
                 }
               }}
-              disabled={isSending || isLoadingThread}
+              disabled={isSending || isLoadingThread || isUploadingPhoto}
               placeholder={`Ask about ${placeholderCourse}…`}
               className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
             />
             <button
               type="button"
               onClick={send}
-              disabled={isSending || isLoadingThread}
+              disabled={isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
               className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
             >
@@ -381,7 +418,7 @@ export function ChatbotScreen() {
         <SheetContent side="bottom" className="rounded-t-2xl bg-chat-card text-chat-foreground">
           <SheetHeader className="text-left">
             <SheetTitle className="text-chat-foreground">Attach a photo</SheetTitle>
-            <SheetDescription>Photos attach when chat OCR is live.</SheetDescription>
+            <SheetDescription>Photos are sent with your message and reviewed automatically.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 divide-y divide-border border-y border-border">
             <button type="button" className="flex h-14 w-full items-center gap-3 text-left font-semibold" onClick={() => { setAttachOpen(false); cameraInput.current?.click(); }}>
