@@ -371,7 +371,7 @@ export function FlashcardsReviewScreen() {
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <p className="font-display text-xl font-semibold text-navy">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {reviewMode === "due" ? "Nothing due in this deck right now — come back later." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
+              {reviewMode === "due" ? "Nothing due. Come back tomorrow or use Cram." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
             </p>
           </div>
         ) : (

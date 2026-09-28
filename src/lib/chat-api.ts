@@ -4,9 +4,9 @@
  * chat.py being separate from main.py's mock-generation pipeline — chat is a
  * simpler, lower-stakes call, no need to share the same file.
  *
- * Threads are per (account, course scope) now, resolved server-side — this
- * client never generates or stores a conversation_id itself. "all" is the
- * scope for "All my notes"; any other value is a real course code.
+ * Course threads are resolved server-side; this client never generates or
+ * stores a conversation_id itself. The UI presents history grouped by course
+ * and date, while new messages use the currently selected course.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,7 +46,9 @@ async function authHeader(): Promise<Record<string, string>> {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
-  /** Present on the merged "all my notes" feed only — which course thread this came from. */
+  /** Backend timestamp used to group saved history by day. */
+  created_at?: string;
+  /** Present on merged feeds to identify the source course. */
   course_code?: string;
 };
 
