@@ -107,7 +107,8 @@ function Router() {
 
   // A session must finish identity restore and local hydration before any
   // onboarding or dashboard screen can render.
-  if (authPending && (!profile.identity || !hydrated || authPending)) return <SigningInScreen />;
+  const sessionRestoring = authPending || (profile.identity !== null && !hydrated);
+  if (sessionRestoring) return <SigningInScreen />;
 
   if (step !== "dashboard") {
     switch (step) {
