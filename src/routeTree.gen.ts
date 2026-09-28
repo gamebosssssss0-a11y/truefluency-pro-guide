@@ -59,6 +59,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/s/$token': typeof STokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -74,12 +75,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/reset'
     | '/sitemap.xml'
     | '/s/$token'
     | '/lovable/email/transactional/preview'
   id:
     | '__root__'
     | '/'
+    | '/reset'
     | '/sitemap.xml'
     | '/s/$token'
     | '/lovable/email/transactional/preview'
