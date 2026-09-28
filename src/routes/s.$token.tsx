@@ -109,13 +109,19 @@ function SharedFilePage() {
       return;
     }
     setSaving(true);
-    const result = await savePeerFile({ data: { token, courseCode: share?.course_code } });
-    setSaving(false);
-    if (!result.ok) {
-      toast.error(result.reason);
-      return;
+    try {
+      const result = await savePeerFile({ data: { token, courseCode: share?.course_code } });
+      if (!result.ok) {
+        toast.error(result.reason);
+        return;
+      }
+      toast.success("Saved to your locker.");
+    } catch (error) {
+      console.error("[shared-file] save failed", error);
+      toast.error("Couldn't save this file. Check your connection and try again.");
+    } finally {
+      setSaving(false);
     }
-    toast.success("Saved to your locker.");
   };
 
 

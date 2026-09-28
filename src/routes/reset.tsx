@@ -40,12 +40,17 @@ function ResetPasswordPage() {
     event.preventDefault();
     if (!email.trim()) return;
     setBusy(true); setError(""); setMessage("");
-    const { error: requestError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: "https://truefluency.app/reset",
-    });
-    setBusy(false);
-    if (requestError) setError("We couldn't send the link. Check the email and try again.");
-    else setMessage("We sent a link to that email. It expires.");
+    try {
+      const { error: requestError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: "https://truefluency.app/reset",
+      });
+      if (requestError) setError("We couldn't send the link. Check the email and try again.");
+      else setMessage("We sent a link to that email. It expires.");
+    } catch {
+      setError("We couldn't send the link. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const updatePassword = async (event: React.FormEvent) => {
