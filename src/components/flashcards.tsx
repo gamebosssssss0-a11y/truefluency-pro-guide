@@ -13,6 +13,7 @@ import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-mat
 import { getMyAccess } from "@/lib/entitlements.functions";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
+import { RichText } from "@/components/rich-text";
 import {
   generateFlashcards,
   getDeckCards,
@@ -214,27 +215,25 @@ export function FlashcardsScreen() {
         ) : decks.length > 0 ? (
           <div className="space-y-3">
             {decks.map((deck) => (
-              <button
-                key={deck.id}
-                type="button"
-                onClick={() =>
-                  navigate("flashcards-review", { courseCode: deck.course_code, deckId: deck.id })
-                }
-                className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 text-left transition hover:border-navy/30"
-              >
+              <div key={deck.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
                 <div className="min-w-0">
-                  <p className="truncate font-display text-base font-semibold text-navy">
-                    {deckLabel(deck)}
-                  </p>
+                  <p className="truncate font-display text-base font-semibold text-navy">{deckLabel(deck)}</p>
                   <p className="text-xs text-muted-foreground">
                     {displayCode(deck.course_code)} · {deck.card_count} cards
                     {dueCounts[deck.id] !== undefined ? ` · ${dueCounts[deck.id]} due` : ""}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-sand px-3 py-1 text-xs font-medium text-amber">
-                  Review
-                </span>
-              </button>
+                <div className="flex flex-wrap gap-2">
+                  {(["due", "new", "cram"] as const).map((mode) => (
+                    <button key={mode} type="button" onClick={() => {
+                      sessionStorage.setItem("truefluency-flashcard-mode", mode);
+                      navigate("flashcards-review", { courseCode: deck.course_code, deckId: deck.id });
+                    }} className="rounded-full border border-navy px-3 py-1.5 text-xs font-semibold text-navy">
+                      {mode === "due" ? "Due" : mode === "new" ? "New" : "Cram"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
 
             {selected !== ALL_SCOPE && !deckCapReached ? (
@@ -297,6 +296,11 @@ export function FlashcardsReviewScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState<"due" | "new" | "cram">(() => {
+    const stored = sessionStorage.getItem("truefluency-flashcard-mode");
+    sessionStorage.removeItem("truefluency-flashcard-mode");
+    return stored === "new" || stored === "cram" ? stored : "due";
+  });
 
   const code = activeCourseCode ? displayCode(activeCourseCode) : "Notes";
   const current = cards[index];
@@ -308,19 +312,23 @@ export function FlashcardsReviewScreen() {
       return;
     }
     setIsLoading(true);
-    getDeckCards(activeDeckId, { dueOnly: true })
-      .then(async (due) => {
-        setCards(due);
+    (reviewMode === "due" ? getDeckCards(activeDeckId, { dueOnly: true }) : getDeckCards(activeDeckId))
+      .then((loaded) => {
+        const list = reviewMode === "new"
+          ? loaded.filter((card) => card.last_reviewed_at === null || card.reps === 0).slice(0, 15)
+          : loaded;
+        setCards(list);
+        setIndex(0);
       })
       .catch((e) => setError((e as Error)?.message || "Couldn't load this deck."))
       .finally(() => setIsLoading(false));
-  }, [activeDeckId]);
+  }, [activeDeckId, reviewMode]);
 
-  const grade = async (recalled: boolean) => {
-    if (!current || isGrading) return;
+  const grade = async (rating: 1 | 2 | 3 | 4) => {
+    if (!current || isGrading || reviewMode === "cram") return;
     setIsGrading(true);
     try {
-      await reviewCard({ cardId: current.id, recalled });
+      await reviewCard({ cardId: current.id, rating });
     } catch (e) {
       console.error("[flashcards] review failed to save", e);
     } finally {
@@ -376,13 +384,9 @@ export function FlashcardsReviewScreen() {
             >
               <span className="flex-1" />
               {flipped ? (
-                <p className="font-display text-xl font-semibold leading-relaxed text-cream">
-                  {current.back}
-                </p>
+                <div className="font-display text-xl font-semibold leading-relaxed text-cream"><RichText>{current.back}</RichText></div>
               ) : (
-                <p className="font-display text-2xl font-semibold leading-snug text-navy">
-                  {current.front}
-                </p>
+                <div className="font-display text-2xl font-semibold leading-snug text-navy"><RichText>{current.front}</RichText></div>
               )}
               <span className="flex-1" />
               <span className={"text-xs " + (flipped ? "text-cream/60" : "text-muted-foreground")}>
@@ -390,25 +394,20 @@ export function FlashcardsReviewScreen() {
               </span>
             </button>
 
-            {/* Grade buttons — swipe-equivalent taps, saved via FSRS */}
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => grade(false)}
-                disabled={isGrading}
-                className="h-12 rounded-full border-2 border-wine text-sm font-semibold text-wine transition hover:bg-wine/5 disabled:opacity-60"
-              >
-                Didn't know
-              </button>
-              <button
-                type="button"
-                onClick={() => grade(true)}
-                disabled={isGrading}
-                className="h-12 rounded-full bg-amber text-sm font-semibold text-cream transition hover:bg-amber/90 disabled:opacity-60"
-              >
-                Knew it
-              </button>
-            </div>
+            {reviewMode === "cram" ? (
+              <button type="button" onClick={() => { setFlipped(false); setIndex((currentIndex) => currentIndex + 1); }} className="mt-6 h-12 w-full rounded-full bg-amber text-sm font-semibold text-cream">Next</button>
+            ) : (
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {([
+                  ["Again", 1], ["Hard", 2], ["Good", 3], ["Easy", 4],
+                ] as const).map(([label, rating]) => (
+                  <button key={label} type="button" onClick={() => void grade(rating)} disabled={isGrading}
+                    className="h-12 rounded-full border-2 border-navy text-sm font-semibold text-navy disabled:opacity-60">
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
               Tap card to see the answer.
