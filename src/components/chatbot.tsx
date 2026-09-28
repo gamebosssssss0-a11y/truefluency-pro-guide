@@ -104,7 +104,7 @@ export function ChatbotScreen() {
         messages,
       }));
     })).then((rows) => {
-      if (alive) setHistoryRows(rows.flat().sort((a, b) => b.date.localeCompare(a.date)));
+      if (alive) setHistoryRows(rows.flat());
     }).catch(() => {
       if (alive) setHistoryRows([]);
     }).finally(() => {
@@ -484,6 +484,34 @@ export function ChatbotScreen() {
           ) : null}
         </div>
       </div>
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-[#F7F3EA] text-chat-foreground">
+          <SheetHeader className="text-left">
+            <SheetTitle>Study Chat history</SheetTitle>
+            <SheetDescription>Saved conversations grouped by course and Africa/Lagos date.</SheetDescription>
+          </SheetHeader>
+          {historyLoading ? <p className="py-6 text-sm text-muted-foreground">Loading history…</p> : historyRows.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {historyRows.map((row, index) => (
+                <button key={row.course + row.date + index} type="button" onClick={() => {
+                  setSelected(row.course);
+                  setMessages(row.messages.map((message) => ({
+                    id: nextId.current++,
+                    from: message.role === "user" ? "student" : "assistant",
+                    text: message.content,
+                  })));
+                  setHistoryOpen(false);
+                }} className="block w-full rounded-xl border border-border bg-white p-3 text-left">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
+                  <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
       <Sheet open={attachOpen} onOpenChange={setAttachOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl bg-chat-card text-chat-foreground">
           <SheetHeader className="text-left">
