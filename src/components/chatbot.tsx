@@ -281,7 +281,7 @@ export function ChatbotScreen() {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-chat-foreground">Course</p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => { setMessages([]); setDraft(""); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">New chat</button>
+            <button type="button" onClick={() => { setMessages([]); setDraft(""); setPhotoFile(null); setPhotoName(null); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">New chat</button>
             <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">History</button>
           </div>
         </div>
@@ -334,6 +334,9 @@ export function ChatbotScreen() {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2">
           {!isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
+              <p className="mb-6 border-y border-border py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                {new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: "Africa/Lagos" }).format(new Date())}
+              </p>
               <p className="font-display text-[22px] font-semibold text-chat-foreground">
                 {selected ? `Ask about ${placeholderCourse}` : "Add a course first."}
               </p>
