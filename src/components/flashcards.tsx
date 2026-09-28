@@ -150,6 +150,8 @@ export function FlashcardsScreen() {
         courseCode: selected,
         courseName: course?.name,
       });
+      await getMyAccess();
+      window.dispatchEvent(new Event("entitlements-refresh"));
       await loadDecks();
     } catch (e) {
       setError((e as Error)?.message || "Couldn't generate flashcards. Try again.");
@@ -297,8 +299,8 @@ export function FlashcardsReviewScreen() {
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewMode, setReviewMode] = useState<"due" | "new" | "cram">(() => {
-    const stored = sessionStorage.getItem("truefluency-flashcard-mode");
-    sessionStorage.removeItem("truefluency-flashcard-mode");
+    const stored = typeof window !== "undefined" ? sessionStorage.getItem("truefluency-flashcard-mode") : null;
+    if (typeof window !== "undefined") sessionStorage.removeItem("truefluency-flashcard-mode");
     return stored === "new" || stored === "cram" ? stored : "due";
   });
 
@@ -366,9 +368,9 @@ export function FlashcardsReviewScreen() {
           </div>
         ) : !current ? (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="font-display text-xl font-semibold text-navy">All caught up</p>
+            <p className="font-display text-xl font-semibold text-navy">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nothing due in this deck right now — come back later.
+              {reviewMode === "due" ? "Nothing due in this deck right now — come back later." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
             </p>
           </div>
         ) : (
