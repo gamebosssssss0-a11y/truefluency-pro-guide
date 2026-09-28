@@ -427,7 +427,7 @@ export function AccountScreen() {
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Appearance
         </h2>
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+        <div className="flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5 shadow-sm">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
             {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </div>
@@ -599,7 +599,7 @@ export const SettingsScreen = AccountScreen;
 
 function Row({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+    <div className="flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5 shadow-sm">
       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
         <Icon className="h-4 w-4" />
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { canonicalCourseCode } from "@/lib/course-code";
 import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -84,7 +85,7 @@ export function MockTestsScreen() {
               return (
                 <div
                   key={c.code}
-                  className="rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-accent/50"
+                  className="rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-4 shadow-sm transition hover:border-accent/50"
                 >
                   <div className="flex items-start gap-3">
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">

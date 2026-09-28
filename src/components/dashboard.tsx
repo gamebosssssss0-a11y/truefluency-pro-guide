@@ -89,7 +89,7 @@ function ContinueFileCard() {
   const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
 
   return (
-    <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
+    <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <div
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold text-white"
@@ -313,7 +313,7 @@ export function HomeScreen() {
 
         {/* Streak: cloud-backed qualifying mock activity only. */}
         {hasStreak ? (
-          <div className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
+          <div className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
               <Flame className="h-4.5 w-4.5" />
             </div>
@@ -381,7 +381,7 @@ export function HomeScreen() {
             {/* Flashcards: link only, no generator. */}
             <button
               onClick={() => navigate("flashcards")}
-              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left md:mt-0"
+              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-4 text-left md:mt-0"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Layers className="h-4.5 w-4.5" />

@@ -513,36 +513,56 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }, 8_000);
     };
 
-    const sync = async (): Promise<Profile | null> => {
-      try {
-        const { loadCloudProfile, pushCloudProfile } = await import("@/lib/cloud-sync");
-        // Pass the local profile so an empty server list can never wipe rows
-        // this device still holds (history, courses).
-        const snapshot = await loadCloudProfile(profileRef.current);
-        if (cancelled) return null;
-        let syncedProfile = profileRef.current;
-        if (snapshot) {
-          syncedProfile = { ...syncedProfile, ...snapshot };
-          profileRef.current = syncedProfile;
-          setProfile(syncedProfile);
-        } else {
-          // First cloud session: migrate whatever is already on this device.
-          await pushCloudProfile(syncedProfile);
+    let syncPromise: Promise<Profile | null> | null = null;
+    const sync = (): Promise<Profile | null> => {
+      if (syncPromise) return syncPromise;
+      syncPromise = (async () => {
+        try {
+          const { loadCloudProfile, pushCloudProfile } = await import("@/lib/cloud-sync");
+          // Cloud updates run behind the locally hydrated profile.
+          const local = profileRef.current;
+          const snapshot = await loadCloudProfile(local);
+          if (cancelled) return null;
+          let syncedProfile = local;
+          if (snapshot) {
+            syncedProfile = {
+              ...local,
+              ...snapshot,
+              identity: local.identity ?? snapshot.identity ?? null,
+              courses: snapshot.courses?.length ? snapshot.courses : local.courses,
+              attempts: snapshot.attempts?.length ? snapshot.attempts : local.attempts,
+              streakDays: Math.max(local.streakDays, snapshot.streakDays ?? 0),
+            };
+            profileRef.current = syncedProfile;
+            setProfile(syncedProfile);
+          } else {
+            // First cloud session: migrate whatever is already on this device.
+            await pushCloudProfile(local);
+          }
+          cloudReady.current = true;
+          return syncedProfile;
+        } catch (err) {
+          console.error("[profile-store] cloud sync failed, staying on local cache", err);
+          return profileRef.current;
         }
-        cloudReady.current = true;
-        return syncedProfile;
-      } catch (err) {
-        console.error("[profile-store] cloud sync failed, staying on local cache", err);
-        return profileRef.current;
-      }
+      })();
+      return syncPromise;
     };
 
+    // The hydrated device profile paints first. Reconcile it once in the
+    // background after getSession, outside the INITIAL_SESSION event handler.
     void supabase.auth.getSession().then(({ data }) => {
-      if (data.session && profileRef.current.identity) void sync();
+      if (data.session && hydrated && profileRef.current.identity) void sync();
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
+        releaseAuthPending();
+        return;
+      }
+      // A warm reload already has a usable local identity. Paint from cache
+      // and let later explicit sign-in events perform the background sync.
+      if (event === "INITIAL_SESSION" && profileRef.current.identity) {
         releaseAuthPending();
         return;
       }
