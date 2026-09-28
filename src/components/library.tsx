@@ -498,8 +498,10 @@ export function LibraryScreen() {
                   </Card>
                 ))}
 
-                {shelf && shelf.courses.length > 0 && filteredShelfCourses.length === 0 ? (
-                  <Card><p className="text-sm text-muted-foreground">No published courses match.</p></Card>
+                {shelf && filteredShelfCourses.length === 0 ? (
+                  <Card><p className="text-sm text-muted-foreground">
+                    {shelf.courses.length === 0 ? "Nothing published for your courses yet." : "No published courses match."}
+                  </p></Card>
                 ) : null}
               </>
             )}
