@@ -27,7 +27,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 export const COURSE_MATERIALS_BUCKET = "course-materials";
 
 function env(name: string): string {
-  const v = process.env[name];
+  const v = process.env[name]?.trim();
   if (!v) throw new Error(`Storage isn't configured — missing ${name}.`);
   return v;
 }
