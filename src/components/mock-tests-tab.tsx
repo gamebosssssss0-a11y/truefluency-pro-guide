@@ -91,7 +91,7 @@ export function MockTestsScreen() {
                       <BookOpen className="h-4.5 w-4.5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{c.code}</div>
+                      <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div>
                       <CourseDescription text={c.name} />
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {analysis?.topics.length ? (
