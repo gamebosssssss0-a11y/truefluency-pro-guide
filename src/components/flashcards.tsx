@@ -58,7 +58,7 @@ function deckLabel(deck: FlashcardDeck): string {
 export function FlashcardsScreen() {
   const { profile, activeCourseCode, navigate } = useProfile();
   const { access, refresh } = useEntitlement();
-  const [selected, setSelected] = useState<string>(activeCourseCode ?? ALL_SCOPE);
+  const [selected, setSelected] = useState<string>(activeCourseCode ? canonicalCourseCode(activeCourseCode) : ALL_SCOPE);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -67,7 +67,9 @@ export function FlashcardsScreen() {
 
   const courseOptions = [
     ALL_SCOPE,
-    ...profile.courses.map((c) => c.code).filter((code, i, arr) => arr.indexOf(code) === i),
+    ...profile.courses
+      .map((course) => canonicalCourseCode(course.code))
+      .filter((code, index, all) => all.indexOf(code) === index),
   ];
 
   const loadDecks = async () => {
