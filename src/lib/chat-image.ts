@@ -8,8 +8,8 @@
  * MAX_CHAT_IMAGE_BYTES for the other half of this.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { presignMaterialUpload, confirmMaterialUpload } from "@/lib/storage.functions";
 
-const BUCKET = "course-materials";
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8MB — must match chat.py's MAX_CHAT_IMAGE_BYTES
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
@@ -44,14 +44,26 @@ export async function uploadChatImage(file: File): Promise<string> {
   if (!ALLOWED_MIME.has(file.type)) throw new Error("Pick a JPEG, PNG, WEBP, or GIF image.");
   if (!(await sniffIsImage(file))) throw new Error("That file doesn't look like a valid image.");
 
-  const ext = file.type.split("/")[1] || "jpg";
-  const path = `${uid}/chat-images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType: file.type,
-    upsert: false,
+  // Goes to R2 (same store the backend reads from), via a presigned PUT. The
+  // server builds the key as {uid}/chat-images/{timestamp}-{name}, which is
+  // exactly the owner-prefixed shape the backend's ownership check expects.
+  const { path, uploadUrl } = await presignMaterialUpload({
+    data: { courseCode: "chat-images", fileName: file.name || "photo.jpg", contentType: file.type },
   });
-  if (error) throw new Error("Couldn't upload that photo. Try again.");
+  let putOk = false;
+  try {
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    putOk = res.ok;
+  } catch {
+    putOk = false;
+  }
+  if (!putOk) throw new Error("Couldn't upload that photo. Try again.");
+  const { exists } = await confirmMaterialUpload({ data: { path } });
+  if (!exists) throw new Error("Couldn't upload that photo. Try again.");
 
   return path;
 }
