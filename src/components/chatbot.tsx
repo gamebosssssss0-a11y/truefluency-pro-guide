@@ -17,6 +17,7 @@ import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { uploadChatImage } from "@/lib/chat-image";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 type Message = {
   id: number;
@@ -198,7 +199,7 @@ export function ChatbotScreen() {
     const text = plainText(m.text).trim();
     const chunks: string[] = [];
     let pending = "";
-    for (const sentence of text.match(/[^.!?]+[.!?]*\\s*|.+$/g) ?? [text]) {
+    for (const sentence of text.match(/[^.!?]+[.!?]*\\s*|text.match(/[^.!?]+[.!?]*\s*|.+$/g) ?? [text]) {
       let rest = sentence.trim();
       while (rest.length > 200) {
         const split = rest.lastIndexOf(" ", 200);
@@ -451,7 +452,7 @@ export function ChatbotScreen() {
             <button
               type="button"
               onClick={send}
-              disabled={isSending || isLoadingThread || isUploadingPhoto}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
               className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
             >
