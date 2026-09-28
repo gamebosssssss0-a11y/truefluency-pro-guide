@@ -132,6 +132,15 @@ export function ChatbotScreen() {
     if (!selected || (!text && !photoFile)) return;
     if (isSending || isUploadingPhoto) return;
 
+    // Photos are not processed without a text question. Do not upload the
+    // image or call the chat service; this path also never consumes quota.
+    if (!text && photoFile) {
+      setPhotoFile(null);
+      setPhotoName(null);
+      notice("Photo questions are coming later|Add a text question for now. Your photo was not uploaded.");
+      return;
+    }
+
     // Free students out of replies: no POST, no quota spend.
     if (chatCapReached) {
       notice(`Out of replies today|You've used ${messagesUsed} of ${messageLimit} replies today.`);
