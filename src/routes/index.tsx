@@ -193,7 +193,6 @@ function Router() {
   // Mock run and review stay a narrow single column at every width so the
   // exam surface matches mobile exactly.
   const examFocus = view === "mock-run" || view === "mock-gen" || view === "attempt-review";
-  const wideHome = view === "home" || view === "dashboard";
 
   return (
     <>
@@ -202,8 +201,7 @@ function Router() {
       <div
         className={cn(
           hidesTabBar(view) ? undefined : "pb-20 md:pb-8",
-          !examFocus && "app-stage",
-          !examFocus && wideHome && "app-stage-wide",
+          !examFocus && "app-stage-wide",
         )}
       >
         {screen}
