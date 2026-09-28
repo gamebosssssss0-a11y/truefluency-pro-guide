@@ -203,6 +203,12 @@ function CoursePrimaryActions({
   const { navigate, profile } = useProfile();
   const { order, showFlashcardsLink } = courseFeatureOrder(profile.studyPreference);
   const ready = Boolean(readyMaterial);
+  const storedAnalysis = profile.courseTopicAnalysis[courseCode];
+  const hasCurrentAnalysis = Boolean(
+    readyMaterial &&
+    storedAnalysis?.materialId === readyMaterial.id &&
+    storedAnalysis.topics.length > 0,
+  );
   /* An upload whose text hasn't been read yet still powers Analyze: the button
    * reads it first, then analyzes. */
   const repairable = readyMaterial
@@ -231,9 +237,19 @@ function CoursePrimaryActions({
   const actions = ready ? (
     <div className="mt-5 grid grid-cols-2 gap-2">
       {analyzeButton}
-      <Button size="lg" onClick={() => navigate("mock-config", { courseCode })}>
-        <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
+      <Button
+        size="lg"
+        disabled={!hasCurrentAnalysis || analysis.busy}
+        onClick={() => navigate("mock-config", { courseCode })}
+      >
+        <Zap className="mr-1.5 h-4 w-4" />
+        {analysis.busy ? "Reading your file…" : "Customize Mock Test"}
       </Button>
+      {!hasCurrentAnalysis && !analysis.busy ? (
+        <p className="col-span-2 text-center text-[11px] text-muted-foreground">
+          Analyze this upload first.
+        </p>
+      ) : null}
       <div className="col-span-2">
         <UploadButton courseCode={courseCode} />
       </div>
