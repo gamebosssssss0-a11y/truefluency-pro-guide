@@ -695,7 +695,7 @@ export function LibraryScreen() {
           ) : (
             <p className="mt-3 text-center text-[12px] font-medium text-muted-foreground">View only</p>
           )}
-          <p className="mt-2 text-[11px] text-muted-foreground">{PRICE_LINE}</p>
+          <p className="mt-2 break-words text-[11px] text-muted-foreground">{PRICE_LINE}</p>
 
         </SheetContent>
       </Sheet>
