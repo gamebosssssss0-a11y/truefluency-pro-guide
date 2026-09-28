@@ -577,7 +577,7 @@ export function PdfViewer({
             />
             <span className="text-[11px] text-muted-foreground">/ {total}</span>
           </form>
-          {onExplain ? (
+          {onExplain && !expanded ? (
             <Button size="sm" variant="outline" className="border-border text-foreground" onClick={() => void explainCurrentPage()}>
               Explain this page
             </Button>
