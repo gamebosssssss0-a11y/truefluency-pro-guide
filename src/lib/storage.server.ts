@@ -46,6 +46,12 @@ function r2(): S3Client {
     // support. Without this, requests go to the wrong URL and R2 reports it
     // as an invalid bucket even when the bucket name is correct.
     forcePathStyle: true,
+    // Newer AWS SDK versions add a CRC32 checksum by default. On a presigned
+    // PUT it gets baked into the URL as the checksum of an EMPTY body, so R2
+    // rejects the real upload as a mismatch. Only compute checksums when the
+    // operation actually requires one.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
     credentials: {
       accessKeyId: env("R2_ACCESS_KEY_ID"),
       secretAccessKey: env("R2_SECRET_ACCESS_KEY"),
