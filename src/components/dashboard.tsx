@@ -12,7 +12,6 @@ import { greetingSubline } from "@/lib/personalization";
 import { buildRotatingDeck, type Rotating } from "@/lib/study-quotes";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
-import { canonicalCourseCode } from "@/lib/course-code";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
 import { getMyAvatar } from "@/lib/avatar";
 import { FirstRunTourHost } from "@/components/first-run-tour";
@@ -49,7 +48,7 @@ function ChipShell({ children }: { children: React.ReactNode }) {
       onClick={() => navigate("upgrade")}
       className="mb-5 flex w-full items-center gap-2 rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] px-3.5 py-2.5 text-left"
     >
-      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
+      <span className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-[#1B2A4A]">
         {children}
       </span>
       <ChevronRight className="h-4 w-4 shrink-0 text-[#1B2A4A]/60" />
@@ -100,7 +99,7 @@ function ContinueFileCard() {
         <div className="min-w-0">
           <div className="text-sm font-semibold text-foreground">Continue your file</div>
           <div className="break-words text-[11px] text-muted-foreground">
-            {canonicalCourseCode(latest.course_code)} · {latest.file_name}
+            {latest.course_code} · {latest.file_name}
           </div>
         </div>
       </div>
@@ -161,12 +160,11 @@ function NextStepCard() {
       };
     }
     if (!profile.attempts.length) {
-      const code = firstOwn?.course_code ?? profile.courses[0]!.code;
       return {
-        title: "Get your upload ready",
-        line: "Analyze a ready upload before starting a mock test.",
-        cta: "Open course",
-        go: () => navigate("course-detail", { courseCode: code }),
+        title: "Sit your first mock test",
+        line: "Your file is in. Try a short test on it and see where you stand.",
+        cta: "Start a test",
+        go: () => navigate("mock-tests"),
       };
     }
     const weakest = [...profile.topicScores].sort((a, b) => a.score - b.score)[0];
@@ -175,8 +173,8 @@ function NextStepCard() {
       line: weakest
         ? `${weakest.topic} is your lowest so far. One short test will help.`
         : "A short test keeps your streak going.",
-      cta: "Open course",
-      go: () => navigate("course-detail", { courseCode: profile.courses[0]?.code ?? null }),
+      cta: "Take a mock",
+      go: () => navigate("mock-tests"),
     };
   })();
 
@@ -224,7 +222,7 @@ function StrengthsCard() {
         ))}
       </div>
       <p className="mt-3 text-[11px] text-muted-foreground">
-        {canonicalCourseCode(entry.code)} · from your own uploads, not official exam forecasts.
+        {entry.code} · from your own uploads, not official exam forecasts.
       </p>
     </div>
   );

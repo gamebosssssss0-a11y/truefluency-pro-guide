@@ -12,17 +12,15 @@ import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, sendChatMessage, type ChatMessage } from "@/lib/chat-api";
-import { consumeFeatureQuota } from "@/lib/entitlements.functions";
-import { canonicalCourseCode } from "@/lib/course-code";
+import { ALL_SCOPE, getAllMergedThread, getCourseThread, sendChatMessage } from "@/lib/chat-api";
 import { uploadChatImage } from "@/lib/chat-image";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { toast } from "sonner";
 
 type Message = {
   id: number;
   from: "student" | "assistant" | "notice";
   text: string;
+  /** Set only on messages loaded into the merged "All my notes" feed. */
   courseTag?: string;
 };
 
@@ -31,7 +29,7 @@ const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
 
 function displayCode(code: string) {
-  return canonicalCourseCode(code);
+  return code.replace(/^C-/, "");
 }
 
 function speechSupported() {
@@ -42,15 +40,12 @@ export function ChatbotScreen() {
   const { profile, activeCourseCode } = useProfile();
   const { access } = useEntitlement();
 
-  const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
-    ? activeCourseCode!
-    : profile.courses[0]?.code ?? "";
-  const [selected, setSelected] = useState<string>(defaultCourse);
+  // Optional course scope. Default is "all my notes"; course chips just
+  // change the context, they are never required to type a message.
+  const [selected, setSelected] = useState<string>(activeCourseCode ?? ALL_SCOPE);
+
   const [messages, setMessages] = useState<Message[]>([]);
-  const isLoadingThread = false;
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [isLoadingThread, setIsLoadingThread] = useState(true);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [mode, setMode] = useState<Mode>("Explain");
@@ -60,58 +55,51 @@ export function ChatbotScreen() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const nextId = useRef(1);
+  const loadToken = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+
+  const courseOptions = [
+    ALL_SCOPE,
+    ...profile.courses.map((c) => c.code).filter((code, i, arr) => arr.indexOf(code) === i),
+  ];
+
+  // Load the real thread for whichever scope is selected — a course chip
+  // gets its own persistent thread; "all" shows every course's messages
+  // merged into one feed.
   useEffect(() => {
-    const pending = sessionStorage.getItem("truefluency-chat-explain-page");
-    if (!pending) return;
-    sessionStorage.removeItem("truefluency-chat-explain-page");
-    try {
-      const payload = JSON.parse(pending) as { courseCode: string; page: number; fileName: string; text: string };
-      if (!profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(payload.courseCode))) return;
-      setSelected(payload.courseCode);
-      setMessages([]);
-      setMode("Explain");
-      setDraft(`Explain page ${payload.page} of ${payload.fileName} from my notes:\n${payload.text.slice(0, 4000)}`);
-    } catch {
-      /* Ignore an invalid one-shot handoff. */
-    }
-  }, []);
-
-
-  const courseOptions = profile.courses
-    .map((course) => course.code)
-    .filter((code, index, all) => all.findIndex((other) => canonicalCourseCode(other) === canonicalCourseCode(code)) === index);
-
-  useEffect(() => {
-    if (!historyOpen) return;
-    let alive = true;
-    setHistoryLoading(true);
-    void Promise.all(profile.courses.map(async (course) => {
-      const thread = await getCourseThread(course.code);
-      const withDates = thread.messages as (ChatMessage & { created_at?: string })[];
-      const groups = new Map<string, ChatMessage[]>();
-      for (const message of withDates) {
-        const date = message.created_at
-          ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date(message.created_at))
-          : "Date unavailable";
-        groups.set(date, [...(groups.get(date) ?? []), message]);
+    const token = ++loadToken.current;
+    setIsLoadingThread(true);
+    const run = async () => {
+      try {
+        const loaded =
+          selected === ALL_SCOPE
+            ? (await getAllMergedThread()).map((m) => ({ ...m, courseTag: m.course_code }))
+            : (await getCourseThread(selected)).messages;
+        if (loadToken.current !== token) return; // a newer scope switch already superseded this
+        setMessages(
+          loaded.map((m) => ({
+            id: nextId.current++,
+            from: m.role === "user" ? "student" : "assistant",
+            text: m.content,
+            courseTag: (m as { courseTag?: string }).courseTag,
+          })),
+        );
+      } catch (e) {
+        if (loadToken.current !== token) return;
+        setMessages([
+          {
+            id: nextId.current++,
+            from: "notice",
+            text: `Couldn't load this chat|${(e as Error)?.message || "Something went wrong. Try again."}`,
+          },
+        ]);
+      } finally {
+        if (loadToken.current === token) setIsLoadingThread(false);
       }
-      return [...groups.entries()].map(([date, messages]) => ({
-        course: course.code,
-        date,
-        title: messages.find((message) => message.role === "user")?.content ?? "Study chat",
-        messages,
-      }));
-    })).then((rows) => {
-      if (alive) setHistoryRows(rows.flat());
-    }).catch(() => {
-      if (alive) setHistoryRows([]);
-    }).finally(() => {
-      if (alive) setHistoryLoading(false);
-    });
-    return () => { alive = false; };
-  }, [historyOpen, profile.courses]);
+    };
+    run();
+  }, [selected]);
 
   // Stop any reading aloud when leaving the screen.
   useEffect(() => {
@@ -129,7 +117,7 @@ export function ChatbotScreen() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!selected || (!text && !photoFile)) return;
+    if (!text && !photoFile) return;
     if (isSending || isUploadingPhoto) return;
 
     // Free students out of replies: no POST, no quota spend.
@@ -159,12 +147,7 @@ export function ChatbotScreen() {
         }
       }
 
-      const modePrefix: Record<Mode, string> = {
-        Explain: "Explain from my notes. ",
-        "Quiz me": "Ask me one question from my notes, then wait for your answer. Do not give the answer yet. ",
-        "Work a problem": "Work this as steps from my notes. ",
-      };
-      const { reply, moderated } = await sendChatMessage(text ? modePrefix[mode] + text : "", selected, mode, imagePath);
+      const { reply, moderated } = await sendChatMessage(text, selected, mode, imagePath);
       setMessages((cur) => [
         ...cur,
         {
@@ -173,10 +156,6 @@ export function ChatbotScreen() {
           text: moderated ? `Can't help with that|${reply}` : reply,
         },
       ]);
-      if (text && !moderated) {
-        try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
-        catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
-      }
     } catch (e) {
       notice(
         `Couldn't send that|${(e as Error)?.message || "Something went wrong. Try again."}`,
@@ -195,55 +174,11 @@ export function ChatbotScreen() {
       return;
     }
     synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(plainText(m.text));
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
     setSpeakingId(m.id);
-    const speakChunks = (chunks: string[]) => {
-      const next = () => {
-        const chunk = chunks.shift();
-        if (!chunk) { setSpeakingId(null); return; }
-        const utterance = new SpeechSynthesisUtterance(chunk);
-        utterance.onend = next;
-        utterance.onerror = () => {
-          synth.cancel();
-          setSpeakingId(null);
-          toast.error("Couldn't read this aloud.");
-        };
-        synth.speak(utterance);
-      };
-      next();
-    };
-    const text = plainText(m.text).trim();
-    const chunks: string[] = [];
-    let pending = "";
-    for (const sentence of text.match(/[^.!?]+[.!?]*|.+/g) ?? [text]) {
-      let rest = sentence.trim();
-      while (rest.length > 200) {
-        const split = rest.lastIndexOf(" ", 200);
-        const cut = split > 0 ? split : 200;
-        chunks.push(rest.slice(0, cut).trim());
-        rest = rest.slice(cut).trim();
-      }
-      if ((pending + " " + rest).trim().length <= 200) pending = (pending + " " + rest).trim();
-      else { if (pending) chunks.push(pending); pending = rest; }
-    }
-    if (pending) chunks.push(pending);
-    const voices = synth.getVoices();
-    if (voices.length > 0) { speakChunks(chunks); return; }
-    let started = false;
-    const onVoices = () => {
-      if (started || synth.getVoices().length === 0) return;
-      started = true;
-      clearTimeout(timer);
-      synth.removeEventListener("voiceschanged", onVoices);
-      speakChunks(chunks);
-    };
-    const timer = setTimeout(() => {
-      if (started) return;
-      started = true;
-      synth.removeEventListener("voiceschanged", onVoices);
-      setSpeakingId(null);
-      toast.error("Voice isn't available in this browser.");
-    }, 1000);
-    synth.addEventListener("voiceschanged", onVoices);
+    synth.speak(utterance);
   };
 
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
@@ -253,8 +188,8 @@ export function ChatbotScreen() {
     return `${messagesUsed} of ${messageLimit} replies today`;
   })();
 
-  const headerLabel = displayCode(selected);
-  const placeholderCourse = displayCode(selected);
+  const headerLabel = selected === ALL_SCOPE ? "All my notes" : displayCode(selected);
+  const placeholderCourse = selected === ALL_SCOPE ? "your notes" : displayCode(selected);
 
   return (
     <div className="min-h-screen bg-chat-page text-chat-foreground">
@@ -276,24 +211,22 @@ export function ChatbotScreen() {
             </span>
           ) : null}
         </div>
+        {isLoadingThread ? (
+          <p className="mb-2 px-1 text-xs text-muted-foreground">Loading this conversation…</p>
+        ) : null}
 
-
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-chat-foreground">Course</p>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => { setMessages([]); setDraft(""); setPhotoFile(null); setPhotoName(null); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">New chat</button>
-            <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">History</button>
-          </div>
-        </div>
+        {/* Optional course scope chips */}
+        <p className="mb-1.5 text-sm font-semibold text-chat-foreground">Course</p>
         <div className="mb-3 flex flex-wrap gap-2">
           {courseOptions.map((code) => {
-            const active = canonicalCourseCode(selected) === canonicalCourseCode(code);
-            const label = displayCode(code);
+            const isAll = code === ALL_SCOPE;
+            const active = selected === code;
+            const label = isAll ? "All my notes" : displayCode(code);
             return (
               <button
                 key={code}
                 type="button"
-                onClick={() => { setSelected(code); setMessages([]); setDraft(""); setPhotoFile(null); setPhotoName(null); }}
+                onClick={() => setSelected(code)}
                 className={
                   "rounded-full border px-3 py-1 text-xs font-medium transition " +
                   (active
@@ -334,11 +267,8 @@ export function ChatbotScreen() {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2">
           {!isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
-              <p className="mb-6 border-y border-border py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                {new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: "Africa/Lagos" }).format(new Date())}
-              </p>
               <p className="font-display text-[22px] font-semibold text-chat-foreground">
-                {selected ? `Ask about ${placeholderCourse}` : "Add a course first."}
+                Ask about {placeholderCourse}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">From your notes. Not the open web.</p>
             </div>
@@ -463,14 +393,14 @@ export function ChatbotScreen() {
                   send();
                 }
               }}
-              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
-              placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
+              disabled={isSending || isLoadingThread || isUploadingPhoto}
+              placeholder={`Ask about ${placeholderCourse}…`}
               className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
             />
             <button
               type="button"
               onClick={send}
-              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
+              disabled={isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
               className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber text-cream transition hover:bg-amber/90 disabled:opacity-60"
             >
@@ -484,34 +414,6 @@ export function ChatbotScreen() {
           ) : null}
         </div>
       </div>
-      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-[#F7F3EA] text-chat-foreground">
-          <SheetHeader className="text-left">
-            <SheetTitle>Study Chat history</SheetTitle>
-            <SheetDescription>Saved conversations grouped by course and Africa/Lagos date.</SheetDescription>
-          </SheetHeader>
-          {historyLoading ? <p className="py-6 text-sm text-muted-foreground">Loading history…</p> : historyRows.length === 0 ? (
-            <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {historyRows.map((row, index) => (
-                <button key={row.course + row.date + index} type="button" onClick={() => {
-                  setSelected(row.course);
-                  setMessages(row.messages.map((message) => ({
-                    id: nextId.current++,
-                    from: message.role === "user" ? "student" : "assistant",
-                    text: message.content,
-                  })));
-                  setHistoryOpen(false);
-                }} className="block w-full rounded-xl border border-border bg-white p-3 text-left">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
-                  <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
-                </button>
-              ))}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
       <Sheet open={attachOpen} onOpenChange={setAttachOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl bg-chat-card text-chat-foreground">
           <SheetHeader className="text-left">

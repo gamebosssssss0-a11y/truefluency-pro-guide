@@ -190,7 +190,6 @@ export function IdentityScreen() {
             <Input required autoFocus type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
           </Field>
           <PasswordField password={password} setPassword={setPassword} showPw={showPw} setShowPw={setShowPw} />
-          <a href="/reset" className="block text-right text-xs font-semibold text-primary hover:underline">Forgot password?</a>
           {error ? <ErrorNote>{error}</ErrorNote> : null}
           <Button type="submit" className="h-12 w-full text-base" disabled={busy !== null}>
             {busy === "login" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…</> : "Log In"}
