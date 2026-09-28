@@ -492,6 +492,26 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     let cancelled = false;
+    let authPendingWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+    const releaseAuthPending = () => {
+      if (authPendingWatchdog) {
+        clearTimeout(authPendingWatchdog);
+        authPendingWatchdog = null;
+      }
+      setAuthPending(false);
+    };
+    const holdAuthPending = () => {
+      setAuthPending(true);
+      if (authPendingWatchdog) return;
+      // Never let a stale auth event strand the app on "Signing in".
+      // After local hydration, continue with the cache while sync finishes.
+      authPendingWatchdog = setTimeout(() => {
+        authPendingWatchdog = null;
+        console.warn("[profile-store] auth restore timed out; continuing with local profile");
+        setAuthPending(false);
+      }, 8_000);
+    };
 
     const sync = async (): Promise<Profile | null> => {
       try {
@@ -522,12 +542,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) return;
+      if (!session) {
+        releaseAuthPending();
+        return;
+      }
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
         if (!cloudReady.current) {
           // Hold every screen while a session is being restored, including
           // warm tabs that receive INITIAL_SESSION on startup.
-          if (event === "SIGNED_IN" || event === "INITIAL_SESSION") setAuthPending(true);
+          if (event === "SIGNED_IN" || event === "INITIAL_SESSION") holdAuthPending();
           void (async () => {
             if (!profileRef.current.identity) {
               const identity: Profile["identity"] = {
@@ -554,7 +577,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             const syncResult = await Promise.race([syncPromise, timeoutPromise]);
             if (timeoutHandle) clearTimeout(timeoutHandle);
             const didTimeOut = syncResult === null;
-            setAuthPending(false);
+            releaseAuthPending();
             if (cancelled) return;
 
             const routeAfterSignIn = (syncedProfile: Profile) => {
@@ -593,13 +616,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               });
             }
 
-          })();
+          })().catch((err) => {
+            console.error("[profile-store] auth restore failed; continuing with local profile", err);
+            releaseAuthPending();
+          });
         }
       }
     });
 
     return () => {
       cancelled = true;
+      if (authPendingWatchdog) clearTimeout(authPendingWatchdog);
       sub.subscription.unsubscribe();
     };
   }, [hydrated]);
