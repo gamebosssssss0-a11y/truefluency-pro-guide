@@ -12,6 +12,7 @@ import { greetingSubline } from "@/lib/personalization";
 import { buildRotatingDeck, type Rotating } from "@/lib/study-quotes";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
+import { canonicalCourseCode } from "@/lib/course-code";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
 import { getMyAvatar } from "@/lib/avatar";
 import { FirstRunTourHost } from "@/components/first-run-tour";
@@ -99,7 +100,7 @@ function ContinueFileCard() {
         <div className="min-w-0">
           <div className="text-sm font-semibold text-foreground">Continue your file</div>
           <div className="break-words text-[11px] text-muted-foreground">
-            {latest.course_code} · {latest.file_name}
+            {canonicalCourseCode(latest.course_code)} · {latest.file_name}
           </div>
         </div>
       </div>
@@ -223,7 +224,7 @@ function StrengthsCard() {
         ))}
       </div>
       <p className="mt-3 text-[11px] text-muted-foreground">
-        {entry.code} · from your own uploads, not official exam forecasts.
+        {canonicalCourseCode(entry.code)} · from your own uploads, not official exam forecasts.
       </p>
     </div>
   );
