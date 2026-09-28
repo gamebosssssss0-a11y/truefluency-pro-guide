@@ -57,7 +57,7 @@ function deckLabel(deck: FlashcardDeck): string {
 
 export function FlashcardsScreen() {
   const { profile, activeCourseCode, navigate } = useProfile();
-  const { access } = useEntitlement();
+  const { access, refresh } = useEntitlement();
   const [selected, setSelected] = useState<string>(activeCourseCode ?? ALL_SCOPE);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
@@ -150,8 +150,7 @@ export function FlashcardsScreen() {
         courseCode: selected,
         courseName: course?.name,
       });
-      await getMyAccess();
-      window.dispatchEvent(new Event("entitlements-refresh"));
+      await refresh();
       await loadDecks();
     } catch (e) {
       setError((e as Error)?.message || "Couldn't generate flashcards. Try again.");
