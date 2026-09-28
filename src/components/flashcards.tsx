@@ -297,7 +297,7 @@ export function FlashcardsReviewScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reviewMode, setReviewMode] = useState<"due" | "new" | "cram">(() => {
+  const [reviewMode] = useState<"due" | "new" | "cram">(() => {
     const stored = typeof window !== "undefined" ? sessionStorage.getItem("truefluency-flashcard-mode") : null;
     if (typeof window !== "undefined") sessionStorage.removeItem("truefluency-flashcard-mode");
     return stored === "new" || stored === "cram" ? stored : "due";
