@@ -33,7 +33,7 @@ export function TrialWelcomeScreen() {
           After the trial, a free account gets 2 mock sets a day and{" "}
           {FREE_MAX_QUESTIONS} questions per set.
         </p>
-        <p className="text-xs text-muted-foreground">{PRICE_LINE}</p>
+        <p className="break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
       </div>
 
       <Button
