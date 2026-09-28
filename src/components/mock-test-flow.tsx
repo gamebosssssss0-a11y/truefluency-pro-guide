@@ -8,7 +8,7 @@ import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
-import { listMaterialsForCourse } from "@/lib/course-materials";
+import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
@@ -393,7 +393,40 @@ function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProf
 export function MockConfigScreen() {
   const course = useActiveCourse();
   const { navigate, update, profile } = useProfile();
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const [readiness, setReadiness] = useState<"checking" | "ready" | "blocked">("checking");
+  const analysisForCourse = course ? profile.courseTopicAnalysis[course.code] : undefined;
   const defaults = useMemo(() => timelineDefaults(profile.timeline), [profile.timeline]);
+
+  useEffect(() => {
+    if (!course) {
+      navigateRef.current("mock-tests");
+      return;
+    }
+    let cancelled = false;
+    setReadiness("checking");
+    void listMaterialsForCourse(course.code)
+      .then((materials) => {
+        const readyMaterial = pickAnalyzableMaterial(materials);
+        const currentAnalysis = profile.courseTopicAnalysis[course.code];
+        const allowed = Boolean(
+          readyMaterial &&
+          currentAnalysis?.materialId === readyMaterial.id &&
+          currentAnalysis.topics.length > 0,
+        );
+        if (cancelled) return;
+        setReadiness(allowed ? "ready" : "blocked");
+        if (!allowed) navigateRef.current("course-detail", { courseCode: course.code });
+      })
+      .catch((error) => {
+        console.error("[mock-config] readiness check failed", error);
+        if (cancelled) return;
+        setReadiness("blocked");
+        navigateRef.current("course-detail", { courseCode: course.code });
+      });
+    return () => { cancelled = true; };
+  }, [course?.code, analysisForCourse?.materialId, analysisForCourse?.analyzedAt]);
 
   const smart = useMemo(
     () => (course ? smartDefaultsFor(course.code, profile) : null),
@@ -427,7 +460,7 @@ export function MockConfigScreen() {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
   }, []);
 
-  if (!course || !smart) return null;
+  if (!course || !smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
     setCount(smart.questionCount);
