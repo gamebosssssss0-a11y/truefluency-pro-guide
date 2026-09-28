@@ -47,7 +47,7 @@ export function ChatbotScreen() {
     : profile.courses[0]?.code ?? "";
   const [selected, setSelected] = useState<string>(defaultCourse);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const isLoadingThread = false;
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -60,7 +60,6 @@ export function ChatbotScreen() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const nextId = useRef(1);
-  const loadToken = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -130,7 +129,7 @@ export function ChatbotScreen() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!text && !photoFile) return;
+    if (!selected || (!text && !photoFile)) return;
     if (isSending || isUploadingPhoto) return;
 
     // Free students out of replies: no POST, no quota spend.
