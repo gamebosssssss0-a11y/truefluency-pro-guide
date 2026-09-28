@@ -1,30 +1,13 @@
+import { useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ArrowLeft, Mail, MessageCircle, LifeBuoy } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, LifeBuoy } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
-
-/**
- * Founder contact details. Single source of truth, update here when they change.
- */
-const CONTACTS = [
-  {
-    name: "TrueFluency support",
-    role: "Bugs, payments, account issues",
-    detail: "support@truefluency.app",
-    href: "mailto:support@truefluency.app",
-    icon: Mail,
-  },
-  {
-    name: "Feedback and feature requests",
-    role: "Tell us what to build next",
-    detail: "hello@truefluency.app",
-    href: "mailto:hello@truefluency.app",
-    icon: MessageCircle,
-  },
-];
+import { SUPPORT_ISSUES } from "@/lib/support-issues";
 
 const FAQS = [
   {
@@ -58,8 +41,23 @@ const FAQS = [
   },
 ];
 
+function getIssueHref(issue: (typeof SUPPORT_ISSUES)[number]) {
+  const message = `TrueFluency Pro support — #${issue.id} · ${issue.area}: ${issue.text}`;
+  return `https://wa.me/${issue.phone}?text=${encodeURIComponent(message)}`;
+}
+
 export function SupportScreen() {
   const { navigate } = useProfile();
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredIssues = normalizedSearch
+    ? SUPPORT_ISSUES.filter((issue) =>
+        issue.text.toLowerCase().includes(normalizedSearch) ||
+        issue.area.toLowerCase().includes(normalizedSearch),
+      )
+    : SUPPORT_ISSUES;
+  const areas = [...new Set(filteredIssues.map((issue) => issue.area))];
+  const somethingElseIssue = SUPPORT_ISSUES.find((issue) => issue.id === 100)!;
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,31 +99,56 @@ export function SupportScreen() {
         </div>
 
         <h2 className="mb-2 mt-7 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Contact us
+          Report an issue
         </h2>
-        <div className="space-y-2">
-          {CONTACTS.map((c) => (
-            <a
-              key={c.detail}
-              href={c.href}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-accent/50"
-            >
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-                <c.icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground">{c.name}</div>
-                <div className="text-[11px] text-muted-foreground">{c.role}</div>
-                <div className="mt-0.5 truncate text-[11px] font-medium text-accent">{c.detail}</div>
-              </div>
-            </a>
-          ))}
-        </div>
-
-        <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-          We read everything. Include your course code and what you were doing when something broke,
-          it makes fixes much faster.
+        <Input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search for your issue"
+          aria-label="Search for your issue"
+        />
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          Tap the issue closest to yours — it opens WhatsApp with your issue already filled in. Just hit send.
         </p>
+
+        {normalizedSearch && filteredIssues.length === 0 ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm text-muted-foreground">No matching issue. Try different words.</p>
+            <a
+              href={getIssueHref(somethingElseIssue)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center rounded-2xl border border-border bg-card p-4 text-sm text-foreground shadow-sm transition hover:border-accent/50"
+            >
+              Something else
+            </a>
+          </div>
+        ) : (
+          <div className="mt-4">
+            {areas.map((area) => (
+              <section key={area} className="mb-5">
+                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {area}
+                </h3>
+                <div className="space-y-2">
+                  {filteredIssues.filter((issue) => issue.area === area).map((issue) => (
+                    <a
+                      key={issue.id}
+                      href={getIssueHref(issue)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center rounded-2xl border border-border bg-card p-4 text-sm text-foreground shadow-sm transition hover:border-accent/50"
+                    >
+                      {issue.text}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
       </div>
     </div>
   );
