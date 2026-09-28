@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResetRouteImport } from './routes/reset'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
@@ -22,6 +23,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetRoute = ResetRouteImport.update({
+  id: '/reset',
+  path: '/reset',
   getParentRoute: () => rootRouteImport,
 } as any)
 const STokenRoute = STokenRouteImport.update({
@@ -38,12 +44,14 @@ const LovableEmailTransactionalPreviewRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/s/$token': typeof STokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/s/$token': typeof STokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -59,6 +67,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/reset'
     | '/sitemap.xml'
     | '/s/$token'
     | '/lovable/email/transactional/preview'
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ResetRoute: typeof ResetRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   STokenRoute: typeof STokenRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -85,6 +95,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset': {
+      id: '/reset'
+      path: '/reset'
+      fullPath: '/reset'
+      preLoaderRoute: typeof ResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -118,6 +135,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ResetRoute: ResetRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   STokenRoute: STokenRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
