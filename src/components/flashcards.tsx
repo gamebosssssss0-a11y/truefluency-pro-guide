@@ -4,7 +4,7 @@
  * This file used to be UI-only (no AI, no persistence); it now generates
  * real decks from the student's uploaded material and reviews real cards.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -64,6 +64,7 @@ export function FlashcardsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
+  const loadDeckRequest = useRef(0);
 
   const courseOptions = [
     ALL_SCOPE,
@@ -73,11 +74,13 @@ export function FlashcardsScreen() {
   ];
 
   const loadDecks = async () => {
+    const requestId = ++loadDeckRequest.current;
     setIsLoadingDecks(true);
     try {
       const all = await listDecks();
       const scoped = selected === ALL_SCOPE ? all : all.filter((d) => canonicalCourseCode(d.course_code) === canonicalCourseCode(selected));
       const rows = dedupeDecks(scoped);
+      if (requestId !== loadDeckRequest.current) return;
       setDecks(rows);
       // Counts only, on the first few rows — never every card body.
       void Promise.all(
@@ -90,14 +93,17 @@ export function FlashcardsScreen() {
           }
         }),
       ).then((pairs) => {
+        if (requestId !== loadDeckRequest.current) return;
         const next: Record<string, number> = {};
         for (const p of pairs) if (p) next[p[0]] = p[1];
         setDueCounts(next);
       });
     } catch (e) {
-      setError((e as Error)?.message || "Couldn't load your decks.");
+      if (requestId === loadDeckRequest.current) {
+        setError((e as Error)?.message || "Couldn't load your decks.");
+      }
     } finally {
-      setIsLoadingDecks(false);
+      if (requestId === loadDeckRequest.current) setIsLoadingDecks(false);
     }
   };
 
@@ -371,7 +377,7 @@ export function FlashcardsReviewScreen() {
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <p className="font-display text-xl font-semibold text-navy">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {reviewMode === "due" ? "Nothing due in this deck right now — come back later." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
+              {reviewMode === "due" ? "Nothing due. Come back tomorrow or use Cram." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
             </p>
           </div>
         ) : (
