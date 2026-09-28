@@ -112,11 +112,8 @@ export function UpgradeScreen() {
         <Dialog open={comingSoon} onOpenChange={setComingSoon}>
           <DialogContent className="max-w-[340px]">
             <DialogHeader>
-              <DialogTitle>Payments are launching soon</DialogTitle>
-              <DialogDescription>
-                We're finishing setup with our payment provider. This won't be
-                available for a little longer, check back soon.
-              </DialogDescription>
+              <DialogTitle>Payment status</DialogTitle>
+              <DialogDescription>{NO_PAYMENT_YET}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button className="w-full" onClick={() => setComingSoon(false)}>
