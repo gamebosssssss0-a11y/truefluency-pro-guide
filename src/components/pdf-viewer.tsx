@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
 import { getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
+import { toast } from "sonner";
 
 export const MAX_PREVIEW_PAGES = 800;
 export const HEAVY_PDF_MESSAGE =
@@ -25,6 +26,7 @@ type PdfPage = {
     cancel: () => void;
   };
   cleanup?: () => void;
+  getTextContent?: () => Promise<{ items: { str?: string }[] }>;
 };
 
 type PdfDoc = {
@@ -194,12 +196,14 @@ export function PdfViewer({
   fileKey,
   onClose,
   onCancel,
+  onExplain,
 }: {
   url: string;
   fileName: string;
   fileKey?: string;
   onClose?: () => void;
   onCancel?: () => void;
+  onExplain?: (data: { page: number; fileName: string; text: string }) => void;
 }) {
   const [doc, setDoc] = useState<PdfDoc | null>(null);
   const [total, setTotal] = useState(0);
@@ -417,6 +421,22 @@ export function PdfViewer({
     [total],
   );
 
+  const explainCurrentPage = async () => {
+    if (!doc || !onExplain) return;
+    try {
+      const currentPage = await doc.getPage(page);
+      const content = await currentPage.getTextContent?.();
+      const text = (content?.items ?? []).map((item) => item.str ?? "").join(" ").replace(/\\s+/g, " ").trim();
+      if (text.length < 50) {
+        toast.error("This page has too little selectable text. OCR isn't available yet.");
+        return;
+      }
+      onExplain({ page, fileName, text: text.slice(0, 4000) });
+    } catch {
+      toast.error("Couldn't read selectable text from this page.");
+    }
+  };
+
   const go = (n: number) => {
     const next = Math.min(Math.max(1, n), total || 1);
     setPage(next);
@@ -557,6 +577,11 @@ export function PdfViewer({
             />
             <span className="text-[11px] text-muted-foreground">/ {total}</span>
           </form>
+          {onExplain ? (
+            <Button size="sm" variant="outline" className="border-border text-foreground" onClick={() => void explainCurrentPage()}>
+              Explain this page
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="outline"
