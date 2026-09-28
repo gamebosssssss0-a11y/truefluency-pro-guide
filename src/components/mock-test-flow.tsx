@@ -202,6 +202,7 @@ export function MockGenerationScreen() {
             answers: Array(questions.length).fill(null),
             currentIndex: 0,
             questionIds: questions.map((q) => q.id),
+            questions,
             source: "ai",
           },
         });
@@ -647,17 +648,27 @@ export function MockRunScreen() {
   const { profile, update, navigate } = useProfile();
   const t = profile.inProgressTest;
   // Only this course's generated set, so questions never cross courses.
-  const aiQuestions: AIQuestion[] = t ? (profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
+  const aiQuestions: AIQuestion[] = t ? (t.questions ?? profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
 
   const [now, setNow] = useState(Date.now());
   const [mapOpen, setMapOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const submittedRef = useRef(false);
+  const updateRef = useRef(update);
+  updateRef.current = update;
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!t) return;
+    const id = window.setInterval(() => {
+      updateRef.current({ inProgressTest: { ...t } });
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [t]);
 
   const remaining = useMemo(() => {
     if (!t) return 0;
@@ -667,7 +678,9 @@ export function MockRunScreen() {
 
   // Use AI questions instead of hardcoded sampleQuestions
   const questions = useMemo(() => {
-    if (!t || aiQuestions.length === 0) return [];
+    if (!t) return [];
+    if (t.questions?.length) return t.questions;
+    if (aiQuestions.length === 0) return [];
     return t.questionIds.map((id) => aiQuestions.find((q) => q.id === id)).filter(Boolean) as AIQuestion[];
   }, [t, aiQuestions]);
 
