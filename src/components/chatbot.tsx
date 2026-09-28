@@ -68,13 +68,6 @@ export function ChatbotScreen() {
     .filter((code, index, all) => all.findIndex((other) => canonicalCourseCode(other) === canonicalCourseCode(code)) === index);
 
   useEffect(() => {
-    setMessages([]);
-    setDraft("");
-    setPhotoFile(null);
-    setPhotoName(null);
-  }, [selected]);
-
-  useEffect(() => {
     if (!historyOpen) return;
     let alive = true;
     setHistoryLoading(true);
@@ -156,9 +149,6 @@ export function ChatbotScreen() {
         "Work a problem": "Work this as steps from my notes. ",
       };
       const { reply, moderated } = await sendChatMessage(text ? modePrefix[mode] + text : "", selected, mode, imagePath);
-      if (text && !moderated) {
-        await consumeFeatureQuota({ data: { feature: "chatbot_messages" } });
-      }
       setMessages((cur) => [
         ...cur,
         {
@@ -167,6 +157,10 @@ export function ChatbotScreen() {
           text: moderated ? `Can't help with that|${reply}` : reply,
         },
       ]);
+      if (text && !moderated) {
+        try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
+        catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
+      }
     } catch (e) {
       notice(
         `Couldn't send that|${(e as Error)?.message || "Something went wrong. Try again."}`,
@@ -185,11 +179,55 @@ export function ChatbotScreen() {
       return;
     }
     synth.cancel();
-    const utterance = new SpeechSynthesisUtterance(plainText(m.text));
-    utterance.onend = () => setSpeakingId(null);
-    utterance.onerror = () => setSpeakingId(null);
     setSpeakingId(m.id);
-    synth.speak(utterance);
+    const speakChunks = (chunks: string[]) => {
+      const next = () => {
+        const chunk = chunks.shift();
+        if (!chunk) { setSpeakingId(null); return; }
+        const utterance = new SpeechSynthesisUtterance(chunk);
+        utterance.onend = next;
+        utterance.onerror = () => {
+          synth.cancel();
+          setSpeakingId(null);
+          toast.error("Couldn't read this aloud.");
+        };
+        synth.speak(utterance);
+      };
+      next();
+    };
+    const text = plainText(m.text).trim();
+    const chunks: string[] = [];
+    let pending = "";
+    for (const sentence of text.match(/[^.!?]+[.!?]*\\s*|.+$/g) ?? [text]) {
+      let rest = sentence.trim();
+      while (rest.length > 200) {
+        const split = rest.lastIndexOf(" ", 200);
+        const cut = split > 0 ? split : 200;
+        chunks.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut).trim();
+      }
+      if ((pending + " " + rest).trim().length <= 200) pending = (pending + " " + rest).trim();
+      else { if (pending) chunks.push(pending); pending = rest; }
+    }
+    if (pending) chunks.push(pending);
+    const voices = synth.getVoices();
+    if (voices.length > 0) { speakChunks(chunks); return; }
+    let started = false;
+    const onVoices = () => {
+      if (started || synth.getVoices().length === 0) return;
+      started = true;
+      clearTimeout(timer);
+      synth.removeEventListener("voiceschanged", onVoices);
+      speakChunks(chunks);
+    };
+    const timer = setTimeout(() => {
+      if (started) return;
+      started = true;
+      synth.removeEventListener("voiceschanged", onVoices);
+      setSpeakingId(null);
+      toast.error("Voice isn't available in this browser.");
+    }, 1000);
+    synth.addEventListener("voiceschanged", onVoices);
   };
 
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
@@ -239,7 +277,7 @@ export function ChatbotScreen() {
               <button
                 key={code}
                 type="button"
-                onClick={() => setSelected(code)}
+                onClick={() => { setSelected(code); setMessages([]); setDraft(""); setPhotoFile(null); setPhotoName(null); }}
                 className={
                   "rounded-full border px-3 py-1 text-xs font-medium transition " +
                   (active
@@ -406,8 +444,8 @@ export function ChatbotScreen() {
                   send();
                 }
               }}
-              disabled={isSending || isLoadingThread || isUploadingPhoto}
-              placeholder={`Ask about ${placeholderCourse}…`}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
+              placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
               className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
             />
             <button
