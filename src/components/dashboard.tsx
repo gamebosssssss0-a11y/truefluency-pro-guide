@@ -48,7 +48,7 @@ function ChipShell({ children }: { children: React.ReactNode }) {
       onClick={() => navigate("upgrade")}
       className="mb-5 flex w-full items-center gap-2 rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] px-3.5 py-2.5 text-left"
     >
-      <span className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-[#1B2A4A]">
+      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
         {children}
       </span>
       <ChevronRight className="h-4 w-4 shrink-0 text-[#1B2A4A]/60" />
