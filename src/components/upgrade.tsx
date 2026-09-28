@@ -74,7 +74,7 @@ export function UpgradeScreen() {
               after {FOUNDING_USER_LIMIT} seats
             </span>
           </div>
-          <p className="mt-3 text-xs font-medium text-foreground">{PRICE_LINE}</p>
+          <p className="mt-3 break-words text-xs font-medium text-foreground">{PRICE_LINE}</p>
         </div>
 
         <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
