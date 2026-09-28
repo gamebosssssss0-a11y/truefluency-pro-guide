@@ -196,6 +196,9 @@ export function CgpaCalculatorScreen() {
   };
 
   const openSemester = (s: CgpaSemester) => {
+    const savedCodes = s.courses.map((course) => course.code);
+    const currentCodes = profile.cgpaCalcCourses ?? profile.courses.map((course) => course.code);
+    update({ cgpaCalcCourses: [...new Set([...currentCodes, ...savedCodes])] });
     setSession(s.session);
     setTerm(s.term);
     setUnits((u) => {
@@ -545,6 +548,7 @@ function ResultBlock({ result }: { result: CgpaActual }) {
     { label: "Second Class Lower", min: 2.4 },
     { label: "Third Class", min: 1.5 },
     { label: "Pass", min: 1.0 },
+    { label: "Probation", min: 0 },
   ];
 
   return (
