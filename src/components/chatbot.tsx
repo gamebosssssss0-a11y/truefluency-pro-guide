@@ -199,7 +199,7 @@ export function ChatbotScreen() {
     const text = plainText(m.text).trim();
     const chunks: string[] = [];
     let pending = "";
-    for (const sentence of text.match(/[^.!?]+[.!?]*\\s*|text.match(/[^.!?]+[.!?]*\s*|.+$/g) ?? [text]) {
+    for (const sentence of text.match(/[^.!?]+[.!?]*|.+/g) ?? [text]) {
       let rest = sentence.trim();
       while (rest.length > 200) {
         const split = rest.lastIndexOf(" ", 200);
