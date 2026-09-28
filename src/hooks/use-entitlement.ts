@@ -19,12 +19,6 @@ export function useEntitlement() {
   const [access, setAccess] = useState<AccessSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
-    const current = await getMyAccess();
-    setAccess(current);
-    return current;
-  };
-
   useEffect(() => {
     let live = true;
 
@@ -56,7 +50,6 @@ export function useEntitlement() {
   return {
     access,
     loading,
-    refresh,
     /** Until the real answer arrives, assume the stricter free ceiling. */
     maxQuestionsPerSet: access?.maxQuestionsPerSet ?? FREE_MAX_QUESTIONS,
     explanationsUnlocked: access?.explanationsUnlocked ?? false,

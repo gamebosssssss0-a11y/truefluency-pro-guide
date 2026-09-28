@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -10,40 +10,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
-import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
 
 /* ================= Tab 2: Mock Tests ================= */
 
 export function MockTestsScreen() {
   const { profile, navigate } = useProfile();
-  const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>({});
-  const [materialsLoading, setMaterialsLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadMaterials = async () => {
-      setMaterialsLoading(true);
-      try {
-        const rows = await Promise.all(profile.courses.map(async (course) => {
-          const materials = await listMaterialsForCourse(course.code);
-          return [course.code, pickAnalyzableMaterial(materials)?.id ?? null] as const;
-        }));
-        if (!cancelled) setReadyMaterialIds(Object.fromEntries(rows));
-      } catch (error) {
-        console.error("[practice] materials load failed", error);
-        if (!cancelled) setReadyMaterialIds({});
-      } finally {
-        if (!cancelled) setMaterialsLoading(false);
-      }
-    };
-    void loadMaterials();
-    window.addEventListener("course-materials-refresh", loadMaterials);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("course-materials-refresh", loadMaterials);
-    };
-  }, [profile.courses]);
-
   const attempts = [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt);
   const recent = attempts.slice(0, 3);
 
@@ -74,12 +45,6 @@ export function MockTestsScreen() {
           <div className="space-y-2.5">
             {profile.courses.map((c) => {
               const analysis = profile.courseTopicAnalysis[c.code];
-              const readyMaterialId = readyMaterialIds[c.code] ?? null;
-              const canCustomize = Boolean(
-                readyMaterialId &&
-                analysis?.materialId === readyMaterialId &&
-                analysis.topics.length > 0,
-              );
               const avg = averageForCourse(profile, c.code);
               return (
                 <div
@@ -91,7 +56,7 @@ export function MockTestsScreen() {
                       <BookOpen className="h-4.5 w-4.5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div>
+                      <div className="text-sm font-semibold text-foreground">{c.code}</div>
                       <CourseDescription text={c.name} />
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {analysis?.topics.length ? (
@@ -117,13 +82,8 @@ export function MockTestsScreen() {
                     >
                       Materials
                     </Button>
-                    <Button
-                      size="sm"
-                      disabled={materialsLoading}
-                      onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}
-                    >
-                      <Zap className="mr-1.5 h-3.5 w-3.5" />
-                      {materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
+                    <Button size="sm" onClick={() => navigate("mock-config", { courseCode: c.code })}>
+                      <Zap className="mr-1.5 h-3.5 w-3.5" /> Customize
                     </Button>
                   </div>
                 </div>

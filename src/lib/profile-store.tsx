@@ -38,8 +38,6 @@ export type InProgressTest = {
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
-  /** Snapshot the exact generated set so an in-progress test survives refresh. */
-  questions?: AIQuestion[];
   /** "ai" = questions live in profile.aiQuestionsByCourse[courseCode]; "sample" = built-in bank. */
   source?: "ai" | "sample";
 } | null;
@@ -374,10 +372,8 @@ type Ctx = {
   activeCourseCode: string | null;
   activeAttemptId: string | null;
   activeDeckId: string | null;
-  /** True while a Supabase session + profile sync is resolving. */
+  /** True only while a fresh sign-in's session + profile sync is resolving. */
   authPending: boolean;
-  /** True after the saved local profile has been restored from localStorage. */
-  hydrated: boolean;
   update: (p: Partial<Profile>) => void;
   go: (s: OnboardingStep | "dashboard") => void;
   navigate: (
@@ -389,37 +385,6 @@ type Ctx = {
 
 const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "truefluency-profile-v2";
-const APP_VIEWS: AppView[] = [
-  "dashboard", "home", "mock-tests", "test-history", "library", "chatbot", "account", "cgpa-goal",
-  "course-detail", "mock-gen", "mock-config", "mock-run", "mock-result", "settings", "flashcards",
-  "flashcards-review", "add-course", "all-uploads", "attempt-review", "cgpa", "support", "upgrade",
-  "edit-identity", "disclaimer-view",
-];
-function readAppLocation() {
-  const params = new URLSearchParams(window.location.search);
-  const candidate = params.get("view") as AppView | null;
-  return {
-    view: candidate && APP_VIEWS.includes(candidate) ? candidate : null,
-    courseCode: params.get("courseCode"),
-    attemptId: params.get("attemptId"),
-    deckId: params.get("deckId"),
-  };
-}
-function writeAppLocation(
-  view: AppView,
-  opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
-  replace = false,
-) {
-  const params = new URLSearchParams();
-  params.set("view", view);
-  if (opts?.courseCode) params.set("courseCode", opts.courseCode);
-  if (opts?.attemptId) params.set("attemptId", opts.attemptId);
-  if (opts?.deckId) params.set("deckId", opts.deckId);
-  const url = `${window.location.pathname}?${params.toString()}`;
-  const method = replace ? "replaceState" : "pushState";
-  window.history[method]({ ...window.history.state, __trueFluencyAppView: view }, "", url);
-}
-
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile>(emptyProfile);
@@ -442,30 +407,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("[profile-store] stored profile unreadable, starting fresh", err);
     }
-    const locationState = readAppLocation();
-    if (locationState.view) {
-      setStep("dashboard");
-      setView(locationState.view);
-      setActiveCourseCode(locationState.courseCode);
-      setActiveAttemptId(locationState.attemptId);
-      setActiveDeckId(locationState.deckId);
-    }
     setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const onPopState = () => {
-      const locationState = readAppLocation();
-      setStep("dashboard");
-      setView(locationState.view ?? "home");
-      setActiveCourseCode(locationState.courseCode);
-      setActiveAttemptId(locationState.attemptId);
-      setActiveDeckId(locationState.deckId);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [hydrated]);
 
   useEffect(() => {
     if (hydrated) {
@@ -525,9 +468,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (!session) return;
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
         if (!cloudReady.current) {
-          // Hold every screen while a session is being restored, including
-          // warm tabs that receive INITIAL_SESSION on startup.
-          if (event === "SIGNED_IN" || event === "INITIAL_SESSION") setAuthPending(true);
+          // Cold sign-in / OAuth redirect return only: a warm returning tab
+          // fires INITIAL_SESSION and must never see the loading screen.
+          if (event === "SIGNED_IN") setAuthPending(true);
           void (async () => {
             if (!profileRef.current.identity) {
               const identity: Profile["identity"] = {
@@ -596,21 +539,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const update = (p: Partial<Profile>) => setProfile((cur) => ({ ...cur, ...p }));
   const go = (s: OnboardingStep | "dashboard") => {
     setStep(s);
-    if (s === "dashboard") {
-      setView("home");
-      writeAppLocation("home");
-    }
+    if (s === "dashboard") setView("home");
   };
   const navigate = (
     v: AppView,
     opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
   ) => {
     setView(v);
-    writeAppLocation(v, {
-      courseCode: opts && "courseCode" in opts ? opts.courseCode : activeCourseCode,
-      attemptId: opts && "attemptId" in opts ? opts.attemptId : activeAttemptId,
-      deckId: opts && "deckId" in opts ? opts.deckId : activeDeckId,
-    });
     if (opts && "courseCode" in opts) setActiveCourseCode(opts.courseCode ?? null);
     if (opts && "attemptId" in opts) setActiveAttemptId(opts.attemptId ?? null);
     if (opts && "deckId" in opts) setActiveDeckId(opts.deckId ?? null);
@@ -624,7 +559,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveDeckId(null);
     try {
       localStorage.removeItem(KEY);
-      window.history.replaceState({}, "", window.location.pathname);
     } catch {
       /* ignore */
     }
