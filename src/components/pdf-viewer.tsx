@@ -87,6 +87,7 @@ function ScrollPage({
   width,
   ratio,
   active,
+  distance,
   register,
 }: {
   doc: PdfDoc;
@@ -94,9 +95,15 @@ function ScrollPage({
   width: number;
   ratio: number;
   active: boolean;
+  distance: number;
   register: (n: number, el: HTMLDivElement | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+  const distanceRef = useRef(distance);
+  distanceRef.current = distance;
+  const [pageHeight, setPageHeight] = useState<number | null>(null);
+  const [hasPainted, setHasPainted] = useState(false);
   const boxWidth = Math.max(120, width - 8);
 
   useEffect(() => {
@@ -120,9 +127,13 @@ function ScrollPage({
         canvas.style.width = `${Math.floor(viewport.width)}px`;
         canvas.style.height = `${Math.floor(viewport.height)}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        setPageHeight(Math.floor(viewport.height));
         const task = p.render({ canvasContext: ctx, viewport });
         renderTask = task;
+        renderTaskRef.current = task;
         await task.promise;
+        setHasPainted(true);
+        renderTaskRef.current = null;
       } catch (e) {
         const name = (e as { name?: string } | null)?.name ?? "";
         if (cancelled || name === "RenderingCancelledException") return;
@@ -131,28 +142,37 @@ function ScrollPage({
     })();
     return () => {
       cancelled = true;
-      try {
-        renderTask?.cancel();
-      } catch {
-        /* already finished */
+      if (distanceRef.current > 8) {
+        try {
+          renderTaskRef.current?.cancel();
+        } catch {
+          /* already finished */
+        }
+        renderTaskRef.current = null;
+        current?.cleanup?.();
       }
-      current?.cleanup?.();
     };
   }, [active, boxWidth, doc, pageNumber]);
+
+  useEffect(() => {
+    if (distance <= 8) return;
+    try { renderTaskRef.current?.cancel(); } catch { /* already finished */ }
+    renderTaskRef.current = null;
+  }, [distance]);
 
   return (
     <div
       ref={(el) => register(pageNumber, el)}
       data-page={pageNumber}
       className="mx-auto mb-2 flex justify-center"
-      style={active ? undefined : { height: Math.floor(boxWidth * ratio) }}
+      style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? Math.floor(boxWidth * ratio) }}
     >
-      {active ? (
+      {active || (distance <= 8 && hasPainted) ? (
         <canvas ref={canvasRef} className="block rounded-md bg-white shadow-sm" />
       ) : (
         <div
           className="rounded-md bg-white/60 shadow-sm"
-          style={{ width: boxWidth, height: Math.floor(boxWidth * ratio) }}
+          style={{ width: boxWidth, height: pageHeight ?? Math.floor(boxWidth * ratio) }}
         />
       )}
     </div>
@@ -360,6 +380,9 @@ export function PdfViewer({
           if (!best || entry.intersectionRatio > best.r) best = { n, r: entry.intersectionRatio };
         }
         if (best && best.n !== pageRef.current) {
+          const now = Date.now();
+          if (now - lastPageUpdateRef.current < 500) return;
+          lastPageUpdateRef.current = now;
           setPage(best.n);
           setPageInput(String(best.n));
         }
@@ -486,7 +509,8 @@ export function PdfViewer({
               pageNumber={n}
               width={width || 340}
               ratio={ratio}
-              active={Math.abs(n - page) <= 2}
+              distance={Math.abs(n - page)}
+              active={Math.abs(n - page) <= 4}
               register={registerPage}
             />
           ))
