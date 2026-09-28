@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Calculator, AlertCircle, Target, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
+import { canonicalCourseCode } from "@/lib/course-code";
 
 /**
  * The real CGPA Calculator: the student enters what they actually scored, and
@@ -198,7 +199,11 @@ export function CgpaCalculatorScreen() {
   const openSemester = (s: CgpaSemester) => {
     const savedCodes = s.courses.map((course) => course.code);
     const currentCodes = profile.cgpaCalcCourses ?? profile.courses.map((course) => course.code);
-    update({ cgpaCalcCourses: [...new Set([...currentCodes, ...savedCodes])] });
+    const mergedCodes = [...new Map([...currentCodes, ...savedCodes].map((code) => {
+      const canonical = canonicalCourseCode(code);
+      return [canonical, canonical] as const;
+    })).values()];
+    update({ cgpaCalcCourses: mergedCodes });
     setSession(s.session);
     setTerm(s.term);
     setUnits((u) => {
@@ -548,7 +553,7 @@ function ResultBlock({ result }: { result: CgpaActual }) {
     { label: "Second Class Lower", min: 2.4 },
     { label: "Third Class", min: 1.5 },
     { label: "Pass", min: 1.0 },
-    { label: "Probation", min: 0 },
+    { label: "Academic probation risk", min: 0 },
   ];
 
   return (
@@ -598,7 +603,7 @@ function ResultBlock({ result }: { result: CgpaActual }) {
               )}
             >
               <span>{b.label}</span>
-              <span>{b.min.toFixed(2)} and above</span>
+              <span>{b.label === "Academic probation risk" ? "Below 1.00" : `${b.min.toFixed(2)} and above`}</span>
             </div>
           );
         })}
