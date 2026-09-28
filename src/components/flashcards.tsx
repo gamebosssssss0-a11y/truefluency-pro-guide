@@ -12,6 +12,7 @@ import { HeaderLogo } from "@/components/brand";
 import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
 import { getMyAccess } from "@/lib/entitlements.functions";
 import { PRICE_LINE } from "@/lib/pricing-copy";
+import { canonicalCourseCode } from "@/lib/course-code";
 import {
   generateFlashcards,
   getDeckCards,
@@ -24,7 +25,7 @@ import {
 const ALL_SCOPE = "all";
 
 function displayCode(code: string) {
-  return code.replace(/^C-/, "");
+  return canonicalCourseCode(code);
 }
 
 /**
@@ -72,7 +73,7 @@ export function FlashcardsScreen() {
     setIsLoadingDecks(true);
     try {
       const all = await listDecks();
-      const scoped = selected === ALL_SCOPE ? all : all.filter((d) => d.course_code === selected);
+      const scoped = selected === ALL_SCOPE ? all : all.filter((d) => canonicalCourseCode(d.course_code) === canonicalCourseCode(selected));
       const rows = dedupeDecks(scoped);
       setDecks(rows);
       // Counts only, on the first few rows — never every card body.
@@ -142,7 +143,7 @@ export function FlashcardsScreen() {
         setError("No extracted material found for this course. Please upload a PDF or DOCX first.");
         return;
       }
-      const course = profile.courses.find((c) => c.code === selected);
+      const course = profile.courses.find((c) => canonicalCourseCode(c.code) === canonicalCourseCode(selected));
       await generateFlashcards({
         materialId: ready.id,
         courseCode: selected,
@@ -309,11 +310,7 @@ export function FlashcardsReviewScreen() {
     setIsLoading(true);
     getDeckCards(activeDeckId, { dueOnly: true })
       .then(async (due) => {
-        // A freshly generated deck has every card due immediately, so this
-        // is the normal path. Fall back to the full deck only if nothing is
-        // due (e.g. reopening a deck already reviewed today).
-        const list = due.length > 0 ? due : await getDeckCards(activeDeckId);
-        setCards(list);
+        setCards(due);
       })
       .catch((e) => setError((e as Error)?.message || "Couldn't load this deck."))
       .finally(() => setIsLoading(false));
