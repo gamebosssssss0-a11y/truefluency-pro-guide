@@ -277,7 +277,7 @@ export function MockGenerationScreen() {
             <Sparkles className="h-6 w-6" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-foreground">Preparing your mock</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{course?.code} · {course?.name}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{course?.code ? canonicalCourseCode(course.code) : ""} · {course?.name}</p>
         </div>
         <Progress value={pct} className="h-2" />
         <p className="mt-3 text-center text-sm text-muted-foreground">
@@ -514,7 +514,7 @@ export function MockConfigScreen() {
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{canonicalCourseCode(course.code)} · {course.name}</p>
         {defaults.toneLine ? (
           <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
         ) : null}
