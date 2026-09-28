@@ -42,7 +42,7 @@ export function ChatbotScreen() {
   const { profile, activeCourseCode } = useProfile();
   const { access } = useEntitlement();
 
-  const defaultCourse = profile.courses.some((course) => course.code === activeCourseCode)
+  const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
     ? activeCourseCode!
     : profile.courses[0]?.code ?? "";
   const [selected, setSelected] = useState<string>(defaultCourse);
