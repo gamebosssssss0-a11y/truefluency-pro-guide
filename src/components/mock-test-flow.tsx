@@ -8,7 +8,7 @@ import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
-import { listMaterialsForCourse } from "@/lib/course-materials";
+import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
@@ -202,6 +202,7 @@ export function MockGenerationScreen() {
             answers: Array(questions.length).fill(null),
             currentIndex: 0,
             questionIds: questions.map((q) => q.id),
+            questions,
             source: "ai",
           },
         });
@@ -276,7 +277,7 @@ export function MockGenerationScreen() {
             <Sparkles className="h-6 w-6" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-foreground">Preparing your mock</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{course?.code} · {course?.name}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{course?.code ? canonicalCourseCode(course.code) : ""} · {course?.name}</p>
         </div>
         <Progress value={pct} className="h-2" />
         <p className="mt-3 text-center text-sm text-muted-foreground">
@@ -392,7 +393,40 @@ function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProf
 export function MockConfigScreen() {
   const course = useActiveCourse();
   const { navigate, update, profile } = useProfile();
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const [readiness, setReadiness] = useState<"checking" | "ready" | "blocked">("checking");
+  const analysisForCourse = course ? profile.courseTopicAnalysis[course.code] : undefined;
   const defaults = useMemo(() => timelineDefaults(profile.timeline), [profile.timeline]);
+
+  useEffect(() => {
+    if (!course) {
+      navigateRef.current("mock-tests");
+      return;
+    }
+    let cancelled = false;
+    setReadiness("checking");
+    void listMaterialsForCourse(course.code)
+      .then((materials) => {
+        const readyMaterial = pickAnalyzableMaterial(materials);
+        const currentAnalysis = profile.courseTopicAnalysis[course.code];
+        const allowed = Boolean(
+          readyMaterial &&
+          currentAnalysis?.materialId === readyMaterial.id &&
+          currentAnalysis.topics.length > 0,
+        );
+        if (cancelled) return;
+        setReadiness(allowed ? "ready" : "blocked");
+        if (!allowed) navigateRef.current("course-detail", { courseCode: course.code });
+      })
+      .catch((error) => {
+        console.error("[mock-config] readiness check failed", error);
+        if (cancelled) return;
+        setReadiness("blocked");
+        navigateRef.current("course-detail", { courseCode: course.code });
+      });
+    return () => { cancelled = true; };
+  }, [course?.code, analysisForCourse?.materialId, analysisForCourse?.analyzedAt]);
 
   const smart = useMemo(
     () => (course ? smartDefaultsFor(course.code, profile) : null),
@@ -426,7 +460,7 @@ export function MockConfigScreen() {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
   }, []);
 
-  if (!course || !smart) return null;
+  if (!course || !smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
     setCount(smart.questionCount);
@@ -480,7 +514,7 @@ export function MockConfigScreen() {
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{course.code} · {course.name}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{canonicalCourseCode(course.code)} · {course.name}</p>
         {defaults.toneLine ? (
           <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
         ) : null}
@@ -647,17 +681,27 @@ export function MockRunScreen() {
   const { profile, update, navigate } = useProfile();
   const t = profile.inProgressTest;
   // Only this course's generated set, so questions never cross courses.
-  const aiQuestions: AIQuestion[] = t ? (profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
+  const aiQuestions: AIQuestion[] = t ? (t.questions ?? profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
 
   const [now, setNow] = useState(Date.now());
   const [mapOpen, setMapOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const submittedRef = useRef(false);
+  const updateRef = useRef(update);
+  updateRef.current = update;
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!t) return;
+    const id = window.setInterval(() => {
+      updateRef.current({ inProgressTest: { ...t } });
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [t]);
 
   const remaining = useMemo(() => {
     if (!t) return 0;
@@ -667,7 +711,9 @@ export function MockRunScreen() {
 
   // Use AI questions instead of hardcoded sampleQuestions
   const questions = useMemo(() => {
-    if (!t || aiQuestions.length === 0) return [];
+    if (!t) return [];
+    if (t.questions?.length) return t.questions;
+    if (aiQuestions.length === 0) return [];
     return t.questionIds.map((id) => aiQuestions.find((q) => q.id === id)).filter(Boolean) as AIQuestion[];
   }, [t, aiQuestions]);
 

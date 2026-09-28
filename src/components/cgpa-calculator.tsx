@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Calculator, AlertCircle, Target, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
+import { canonicalCourseCode } from "@/lib/course-code";
 
 /**
  * The real CGPA Calculator: the student enters what they actually scored, and
@@ -54,22 +55,26 @@ export function CgpaCalculatorScreen() {
   const [percents, setPercents] = useState<Record<string, string>>(() => {
     const base: Record<string, string> = {};
     profile.courses.forEach((c) => {
-      base[c.code] = saved?.scores?.[c.code] !== undefined ? String(saved.scores[c.code]) : "";
+      const code = canonicalCourseCode(c.code);
+      const score = saved?.scores?.[code] ?? saved?.scores?.[c.code];
+      base[code] = score !== undefined ? String(score) : "";
     });
     return base;
   });
   const [letters, setLetters] = useState<Record<string, string>>(() => {
     const base: Record<string, string> = {};
     profile.courses.forEach((c) => {
-      const score = saved?.scores?.[c.code];
-      base[c.code] = score !== undefined ? gradeForPercent(score) : "";
+      const code = canonicalCourseCode(c.code);
+      const score = saved?.scores?.[code] ?? saved?.scores?.[c.code];
+      base[code] = score !== undefined ? gradeForPercent(score) : "";
     });
     return base;
   });
   const [units, setUnits] = useState<Record<string, number>>(() => {
     const base: Record<string, number> = {};
     profile.courses.forEach((c) => {
-      base[c.code] = saved?.units?.[c.code] ?? profile.cgpaInputs?.units?.[c.code] ?? 3;
+      const code = canonicalCourseCode(c.code);
+      base[code] = saved?.units?.[code] ?? saved?.units?.[c.code] ?? profile.cgpaInputs?.units?.[code] ?? profile.cgpaInputs?.units?.[c.code] ?? 3;
     });
     return base;
   });
@@ -82,20 +87,21 @@ export function CgpaCalculatorScreen() {
 
   const perCourse = useMemo(() => {
     return rows.map((c) => {
-      const u = units[c.code] ?? 3;
+      const code = canonicalCourseCode(c.code);
+      const u = units[code] ?? 3;
       let percent: number | null = null;
       if (mode === "percent") {
-        const raw = percents[c.code];
+        const raw = percents[code];
         percent = raw === "" || raw === undefined ? null : Number(raw);
       } else {
-        const letter = letters[c.code];
+        const letter = letters[code];
         percent = letter ? percentForLetter(letter) : null;
       }
       const points =
         percent === null
           ? null
           : mode === "letter"
-            ? pointsForLetter(letters[c.code])
+            ? pointsForLetter(letters[code])
             : pointsForPercent(percent);
       return { course: c, units: u, percent, points };
     });
@@ -145,8 +151,9 @@ export function CgpaCalculatorScreen() {
     const scores: Record<string, number> = {};
     const unitMap: Record<string, number> = {};
     perCourse.forEach((r) => {
-      scores[r.course.code] = r.percent ?? 0;
-      unitMap[r.course.code] = r.units;
+      const code = canonicalCourseCode(r.course.code);
+      scores[code] = r.percent ?? 0;
+      unitMap[code] = r.units;
     });
 
     const next: CgpaActual = {
@@ -196,21 +203,28 @@ export function CgpaCalculatorScreen() {
   };
 
   const openSemester = (s: CgpaSemester) => {
+    const savedCodes = s.courses.map((course) => course.code);
+    const currentCodes = profile.cgpaCalcCourses ?? profile.courses.map((course) => course.code);
+    const mergedCodes = [...new Map([...currentCodes, ...savedCodes].map((code) => {
+      const canonical = canonicalCourseCode(code);
+      return [canonical, canonical] as const;
+    })).values()];
+    update({ cgpaCalcCourses: mergedCodes });
     setSession(s.session);
     setTerm(s.term);
     setUnits((u) => {
       const next = { ...u };
-      s.courses.forEach((c) => { next[c.code] = c.units; });
+      s.courses.forEach((c) => { next[canonicalCourseCode(c.code)] = c.units; });
       return next;
     });
     setPercents((p) => {
       const next = { ...p };
-      s.courses.forEach((c) => { next[c.code] = String(c.percent); });
+      s.courses.forEach((c) => { next[canonicalCourseCode(c.code)] = String(c.percent); });
       return next;
     });
     setLetters((l) => {
       const next = { ...l };
-      s.courses.forEach((c) => { next[c.code] = gradeForPercent(c.percent); });
+      s.courses.forEach((c) => { next[canonicalCourseCode(c.code)] = gradeForPercent(c.percent); });
       return next;
     });
   };
@@ -310,20 +324,20 @@ export function CgpaCalculatorScreen() {
         ) : (
           <div className="space-y-2">
             {rows.map((c) => {
-              const row = perCourse.find((r) => r.course.code === c.code);
+              const row = perCourse.find((r) => canonicalCourseCode(r.course.code) === canonicalCourseCode(c.code));
               return (
                 <div key={c.code} className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{c.code}</div>
+                      <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div>
                       <div className="truncate text-[11px] text-muted-foreground">{c.name}</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Input
                         className="h-9 w-14 text-center"
                         inputMode="numeric"
-                        value={units[c.code] ?? 3}
-                        onChange={(e) => setUnits((u) => ({ ...u, [c.code]: Number(e.target.value) || 0 }))}
+                        value={units[canonicalCourseCode(c.code)] ?? 3}
+                        onChange={(e) => setUnits((u) => ({ ...u, [canonicalCourseCode(c.code)]: Number(e.target.value) || 0 }))}
                         aria-label={`Credit units for ${c.code}`}
                       />
                       <span className="text-[11px] text-muted-foreground">units</span>
@@ -337,8 +351,8 @@ export function CgpaCalculatorScreen() {
                           className="h-9 w-20 text-center"
                           inputMode="decimal"
                           placeholder="score %"
-                          value={percents[c.code] ?? ""}
-                          onChange={(e) => setPercents((p) => ({ ...p, [c.code]: e.target.value }))}
+                          value={percents[canonicalCourseCode(c.code)] ?? ""}
+                          onChange={(e) => setPercents((p) => ({ ...p, [canonicalCourseCode(c.code)]: e.target.value }))}
                           aria-label={`Percentage score for ${c.code}`}
                         />
                         <span className="text-[11px] text-muted-foreground">
@@ -350,12 +364,12 @@ export function CgpaCalculatorScreen() {
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
                         {LETTERS.map((l) => {
-                          const on = letters[c.code] === l;
+                          const on = letters[canonicalCourseCode(c.code)] === l;
                           return (
                             <button
                               key={l}
                               type="button"
-                              onClick={() => setLetters((s) => ({ ...s, [c.code]: l }))}
+                              onClick={() => setLetters((s) => ({ ...s, [canonicalCourseCode(c.code)]: l }))}
                               className={cn(
                                 "h-8 w-8 rounded-lg border text-xs font-semibold transition",
                                 on
@@ -545,6 +559,7 @@ function ResultBlock({ result }: { result: CgpaActual }) {
     { label: "Second Class Lower", min: 2.4 },
     { label: "Third Class", min: 1.5 },
     { label: "Pass", min: 1.0 },
+    { label: "Academic probation risk", min: 0 },
   ];
 
   return (
@@ -594,7 +609,7 @@ function ResultBlock({ result }: { result: CgpaActual }) {
               )}
             >
               <span>{b.label}</span>
-              <span>{b.min.toFixed(2)} and above</span>
+              <span>{b.label === "Academic probation risk" ? "Below 1.00" : `${b.min.toFixed(2)} and above`}</span>
             </div>
           );
         })}

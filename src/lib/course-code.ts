@@ -6,7 +6,7 @@
  * This never changes how a code is displayed back to the student.
  */
 export function normalizeCourseCode(code: string): string {
-  return (code ?? "").toUpperCase().replace(/\s+/g, "");
+  return canonicalCourseCode(code).replace(/\s+/g, "");
 }
 
 /** True when two course codes refer to the same course, ignoring spacing/case. */
@@ -19,4 +19,9 @@ export function courseCodeMatches(code: string, query: string): boolean {
   const q = normalizeCourseCode(query);
   if (!q) return false;
   return normalizeCourseCode(code).includes(q);
+}
+
+/** Stable folder/display key: trim, uppercase, and strip one leading C-. */
+export function canonicalCourseCode(code: string | null | undefined): string {
+  return (code ?? "").trim().toUpperCase().replace(/^C-/, "");
 }
