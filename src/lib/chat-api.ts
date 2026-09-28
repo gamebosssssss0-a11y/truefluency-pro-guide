@@ -4,9 +4,9 @@
  * chat.py being separate from main.py's mock-generation pipeline — chat is a
  * simpler, lower-stakes call, no need to share the same file.
  *
- * Course threads are resolved server-side; this client never generates or
- * stores a conversation_id itself. The UI presents history grouped by course
- * and date, while new messages use the currently selected course.
+ * Threads are per (account, course scope) now, resolved server-side — this
+ * client never generates or stores a conversation_id itself. "all" is the
+ * scope for "All my notes"; any other value is a real course code.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,9 @@ function base(): string {
   if (!isChatConfigured()) throw new Error("Chat service isn't configured yet");
   return BACKEND_URL!.replace(/\/+$/, "");
 }
+
+/** A "jump to a feature" chip the assistant suggested (validated server-side). */
+export type ChatAction = { key: string; label: string; view: string };
 
 function readErrorDetail(text: string, status: number): string {
   try {
@@ -46,9 +49,7 @@ async function authHeader(): Promise<Record<string, string>> {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
-  /** Backend timestamp used to group saved history by day. */
-  created_at?: string;
-  /** Present on merged feeds to identify the source course. */
+  /** Present on the merged "all my notes" feed only — which course thread this came from. */
   course_code?: string;
 };
 
@@ -63,7 +64,13 @@ export async function sendChatMessage(
   courseCode: string,
   mode: string,
   imagePath?: string | null,
-): Promise<{ conversationId: string; reply: string; moderated?: boolean }> {
+): Promise<{
+  conversationId: string;
+  reply: string;
+  moderated?: boolean;
+  actions: ChatAction[];
+  saved: boolean;
+}> {
   const url = `${base()}/chat`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 35_000);
@@ -92,8 +99,16 @@ export async function sendChatMessage(
       conversation_id: string;
       reply: string;
       moderated?: boolean;
+      actions?: ChatAction[];
+      saved?: boolean;
     };
-    return { conversationId: data.conversation_id, reply: data.reply, moderated: data.moderated };
+    return {
+      conversationId: data.conversation_id,
+      reply: data.reply,
+      moderated: data.moderated,
+      actions: Array.isArray(data.actions) ? data.actions : [],
+      saved: data.saved !== false,
+    };
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw new Error("Study chat timed out. Try again.");
     if (e instanceof TypeError) {
