@@ -38,6 +38,8 @@ export type InProgressTest = {
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
+  /** Snapshot the exact generated set so an in-progress test survives refresh. */
+  questions?: AIQuestion[];
   /** "ai" = questions live in profile.aiQuestionsByCourse[courseCode]; "sample" = built-in bank. */
   source?: "ai" | "sample";
 } | null;
