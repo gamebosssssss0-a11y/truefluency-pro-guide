@@ -606,7 +606,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
   ) => {
     setView(v);
-    writeAppLocation(v, opts);
+    writeAppLocation(v, {
+      courseCode: opts && "courseCode" in opts ? opts.courseCode : activeCourseCode,
+      attemptId: opts && "attemptId" in opts ? opts.attemptId : activeAttemptId,
+      deckId: opts && "deckId" in opts ? opts.deckId : activeDeckId,
+    });
     if (opts && "courseCode" in opts) setActiveCourseCode(opts.courseCode ?? null);
     if (opts && "attemptId" in opts) setActiveAttemptId(opts.attemptId ?? null);
     if (opts && "deckId" in opts) setActiveDeckId(opts.deckId ?? null);
