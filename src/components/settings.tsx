@@ -20,7 +20,7 @@ import { MaterialRow } from "@/components/course-detail";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { PRICE_LINE } from "@/lib/pricing-copy";
+import { NO_PAYMENT_YET, PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { getMyAvatar, removeMyAvatar, uploadMyAvatar } from "@/lib/avatar";
 import { deleteAccount } from "@/lib/backend-api";
@@ -118,6 +118,8 @@ function AccountPhotoCard() {
   );
 }
 
+const extensionAvailable = false;
+
 export function AccountScreen() {
   const { profile, navigate, update, resetSetup } = useProfile();
   const { theme, setTheme } = useTheme();
@@ -130,6 +132,7 @@ export function AccountScreen() {
   /** Two-tap confirmation: 1 = warning, 2 = final confirm. No typing required. */
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [deleting, setDeleting] = useState(false);
+  const [extensionOpen, setExtensionOpen] = useState(false);
 
   const closeDelete = () => {
     setDeleteAllOpen(false);
@@ -282,7 +285,7 @@ export function AccountScreen() {
               {planLabel}
             </span>
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{PRICE_LINE}</p>
+          <p className="mt-2 break-words text-xs leading-relaxed text-muted-foreground">{NO_PAYMENT_YET} {PRICE_LINE}</p>
           <button
             type="button"
             onClick={() => navigate("upgrade")}
@@ -292,19 +295,39 @@ export function AccountScreen() {
           </button>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Payment history</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{NO_PAYMENT_YET}</p>
+          <p className="mt-1 break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
+        </div>
+
         <AccountPhotoCard />
 
-        <div className="mt-2 flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4">
+        <button
+          type="button"
+          onClick={() => setExtensionOpen(true)}
+          aria-disabled={!extensionAvailable}
+          className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-left"
+        >
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
             <Monitor className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-foreground">Notify me when ready</div>
-            <div className="text-[11px] text-muted-foreground">
-              Browser extension. On this phone, use Upload.
-            </div>
+            <div className="text-sm font-semibold text-foreground">Browser extension</div>
+            <div className="text-[11px] text-muted-foreground">See availability and install instructions.</div>
           </div>
-        </div>
+        </button>
+        <AlertDialog open={extensionOpen} onOpenChange={setExtensionOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Browser extension</AlertDialogTitle>
+              <AlertDialogDescription>
+                The extension is not in the Chrome Web Store yet. When it is listed, you will download it from this screen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter><AlertDialogAction>Okay</AlertDialogAction></AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Tools
