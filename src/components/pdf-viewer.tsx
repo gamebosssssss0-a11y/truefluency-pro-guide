@@ -85,7 +85,6 @@ function ScrollPage({
   doc,
   pageNumber,
   width,
-  ratio,
   active,
   distance,
   register,
@@ -93,7 +92,6 @@ function ScrollPage({
   doc: PdfDoc;
   pageNumber: number;
   width: number;
-  ratio: number;
   active: boolean;
   distance: number;
   register: (n: number, el: HTMLDivElement | null) => void;
@@ -105,6 +103,17 @@ function ScrollPage({
   const [pageHeight, setPageHeight] = useState<number | null>(null);
   const [hasPainted, setHasPainted] = useState(false);
   const boxWidth = Math.max(120, width - 8);
+
+  useEffect(() => {
+    let cancelled = false;
+    void doc.getPage(pageNumber).then((p) => {
+      if (cancelled) return;
+      const base = p.getViewport({ scale: 1 });
+      const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+      setPageHeight(Math.floor(p.getViewport({ scale }).height));
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [boxWidth, doc, pageNumber]);
 
   useEffect(() => {
     if (!active) return;
@@ -165,14 +174,14 @@ function ScrollPage({
       ref={(el) => register(pageNumber, el)}
       data-page={pageNumber}
       className="mx-auto mb-2 flex justify-center"
-      style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? Math.floor(boxWidth * ratio) }}
+      style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? 0 }}
     >
       {active || (distance <= 8 && hasPainted) ? (
         <canvas ref={canvasRef} className="block rounded-md bg-white shadow-sm" />
       ) : (
         <div
           className="rounded-md bg-white/60 shadow-sm"
-          style={{ width: boxWidth, height: pageHeight ?? Math.floor(boxWidth * ratio) }}
+          style={{ width: boxWidth, height: pageHeight ?? 0 }}
         />
       )}
     </div>
@@ -199,7 +208,6 @@ export function PdfViewer({
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [expanded, setExpanded] = useState(false);
   const [width, setWidth] = useState(0);
-  const [ratio, setRatio] = useState(1.414);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const taskRef = useRef<LoadingTask | null>(null);
@@ -247,8 +255,6 @@ export function PdfViewer({
           .getPage(start)
           .then((p) => {
             if (!alive) return;
-            const base = p.getViewport({ scale: 1 });
-            if (base.width > 0) setRatio(base.height / base.width);
           })
           .catch(() => undefined);
         setDoc(loaded);
@@ -508,7 +514,6 @@ export function PdfViewer({
               doc={doc}
               pageNumber={n}
               width={width || 340}
-              ratio={ratio}
               distance={Math.abs(n - page)}
               active={Math.abs(n - page) <= 4}
               register={registerPage}
