@@ -307,6 +307,18 @@ export function LibraryScreen() {
   };
 
 
+  const explainPageInChat = (data: { page: number; fileName: string; text: string }) => {
+    if (!preview) return;
+    sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify({
+      courseCode: canonicalCourseCode(preview.course_code),
+      page: data.page,
+      fileName: data.fileName,
+      text: data.text.slice(0, 4000),
+    }));
+    setPreview(null);
+    navigate("chatbot");
+  };
+
   const doSave = async (item: { id: string; course_code: string }) => {
     setBusy(true);
     const result = await savePeerFile({ data: { materialId: item.id, courseCode: item.course_code } });
@@ -660,7 +672,7 @@ export function LibraryScreen() {
             ) : preview.file_type === "image" ? (
               <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
             ) : preview.file_type === "pdf" ? (
-              <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} />
+              <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} onExplain={explainPageInChat} />
             ) : (
               <div className="grid h-full place-items-center bg-background p-4">
                 <ErrorCard
