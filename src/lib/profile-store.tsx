@@ -548,9 +548,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
         if (!cloudReady.current) {
-          // Hold every screen while a session is being restored, including
-          // warm tabs that receive INITIAL_SESSION on startup.
-          if (event === "SIGNED_IN" || event === "INITIAL_SESSION") holdAuthPending();
+          // SIGNED_IN marks an active login flow. INITIAL_SESSION is also
+          // emitted on every normal page load, so do not block returning
+          // students when their local profile is already hydrated.
+          if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && !profileRef.current.identity)) {
+            holdAuthPending();
+          } else if (event === "INITIAL_SESSION") {
+            releaseAuthPending();
+          }
           void (async () => {
             if (!profileRef.current.identity) {
               const identity: Profile["identity"] = {
