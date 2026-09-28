@@ -74,7 +74,7 @@ export function UpgradeScreen() {
               after {FOUNDING_USER_LIMIT} seats
             </span>
           </div>
-          <p className="mt-3 text-xs font-medium text-foreground">{PRICE_LINE}</p>
+          <p className="mt-3 break-words text-xs font-medium text-foreground">{PRICE_LINE}</p>
         </div>
 
         <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -112,11 +112,8 @@ export function UpgradeScreen() {
         <Dialog open={comingSoon} onOpenChange={setComingSoon}>
           <DialogContent className="max-w-[340px]">
             <DialogHeader>
-              <DialogTitle>Payments are launching soon</DialogTitle>
-              <DialogDescription>
-                We're finishing setup with our payment provider. This won't be
-                available for a little longer, check back soon.
-              </DialogDescription>
+              <DialogTitle>Payment status</DialogTitle>
+              <DialogDescription>{NO_PAYMENT_YET}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button className="w-full" onClick={() => setComingSoon(false)}>

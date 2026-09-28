@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile } from "@/lib/profile-store";
@@ -34,6 +34,10 @@ import { EditIdentityScreen } from "@/components/edit-identity";
 import { ThemeProvider } from "@/lib/theme";
 import { BottomTabBar, TopNavBar, hidesTabBar } from "@/components/tab-bar";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs";
 
 export const Route = createFileRoute("/")({
@@ -71,8 +75,34 @@ function Index() {
 }
 
 function Router() {
-  const { step, view, profile, authPending, go } = useProfile();
+  const { step, view, profile, authPending, hydrated, go, navigate } = useProfile();
   useSwipeTabs();
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const [leaveTestOpen, setLeaveTestOpen] = useState(false);
+
+  useEffect(() => {
+    if (view !== "mock-run" && view !== "mock-gen") {
+      setLeaveTestOpen(false);
+      return;
+    }
+
+    const historyState =
+      window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+    const guardState = { ...historyState, __trueFluencyMockBackGuard: true };
+    window.history.pushState(guardState, "", window.location.href);
+
+    const handlePopState = () => {
+      window.history.pushState(guardState, "", window.location.href);
+      setLeaveTestOpen(true);
+    };
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (window.history.state?.__trueFluencyMockBackGuard) window.history.back();
+    };
+  }, [view]);
   useEffect(() => {
     if (!profile.identity) return;
     void ensureSupabaseSession(profile).then((result) => {
@@ -105,12 +135,10 @@ function Router() {
     window.scrollTo(0, 0);
   }, [view, step]);
 
-  // Post-auth gap: a confirmed sign-in whose profile sync is still resolving.
-  // Never stacked on the splash, landing or disclaimer screens: those come
-  // before any sign-in attempt, so a pending session there is not this screen's
-  // business.
-  const preAuthStep = step === "splash" || step === "landing" || step === "disclaimer" || step === "disclaimer-blocked";
-  if (authPending && !preAuthStep) return <SigningInScreen />;
+  // A session must finish identity restore and local hydration before any
+  // onboarding or dashboard screen can render.
+  const sessionRestoring = authPending || (profile.identity !== null && !hydrated);
+  if (sessionRestoring) return <SigningInScreen />;
 
   if (step !== "dashboard") {
     switch (step) {
@@ -165,7 +193,6 @@ function Router() {
   // Mock run and review stay a narrow single column at every width so the
   // exam surface matches mobile exactly.
   const examFocus = view === "mock-run" || view === "mock-gen" || view === "attempt-review";
-  const wideHome = view === "home" || view === "dashboard";
 
   return (
     <>
@@ -174,13 +201,28 @@ function Router() {
       <div
         className={cn(
           hidesTabBar(view) ? undefined : "pb-20 md:pb-8",
-          !examFocus && "app-stage",
-          !examFocus && wideHome && "app-stage-wide",
+          !examFocus && "app-stage-wide",
         )}
       >
         {screen}
       </div>
       <BottomTabBar />
+      <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this test? Your answers stay.</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your in-progress answers are saved on this device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay on test</AlertDialogCancel>
+            <AlertDialogAction onClick={() => navigateRef.current("mock-tests")}>
+              Leave test
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

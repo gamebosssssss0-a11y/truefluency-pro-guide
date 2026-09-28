@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyAvatar } from "@/lib/avatar";
 import { useProfile } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
+import { canonicalCourseCode } from "@/lib/course-code";
 import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
   savePeerFile, setMaterialPublished, SHARING_OFFLINE_MESSAGE,
@@ -183,12 +184,25 @@ export function LibraryScreen() {
     return () => { alive = false; };
   }, []);
 
+  const filteredShelfCourses = useMemo(() => {
+    const courses = shelf?.courses ?? [];
+    const needle = search.trim().toLowerCase();
+    if (!needle) return courses;
+    const stripCoursePrefix = (value: string) => value.replace(/^(?:(?:c|ui)-)+/i, "").toLowerCase();
+    return courses.filter((course) => {
+      const visibleCode = course.course_code.toLowerCase();
+      const plainCode = stripCoursePrefix(course.course_code);
+      return visibleCode.includes(needle) || plainCode.includes(needle);
+    });
+  }, [shelf, search]);
+
   const folders = useMemo(() => {
     const map = new Map<string, LockerFile[]>();
     for (const f of locker ?? []) {
-      const list = map.get(f.course_code) ?? [];
+      const code = canonicalCourseCode(f.course_code);
+      const list = map.get(code) ?? [];
       list.push(f);
-      map.set(f.course_code, list);
+      map.set(code, list);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [locker]);
@@ -293,6 +307,18 @@ export function LibraryScreen() {
   };
 
 
+  const explainPageInChat = (data: { page: number; fileName: string; text: string }) => {
+    if (!preview) return;
+    sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify({
+      courseCode: canonicalCourseCode(preview.course_code),
+      page: data.page,
+      fileName: data.fileName,
+      text: data.text.slice(0, 4000),
+    }));
+    setPreview(null);
+    navigate("chatbot");
+  };
+
   const doSave = async (item: { id: string; course_code: string }) => {
     setBusy(true);
     const result = await savePeerFile({ data: { materialId: item.id, courseCode: item.course_code } });
@@ -360,7 +386,7 @@ export function LibraryScreen() {
                 >
                   <ArrowLeft className="h-4 w-4" /> My locker
                 </button>
-                {(locker.filter((f) => f.course_code === openFolder)).map((f) => (
+                {(locker.filter((f) => canonicalCourseCode(f.course_code) === openFolder)).map((f) => (
                   <Card key={f.id}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -444,7 +470,7 @@ export function LibraryScreen() {
                     <ArrowLeft className="h-4 w-4" /> Course shelf
                   </button>
                 ) : (
-                  (shelf?.courses ?? []).map((c) => (
+                  filteredShelfCourses.map((c) => (
                     <button key={c.course_code} onClick={() => setShelfCourse(c.course_code)} className="w-full text-left">
                       <Card>
                         <div className="flex items-center justify-between gap-3">
@@ -486,8 +512,10 @@ export function LibraryScreen() {
                   </Card>
                 ))}
 
-                {shelf && shelf.courses.length === 0 ? (
-                  <Card><p className="text-sm text-muted-foreground">Nothing published for your courses yet.</p></Card>
+                {shelf && filteredShelfCourses.length === 0 ? (
+                  <Card><p className="text-sm text-muted-foreground">
+                    {search.trim() ? "No published courses match." : "Nothing published for your courses yet."}
+                  </p></Card>
                 ) : null}
               </>
             )}
@@ -644,7 +672,7 @@ export function LibraryScreen() {
             ) : preview.file_type === "image" ? (
               <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
             ) : preview.file_type === "pdf" ? (
-              <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} />
+              <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} onExplain={explainPageInChat} />
             ) : (
               <div className="grid h-full place-items-center bg-background p-4">
                 <ErrorCard
@@ -667,7 +695,7 @@ export function LibraryScreen() {
           ) : (
             <p className="mt-3 text-center text-[12px] font-medium text-muted-foreground">View only</p>
           )}
-          <p className="mt-2 text-[11px] text-muted-foreground">{PRICE_LINE}</p>
+          <p className="mt-2 break-words text-[11px] text-muted-foreground">{PRICE_LINE}</p>
 
         </SheetContent>
       </Sheet>

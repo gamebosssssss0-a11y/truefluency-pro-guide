@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
+import { canonicalCourseCode } from "@/lib/course-code";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -130,7 +131,7 @@ export function CourseDetailScreen() {
 
 
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
-          <div className="text-xs font-medium text-primary-foreground/70">{course.code}</div>
+          <div className="text-xs font-medium text-primary-foreground/70">{canonicalCourseCode(course.code)}</div>
           <div className="mt-0.5 font-display text-2xl font-semibold leading-tight">{course.name}</div>
           <div className="mt-1 text-[11px] uppercase tracking-wider text-primary-foreground/60">
             {course.status} · {course.source === "manual" ? "Manually added" : "Verified"}
@@ -203,6 +204,12 @@ function CoursePrimaryActions({
   const { navigate, profile } = useProfile();
   const { order, showFlashcardsLink } = courseFeatureOrder(profile.studyPreference);
   const ready = Boolean(readyMaterial);
+  const storedAnalysis = profile.courseTopicAnalysis[courseCode];
+  const hasCurrentAnalysis = Boolean(
+    readyMaterial &&
+    storedAnalysis?.materialId === readyMaterial.id &&
+    storedAnalysis.topics.length > 0,
+  );
   /* An upload whose text hasn't been read yet still powers Analyze: the button
    * reads it first, then analyzes. */
   const repairable = readyMaterial
@@ -231,9 +238,19 @@ function CoursePrimaryActions({
   const actions = ready ? (
     <div className="mt-5 grid grid-cols-2 gap-2">
       {analyzeButton}
-      <Button size="lg" onClick={() => navigate("mock-config", { courseCode })}>
-        <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
+      <Button
+        size="lg"
+        disabled={!hasCurrentAnalysis || analysis.busy}
+        onClick={() => navigate("mock-config", { courseCode })}
+      >
+        <Zap className="mr-1.5 h-4 w-4" />
+        {analysis.busy ? "Reading your file…" : "Customize Mock Test"}
       </Button>
+      {!hasCurrentAnalysis && !analysis.busy ? (
+        <p className="col-span-2 text-center text-[11px] text-muted-foreground">
+          Analyze this upload first.
+        </p>
+      ) : null}
       <div className="col-span-2">
         <UploadButton courseCode={courseCode} />
       </div>
@@ -883,7 +900,7 @@ export function MaterialRow({
         <div className="min-w-0 flex-1">
           <div className="break-words text-sm font-semibold leading-snug text-foreground">{m.file_name}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
-            {showCourse ? <span className="font-semibold text-foreground">{m.course_code}</span> : null}
+            {showCourse ? <span className="font-semibold text-foreground">{canonicalCourseCode(m.course_code)}</span> : null}
             {showCourse ? <span>·</span> : null}
             {isPasted ? (
               <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">

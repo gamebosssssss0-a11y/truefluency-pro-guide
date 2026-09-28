@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
 import { getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
+import { toast } from "sonner";
 
 export const MAX_PREVIEW_PAGES = 800;
 export const HEAVY_PDF_MESSAGE =
@@ -25,6 +26,7 @@ type PdfPage = {
     cancel: () => void;
   };
   cleanup?: () => void;
+  getTextContent?: () => Promise<{ items: { str?: string }[] }>;
 };
 
 type PdfDoc = {
@@ -85,19 +87,35 @@ function ScrollPage({
   doc,
   pageNumber,
   width,
-  ratio,
   active,
+  distance,
   register,
 }: {
   doc: PdfDoc;
   pageNumber: number;
   width: number;
-  ratio: number;
   active: boolean;
+  distance: number;
   register: (n: number, el: HTMLDivElement | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+  const distanceRef = useRef(distance);
+  distanceRef.current = distance;
+  const [pageHeight, setPageHeight] = useState<number | null>(null);
+  const [hasPainted, setHasPainted] = useState(false);
   const boxWidth = Math.max(120, width - 8);
+
+  useEffect(() => {
+    let cancelled = false;
+    void doc.getPage(pageNumber).then((p) => {
+      if (cancelled) return;
+      const base = p.getViewport({ scale: 1 });
+      const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+      setPageHeight(Math.floor(p.getViewport({ scale }).height));
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [boxWidth, doc, pageNumber]);
 
   useEffect(() => {
     if (!active) return;
@@ -120,9 +138,13 @@ function ScrollPage({
         canvas.style.width = `${Math.floor(viewport.width)}px`;
         canvas.style.height = `${Math.floor(viewport.height)}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        setPageHeight(Math.floor(viewport.height));
         const task = p.render({ canvasContext: ctx, viewport });
         renderTask = task;
+        renderTaskRef.current = task;
         await task.promise;
+        setHasPainted(true);
+        renderTaskRef.current = null;
       } catch (e) {
         const name = (e as { name?: string } | null)?.name ?? "";
         if (cancelled || name === "RenderingCancelledException") return;
@@ -131,28 +153,37 @@ function ScrollPage({
     })();
     return () => {
       cancelled = true;
-      try {
-        renderTask?.cancel();
-      } catch {
-        /* already finished */
+      if (distanceRef.current > 8) {
+        try {
+          renderTaskRef.current?.cancel();
+        } catch {
+          /* already finished */
+        }
+        renderTaskRef.current = null;
+        current?.cleanup?.();
       }
-      current?.cleanup?.();
     };
   }, [active, boxWidth, doc, pageNumber]);
+
+  useEffect(() => {
+    if (distance <= 8) return;
+    try { renderTaskRef.current?.cancel(); } catch { /* already finished */ }
+    renderTaskRef.current = null;
+  }, [distance]);
 
   return (
     <div
       ref={(el) => register(pageNumber, el)}
       data-page={pageNumber}
       className="mx-auto mb-2 flex justify-center"
-      style={active ? undefined : { height: Math.floor(boxWidth * ratio) }}
+      style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? 0 }}
     >
-      {active ? (
+      {active || (distance <= 8 && hasPainted) ? (
         <canvas ref={canvasRef} className="block rounded-md bg-white shadow-sm" />
       ) : (
         <div
           className="rounded-md bg-white/60 shadow-sm"
-          style={{ width: boxWidth, height: Math.floor(boxWidth * ratio) }}
+          style={{ width: boxWidth, height: pageHeight ?? 0 }}
         />
       )}
     </div>
@@ -165,12 +196,14 @@ export function PdfViewer({
   fileKey,
   onClose,
   onCancel,
+  onExplain,
 }: {
   url: string;
   fileName: string;
   fileKey?: string;
   onClose?: () => void;
   onCancel?: () => void;
+  onExplain?: (data: { page: number; fileName: string; text: string }) => void;
 }) {
   const [doc, setDoc] = useState<PdfDoc | null>(null);
   const [total, setTotal] = useState(0);
@@ -179,7 +212,6 @@ export function PdfViewer({
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [expanded, setExpanded] = useState(false);
   const [width, setWidth] = useState(0);
-  const [ratio, setRatio] = useState(1.414);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const taskRef = useRef<LoadingTask | null>(null);
@@ -227,8 +259,6 @@ export function PdfViewer({
           .getPage(start)
           .then((p) => {
             if (!alive) return;
-            const base = p.getViewport({ scale: 1 });
-            if (base.width > 0) setRatio(base.height / base.width);
           })
           .catch(() => undefined);
         setDoc(loaded);
@@ -360,6 +390,9 @@ export function PdfViewer({
           if (!best || entry.intersectionRatio > best.r) best = { n, r: entry.intersectionRatio };
         }
         if (best && best.n !== pageRef.current) {
+          const now = Date.now();
+          if (now - lastPageUpdateRef.current < 500) return;
+          lastPageUpdateRef.current = now;
           setPage(best.n);
           setPageInput(String(best.n));
         }
@@ -387,6 +420,22 @@ export function PdfViewer({
     () => Array.from({ length: total }, (_, i) => i + 1),
     [total],
   );
+
+  const explainCurrentPage = async () => {
+    if (!doc || !onExplain) return;
+    try {
+      const currentPage = await doc.getPage(page);
+      const content = await currentPage.getTextContent?.();
+      const text = (content?.items ?? []).map((item) => item.str ?? "").join(" ").replace(/\s+/g, " ").trim();
+      if (text.length < 50) {
+        toast.error("This page has too little selectable text. OCR isn't available yet.");
+        return;
+      }
+      onExplain({ page, fileName, text: text.slice(0, 4000) });
+    } catch {
+      toast.error("Couldn't read selectable text from this page.");
+    }
+  };
 
   const go = (n: number) => {
     const next = Math.min(Math.max(1, n), total || 1);
@@ -485,8 +534,8 @@ export function PdfViewer({
               doc={doc}
               pageNumber={n}
               width={width || 340}
-              ratio={ratio}
-              active={Math.abs(n - page) <= 2}
+              distance={Math.abs(n - page)}
+              active={Math.abs(n - page) <= 4}
               register={registerPage}
             />
           ))
@@ -528,6 +577,11 @@ export function PdfViewer({
             />
             <span className="text-[11px] text-muted-foreground">/ {total}</span>
           </form>
+          {onExplain && !expanded ? (
+            <Button size="sm" variant="outline" className="border-border text-foreground" onClick={() => void explainCurrentPage()}>
+              Explain this page
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="outline"
