@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyAvatar } from "@/lib/avatar";
 import { useProfile } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
+import { canonicalCourseCode } from "@/lib/course-code";
 import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
   savePeerFile, setMaterialPublished, SHARING_OFFLINE_MESSAGE,
@@ -198,9 +199,10 @@ export function LibraryScreen() {
   const folders = useMemo(() => {
     const map = new Map<string, LockerFile[]>();
     for (const f of locker ?? []) {
-      const list = map.get(f.course_code) ?? [];
+      const code = canonicalCourseCode(f.course_code);
+      const list = map.get(code) ?? [];
       list.push(f);
-      map.set(f.course_code, list);
+      map.set(code, list);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [locker]);
@@ -372,7 +374,7 @@ export function LibraryScreen() {
                 >
                   <ArrowLeft className="h-4 w-4" /> My locker
                 </button>
-                {(locker.filter((f) => f.course_code === openFolder)).map((f) => (
+                {(locker.filter((f) => canonicalCourseCode(f.course_code) === openFolder)).map((f) => (
                   <Card key={f.id}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
