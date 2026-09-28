@@ -83,7 +83,7 @@ export function LandingScreen() {
             </Button>
             <div className="space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
               <p>{TRIAL_LINE}</p>
-              <p>{PRICE_LINE}</p>
+              <p className="break-words">{PRICE_LINE}</p>
               <p>No card required up front.</p>
               <p>No automatic debit. Trial runs 7 days. Pay when you upgrade.</p>
             </div>
@@ -212,7 +212,7 @@ export function LandingScreen() {
           </Button>
           <div className="mt-3 space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
             <p>{TRIAL_LINE}</p>
-            <p>{PRICE_LINE}</p>
+            <p className="break-words">{PRICE_LINE}</p>
             <p>No automatic debit. Trial runs 7 days. Pay when you upgrade.</p>
           </div>
         </div>
