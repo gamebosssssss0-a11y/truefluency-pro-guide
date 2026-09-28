@@ -71,7 +71,7 @@ function Index() {
 }
 
 function Router() {
-  const { step, view, profile, authPending, go } = useProfile();
+  const { step, view, profile, authPending, hydrated, go } = useProfile();
   useSwipeTabs();
   useEffect(() => {
     if (!profile.identity) return;
@@ -105,12 +105,9 @@ function Router() {
     window.scrollTo(0, 0);
   }, [view, step]);
 
-  // Post-auth gap: a confirmed sign-in whose profile sync is still resolving.
-  // Never stacked on the splash, landing or disclaimer screens: those come
-  // before any sign-in attempt, so a pending session there is not this screen's
-  // business.
-  const preAuthStep = step === "splash" || step === "landing" || step === "disclaimer" || step === "disclaimer-blocked";
-  if (authPending && !preAuthStep) return <SigningInScreen />;
+  // A session must finish identity restore and local hydration before any
+  // onboarding or dashboard screen can render.
+  if (authPending && (!profile.identity || !hydrated || authPending)) return <SigningInScreen />;
 
   if (step !== "dashboard") {
     switch (step) {
