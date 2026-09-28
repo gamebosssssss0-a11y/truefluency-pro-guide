@@ -557,7 +557,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             releaseAuthPending();
           }
           void (async () => {
-            if (!profileRef.current.identity) {
+            const identityWasMissing = !profileRef.current.identity;
+            if (identityWasMissing) {
               const identity: Profile["identity"] = {
                 kind: "email",
                 name:
@@ -570,6 +571,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               const profileWithIdentity = { ...profileRef.current, identity };
               profileRef.current = profileWithIdentity;
               setProfile(profileWithIdentity);
+            }
+
+            // A successful sign-in needs only a confirmed local identity to
+            // leave the blocking screen. Cloud profile sync continues below.
+            const identityReadyForRoute =
+              event === "SIGNED_IN" || (event === "INITIAL_SESSION" && identityWasMissing);
+            if (identityReadyForRoute && profileRef.current.identity) {
+              releaseAuthPending();
+              go(profileRef.current.setupComplete ? "dashboard" : "goal");
             }
 
             // Cloud sync can hang when the network is unavailable. Never keep
@@ -692,6 +702,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         activeAttemptId,
         activeDeckId,
         authPending,
+        hydrated,
         update,
         go,
         navigate,
