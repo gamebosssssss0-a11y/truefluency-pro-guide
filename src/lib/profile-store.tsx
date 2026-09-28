@@ -372,8 +372,10 @@ type Ctx = {
   activeCourseCode: string | null;
   activeAttemptId: string | null;
   activeDeckId: string | null;
-  /** True only while a fresh sign-in's session + profile sync is resolving. */
+  /** True while a Supabase session + profile sync is resolving. */
   authPending: boolean;
+  /** True after the saved local profile has been restored from localStorage. */
+  hydrated: boolean;
   update: (p: Partial<Profile>) => void;
   go: (s: OnboardingStep | "dashboard") => void;
   navigate: (
@@ -468,9 +470,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (!session) return;
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
         if (!cloudReady.current) {
-          // Cold sign-in / OAuth redirect return only: a warm returning tab
-          // fires INITIAL_SESSION and must never see the loading screen.
-          if (event === "SIGNED_IN") setAuthPending(true);
+          // Hold every screen while a session is being restored, including
+          // warm tabs that receive INITIAL_SESSION on startup.
+          if (event === "SIGNED_IN" || event === "INITIAL_SESSION") setAuthPending(true);
           void (async () => {
             if (!profileRef.current.identity) {
               const identity: Profile["identity"] = {
