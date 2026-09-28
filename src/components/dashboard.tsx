@@ -160,11 +160,12 @@ function NextStepCard() {
       };
     }
     if (!profile.attempts.length) {
+      const code = firstOwn?.course_code ?? profile.courses[0]!.code;
       return {
-        title: "Sit your first mock test",
-        line: "Your file is in. Try a short test on it and see where you stand.",
-        cta: "Start a test",
-        go: () => navigate("mock-tests"),
+        title: "Get your upload ready",
+        line: "Analyze a ready upload before starting a mock test.",
+        cta: "Open course",
+        go: () => navigate("course-detail", { courseCode: code }),
       };
     }
     const weakest = [...profile.topicScores].sort((a, b) => a.score - b.score)[0];
@@ -173,8 +174,8 @@ function NextStepCard() {
       line: weakest
         ? `${weakest.topic} is your lowest so far. One short test will help.`
         : "A short test keeps your streak going.",
-      cta: "Take a mock",
-      go: () => navigate("mock-tests"),
+      cta: "Open course",
+      go: () => navigate("course-detail", { courseCode: profile.courses[0]?.code ?? null }),
     };
   })();
 
