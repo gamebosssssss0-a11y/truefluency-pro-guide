@@ -63,6 +63,22 @@ export function ChatbotScreen() {
   const loadToken = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const pending = sessionStorage.getItem("truefluency-chat-explain-page");
+    if (!pending) return;
+    sessionStorage.removeItem("truefluency-chat-explain-page");
+    try {
+      const payload = JSON.parse(pending) as { courseCode: string; page: number; fileName: string; text: string };
+      if (!profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(payload.courseCode))) return;
+      setSelected(payload.courseCode);
+      setMessages([]);
+      setMode("Explain");
+      setDraft(`Explain page ${payload.page} of ${payload.fileName} from my notes:\n${payload.text.slice(0, 4000)}`);
+    } catch {
+      /* Ignore an invalid one-shot handoff. */
+    }
+  }, []);
+
 
   const courseOptions = profile.courses
     .map((course) => course.code)
