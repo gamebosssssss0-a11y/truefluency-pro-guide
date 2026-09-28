@@ -295,6 +295,12 @@ export function AccountScreen() {
           </button>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Payment history</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{NO_PAYMENT_YET}</p>
+          <p className="mt-1 break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
+        </div>
+
         <AccountPhotoCard />
 
         <button
