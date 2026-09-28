@@ -20,3 +20,8 @@ export function courseCodeMatches(code: string, query: string): boolean {
   if (!q) return false;
   return normalizeCourseCode(code).includes(q);
 }
+
+/** Stable folder/display key: trim, uppercase, and strip one leading C-. */
+export function canonicalCourseCode(code: string | null | undefined): string {
+  return (code ?? "").trim().toUpperCase().replace(/^C-/, "");
+}
