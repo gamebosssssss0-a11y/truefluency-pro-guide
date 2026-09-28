@@ -183,6 +183,18 @@ export function LibraryScreen() {
     return () => { alive = false; };
   }, []);
 
+  const filteredShelfCourses = useMemo(() => {
+    const courses = shelf?.courses ?? [];
+    const needle = search.trim().toLowerCase();
+    if (!needle) return courses;
+    const stripCoursePrefix = (value: string) => value.replace(/^(?:(?:c|ui)-)+/i, "").toLowerCase();
+    return courses.filter((course) => {
+      const visibleCode = course.course_code.toLowerCase();
+      const plainCode = stripCoursePrefix(course.course_code);
+      return visibleCode.includes(needle) || plainCode.includes(needle);
+    });
+  }, [shelf, search]);
+
   const folders = useMemo(() => {
     const map = new Map<string, LockerFile[]>();
     for (const f of locker ?? []) {
@@ -444,7 +456,7 @@ export function LibraryScreen() {
                     <ArrowLeft className="h-4 w-4" /> Course shelf
                   </button>
                 ) : (
-                  (shelf?.courses ?? []).map((c) => (
+                  filteredShelfCourses.map((c) => (
                     <button key={c.course_code} onClick={() => setShelfCourse(c.course_code)} className="w-full text-left">
                       <Card>
                         <div className="flex items-center justify-between gap-3">
@@ -486,8 +498,8 @@ export function LibraryScreen() {
                   </Card>
                 ))}
 
-                {shelf && shelf.courses.length === 0 ? (
-                  <Card><p className="text-sm text-muted-foreground">Nothing published for your courses yet.</p></Card>
+                {shelf && shelf.courses.length > 0 && filteredShelfCourses.length === 0 ? (
+                  <Card><p className="text-sm text-muted-foreground">No published courses match.</p></Card>
                 ) : null}
               </>
             )}
