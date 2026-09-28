@@ -4,15 +4,12 @@
  * chat.py being separate from main.py's mock-generation pipeline — chat is a
  * simpler, lower-stakes call, no need to share the same file.
  *
- * Threads are per (account, course scope) now, resolved server-side — this
- * client never generates or stores a conversation_id itself. "all" is the
- * scope for "All my notes"; any other value is a real course code.
+ * Course threads are resolved server-side; this client never stores a
+ * conversation_id itself.
  */
 import { supabase } from "@/integrations/supabase/client";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
-
-export const ALL_SCOPE = "all";
 
 export function isChatConfigured(): boolean {
   return typeof BACKEND_URL === "string" && BACKEND_URL.trim().length > 0;
@@ -49,12 +46,12 @@ async function authHeader(): Promise<Record<string, string>> {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
-  /** Present on the merged "all my notes" feed only — which course thread this came from. */
-  course_code?: string;
+  /** Backend timestamp used to group saved history by day. */
+  created_at?: string;
 };
 
 /**
- * Sends one message in the given course's thread (or "all") and gets a
+ * Sends one message in the given course's thread and gets a
  * reply grounded in that course's uploaded material. The thread itself is
  * resolved and persisted server-side from (account, courseCode) — nothing
  * to pass or remember beyond the course code the student is currently in.
@@ -121,10 +118,8 @@ export async function sendChatMessage(
 }
 
 /**
- * Loads the full history for one course's thread (or "all"'s own thread),
- * creating it server-side on first open. Call this whenever the chatbot
- * screen mounts or the course scope changes, so the conversation picks up
- * where it left off instead of resetting on every tab switch.
+ * Loads the full history for one course thread, creating it server-side on
+ * first open. Call this when the selected course changes.
  */
 export async function getCourseThread(
   courseCode: string,
@@ -138,22 +133,4 @@ export async function getCourseThread(
   }
   const data = (await res.json()) as { conversation_id: string; messages: ChatMessage[] };
   return { conversationId: data.conversation_id, messages: data.messages ?? [] };
-}
-
-/**
- * The read-only "All my notes" display feed: every course thread's messages
- * merged into one timeline, tagged with which course each message came
- * from. Separate from getCourseThread(ALL_SCOPE), which is the "all"
- * thread's own saved conversation that new "all"-scope messages append to.
- */
-export async function getAllMergedThread(): Promise<ChatMessage[]> {
-  const url = `${base()}/chat/all-merged`;
-  const auth = await authHeader();
-  const res = await fetch(url, { method: "GET", headers: auth });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(readErrorDetail(text, res.status));
-  }
-  const data = (await res.json()) as { messages: ChatMessage[] };
-  return data.messages ?? [];
 }
