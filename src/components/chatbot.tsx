@@ -12,7 +12,9 @@ import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { RichText, plainText } from "@/components/rich-text";
-import { ALL_SCOPE, getAllMergedThread, getCourseThread, sendChatMessage } from "@/lib/chat-api";
+import { getCourseThread, sendChatMessage, type ChatMessage } from "@/lib/chat-api";
+import { consumeFeatureQuota } from "@/lib/entitlements.functions";
+import { canonicalCourseCode } from "@/lib/course-code";
 import { uploadChatImage } from "@/lib/chat-image";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -20,7 +22,6 @@ type Message = {
   id: number;
   from: "student" | "assistant" | "notice";
   text: string;
-  /** Set only on messages loaded into the merged "All my notes" feed. */
   courseTag?: string;
 };
 
@@ -29,7 +30,7 @@ const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
 
 function displayCode(code: string) {
-  return code.replace(/^C-/, "");
+  return canonicalCourseCode(code);
 }
 
 function speechSupported() {
@@ -40,12 +41,15 @@ export function ChatbotScreen() {
   const { profile, activeCourseCode } = useProfile();
   const { access } = useEntitlement();
 
-  // Optional course scope. Default is "all my notes"; course chips just
-  // change the context, they are never required to type a message.
-  const [selected, setSelected] = useState<string>(activeCourseCode ?? ALL_SCOPE);
-
+  const defaultCourse = profile.courses.some((course) => course.code === activeCourseCode)
+    ? activeCourseCode!
+    : profile.courses[0]?.code ?? "";
+  const [selected, setSelected] = useState<string>(defaultCourse);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoadingThread, setIsLoadingThread] = useState(true);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [mode, setMode] = useState<Mode>("Explain");
@@ -59,47 +63,46 @@ export function ChatbotScreen() {
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
-  const courseOptions = [
-    ALL_SCOPE,
-    ...profile.courses.map((c) => c.code).filter((code, i, arr) => arr.indexOf(code) === i),
-  ];
+  const courseOptions = profile.courses
+    .map((course) => course.code)
+    .filter((code, index, all) => all.findIndex((other) => canonicalCourseCode(other) === canonicalCourseCode(code)) === index);
 
-  // Load the real thread for whichever scope is selected — a course chip
-  // gets its own persistent thread; "all" shows every course's messages
-  // merged into one feed.
   useEffect(() => {
-    const token = ++loadToken.current;
-    setIsLoadingThread(true);
-    const run = async () => {
-      try {
-        const loaded =
-          selected === ALL_SCOPE
-            ? (await getAllMergedThread()).map((m) => ({ ...m, courseTag: m.course_code }))
-            : (await getCourseThread(selected)).messages;
-        if (loadToken.current !== token) return; // a newer scope switch already superseded this
-        setMessages(
-          loaded.map((m) => ({
-            id: nextId.current++,
-            from: m.role === "user" ? "student" : "assistant",
-            text: m.content,
-            courseTag: (m as { courseTag?: string }).courseTag,
-          })),
-        );
-      } catch (e) {
-        if (loadToken.current !== token) return;
-        setMessages([
-          {
-            id: nextId.current++,
-            from: "notice",
-            text: `Couldn't load this chat|${(e as Error)?.message || "Something went wrong. Try again."}`,
-          },
-        ]);
-      } finally {
-        if (loadToken.current === token) setIsLoadingThread(false);
-      }
-    };
-    run();
+    setMessages([]);
+    setDraft("");
+    setPhotoFile(null);
+    setPhotoName(null);
   }, [selected]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    let alive = true;
+    setHistoryLoading(true);
+    void Promise.all(profile.courses.map(async (course) => {
+      const thread = await getCourseThread(course.code);
+      const withDates = thread.messages as (ChatMessage & { created_at?: string })[];
+      const groups = new Map<string, ChatMessage[]>();
+      for (const message of withDates) {
+        const date = message.created_at
+          ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date(message.created_at))
+          : "Date unavailable";
+        groups.set(date, [...(groups.get(date) ?? []), message]);
+      }
+      return [...groups.entries()].map(([date, messages]) => ({
+        course: course.code,
+        date,
+        title: messages.find((message) => message.role === "user")?.content ?? "Study chat",
+        messages,
+      }));
+    })).then((rows) => {
+      if (alive) setHistoryRows(rows.flat().sort((a, b) => b.date.localeCompare(a.date)));
+    }).catch(() => {
+      if (alive) setHistoryRows([]);
+    }).finally(() => {
+      if (alive) setHistoryLoading(false);
+    });
+    return () => { alive = false; };
+  }, [historyOpen, profile.courses]);
 
   // Stop any reading aloud when leaving the screen.
   useEffect(() => {
@@ -147,7 +150,15 @@ export function ChatbotScreen() {
         }
       }
 
-      const { reply, moderated } = await sendChatMessage(text, selected, mode, imagePath);
+      const modePrefix: Record<Mode, string> = {
+        Explain: "Explain from my notes. ",
+        "Quiz me": "Ask me one question from my notes, then wait for your answer. Do not give the answer yet. ",
+        "Work a problem": "Work this as steps from my notes. ",
+      };
+      const { reply, moderated } = await sendChatMessage(text ? modePrefix[mode] + text : "", selected, mode, imagePath);
+      if (text && !moderated) {
+        await consumeFeatureQuota({ data: { feature: "chatbot_messages" } });
+      }
       setMessages((cur) => [
         ...cur,
         {
@@ -188,8 +199,8 @@ export function ChatbotScreen() {
     return `${messagesUsed} of ${messageLimit} replies today`;
   })();
 
-  const headerLabel = selected === ALL_SCOPE ? "All my notes" : displayCode(selected);
-  const placeholderCourse = selected === ALL_SCOPE ? "your notes" : displayCode(selected);
+  const headerLabel = displayCode(selected);
+  const placeholderCourse = displayCode(selected);
 
   return (
     <div className="min-h-screen bg-chat-page text-chat-foreground">
@@ -211,17 +222,19 @@ export function ChatbotScreen() {
             </span>
           ) : null}
         </div>
-        {isLoadingThread ? (
-          <p className="mb-2 px-1 text-xs text-muted-foreground">Loading this conversation…</p>
-        ) : null}
 
-        {/* Optional course scope chips */}
-        <p className="mb-1.5 text-sm font-semibold text-chat-foreground">Course</p>
+
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-chat-foreground">Course</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => { setMessages([]); setDraft(""); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">New chat</button>
+            <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">History</button>
+          </div>
+        </div>
         <div className="mb-3 flex flex-wrap gap-2">
           {courseOptions.map((code) => {
-            const isAll = code === ALL_SCOPE;
-            const active = selected === code;
-            const label = isAll ? "All my notes" : displayCode(code);
+            const active = canonicalCourseCode(selected) === canonicalCourseCode(code);
+            const label = displayCode(code);
             return (
               <button
                 key={code}
@@ -268,7 +281,7 @@ export function ChatbotScreen() {
           {!isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
               <p className="font-display text-[22px] font-semibold text-chat-foreground">
-                Ask about {placeholderCourse}
+                {selected ? `Ask about ${placeholderCourse}` : "Add a course first."}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">From your notes. Not the open web.</p>
             </div>
