@@ -570,7 +570,7 @@ export function ChatbotScreen() {
                 ) : (
                   <div
                     key={m.id}
-                    className="ml-auto max-w-[85%] rounded-2xl border border-border bg-sand p-4"
+                    className="w-full rounded-2xl border border-border bg-sand p-4"
                   >
                     <p className="font-display text-base font-semibold text-foreground">
                       {m.text.split("|")[0]}
