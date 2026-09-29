@@ -1,7 +1,7 @@
 /**
  * Chatbot tab — wired to the /chat backend endpoint (chat.py on Render).
- * Sends the student's message, shows the real AI reply. Each course chip
- * Each course chip opens its own persistent, account-tied thread.
+ * Sends the student's message and shows the real AI reply. Each course chip
+ * opens its own persistent, account-tied thread.
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
@@ -89,6 +89,7 @@ export function ChatbotScreen() {
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
   const clearedThreads = useRef(new Set<string>());
+  const historyLoaded = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
@@ -181,7 +182,7 @@ export function ChatbotScreen() {
   }, [selected]);
 
   useEffect(() => {
-    if (!historyOpen) return;
+    if (!historyOpen || historyLoaded.current) return;
     let alive = true;
     setHistoryError(null);
     setHistoryLoading(true);
@@ -202,7 +203,10 @@ export function ChatbotScreen() {
         messages: items,
       }));
     })).then((rows) => {
-      if (alive) setHistoryRows(rows.flat());
+      if (alive) {
+        setHistoryRows(rows.flat());
+        historyLoaded.current = true;
+      }
     }).catch((error) => {
       if (alive) {
         const message = error instanceof Error ? error.message : "Couldn't load chat history.";
@@ -301,7 +305,17 @@ export function ChatbotScreen() {
         }
       }
 
-      const { reply, moderated, actions, saved } = await sendChatMessage(text, selected, mode, imagePath);
+      const modePrefix: Record<Mode, string> = {
+        Explain: "Explain from my notes. ",
+        "Quiz me": "Ask me one question from my notes, then wait for my answer. Do not give the answer yet. ",
+        "Work a problem": "Work this as steps from my notes. ",
+      };
+      const { reply, moderated, actions, saved } = await sendChatMessage(
+        modePrefix[mode] + text,
+        selected,
+        mode,
+        imagePath,
+      );
       setMessages((cur) => {
         const next = [...cur,
           {
@@ -477,7 +491,7 @@ export function ChatbotScreen() {
                     key={q}
                     type="button"
                     onClick={() => send(q)}
-                    disabled={isSending}
+                    disabled={isSending || isLoadingThread}
                     className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-navy transition hover:border-amber/60 disabled:opacity-60"
                   >
                     {q}
@@ -660,14 +674,14 @@ export function ChatbotScreen() {
                   send();
                 }
               }}
-              disabled={!selected || isSending || isUploadingPhoto}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
               className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => send()}
-              disabled={!selected || isSending || isUploadingPhoto}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
               className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-navy text-cream transition hover:bg-navy/90 disabled:opacity-60"
             >
