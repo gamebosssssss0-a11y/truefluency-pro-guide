@@ -85,10 +85,10 @@ export function MockTestsScreen() {
               return (
                 <div
                   key={c.code}
-                  className="rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-4 shadow-sm transition hover:border-accent/50"
+                  className="surface-key-card p-4 transition hover:border-accent/50"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+                    <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
                       <BookOpen className="h-4.5 w-4.5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -167,7 +167,7 @@ function AttemptRow({ attempt }: { attempt: MockAttempt }) {
   return (
     <button
       onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
+      className="surface-list-row flex w-full items-center gap-3 p-3.5 text-left transition hover:border-accent/50"
     >
       <div
         className={cn(
@@ -418,7 +418,7 @@ export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
 
   return (
     <div className="mt-4">
-      <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
+      <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-primary-foreground/70">
           <Trophy className="h-3.5 w-3.5" /> Across {chronological.length} attempt
           {chronological.length === 1 ? "" : "s"}
@@ -447,7 +447,7 @@ export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
       <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Score over time
       </h2>
-      <div className="space-y-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="surface-list-row space-y-2 p-4">
         {chronological.map((a) => (
           <div key={a.id} className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-[10px] text-muted-foreground">

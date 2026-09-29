@@ -72,7 +72,7 @@ export function SupportScreen() {
           </button>
         </div>
 
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-secondary text-primary">
+        <div className="surface-icon-well grid h-12 w-12 place-items-center rounded-2xl">
           <LifeBuoy className="h-5 w-5" />
         </div>
         <h1 className="mt-3 font-display text-3xl font-semibold text-foreground">Support</h1>
@@ -83,7 +83,7 @@ export function SupportScreen() {
         <h2 className="mb-2 mt-7 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Frequently asked
         </h2>
-        <div className="rounded-2xl border border-border bg-card px-4 shadow-sm">
+        <div className="surface-key-card px-4">
           <Accordion type="single" collapsible>
             {FAQS.map((f, i) => (
               <AccordionItem key={f.q} value={`faq-${i}`} className={i === FAQS.length - 1 ? "border-b-0" : ""}>
@@ -119,7 +119,7 @@ export function SupportScreen() {
               href={getIssueHref(somethingElseIssue)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center rounded-2xl border border-border bg-card p-4 text-sm text-foreground shadow-sm transition hover:border-accent/50"
+              className="surface-list-row flex items-center p-4 text-sm text-foreground transition hover:border-accent/50"
             >
               Something else
             </a>
@@ -138,7 +138,7 @@ export function SupportScreen() {
                       href={getIssueHref(issue)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center rounded-2xl border border-border bg-card p-4 text-sm text-foreground shadow-sm transition hover:border-accent/50"
+                      className="surface-list-row flex items-center p-4 text-sm text-foreground transition hover:border-accent/50"
                     >
                       {issue.text}
                     </a>

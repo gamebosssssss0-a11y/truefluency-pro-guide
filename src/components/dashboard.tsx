@@ -47,12 +47,12 @@ function ChipShell({ children }: { children: React.ReactNode }) {
   return (
     <button
       onClick={() => navigate("upgrade")}
-      className="mb-5 flex w-full items-center gap-2 rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] px-3.5 py-2.5 text-left"
+      className="surface-key-card mb-5 flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
     >
-      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
+      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-foreground">
         {children}
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-[#1B2A4A]/60" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </button>
   );
 }
@@ -89,7 +89,7 @@ function ContinueFileCard() {
   const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
 
   return (
-    <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5">
+    <div className="surface-key-card mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <div
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold text-white"
@@ -181,7 +181,7 @@ function NextStepCard() {
   })();
 
   return (
-    <div className="mb-5 rounded-2xl border border-[#E4DCC8] bg-card p-4">
+    <div className="surface-wash mb-5 p-4">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[#B86E0A]">
         Do this next
       </div>
@@ -313,8 +313,8 @@ export function HomeScreen() {
 
         {/* Streak: cloud-backed qualifying mock activity only. */}
         {hasStreak ? (
-          <div className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
+          <div className="surface-key-card mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-3.5">
+            <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
               <Flame className="h-4.5 w-4.5" />
             </div>
             <div className="min-w-0">
@@ -333,7 +333,7 @@ export function HomeScreen() {
         ) : null}
 
         {access || mocksToday > 0 ? (
-          <div className="mb-5 rounded-2xl border border-border bg-card p-3.5">
+          <div className="surface-wash mb-5 p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>
@@ -381,9 +381,9 @@ export function HomeScreen() {
             {/* Flashcards: link only, no generator. */}
             <button
               onClick={() => navigate("flashcards")}
-              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-4 text-left md:mt-0"
+              className="surface-key-card mt-5 flex w-full items-center gap-3 p-4 text-left md:mt-0"
             >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
                 <Layers className="h-4.5 w-4.5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -413,9 +413,9 @@ function HomeRowLink({ label, onClick }: { label: string; onClick: () => void })
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-xl border border-[#E4DCC8] bg-white p-3.5 text-left"
+      className="surface-list-row flex w-full items-center gap-2 p-3.5 text-left"
     >
-      <span className="min-w-0 flex-1 text-sm font-medium text-[#1B2A4A]">{label}</span>
+      <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{label}</span>
       <ChevronRight className="h-4 w-4 shrink-0 text-[#B86E0A]" />
     </button>
   );
@@ -433,9 +433,9 @@ function QuickLink({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-left"
+      className="surface-list-row flex items-center gap-2 p-3.5 text-left"
     >
-      <span className="shrink-0 text-primary">{icon}</span>
+      <span className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">{icon}</span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </button>
@@ -450,9 +450,9 @@ function CgpaStatusCard() {
   return (
     <button
       onClick={() => navigate("cgpa")}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left"
+      className="surface-list-row flex w-full items-center gap-3 p-4 text-left"
     >
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+      <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
         <GraduationCap className="h-4.5 w-4.5" />
       </div>
       <div className="min-w-0 flex-1">

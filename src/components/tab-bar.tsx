@@ -63,7 +63,7 @@ export function TopNavBar() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 z-40 hidden border-b border-[#E4DCC8] bg-[#F7F3EA] md:block"
+      className="sticky top-0 z-40 hidden border-b border-border bg-background md:block"
     >
       <div className="mx-auto flex w-full max-w-[60rem] items-center gap-6 px-6 py-3">
         <button
@@ -88,7 +88,7 @@ export function TopNavBar() {
                 aria-current={on ? "page" : undefined}
                 className={cn(
                   "relative flex flex-col items-center rounded-lg px-3 py-2 text-sm transition",
-                  on ? "font-semibold text-[#B86E0A]" : "font-medium text-[#8A8494] hover:text-[#1B2A4A]",
+                  on ? "font-semibold text-[#B86E0A]" : "font-medium text-muted-foreground hover:text-foreground",
                 )}
               >
                 <span className="flex items-center gap-1.5">
@@ -120,7 +120,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E4DCC8] bg-[#F7F3EA] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background md:hidden"
     >
       <div className="mx-auto flex max-w-md items-stretch">
         {TABS.map((t) => {
@@ -133,7 +133,7 @@ export function BottomTabBar() {
               aria-current={on ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 px-1 pb-2.5 pt-2.5 transition",
-                on ? "text-[#B86E0A]" : "text-[#8A8494] hover:text-[#1B2A4A]",
+                on ? "text-[#B86E0A]" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <t.icon className={cn("h-5 w-5", on && "stroke-[2.5]")} />
