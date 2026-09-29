@@ -44,17 +44,13 @@ function parseEnv(raw) {
   return out;
 }
 
-function mask(value) {
-  if (!value) return '(empty)';
-  return `${value.slice(0, 8)}…(${value.length} chars)`;
+function mask() {
+  return '(redacted)';
 }
 
-if (!existsSync(ENV_PATH)) {
-  console.error('✖ No .env found. Copy .env.example to .env and fill it in.');
-  process.exit(1);
-}
-
-const env = parseEnv(readFileSync(ENV_PATH, 'utf8'));
+const env = existsSync(ENV_PATH)
+  ? parseEnv(readFileSync(ENV_PATH, 'utf8'))
+  : process.env;
 
 // 1. required keys present and non-placeholder
 for (const key of REQUIRED) {
@@ -80,18 +76,18 @@ for (const key of ['SUPABASE_URL', 'VITE_SUPABASE_URL']) {
   if (!url) continue;
   const match = /^https:\/\/([a-z0-9]{20})\.supabase\.co\/?$/.exec(url);
   if (!match) {
-    errors.push(`${key} must look like https://<project-ref>.supabase.co (got "${url}").`);
+    errors.push(`${key} must look like https://<project-ref>.supabase.co.`);
     continue;
   }
   if (ref && match[1] !== ref) {
     errors.push(
-      `${key} points at project "${match[1]}" but SUPABASE_PROJECT_ID is "${ref}" — mismatched project.`,
+      `${key} does not match SUPABASE_PROJECT_ID.`,
     );
   }
 }
 
 if (ref && !/^[a-z0-9]{20}$/.test(ref)) {
-  errors.push(`SUPABASE_PROJECT_ID "${ref}" is not a valid 20-character project ref.`);
+  errors.push('SUPABASE_PROJECT_ID is not a valid 20-character project ref.');
 }
 
 // 4. no secret / service-role material anywhere in .env
@@ -143,4 +139,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`✔ Env OK — Supabase project ${ref}, publishable key ${mask(env['SUPABASE_PUBLISHABLE_KEY'])}`);
+console.log('✔ Env OK — required Supabase configuration is present.');
