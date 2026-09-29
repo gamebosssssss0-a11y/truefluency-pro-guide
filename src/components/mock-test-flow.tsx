@@ -40,7 +40,9 @@ export type AIQuestion = {
 
 function useActiveCourse(): UserCourse | undefined {
   const { profile, activeCourseCode } = useProfile();
-  return profile.courses.find((c) => c.code === activeCourseCode);
+  return profile.courses.find((c) =>
+    canonicalCourseCode(c.code) === canonicalCourseCode(activeCourseCode ?? "")
+  );
 }
 
 /* ---------- 1. Generation screen ---------- */
@@ -104,7 +106,11 @@ export function MockGenerationScreen() {
   useEffect(() => {
     // One job at a time. Retry can only start a new job once the previous one
     // has settled, so a retry never stacks on top of a running request.
-    if (!course || fetchedRef.current || inFlightRef.current) return;
+    if (!course) {
+      navigate("mock-tests");
+      return;
+    }
+    if (fetchedRef.current || inFlightRef.current) return;
     fetchedRef.current = true;
     inFlightRef.current = true;
 
@@ -266,6 +272,8 @@ export function MockGenerationScreen() {
     );
   }
 
+
+  if (!course) return <p className="p-5 text-sm text-muted-foreground">Pick a course</p>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -461,7 +469,8 @@ export function MockConfigScreen() {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
   }, []);
 
-  if (!course || !smart || readiness !== "ready") return null;
+  if (!course) return <p className="p-5 text-sm text-muted-foreground">Pick a course</p>;
+  if (!smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
     setCount(smart.questionCount);
