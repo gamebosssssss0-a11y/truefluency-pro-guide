@@ -395,6 +395,10 @@ const APP_VIEWS: AppView[] = [
   "flashcards-review", "add-course", "all-uploads", "attempt-review", "cgpa", "support", "upgrade",
   "edit-identity", "disclaimer-view",
 ];
+export function isAppView(candidate: string): candidate is AppView {
+  return APP_VIEWS.includes(candidate as AppView);
+}
+
 function readAppLocation() {
   const params = new URLSearchParams(window.location.search);
   const candidate = params.get("view") as AppView | null;

@@ -1,10 +1,10 @@
 /**
  * Chatbot tab — wired to the /chat backend endpoint (chat.py on Render).
- * Sends the student's message, shows the real AI reply. Each course chip
- * Each course chip opens its own persistent, account-tied thread.
+ * Sends the student's message and shows the real AI reply. Each course chip
+ * opens its own persistent, account-tied thread.
  * Cached messages paint immediately while the selected course revalidates.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Camera, Image as ImageIcon, Paperclip, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -13,7 +13,7 @@ import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
 import { getCourseThread, sendChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
-import type { AppView } from "@/lib/profile-store";
+import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -78,7 +78,6 @@ function speechSupported() {
 }
 
 export function ChatbotScreen() {
-export function ChatbotScreen() {
   const { profile, activeCourseCode, navigate } = useProfile();
   const { access } = useEntitlement();
 
@@ -92,6 +91,9 @@ export function ChatbotScreen() {
   const clearedThreads = useRef(new Set<string>());
   const historyLoaded = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const imageUrls = useRef(new Set<string>());
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -201,7 +203,10 @@ export function ChatbotScreen() {
         messages: items,
       }));
     })).then((rows) => {
-      if (alive) { setHistoryRows(rows.flat()); historyLoaded.current = true; }
+      if (alive) {
+        setHistoryRows(rows.flat());
+        historyLoaded.current = true;
+      }
     }).catch((error) => {
       if (alive) {
         const message = error instanceof Error ? error.message : "Couldn't load chat history.";
@@ -213,6 +218,22 @@ export function ChatbotScreen() {
     });
     return () => { alive = false; };
   }, [historyOpen, profile.courses]);
+
+  useEffect(() => {
+    const currentUrls = new Set(messages.flatMap((message) => message.imageUrl ? [message.imageUrl] : []));
+    for (const url of imageUrls.current) {
+      if (!currentUrls.has(url)) {
+        URL.revokeObjectURL(url);
+        imageUrls.current.delete(url);
+      }
+    }
+    for (const url of currentUrls) imageUrls.current.add(url);
+  }, [messages]);
+
+  useEffect(() => () => {
+    for (const url of imageUrls.current) URL.revokeObjectURL(url);
+    imageUrls.current.clear();
+  }, []);
 
   useEffect(() => {
     if (!speechSupported()) { setSpeechAvailable(false); return; }
@@ -256,6 +277,7 @@ export function ChatbotScreen() {
     }
 
     const fileToSend = photoFile;
+    const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : undefined;
     setDraft("");
     setPhotoFile(null);
     setPhotoName(null);
@@ -265,7 +287,7 @@ export function ChatbotScreen() {
         from: "student" as const,
         text,
         createdAt: new Date().toISOString(),
-        imageUrl: fileToSend ? URL.createObjectURL(fileToSend) : undefined,
+        imageUrl: previewUrl,
       }];
       persistCache(selected, next);
       return next;
@@ -285,7 +307,7 @@ export function ChatbotScreen() {
 
       const modePrefix: Record<Mode, string> = {
         Explain: "Explain from my notes. ",
-        "Quiz me": "Ask me one question from my notes, then wait for your answer. Do not give the answer yet. ",
+        "Quiz me": "Ask me one question from my notes, then wait for my answer. Do not give the answer yet. ",
         "Work a problem": "Work this as steps from my notes. ",
       };
       const { reply, moderated, actions, saved } = await sendChatMessage(
@@ -418,6 +440,8 @@ export function ChatbotScreen() {
           <div className="flex gap-2">
             <button type="button" onClick={() => {
               const key = canonicalCourseCode(selected);
+              loadToken.current += 1;
+              setIsLoadingThread(false);
               const empty: Message[] = [];
               clearedThreads.current.add(key);
               persistCache(key, empty);
@@ -467,7 +491,7 @@ export function ChatbotScreen() {
                     key={q}
                     type="button"
                     onClick={() => send(q)}
-                    disabled={isSending}
+                    disabled={isSending || isLoadingThread}
                     className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-navy transition hover:border-amber/60 disabled:opacity-60"
                   >
                     {q}
@@ -511,7 +535,9 @@ export function ChatbotScreen() {
                             <button
                               key={a.key}
                               type="button"
-                              onClick={() => navigate(a.view as AppView, { courseCode: selected })}
+                              onClick={() => {
+                                if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
+                              }}
                               className="rounded-full border border-amber/60 bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber transition hover:bg-amber/20"
                             >
                               {a.label} →
@@ -528,11 +554,10 @@ export function ChatbotScreen() {
                             {speakingId === m.id ? <><VolumeX className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Read aloud</>}
                           </button>
                         ) : null}
-                        <span className="text-muted-foreground">Tokens for this reply connect when metering is live.</span>
-                        <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-navy">
+                        <span className="text-muted-foreground">Token use connects when metering is live.</span>
+                        <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1 font-medium text-navy">
                           <Share2 className="h-3.5 w-3.5" /> Share
                         </button>
-                        <span className="w-full text-muted-foreground">Link sharing for replies comes later.</span>
                       </div>
                     </div>
                   </div>
@@ -553,8 +578,8 @@ export function ChatbotScreen() {
                   <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F7F3EA]">
                     <LogoMark className="sonic-mark-in h-8 w-8 rounded-md" />
                     <span className="sonic-flare sonic-flare-ambient left-1/2 top-1/2" />
-                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1400ms", animationDelay: "250ms" } as React.CSSProperties} />
-                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1400ms", animationDelay: "500ms" } as React.CSSProperties} />
+                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1400ms", animationDelay: "250ms" } as CSSProperties} />
+                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1400ms", animationDelay: "500ms" } as CSSProperties} />
                   </span>
                   <span>Working from your notes…</span>
                 </div>
@@ -568,11 +593,31 @@ export function ChatbotScreen() {
 
         {/* Composer — sits clear of the bottom tab bar */}
         <div className="mt-4 mb-3">
-          <div className="mb-2 flex items-center gap-2">
-            <label htmlFor="chat-mode" className="text-xs font-medium text-muted-foreground">Reply style</label>
-            <select id="chat-mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)} className="h-9 rounded-full border border-border bg-white px-3 text-xs font-medium text-navy">
-              {MODES.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
+          <div className="relative mb-2">
+            <button
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={modeMenuOpen}
+              onClick={() => setModeMenuOpen((open) => !open)}
+              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-navy"
+            >
+              {mode} ▾
+            </button>
+            {modeMenuOpen ? (
+              <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-white p-1 shadow-lg">
+                {MODES.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMode(item); setModeMenuOpen(false); }}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-navy hover:bg-sand"
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           {photoName ? (
             <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-navy">
@@ -677,6 +722,31 @@ export function ChatbotScreen() {
               ))}
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+      <Sheet open={shareOpen} onOpenChange={setShareOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl bg-chat-card text-chat-foreground">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-chat-foreground">Share reply</SheetTitle>
+            <SheetDescription>Share this reply as a link. The rest of the chat stays private.</SheetDescription>
+          </SheetHeader>
+          <fieldset disabled className="mt-4 space-y-3 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="radio" name="reply-visibility" value="public" disabled />
+              Public
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="reply-visibility" value="private" disabled />
+              Only me
+            </label>
+          </fieldset>
+          <button type="button" disabled className="mt-4 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-cream opacity-50">
+            Copy link
+          </button>
+          <p className="mt-3 text-center text-xs text-muted-foreground">Reply links connect when sharing is live.</p>
+          <button type="button" onClick={() => setShareOpen(false)} className="mt-3 w-full rounded-xl border border-border py-3 text-sm font-semibold">
+            Cancel
+          </button>
         </SheetContent>
       </Sheet>
       <Sheet open={attachOpen} onOpenChange={setAttachOpen}>
