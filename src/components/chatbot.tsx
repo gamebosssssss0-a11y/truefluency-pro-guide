@@ -11,7 +11,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, sendChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, startNewChatThread, sendChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
@@ -88,7 +88,6 @@ export function ChatbotScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
-  const clearedThreads = useRef(new Set<string>());
   const historyLoaded = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -148,10 +147,6 @@ export function ChatbotScreen() {
     const cached = threadCache.current.get(key);
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
-    if (clearedThreads.current.has(key)) {
-      setIsLoadingThread(false);
-      return () => { alive = false; };
-    }
     void getCourseThread(key).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
       const painted = toUiMessages(thread);
@@ -187,7 +182,7 @@ export function ChatbotScreen() {
     setHistoryError(null);
     setHistoryLoading(true);
     void Promise.all(courseOptions.map(async (course) => {
-      const raw = (await getCourseThread(course)).messages;
+      const raw = (await getCourseHistory(course)).messages;
       if (!threadCache.current.has(course)) persistCache(course, toUiMessages(raw));
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
@@ -332,7 +327,6 @@ export function ChatbotScreen() {
           }]),
         ];
         persistCache(selected, next);
-        clearedThreads.current.delete(canonicalCourseCode(selected));
         return next;
       });
       if (!moderated) {
@@ -438,18 +432,30 @@ export function ChatbotScreen() {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-foreground">Course</p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => {
-              const key = canonicalCourseCode(selected);
-              loadToken.current += 1;
-              setIsLoadingThread(false);
-              const empty: Message[] = [];
-              clearedThreads.current.add(key);
-              persistCache(key, empty);
-              setMessages(empty);
-              setDraft("");
-              setPhotoFile(null);
-              setPhotoName(null);
-            }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy">New chat</button>
+            <button
+              type="button"
+              disabled={isSending || isLoadingThread}
+              onClick={async () => {
+                const key = canonicalCourseCode(selected);
+                const previous = messages;
+                loadToken.current += 1; // supersede any in-flight load for this course
+                setIsLoadingThread(false);
+                setMessages([]); // optimistic — reverted below if the archive call fails
+                setDraft("");
+                setPhotoFile(null);
+                setPhotoName(null);
+                try {
+                  await startNewChatThread(key);
+                  persistCache(key, []); // now genuinely correct: the server thread is really empty
+                } catch (error) {
+                  setMessages(previous); // the old thread is still live server-side — don't hide it on a failed archive
+                  toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
+                }
+              }}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-60"
+            >
+              New chat
+            </button>
             <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy">History</button>
           </div>
         </div>
@@ -709,11 +715,12 @@ export function ChatbotScreen() {
             <div className="mt-4 space-y-2">
               {historyRows.map((row, index) => (
                 <button key={row.course + row.date + index} type="button" onClick={() => {
-                  const rowMessages = toUiMessages(row.messages);
-                  persistCache(row.course, rowMessages);
-                  clearedThreads.current.delete(canonicalCourseCode(row.course));
+                  // Jumps to that course's live chat (switching courses
+                  // re-fetches from the server, which will immediately
+                  // overwrite anything set here) rather than pretending to
+                  // show a frozen snapshot of one past day that would just
+                  // flash and revert.
                   setSelected(row.course);
-                  setMessages(rowMessages);
                   setHistoryOpen(false);
                 }} className="block w-full rounded-xl border border-border border-l-4 border-l-navy bg-white p-3 text-left">
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
