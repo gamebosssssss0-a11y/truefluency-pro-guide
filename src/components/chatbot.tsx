@@ -527,13 +527,13 @@ export function ChatbotScreen() {
                     </div>
                   </div>
                 ) : m.from === "assistant" ? (
-                  <div key={m.id} className="mr-auto max-w-[90%]">
+                  <div key={m.id} className="w-full text-base leading-6 text-navy">
                     {m.courseTag ? (
                       <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-white p-4 text-sm text-navy">
+                    <div>
                       <RichText>{m.text}</RichText>
                       {m.actions && m.actions.length > 0 ? (
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -551,7 +551,7 @@ export function ChatbotScreen() {
                           ))}
                         </div>
                       ) : null}
-                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
+                      <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
                         <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-navy">
                           <Copy className="h-3.5 w-3.5" /> Copy
                         </button>
@@ -570,7 +570,7 @@ export function ChatbotScreen() {
                 ) : (
                   <div
                     key={m.id}
-                    className="mr-auto max-w-[90%] rounded-2xl border border-border bg-sand p-4"
+                    className="ml-auto max-w-[85%] rounded-2xl border border-border bg-sand p-4"
                   >
                     <p className="font-display text-base font-semibold text-foreground">
                       {m.text.split("|")[0]}
@@ -580,14 +580,14 @@ export function ChatbotScreen() {
                 ),
               )}
               {isSending ? (
-                <div className="mr-auto flex items-center gap-3 text-sm text-navy">
+                <div className="flex w-full items-center gap-3 text-sm text-navy">
                   <span className="relative grid h-8 w-8 shrink-0 place-items-center">
                     <LogoMark className="sonic-mark-loop h-8 w-8" />
                     <span className="sonic-flare-loop left-1/2 top-1/2" />
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1600ms" } as CSSProperties} />
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1600ms" } as CSSProperties} />
                   </span>
-                  <span>Thinking</span>
+                  <span>Working from your notes…</span>
                 </div>
               ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
