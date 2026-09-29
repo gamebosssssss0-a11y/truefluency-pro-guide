@@ -63,33 +63,33 @@
   /* Brand palette: deep academic ink, warm amber, cream, sand */
   --cream: #F7F3EA;
   --sand: #F3E6C8;
-  --ink: oklch(0.22 0.045 260);
+  --ink: #1B2A4A;
 
   --background: #F7F3EA;
-  --foreground: oklch(0.22 0.045 260);
+  --foreground: #1B2A4A;
 
   --card: #FFFFFF;
-  --card-foreground: oklch(0.22 0.045 260);
+  --card-foreground: #1B2A4A;
   --popover: #FFFFFF;
-  --popover-foreground: oklch(0.22 0.045 260);
+  --popover-foreground: #1B2A4A;
 
-  --primary: oklch(0.28 0.06 260);
+  --primary: #1B2A4A;
   --primary-foreground: #F7F3EA;
 
   --secondary: oklch(0.94 0.02 85);
-  --secondary-foreground: oklch(0.28 0.06 260);
+  --secondary-foreground: #1B2A4A;
 
   --muted: oklch(0.94 0.015 85);
-  --muted-foreground: oklch(0.5 0.02 260);
+  --muted-foreground: #5C5C70;
 
   --accent: #B86E0A;
-  --accent-foreground: oklch(0.22 0.045 260);
+  --accent-foreground: #1B2A4A;
 
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: #F7F3EA;
 
   --success: oklch(0.62 0.14 150);
-  --warning: oklch(0.75 0.16 70);
+  --warning: #B86E0A;
 
   --border: #E4DCC8;
   --input: oklch(0.9 0.015 85);
@@ -112,31 +112,31 @@
 
 }
 
-/* Dark: near-black ink base (#0B0B14), raised indigo surfaces, amber accent. */
+/* Dark: navy page, raised navy cards, slate wash, and the same amber accent. */
 .dark {
-  --background: #0B0B14;
-  --foreground: #F5F3EE;
-  --card: #141420;
-  --card-foreground: #F5F3EE;
-  --popover: #141420;
-  --popover-foreground: #F5F3EE;
-  --primary: #6C63FF;
-  --primary-foreground: #0B0B14;
-  --secondary: #1C1C2B;
-  --secondary-foreground: #F5F3EE;
-  --muted: #1C1C2B;
-  --muted-foreground: #A2A0B8;
-  --accent: #F5A524;
-  --accent-foreground: #0B0B14;
+  --background: #1B2A4A;
+  --foreground: #F7F3EA;
+  --card: #243656;
+  --card-foreground: #F7F3EA;
+  --popover: #243656;
+  --popover-foreground: #F7F3EA;
+  --primary: #B86E0A;
+  --primary-foreground: #1B2A4A;
+  --secondary: #2A3A58;
+  --secondary-foreground: #F7F3EA;
+  --muted: #2A3A58;
+  --muted-foreground: #D2D6E0;
+  --accent: #B86E0A;
+  --accent-foreground: #1B2A4A;
   --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: #F5F3EE;
+  --destructive-foreground: #F7F3EA;
   --success: oklch(0.7 0.15 150);
-  --warning: #F5A524;
-  --border: #26263A;
-  --input: #2E2E44;
-  --ring: #F5A524;
-  --cream: #F5F3EE;
-  --sand: #3D3729;
+  --warning: #B86E0A;
+  --border: #43526B;
+  --input: #2A3A58;
+  --ring: #B86E0A;
+  --cream: #F7F3EA;
+  --sand: #2A3A58;
   --pill-text-l: 82%;
   --chat-page: #1B2A4A;
   --chat-card: #243656;
@@ -179,17 +179,55 @@
 }
 
 @layer utilities {
+  .surface-key-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid #1B2A4A;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .surface-list-row {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .surface-list-row-dashed {
+    background-color: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .surface-wash {
+    background-color: var(--sand);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--navy);
+    box-shadow: none;
+  }
+
+  .surface-icon-well {
+    background-color: #F3E6C8;
+    color: #1B2A4A;
+  }
+
+  .dark .surface-wash {
+    color: var(--foreground);
+  }
+
   /* High-contrast quote card: dark ink panel, glowing amber edge. */
   .quote-card {
-    background: color-mix(in oklab, var(--primary) 94%, black);
+    background: #1B2A4A;
     border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
-    box-shadow: 0 0 26px color-mix(in oklab, var(--accent) 26%, transparent),
-      inset 0 0 22px color-mix(in oklab, var(--accent) 8%, transparent);
+    box-shadow: none;
   }
 
   .quote-text {
-    color: oklch(0.985 0.004 90);
-    text-shadow: 0 1px 12px color-mix(in oklab, var(--accent) 22%, transparent);
+    color: #F7F3EA;
+    text-shadow: none;
   }
 
   .quote-card-cycle {

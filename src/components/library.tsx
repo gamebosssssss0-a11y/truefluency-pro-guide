@@ -428,7 +428,7 @@ export function LibraryScreen() {
                 <button key={code} onClick={() => setOpenFolder(code)} className="w-full text-left">
                   <Card>
                     <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-foreground">
+                      <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
                         <FolderOpen className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">

@@ -416,13 +416,13 @@ export function ChatbotScreen() {
   const placeholderCourse = displayCode(selected);
 
   return (
-    <div className="min-h-screen bg-[#F7F3EA] text-[#1B2A4A]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[640px] flex-col px-4 pb-24 pt-4 sm:px-5 md:pb-8 md:pt-6">
         {/* Header card: white, cream border, 4px navy left edge */}
-        <div className="mb-3 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-white p-3.5">
+        <div className="surface-key-card mb-3 flex items-center gap-3 p-3.5">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
-            <h1 className="font-display text-xl font-semibold leading-tight text-navy">
+            <h1 className="font-display text-xl font-semibold leading-tight text-foreground">
               Study Chat · {headerLabel}
             </h1>
             <p className="text-xs text-muted-foreground">
@@ -430,13 +430,13 @@ export function ChatbotScreen() {
             </p>
           </div>
           {capText ? (
-            <span className="shrink-0 rounded-full bg-sand px-2.5 py-1 text-xs font-medium text-navy">
+            <span className="shrink-0 rounded-full bg-sand px-2.5 py-1 text-xs font-medium text-foreground">
               {capText}
             </span>
           ) : null}
         </div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-navy">Course</p>
+          <p className="text-sm font-semibold text-foreground">Course</p>
           <div className="flex gap-2">
             <button type="button" onClick={() => {
               const key = canonicalCourseCode(selected);
@@ -465,7 +465,7 @@ export function ChatbotScreen() {
                   "rounded-full border px-3 py-1 text-xs font-medium transition " +
                   (active
                     ? "border-amber bg-amber text-cream"
-                    : "border-border bg-white text-navy hover:border-amber/60")
+                    : "border-border bg-card text-foreground hover:border-amber/60")
                 }
               >
                 {displayCode(code)}
@@ -509,7 +509,7 @@ export function ChatbotScreen() {
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-[#F3E6C8] p-3.5 text-sm text-[#1B2A4A]">
+                    <div className="rounded-2xl border border-border bg-sand p-3.5 text-sm text-foreground">
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
@@ -564,9 +564,9 @@ export function ChatbotScreen() {
                 ) : (
                   <div
                     key={m.id}
-                    className="mr-auto max-w-[90%] rounded-2xl border border-border bg-sand/40 p-4"
+                    className="mr-auto max-w-[90%] rounded-2xl border border-border bg-sand p-4"
                   >
-                    <p className="font-display text-base font-semibold text-navy">
+                    <p className="font-display text-base font-semibold text-foreground">
                       {m.text.split("|")[0]}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">{m.text.split("|")[1]}</p>
@@ -604,7 +604,7 @@ export function ChatbotScreen() {
               {mode} ▾
             </button>
             {modeMenuOpen ? (
-              <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-white p-1 shadow-lg">
+              <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-white p-1">
                 {MODES.map((item) => (
                   <button
                     key={item}
@@ -638,7 +638,7 @@ export function ChatbotScreen() {
             </div>
           ) : null}
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setAttachOpen(true)} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-chat-card text-chat-foreground">
+            <button type="button" onClick={() => setAttachOpen(true)} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-white text-navy">
               <Paperclip className="h-5 w-5" />
             </button>
             <input
@@ -676,7 +676,7 @@ export function ChatbotScreen() {
               }}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
-              className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
+              className="h-12 min-w-0 flex-1 rounded-full border border-border bg-white px-4 text-sm text-navy outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
             />
             <button
               type="button"

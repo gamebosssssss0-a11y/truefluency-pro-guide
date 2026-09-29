@@ -75,12 +75,12 @@ function AccountPhotoCard() {
   };
 
   return (
-    <div className="mt-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div className="surface-list-row mt-2 p-4">
       <div className="flex items-center gap-3">
         {url ? (
           <img src={url} alt="Your photo" className="h-14 w-14 rounded-full object-cover" />
         ) : (
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-secondary font-display text-lg font-semibold text-primary">
+          <div className="surface-icon-well grid h-14 w-14 shrink-0 place-items-center rounded-full font-display text-lg font-semibold">
             {letter}
           </div>
         )}
@@ -227,24 +227,28 @@ export function AccountScreen() {
       label: "CGPA calculator",
       blurb: "Enter real scores, get your semester GPA and cumulative CGPA.",
       icon: Calculator,
+      surface: "key",
       onClick: () => navigate("cgpa"),
     },
     {
       label: "CGPA goal setter",
       blurb: "Set a target CGPA and get the grades plus daily plan it needs.",
       icon: Target,
+      surface: "row",
       onClick: () => navigate("cgpa-goal"),
     },
     {
       label: "Test history",
       blurb: "Every attempt, with question-by-question review.",
       icon: ClipboardList,
+      surface: "row",
       onClick: () => navigate("test-history"),
     },
     {
       label: "Show me around again",
       blurb: "Replay the short four-step tour of the app on Home.",
       icon: Compass,
+      surface: "row",
       onClick: () => {
         update({ tourSeen: false });
         navigate("home");
@@ -254,12 +258,14 @@ export function AccountScreen() {
       label: "Support",
       blurb: "Common questions, and how to reach us directly.",
       icon: LifeBuoy,
+      surface: "key",
       onClick: () => navigate("support"),
     },
     {
       label: "Flashcards",
       blurb: "Quick recall practice from your own uploads.",
       icon: Layers,
+      surface: "key",
       onClick: () => navigate("flashcards"),
     },
   ];
@@ -278,14 +284,14 @@ export function AccountScreen() {
           Your profile, your tools, and your data.
         </p>
 
-        <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="surface-key-card mt-5 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-foreground">Your plan</span>
             <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
               {planLabel}
             </span>
           </div>
-          <p className="mt-2 break-words text-xs leading-relaxed text-muted-foreground">{NO_PAYMENT_YET} {PRICE_LINE}</p>
+          <p className="mt-2 break-words text-xs leading-relaxed text-muted-foreground">{PRICE_LINE}</p>
           <button
             type="button"
             onClick={() => navigate("upgrade")}
@@ -295,10 +301,9 @@ export function AccountScreen() {
           </button>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="surface-list-row mt-4 p-4">
           <h2 className="text-sm font-semibold text-foreground">Payment history</h2>
           <p className="mt-2 text-sm text-muted-foreground">{NO_PAYMENT_YET}</p>
-          <p className="mt-1 break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
         </div>
 
         <AccountPhotoCard />
@@ -307,9 +312,9 @@ export function AccountScreen() {
           type="button"
           onClick={() => setExtensionOpen(true)}
           aria-disabled={!extensionAvailable}
-          className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-4 text-left"
+          className="surface-list-row-dashed mt-2 flex w-full items-center gap-3 p-4 text-left"
         >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+          <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
             <Monitor className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -338,9 +343,9 @@ export function AccountScreen() {
             <button
               key={t.label}
               onClick={t.onClick}
-              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+              className={(t.surface === "key" ? "surface-key-card" : "surface-list-row") + " flex w-full items-center gap-3 p-4 text-left transition hover:border-accent/50"}
             >
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+              <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
                 <t.icon className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -358,9 +363,9 @@ export function AccountScreen() {
         <div className="space-y-2">
           <button
             onClick={() => navigate("all-uploads")}
-            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+            className="surface-list-row flex w-full items-center gap-3 p-4 text-left transition hover:border-accent/50"
           >
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
               <FolderOpen className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
@@ -373,9 +378,9 @@ export function AccountScreen() {
           </button>
           <button
             onClick={() => navigate("add-course")}
-            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+            className="surface-list-row flex w-full items-center gap-3 p-4 text-left transition hover:border-accent/50"
           >
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
               <PlusCircle className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
@@ -394,9 +399,9 @@ export function AccountScreen() {
         <div className="space-y-2">
           <button
             onClick={() => navigate("edit-identity")}
-            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
+            className="surface-wash flex w-full items-center gap-3 p-3.5 text-left transition hover:border-accent/50"
           >
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
               <User className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
@@ -427,8 +432,8 @@ export function AccountScreen() {
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Appearance
         </h2>
-        <div className="flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5 shadow-sm">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+        <div className="surface-key-card flex items-center gap-3 p-3.5">
+          <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
             {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </div>
           <div className="min-w-0 flex-1">
@@ -468,9 +473,9 @@ export function AccountScreen() {
         </h2>
         <button
           onClick={() => navigate("disclaimer-view")}
-          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent/50"
+          className="surface-list-row flex w-full items-center gap-3 p-4 text-left transition hover:border-accent/50"
         >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
+          <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
             <ShieldAlert className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -599,8 +604,8 @@ export const SettingsScreen = AccountScreen;
 
 function Row({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-[#1B2A4A] bg-card p-3.5 shadow-sm">
-      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+    <div className="surface-key-card flex items-center gap-3 p-3.5">
+      <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
