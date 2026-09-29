@@ -217,6 +217,7 @@ export function PdfViewer({
   const taskRef = useRef<LoadingTask | null>(null);
   const pageNodes = useRef(new Map<number, HTMLDivElement>());
   const pageRef = useRef(1);
+  const lastPageUpdateRef = useRef(0);
 
   pageRef.current = page;
 
