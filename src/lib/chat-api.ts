@@ -134,3 +134,42 @@ export async function getCourseThread(
   const data = (await res.json()) as { conversation_id: string; messages: ChatMessage[] };
   return { conversationId: data.conversation_id, messages: data.messages ?? [] };
 }
+
+/**
+ * Every message ever sent in a course — the active thread AND anything
+ * archived by startNewChatThread — for the History sheet. Distinct from
+ * getCourseThread, which shows only the live active thread.
+ */
+export async function getCourseHistory(
+  courseCode: string,
+): Promise<{ messages: ChatMessage[] }> {
+  const url = `${base()}/chat/history/${encodeURIComponent(courseCode)}`;
+  const auth = await authHeader();
+  const res = await fetch(url, { method: "GET", headers: auth });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(readErrorDetail(text, res.status));
+  }
+  const data = (await res.json()) as { messages: ChatMessage[] };
+  return { messages: data.messages ?? [] };
+}
+
+/**
+ * The real "New chat": retires the course's current active conversation
+ * server-side so the next message starts a genuinely fresh thread, instead
+ * of only resetting local UI state while the old thread kept growing
+ * underneath it unseen.
+ */
+export async function startNewChatThread(courseCode: string): Promise<void> {
+  const url = `${base()}/chat/new-thread`;
+  const auth = await authHeader();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...auth },
+    body: JSON.stringify({ course_code: courseCode }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(readErrorDetail(text, res.status));
+  }
+}
