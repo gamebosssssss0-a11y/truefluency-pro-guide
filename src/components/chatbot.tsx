@@ -580,14 +580,14 @@ export function ChatbotScreen() {
                 ),
               )}
               {isSending ? (
-                <div className="mr-auto flex max-w-[90%] items-center gap-3 rounded-2xl border border-border bg-white p-3 text-sm text-muted-foreground">
-                  <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F7F3EA]">
-                    <LogoMark className="sonic-mark-in h-8 w-8 rounded-md" />
-                    <span className="sonic-flare sonic-flare-ambient left-1/2 top-1/2" />
-                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1400ms", animationDelay: "250ms" } as CSSProperties} />
-                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1400ms", animationDelay: "500ms" } as CSSProperties} />
+                <div className="mr-auto flex items-center gap-3 text-sm text-navy">
+                  <span className="relative grid h-8 w-8 shrink-0 place-items-center">
+                    <LogoMark className="sonic-mark-loop h-8 w-8" />
+                    <span className="sonic-flare-loop left-1/2 top-1/2" />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1600ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1600ms" } as CSSProperties} />
                   </span>
-                  <span>Working from your notes…</span>
+                  <span>Thinking</span>
                 </div>
               ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
