@@ -58,6 +58,10 @@ function wholeFormula(input: string): { tex: string; display: boolean } | null {
     const needsDisplay = /\\(?:frac|dfrac|tfrac|sqrt)\b/.test(inline[1]) || inline[1].includes("√");
     return { tex: inline[1], display: needsDisplay };
   }
+  if (/\\(?:frac|dfrac|tfrac|sqrt|sum|int|cdot|times|mathrm|mathbf)\b/.test(trimmed)
+      && /^[A-Za-z0-9\s{}()[\]_=+*/.,^\\-]+$/.test(trimmed)) {
+    return { tex: trimmed, display: true };
+  }
   return null;
 }
 
