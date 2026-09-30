@@ -40,6 +40,11 @@ export type CourseMaterial = {
     | "scanned_pdf";
   extraction_error: string | null;
   created_at: string;
+  /** Full-document scan output (up to 500 pages/slides) — null until a
+   * student triggers it via MaterialRow's "Scan the rest" action. See
+   * main.py's /analyze/start. Upload-time extraction only covers the first
+   * ~70 pages (extracted_content, capped at ~20,000 characters). */
+  full_text_index?: string | null;
 };
 
 /** Minimum characters of pasted text that can produce useful predictions. */
