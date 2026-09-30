@@ -378,3 +378,43 @@ export async function deleteAccount(): Promise<{
 }> {
   return postJson("/account/delete", {}, 30_000);
 }
+
+/**
+ * Detected topic candidate from a full-document scan — see AnalyzeStartRequest
+ * / /analyze/start on the backend. start/end are page (pdf), slide (pptx), or
+ * ~15-paragraph block (docx) numbers, 1-indexed.
+ */
+export type AnalyzedTopic = { topic: string; start: number; end: number };
+
+/**
+ * Kicks off the backend's full-document scan for one material (up to 500
+ * pages/slides, reading everything the quick upload-time extraction didn't
+ * have time for — see main.py's /analyze/start), then polls to completion.
+ * Same job/poll shape as runMockGeneration above, mirrored rather than
+ * shared since the two poll different status shapes.
+ */
+export async function analyzeMaterial(
+  materialId: string,
+  options?: { maxWaitMs?: number },
+): Promise<{ topics: AnalyzedTopic[] }> {
+  const started = await postJson<{ job_id: string; status: string }>("/analyze/start", {
+    material_id: materialId,
+  });
+
+  const maxWaitMs = options?.maxWaitMs ?? 4 * 60_000; // 4 minutes — 500 pages of local parsing, no AI call
+  const pollIntervalMs = 1_500;
+  const deadline = Date.now() + maxWaitMs;
+
+  let data: { status: string; topics?: AnalyzedTopic[]; error?: string } | null = null;
+  while (Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    try {
+      data = await getJson(`/analyze/status/${started.job_id}`);
+    } catch {
+      continue; // a single poll blip shouldn't kill the whole flow
+    }
+    if (data?.status === "completed") return { topics: data.topics ?? [] };
+    if (data?.status === "failed") throw new Error(data.error || "Couldn't finish scanning this file.");
+  }
+  throw new Error("This is taking longer than expected. Try again in a moment.");
+}
