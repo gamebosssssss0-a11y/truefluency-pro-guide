@@ -107,6 +107,7 @@ export function ChatbotScreen() {
   const [speechAvailable, setSpeechAvailable] = useState(false);
   const nextId = useRef(1);
   const loadToken = useRef(0);
+  const hasStartedFreshThisVisit = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -144,10 +145,27 @@ export function ChatbotScreen() {
     let alive = true;
     const token = ++loadToken.current;
     const key = canonicalCourseCode(selected);
-    const cached = threadCache.current.get(key);
+    const isFirstLoadThisVisit = !hasStartedFreshThisVisit.current;
+    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(key);
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
-    void getCourseThread(key).then(({ messages: thread }) => {
+
+    // Opening the chat screen should feel like opening a fresh conversation
+    // — old content stays reachable in History, not sitting here waiting to
+    // reappear. This fires exactly once per visit to this screen (not on
+    // every course switch within the same visit, which would archive real
+    // conversations just for tapping between course chips). archive_conversation
+    // is a safe no-op when there's nothing active yet, so this never errors
+    // out a normal load — best-effort, awaited so the fetch below sees the
+    // fresh thread rather than racing it.
+    const freshStart = hasStartedFreshThisVisit.current
+      ? Promise.resolve()
+      : startNewChatThread(key).catch(() => {
+          /* best-effort — worst case this visit resumes the old thread, same as before */
+        });
+    hasStartedFreshThisVisit.current = true;
+
+    void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
       const painted = toUiMessages(thread);
       persistCache(key, painted);
@@ -527,13 +545,13 @@ export function ChatbotScreen() {
                     </div>
                   </div>
                 ) : m.from === "assistant" ? (
-                  <div key={m.id} className="w-full text-base leading-6 text-navy">
+                  <div key={m.id} className="mr-auto max-w-[90%]">
                     {m.courseTag ? (
                       <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div>
+                    <div className="rounded-2xl border border-border bg-white p-4 text-sm text-navy">
                       <RichText>{m.text}</RichText>
                       {m.actions && m.actions.length > 0 ? (
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -551,7 +569,7 @@ export function ChatbotScreen() {
                           ))}
                         </div>
                       ) : null}
-                      <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
                         <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-navy">
                           <Copy className="h-3.5 w-3.5" /> Copy
                         </button>
@@ -570,7 +588,7 @@ export function ChatbotScreen() {
                 ) : (
                   <div
                     key={m.id}
-                    className="w-full rounded-2xl border border-border bg-sand p-4"
+                    className="mr-auto max-w-[90%] rounded-2xl border border-border bg-sand p-4"
                   >
                     <p className="font-display text-base font-semibold text-foreground">
                       {m.text.split("|")[0]}
@@ -580,12 +598,12 @@ export function ChatbotScreen() {
                 ),
               )}
               {isSending ? (
-                <div className="flex w-full items-center gap-3 text-sm text-navy">
-                  <span className="relative grid h-8 w-8 shrink-0 place-items-center">
-                    <LogoMark className="sonic-mark-loop h-8 w-8" />
-                    <span className="sonic-flare-loop left-1/2 top-1/2" />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1600ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1600ms" } as CSSProperties} />
+                <div className="mr-auto flex max-w-[90%] items-center gap-3 rounded-2xl border border-border bg-white p-3 text-sm text-muted-foreground">
+                  <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F7F3EA]">
+                    <LogoMark className="sonic-mark-in h-8 w-8 rounded-md" />
+                    <span className="sonic-flare sonic-flare-ambient left-1/2 top-1/2" />
+                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1400ms", animationDelay: "250ms" } as CSSProperties} />
+                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1400ms", animationDelay: "500ms" } as CSSProperties} />
                   </span>
                   <span>Working from your notes…</span>
                 </div>
