@@ -69,6 +69,16 @@ function pickRequiredFromProcess() {
 const fileExists = existsSync(ENV_PATH);
 const fileEnv = fileExists ? parseEnv(readFileSync(ENV_PATH, 'utf8')) : {};
 const env = { ...pickRequiredFromProcess(), ...fileEnv };
+const hasAnyRequiredConfig = REQUIRED.some((key) => Boolean(env[key]));
+
+// Builds may run without the ignored local .env file or injected build-time
+// variables. The connected Supabase integration supplies the browser client
+// configuration, while server credentials are provided at runtime.
+if (!fileExists && !hasAnyRequiredConfig) {
+  console.warn('⚠ No local Supabase environment file found; relying on the connected project configuration.');
+  console.log('✔ Env check skipped — no local Supabase configuration was supplied.');
+  process.exit(0);
+}
 
 for (const key of REQUIRED) {
   const value = env[key];
