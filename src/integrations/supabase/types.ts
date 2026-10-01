@@ -43,6 +43,7 @@ export type Database = {
       }
       chat_conversations: {
         Row: {
+          archived_at: string | null
           conversation_id: string
           course_code: string
           created_at: string | null
@@ -50,6 +51,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           conversation_id: string
           course_code: string
           created_at?: string | null
@@ -57,10 +59,35 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           conversation_id?: string
           course_code?: string
           created_at?: string | null
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_flagged_uploads: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          storage_path?: string
           user_id?: string
         }
         Relationships: []
@@ -135,6 +162,7 @@ export type Database = {
           file_name: string
           file_path: string
           file_type: string
+          full_text_index: string | null
           id: string
           is_peer_copy: boolean
           mime_type: string
@@ -155,6 +183,7 @@ export type Database = {
           file_name: string
           file_path: string
           file_type: string
+          full_text_index?: string | null
           id?: string
           is_peer_copy?: boolean
           mime_type: string
@@ -175,6 +204,7 @@ export type Database = {
           file_name?: string
           file_path?: string
           file_type?: string
+          full_text_index?: string | null
           id?: string
           is_peer_copy?: boolean
           mime_type?: string
