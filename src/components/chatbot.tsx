@@ -359,7 +359,6 @@ export function ChatbotScreen() {
           }]),
         ];
         persistCache(course, next);
-        clearedThreads.current.delete(canonicalCourseCode(course));
         return next;
       });
       if (draft.trim() === text) setDraft("");
