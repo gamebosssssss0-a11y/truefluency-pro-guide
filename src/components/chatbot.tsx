@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Paperclip, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
@@ -23,6 +23,23 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 /** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
+
+export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string };
+
+function readPendingPageAttachment(): PageAttachment | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("truefluency-chat-explain-page");
+    if (!raw) return null;
+    sessionStorage.removeItem("truefluency-chat-explain-page");
+    const value = JSON.parse(raw) as Partial<PageAttachment>;
+    if (typeof value.courseCode !== "string" || typeof value.fileName !== "string" ||
+      typeof value.text !== "string" || typeof value.page !== "number") return null;
+    return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000) };
+  } catch {
+    return null;
+  }
+}
 
 type Message = {
   id: number;
@@ -80,14 +97,15 @@ function speechSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-export function ChatbotScreen() {
-  const { profile, activeCourseCode, navigate } = useProfile();
+export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment }: { embedded?: boolean; pageAttachment?: PageAttachment | null } = {}) {
+  const { profile, activeCourseCode, navigate, view } = useProfile();
   const { access } = useEntitlement();
+  const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
 
   const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
     ? canonicalCourseCode(activeCourseCode!)
     : canonicalCourseCode(profile.courses[0]?.code ?? "");
-  const [selected, setSelected] = useState<string>(defaultCourse);
+  const [selected, setSelected] = useState<string>(() => attachedPage?.courseCode ?? defaultCourse);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
@@ -100,7 +118,7 @@ export function ChatbotScreen() {
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => attachedPage ? `Explain page ${attachedPage.page} of ${attachedPage.fileName}.` : "");
   const [isSending, setIsSending] = useState(false);
   const [mode, setMode] = useState<Mode>("Explain");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -110,6 +128,7 @@ export function ChatbotScreen() {
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [speechAvailable, setSpeechAvailable] = useState(false);
   const retryFiles = useRef(new Map<number, File>());
+  const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
   const loadToken = useRef(0);
   const hasStartedFreshThisVisit = useRef(false);
@@ -136,9 +155,19 @@ export function ChatbotScreen() {
     });
   };
 
+  useEffect(() => {
+    if (!suppliedPageAttachment) return;
+    navigate(view, { courseCode: suppliedPageAttachment.courseCode });
+    setAttachedPage(suppliedPageAttachment);
+    setSelected(suppliedPageAttachment.courseCode);
+    setDraft(`Explain page ${suppliedPageAttachment.page} of ${suppliedPageAttachment.fileName}.`);
+  }, [suppliedPageAttachment]);
+
   const selectCourse = (course: string) => {
     const key = canonicalCourseCode(course);
     setSelected(key);
+    navigate(view, { courseCode: key });
+    setAttachedPage(null);
     setMessages(threadCache.current.get(key) ?? []);
     setDraft("");
     setPhotoFile(null);
@@ -284,6 +313,7 @@ export function ChatbotScreen() {
     const course = retry?.course ?? selected;
     const sendMode = retry?.mode ?? mode;
     const fileToSend = retry ? retryFiles.current.get(retry.messageId) ?? null : photoFile;
+    const pageToSend = retry ? retryPageAttachments.current.get(retry.messageId) ?? null : attachedPage;
     if (!course || (!text && !fileToSend)) return;
     if (isSending || isUploadingPhoto) return;
 
@@ -337,8 +367,11 @@ export function ChatbotScreen() {
         "Quiz me": "Ask me one question from my notes, then wait for my answer. Do not give the answer yet. ",
         "Work a problem": "Work this as steps from my notes. ",
       };
+      const pageContext = pageToSend
+        ? `\n\nAttached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
+        : "";
       const { reply, moderated, actions, saved } = await sendChatMessage(
-        modePrefix[sendMode] + text,
+        modePrefix[sendMode] + text + pageContext,
         course,
         sendMode,
         imagePath,
@@ -367,12 +400,15 @@ export function ChatbotScreen() {
         setPhotoName(null);
       }
       retryFiles.current.delete(messageId);
+      retryPageAttachments.current.delete(messageId);
+      if (pageToSend) setAttachedPage(null);
       if (!moderated) {
         try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
     } catch {
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
+      if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
         const next = cur.map((message) => message.id === messageId
           ? { ...message, sendError: true, retryCourse: course, retryMode: sendMode }
@@ -453,8 +489,8 @@ export function ChatbotScreen() {
   const placeholderCourse = displayCode(selected);
 
   return (
-    <div className="study-chat-screen min-h-0 overflow-hidden bg-background text-foreground">
-      <div className="mx-auto flex h-full min-h-0 max-w-[640px] flex-col px-4 pb-2 pt-3 sm:px-5 md:pt-4">
+    <div className={`study-chat-screen min-h-0 overflow-hidden bg-background text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
+      <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
         <div className="mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
@@ -510,26 +546,6 @@ export function ChatbotScreen() {
             </button>
             <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy">History</button>
           </div>
-        </div>
-        <div className="mb-3 flex flex-wrap gap-2">
-          {courseOptions.map((code) => {
-            const active = canonicalCourseCode(selected) === code;
-            return (
-              <button
-                key={code}
-                type="button"
-                onClick={() => selectCourse(code)}
-                className={
-                  "rounded-full border px-3 py-1 text-xs font-medium transition " +
-                  (active
-                    ? "border-amber bg-amber text-cream"
-                    : "border-border bg-card text-foreground hover:border-amber/60")
-                }
-              >
-                {displayCode(code)}
-              </button>
-            );
-          })}
         </div>
         {isLoadingThread ? (
           <p className="mb-2 px-1 text-xs text-muted-foreground">Loading this conversation…</p>
@@ -662,7 +678,7 @@ export function ChatbotScreen() {
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8 } as CSSProperties} />
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65 } as CSSProperties} />
                   </span>
-                  <span>Thinking</span>
+                  <span className="thinking-shimmer font-medium text-navy">Thinking</span>
                 </div>
               ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
@@ -674,6 +690,12 @@ export function ChatbotScreen() {
 
         {/* Composer — sits clear of the bottom tab bar */}
         <div className="mt-2 mb-2 shrink-0">
+          {attachedPage ? (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
+              <span className="min-w-0 flex-1 truncate">Page {attachedPage.page} · {attachedPage.fileName}</span>
+              <button type="button" onClick={() => setAttachedPage(null)} className="shrink-0 underline underline-offset-2">Remove</button>
+            </div>
+          ) : null}
           <div className="relative mb-2">
             <button
               type="button"
@@ -720,7 +742,7 @@ export function ChatbotScreen() {
           ) : null}
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-chat-card text-chat-foreground disabled:opacity-60">
-              <Paperclip className="h-5 w-5" />
+              <Plus className="h-5 w-5" />
             </button>
             <input
               ref={cameraInput}

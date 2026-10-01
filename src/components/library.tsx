@@ -4,7 +4,8 @@
  * library.functions.ts.
  */
 import { ErrorCard } from "@/components/error-card";
-import { PdfViewer, HEAVY_PDF_MESSAGE } from "@/components/pdf-viewer";
+import { PdfViewer } from "@/components/pdf-viewer";
+import { ChatbotScreen } from "@/components/chatbot";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
@@ -116,6 +117,7 @@ export function LibraryScreen() {
   const [preview, setPreview] = useState<
     { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; failed?: boolean } | null
   >(null);
+  const [pageExplanation, setPageExplanation] = useState<{ courseCode: string; page: number; fileName: string; text: string } | null>(null);
 
   const [busy, setBusy] = useState(false);
   // Attribution choices for the publish confirmation. Both start off every time.
@@ -292,7 +294,7 @@ export function LibraryScreen() {
       }
       const result = await getShelfPreview({ data: { materialId: item.id } });
       setBusy(false);
-      if (!result.ok) { toast.error(result.reason); fallback(false); return; }
+      if (!result.ok) { toast.error(result.reason); fallback(true); return; }
       setPreview({
         id: item.id, file_name: result.file_name, file_type: result.file_type,
         course_code: result.course_code, url: result.url, readyForMocks: result.readyForMocks, peer,
@@ -309,14 +311,31 @@ export function LibraryScreen() {
 
   const explainPageInChat = (data: { page: number; fileName: string; text: string }) => {
     if (!preview) return;
-    sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify({
+    const attachment = {
       courseCode: canonicalCourseCode(preview.course_code),
       page: data.page,
       fileName: data.fileName,
       text: data.text.slice(0, 4000),
-    }));
+    };
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      setPageExplanation(attachment);
+      return;
+    }
+    sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify(attachment));
+    setPageExplanation(null);
     setPreview(null);
-    navigate("chatbot");
+    navigate("chatbot", { courseCode: attachment.courseCode });
+  };
+
+  const retryPreview = async () => {
+    if (!preview) return;
+    await openPreview({
+      id: preview.id,
+      file_name: preview.file_name,
+      file_type: preview.file_type,
+      course_code: preview.course_code,
+      readyForMocks: preview.readyForMocks,
+    }, preview.peer);
   };
 
   const doSave = async (item: { id: string; course_code: string }) => {
@@ -634,55 +653,60 @@ export function LibraryScreen() {
       </Sheet>
 
       {/* In-app preview */}
-      <Sheet open={preview !== null} onOpenChange={(o) => !o && setPreview(null)}>
-        <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl bg-card text-card-foreground">
+      <Sheet open={preview !== null} onOpenChange={(o) => { if (!o) { setPreview(null); setPageExplanation(null); } }}>
+        <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl bg-card text-card-foreground md:inset-4 md:flex md:h-auto md:w-auto md:max-w-none md:flex-col md:rounded-2xl">
           <SheetHeader>
             <SheetTitle className="break-words text-foreground">{preview?.file_name}</SheetTitle>
             <SheetDescription className="text-muted-foreground">
               {preview?.course_code} · viewing in app, no download
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-3 h-[64vh] overflow-auto rounded-xl border border-border bg-background">
-            {preview?.failed ? (
-              <div className="grid h-full place-items-center p-4">
-                <ErrorCard
-                  title="We couldn't open this file"
-                  body="The file may have been removed. Your own files are still in your locker."
-                  onAction={() =>
-                    preview &&
-                    void openPreview(
-                      {
-                        id: preview.id,
-                        file_name: preview.file_name,
-                        file_type: preview.file_type,
-                        course_code: preview.course_code,
-                        readyForMocks: preview.readyForMocks,
-                      },
-                      preview.peer,
-                    )
-                  }
-                  linkLabel="Close"
-                  onLink={() => setPreview(null)}
+          <div className="mt-3 flex h-[64vh] min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background md:flex-1 md:flex-row md:gap-3 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-background md:min-w-0">
+              {preview?.failed ? (
+                <div data-swipe-lock="" className="grid h-full place-items-center p-4">
+                  <ErrorCard
+                    title={preview.file_type.toLowerCase() === "pdf" ? "We couldn't open this PDF here." : "We couldn't open this file."}
+                    body="The file may have been removed or its link may have expired."
+                    onAction={() => void retryPreview()}
+                    linkLabel="Close"
+                    onLink={() => { setPreview(null); setPageExplanation(null); }}
+                  />
+                </div>
+              ) : preview?.url && preview.file_type.toLowerCase() === "image" ? (
+                <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
+              ) : preview?.url && preview.file_type.toLowerCase() === "pdf" ? (
+                <PdfViewer
+                  url={preview.url}
+                  fileName={preview.file_name}
+                  fileKey={preview.id}
+                  onClose={() => { setPreview(null); setPageExplanation(null); }}
+                  onCancel={() => { setPreview(null); setPageExplanation(null); }}
+                  onExplain={explainPageInChat}
+                  onRetry={retryPreview}
+                  explainPanelOpen={pageExplanation !== null}
                 />
+              ) : preview?.url ? (
+                <div className="grid h-full place-items-center bg-background p-6 text-center">
+                  <p className="text-sm text-foreground">Preview isn't available for this file type.</p>
+                </div>
+              ) : (
+                <div data-swipe-lock="" className="grid h-full place-items-center p-4">
+                  <ErrorCard
+                    title={preview?.file_type.toLowerCase() === "pdf" ? "We couldn't open this PDF here." : "We couldn't open this file."}
+                    body="Try again to refresh the file link."
+                    onAction={() => void retryPreview()}
+                    linkLabel="Close"
+                    onLink={() => { setPreview(null); setPageExplanation(null); }}
+                  />
+                </div>
+              )}
+            </div>
+            {pageExplanation ? (
+              <div className="hidden min-h-0 w-[380px] shrink-0 overflow-hidden rounded-xl border border-border bg-background md:block">
+                <ChatbotScreen embedded pageAttachment={pageExplanation} />
               </div>
-            ) : !preview?.url ? (
-              <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
-                {SHARING_OFFLINE_MESSAGE}
-              </div>
-            ) : preview.file_type === "image" ? (
-              <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
-            ) : preview.file_type === "pdf" ? (
-              <PdfViewer url={preview.url} fileName={preview.file_name} fileKey={preview.id} onClose={() => setPreview(null)} onCancel={() => setPreview(null)} onExplain={explainPageInChat} />
-            ) : (
-              <div className="grid h-full place-items-center bg-background p-4">
-                <ErrorCard
-                  title="We can't preview this file type here"
-                  body={HEAVY_PDF_MESSAGE}
-                  linkLabel="Close"
-                  onLink={() => setPreview(null)}
-                />
-              </div>
-            )}
+            ) : null}
           </div>
           {preview?.peer ? (
             <Button

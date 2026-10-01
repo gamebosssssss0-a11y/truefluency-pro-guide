@@ -1,10 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProfile, type AppView } from "@/lib/profile-store";
 
 /** The five root tabs, in the order the tab bar shows them. */
 const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
 const SWIPE_THRESHOLD = 70;
 const TRANSITION_MS = 180;
+
+type SwipePreview = { tab: AppView; side: "left" | "right" };
 
 /** Which root tab (if any) the current view is. Sub-screens are not swipeable. */
 function rootIndex(view: AppView): number {
@@ -13,19 +15,19 @@ function rootIndex(view: AppView): number {
   return ORDER.indexOf(view);
 }
 
-/**
- * Root-tab gestures follow the finger. The current stage slides out, then the
- * adjacent destination enters from the same direction. Thread and task surfaces
- * can claim their own touch gestures with data-swipe-lock.
- */
-export function useSwipeTabs() {
+/** Root-tab gestures follow the finger, with the adjacent tab rendered beside the current one. */
+export function useSwipeTabs(enabled = true): SwipePreview | null {
   const { view, navigate } = useProfile();
   const index = rootIndex(view);
   const navigateRef = useRef(navigate);
+  const [preview, setPreview] = useState<SwipePreview | null>(null);
   navigateRef.current = navigate;
 
   useEffect(() => {
-    if (index < 0) return;
+    if (!enabled || index < 0) {
+      setPreview(null);
+      return;
+    }
 
     let startX = 0;
     let startY = 0;
@@ -33,17 +35,24 @@ export function useSwipeTabs() {
     let horizontal = false;
     let deltaX = 0;
     let stage: HTMLElement | null = null;
+    let settleTimer = 0;
+    let previousOverflowX = "";
 
-    const restoreStage = (node: HTMLElement) => {
-      node.style.transition = "transform " + TRANSITION_MS + "ms ease";
+    const restoreStage = (node: HTMLElement, removePreview = true) => {
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      node.style.transition = reduced ? "none" : `transform ${TRANSITION_MS}ms ease`;
       node.style.transform = "translate3d(0, 0, 0)";
       node.dataset.swipeActive = "false";
+      if (removePreview) {
+        window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => setPreview(null), reduced ? 0 : TRANSITION_MS + 30);
+      }
       window.setTimeout(() => {
         if (!node.isConnected || node.dataset.swipeActive === "true") return;
         node.style.transition = "";
         node.style.transform = "";
         node.style.willChange = "";
-      }, TRANSITION_MS + 30);
+      }, reduced ? 0 : TRANSITION_MS + 30);
     };
 
     const onStart = (event: TouchEvent) => {
@@ -52,7 +61,7 @@ export function useSwipeTabs() {
         return;
       }
       const target = event.target;
-      if (target instanceof Element && target.closest("[data-swipe-lock], [role='dialog'], [role='menu']")) {
+      if (target instanceof Element && target.closest("[data-swipe-lock], [role='dialog'], [role='menu'], button, a, input, textarea, select, [contenteditable='true']")) {
         tracking = false;
         return;
       }
@@ -79,12 +88,18 @@ export function useSwipeTabs() {
         if (Math.abs(dx) < 8 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
         horizontal = true;
         stage.style.willChange = "transform";
+        previousOverflowX = document.documentElement.style.overflowX;
+        document.documentElement.style.overflowX = "hidden";
       }
       deltaX = dx;
       const adjacentIndex = index + (dx < 0 ? 1 : -1);
-      const resisted = ORDER[adjacentIndex] ? dx : dx * 0.25;
+      const adjacent = ORDER[adjacentIndex];
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (adjacent && !reduced) setPreview({ tab: adjacent, side: dx < 0 ? "right" : "left" });
+      else setPreview(null);
+      const resisted = adjacent ? dx : dx * 0.25;
       stage.style.transition = "none";
-      stage.style.transform = "translate3d(" + resisted + "px, 0, 0)";
+      stage.style.transform = reduced ? "" : `translate3d(${resisted}px, 0, 0)`;
       stage.dataset.swipeActive = "true";
       if (event.cancelable) event.preventDefault();
     };
@@ -93,40 +108,32 @@ export function useSwipeTabs() {
       if (!tracking || !stage) return;
       tracking = false;
       const node = stage;
-      if (!horizontal) {
-        restoreStage(node);
-        return;
-      }
       const targetIndex = index + (deltaX < 0 ? 1 : -1);
       const target = ORDER[targetIndex];
-      if (!target || Math.abs(deltaX) < SWIPE_THRESHOLD) {
+      if (!horizontal || !target || Math.abs(deltaX) < SWIPE_THRESHOLD) {
         restoreStage(node);
+        document.documentElement.style.overflowX = previousOverflowX;
         return;
       }
 
       const outgoing = deltaX < 0 ? -1 : 1;
-      node.style.transition = "transform " + TRANSITION_MS + "ms cubic-bezier(0.22, 1, 0.36, 1)";
-      node.style.transform = "translate3d(" + (outgoing * window.innerWidth) + "px, 0, 0)";
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduced) {
+        node.style.transition = "none";
+        node.style.transform = "translate3d(0, 0, 0)";
+        node.dataset.swipeActive = "false";
+        document.documentElement.style.overflowX = previousOverflowX;
+        navigateRef.current(target);
+        setPreview(null);
+        return;
+      }
+
+      node.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      node.style.transform = `translate3d(${outgoing * window.innerWidth}px, 0, 0)`;
       window.setTimeout(() => {
         if (!node.isConnected) return;
+        document.documentElement.style.overflowX = previousOverflowX;
         navigateRef.current(target);
-        requestAnimationFrame(() => {
-          node.style.transition = "none";
-          node.style.transform = "translate3d(" + (outgoing * -window.innerWidth) + "px, 0, 0)";
-          void node.offsetWidth;
-          requestAnimationFrame(() => {
-            if (!node.isConnected) return;
-            node.style.transition = "transform " + TRANSITION_MS + "ms cubic-bezier(0.22, 1, 0.36, 1)";
-            node.style.transform = "translate3d(0, 0, 0)";
-            node.dataset.swipeActive = "false";
-            window.setTimeout(() => {
-              if (!node.isConnected || node.dataset.swipeActive === "true") return;
-              node.style.transition = "";
-              node.style.transform = "";
-              node.style.willChange = "";
-            }, TRANSITION_MS + 30);
-          });
-        });
       }, TRANSITION_MS);
     };
 
@@ -134,6 +141,7 @@ export function useSwipeTabs() {
       tracking = false;
       horizontal = false;
       if (stage) restoreStage(stage);
+      document.documentElement.style.overflowX = previousOverflowX;
     };
 
     window.addEventListener("touchstart", onStart, { passive: true });
@@ -145,7 +153,17 @@ export function useSwipeTabs() {
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onCancel);
-      if (stage) restoreStage(stage);
+      window.clearTimeout(settleTimer);
+      if (stage) {
+        stage.style.transition = "";
+        stage.style.transform = "";
+        stage.style.willChange = "";
+        stage.dataset.swipeActive = "false";
+      }
+      document.documentElement.style.overflowX = previousOverflowX;
+      setPreview(null);
     };
-  }, [index]);
+  }, [enabled, index]);
+
+  return preview;
 }

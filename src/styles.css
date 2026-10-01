@@ -257,8 +257,20 @@
 @media (prefers-reduced-motion: reduce) {
   .quote-card-cycle,
   .splash-logo,
-  .splash-glow {
-    animation: none;
+  .splash-glow,
+  .sonic-mark-loop,
+  .sonic-flare-loop,
+  .sonic-particle-loop,
+  .thinking-shimmer {
+    animation: none !important;
+  }
+  .thinking-shimmer {
+    color: #1B2A4A;
+    background: none;
+    -webkit-text-fill-color: #1B2A4A;
+  }
+  .tab-swipe-stage {
+    scroll-behavior: auto;
   }
 }
 
@@ -310,6 +322,11 @@
   100% { opacity: 1; transform: scale(1); }
 }
 
+@keyframes thinking-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
 @layer utilities {
   .sonic-mark-in {
     animation: sonic-mark-in 900ms cubic-bezier(0.16, 0.84, 0.24, 1) both;
@@ -317,6 +334,16 @@
 
   .sonic-mark-loop {
     animation: sonic-mark-loop-pulse 1600ms ease-in-out infinite;
+  }
+
+  .thinking-shimmer {
+    color: #1B2A4A;
+    background: linear-gradient(90deg, #1B2A4A 0%, #1B2A4A 38%, #B86E0A 50%, #1B2A4A 62%, #1B2A4A 100%);
+    background-size: 220% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: thinking-shimmer 1400ms linear infinite;
   }
 
   .sonic-unfurl-path {
@@ -419,8 +446,13 @@
   touch-action: pan-y;
 }
 
-.study-chat-screen {
+ .study-chat-screen {
   height: calc(100dvh - 5rem);
+}
+
+.study-chat-screen.study-chat-embedded {
+  height: 100%;
+  min-height: 0;
 }
 
 @media (min-width: 768px) {

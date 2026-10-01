@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import { ProfileProvider, useProfile } from "@/lib/profile-store";
+import { ProfileProvider, useProfile, type AppView } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { SplashScreen } from "@/components/onboarding/splash";
 import { SigningInScreen } from "@/components/signing-in";
@@ -74,9 +74,23 @@ function Index() {
   );
 }
 
+
+function SwipePreviewScreen({ view }: { view: AppView }) {
+  switch (view) {
+    case "home":
+    case "dashboard": return <HomeScreen />;
+    case "mock-tests": return <MockTestsScreen />;
+    case "library": return <LibraryScreen />;
+    case "chatbot": return <ChatbotScreen />;
+    case "account":
+    case "settings": return <AccountScreen />;
+    default: return null;
+  }
+}
+
 function Router() {
   const { step, view, profile, authPending, hydrated, go, navigate } = useProfile();
-  useSwipeTabs();
+  const swipePreview = useSwipeTabs(step === "dashboard");
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
@@ -201,12 +215,22 @@ function Router() {
       <div
         data-tab-swipe-stage
         className={cn(
-          hidesTabBar(view) ? undefined : view === "chatbot" ? "overflow-hidden" : "pb-20 md:pb-8",
+          hidesTabBar(view) ? undefined : view === "chatbot" && !swipePreview ? "overflow-hidden" : view === "chatbot" ? "overflow-visible" : "pb-20 md:pb-8",
           !examFocus && "app-stage-wide",
-          "tab-swipe-stage",
+          "tab-swipe-stage relative",
         )}
       >
         {screen}
+        {swipePreview ? (
+          <div
+            aria-hidden="true"
+            data-swipe-lock=""
+            className="pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background"
+            style={{ left: swipePreview.side === "right" ? "100%" : "-100%" }}
+          >
+            <SwipePreviewScreen view={swipePreview.tab} />
+          </div>
+        ) : null}
       </div>
       <BottomTabBar />
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>

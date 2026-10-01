@@ -197,6 +197,8 @@ export function PdfViewer({
   onClose,
   onCancel,
   onExplain,
+  onRetry,
+  explainPanelOpen = false,
 }: {
   url: string;
   fileName: string;
@@ -204,6 +206,8 @@ export function PdfViewer({
   onClose?: () => void;
   onCancel?: () => void;
   onExplain?: (data: { page: number; fileName: string; text: string }) => void;
+  onRetry?: () => void | Promise<void>;
+  explainPanelOpen?: boolean;
 }) {
   const [doc, setDoc] = useState<PdfDoc | null>(null);
   const [total, setTotal] = useState(0);
@@ -429,7 +433,7 @@ export function PdfViewer({
       const content = await currentPage.getTextContent?.();
       const text = (content?.items ?? []).map((item) => item.str ?? "").join(" ").replace(/\s+/g, " ").trim();
       if (text.length < 50) {
-        toast.error("This page has too little selectable text. OCR isn't available yet.");
+        toast.error("This page has too little selectable text.");
         return;
       }
       onExplain({ page, fileName, text: text.slice(0, 4000) });
@@ -456,11 +460,11 @@ export function PdfViewer({
 
   if (status === "failed") {
     return (
-      <div className="grid h-full place-items-center bg-background p-4">
+      <div data-swipe-lock="" className="grid h-full place-items-center bg-background p-4">
         <ErrorCard
-          title="We couldn't open this PDF here"
-          body={HEAVY_PDF_MESSAGE}
-          onAction={() => load()}
+          title="We couldn't open this PDF here."
+          body="Try again to refresh the file link."
+          onAction={() => { if (onRetry) void onRetry(); else load(); }}
           {...(onClose ? { linkLabel: "Close", onLink: onClose } : {})}
         />
       </div>
@@ -475,6 +479,7 @@ export function PdfViewer({
           ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background"
           : "flex h-full flex-col bg-background"
       }
+      style={expanded && explainPanelOpen ? { left: 16, right: 396, top: 16, bottom: 16, width: "auto", height: "auto" } : undefined}
     >
 
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -578,7 +583,7 @@ export function PdfViewer({
             />
             <span className="text-[11px] text-muted-foreground">/ {total}</span>
           </form>
-          {onExplain && !expanded ? (
+          {onExplain ? (
             <Button size="sm" variant="outline" className="border-border text-foreground" onClick={() => void explainCurrentPage()}>
               Explain this page
             </Button>
