@@ -395,6 +395,25 @@ const APP_VIEWS: AppView[] = [
   "flashcards-review", "add-course", "all-uploads", "attempt-review", "cgpa", "support", "upgrade",
   "edit-identity", "disclaimer-view",
 ];
+const HISTORY_SESSION_KEY = "truefluency-history-session";
+const HISTORY_SESSION_MARKER = "__trueFluencySession";
+const HISTORY_VIEW_MARKER = "__trueFluencyAppView";
+const HISTORY_PARAMS_MARKER = "__trueFluencyParams";
+
+function getHistorySessionId() {
+  try {
+    const existing = window.sessionStorage.getItem(HISTORY_SESSION_KEY);
+    if (existing) return existing;
+    const created = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : "tf-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    window.sessionStorage.setItem(HISTORY_SESSION_KEY, created);
+    return created;
+  } catch {
+    return "tf-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  }
+}
+
 export function isAppView(candidate: string): candidate is AppView {
   return APP_VIEWS.includes(candidate as AppView);
 }
@@ -409,19 +428,69 @@ function readAppLocation() {
     deckId: params.get("deckId"),
   };
 }
+
+function isCurrentSessionEntry(
+  location: ReturnType<typeof readAppLocation>,
+  state: Record<string, unknown>,
+  sessionId: string | null,
+) {
+  const params = state[HISTORY_PARAMS_MARKER];
+  if (
+    !location.view ||
+    state[HISTORY_SESSION_MARKER] !== sessionId ||
+    state[HISTORY_VIEW_MARKER] !== location.view ||
+    !params ||
+    typeof params !== "object"
+  ) return false;
+  const opened = params as Record<string, unknown>;
+  return (
+    location.courseCode === (typeof opened.courseCode === "string" ? opened.courseCode : null) &&
+    location.attemptId === (typeof opened.attemptId === "string" ? opened.attemptId : null) &&
+    location.deckId === (typeof opened.deckId === "string" ? opened.deckId : null)
+  );
+}
+
 function writeAppLocation(
   view: AppView,
   opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
   replace = false,
+  sessionId = getHistorySessionId(),
 ) {
   const params = new URLSearchParams();
   params.set("view", view);
   if (opts?.courseCode) params.set("courseCode", opts.courseCode);
   if (opts?.attemptId) params.set("attemptId", opts.attemptId);
   if (opts?.deckId) params.set("deckId", opts.deckId);
-  const url = `${window.location.pathname}?${params.toString()}`;
+  const url = window.location.pathname + "?" + params.toString();
+  const openedParams = {
+    ...(opts?.courseCode ? { courseCode: opts.courseCode } : {}),
+    ...(opts?.attemptId ? { attemptId: opts.attemptId } : {}),
+    ...(opts?.deckId ? { deckId: opts.deckId } : {}),
+  };
+  const currentState = window.history.state && typeof window.history.state === "object"
+    ? window.history.state
+    : {};
+  const preservedState = Object.fromEntries(
+    Object.entries(currentState).filter(([key]) =>
+      key !== HISTORY_SESSION_MARKER &&
+      key !== HISTORY_VIEW_MARKER &&
+      key !== HISTORY_PARAMS_MARKER &&
+      key !== "__trueFluencyMockBackGuard",
+    ),
+  );
+  if (
+    !replace &&
+    window.location.search === "?" + params.toString() &&
+    currentState[HISTORY_SESSION_MARKER] === sessionId &&
+    currentState[HISTORY_VIEW_MARKER] === view
+  ) return;
   const method = replace ? "replaceState" : "pushState";
-  window.history[method]({ ...window.history.state, __trueFluencyAppView: view }, "", url);
+  window.history[method]({
+    ...preservedState,
+    [HISTORY_SESSION_MARKER]: sessionId,
+    [HISTORY_VIEW_MARKER]: view,
+    [HISTORY_PARAMS_MARKER]: openedParams,
+  }, "", url);
 }
 
 
@@ -434,6 +503,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [authPending, setAuthPending] = useState(false);
+  const historySessionId = useRef<string | null>(null);
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   useEffect(() => {
     try {
@@ -446,13 +518,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("[profile-store] stored profile unreadable, starting fresh", err);
     }
+    const sessionId = getHistorySessionId();
+    historySessionId.current = sessionId;
     const locationState = readAppLocation();
-    if (locationState.view) {
+    const appHistoryState = window.history.state && typeof window.history.state === "object"
+      ? window.history.state as Record<string, unknown>
+      : {};
+    const sessionEntryIsValid = isCurrentSessionEntry(locationState, appHistoryState, sessionId);
+    if (sessionEntryIsValid && locationState.view) {
       setStep("dashboard");
       setView(locationState.view);
       setActiveCourseCode(locationState.courseCode);
       setActiveAttemptId(locationState.attemptId);
       setActiveDeckId(locationState.deckId);
+    } else {
+      writeAppLocation("home", {}, true, sessionId);
     }
     setHydrated(true);
   }, []);
@@ -460,9 +540,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     const onPopState = () => {
+      if (viewRef.current === "mock-run" || viewRef.current === "mock-gen") return;
       const locationState = readAppLocation();
+      const state = window.history.state && typeof window.history.state === "object"
+        ? window.history.state as Record<string, unknown>
+        : {};
+      const currentSessionEntry = isCurrentSessionEntry(
+        locationState,
+        state,
+        historySessionId.current,
+      );
+      if (!currentSessionEntry) {
+        if (state[HISTORY_VIEW_MARKER] || locationState.view) window.history.back();
+        return;
+      }
+      if (!locationState.view) return;
       setStep("dashboard");
-      setView(locationState.view ?? "home");
+      setView(locationState.view);
       setActiveCourseCode(locationState.courseCode);
       setActiveAttemptId(locationState.attemptId);
       setActiveDeckId(locationState.deckId);
@@ -684,22 +778,31 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setStep(s);
     if (s === "dashboard") {
       setView("home");
-      writeAppLocation("home");
+      writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
     }
   };
   const navigate = (
     v: AppView,
     opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
   ) => {
+    const nextCourseCode = opts && "courseCode" in opts ? opts.courseCode ?? null : activeCourseCode;
+    const nextAttemptId = opts && "attemptId" in opts ? opts.attemptId ?? null : activeAttemptId;
+    const nextDeckId = opts && "deckId" in opts ? opts.deckId ?? null : activeDeckId;
+    if (
+      view === v &&
+      activeCourseCode === nextCourseCode &&
+      activeAttemptId === nextAttemptId &&
+      activeDeckId === nextDeckId
+    ) return;
     setView(v);
     writeAppLocation(v, {
-      courseCode: opts && "courseCode" in opts ? opts.courseCode : activeCourseCode,
-      attemptId: opts && "attemptId" in opts ? opts.attemptId : activeAttemptId,
-      deckId: opts && "deckId" in opts ? opts.deckId : activeDeckId,
-    });
-    if (opts && "courseCode" in opts) setActiveCourseCode(opts.courseCode ?? null);
-    if (opts && "attemptId" in opts) setActiveAttemptId(opts.attemptId ?? null);
-    if (opts && "deckId" in opts) setActiveDeckId(opts.deckId ?? null);
+      courseCode: nextCourseCode,
+      attemptId: nextAttemptId,
+      deckId: nextDeckId,
+    }, false, historySessionId.current ?? undefined);
+    setActiveCourseCode(nextCourseCode);
+    setActiveAttemptId(nextAttemptId);
+    setActiveDeckId(nextDeckId);
   };
   const resetSetup = () => {
     setProfile(emptyProfile);

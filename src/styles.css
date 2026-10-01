@@ -114,32 +114,33 @@
 
 /* Dark: navy page, raised navy cards, slate wash, and the same amber accent. */
 .dark {
-  --background: #1B2A4A;
+  --background: #020A1A;
   --foreground: #F7F3EA;
-  --card: #243656;
+  --card: #0E1A33;
   --card-foreground: #F7F3EA;
-  --popover: #243656;
+  --popover: #132240;
   --popover-foreground: #F7F3EA;
-  --primary: #B86E0A;
-  --primary-foreground: #1B2A4A;
-  --secondary: #2A3A58;
+  --primary: #0E1A33;
+  --primary-foreground: #F7F3EA;
+  --secondary: #132240;
   --secondary-foreground: #F7F3EA;
-  --muted: #2A3A58;
-  --muted-foreground: #D2D6E0;
+  --muted: #132240;
+  --muted-foreground: #C4B8A0;
   --accent: #B86E0A;
-  --accent-foreground: #1B2A4A;
+  --accent-foreground: #020A1A;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: #F7F3EA;
   --success: oklch(0.7 0.15 150);
   --warning: #B86E0A;
-  --border: #43526B;
-  --input: #2A3A58;
+  --border: #243656;
+  --input: #243656;
   --ring: #B86E0A;
   --cream: #F7F3EA;
-  --sand: #2A3A58;
+  --sand: #F3E6C8;
+  --ink: #F7F3EA;
   --pill-text-l: 82%;
-  --chat-page: #1B2A4A;
-  --chat-card: #243656;
+  --chat-page: #020A1A;
+  --chat-card: #0E1A33;
   --chat-foreground: #F7F3EA;
 }
 
@@ -303,35 +304,19 @@
   100% { opacity: 1; transform: scale(1); filter: blur(0); }
 }
 
+@keyframes sonic-mark-loop-pulse {
+  0% { opacity: 1; transform: scale(0.92); }
+  60% { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 @layer utilities {
   .sonic-mark-in {
     animation: sonic-mark-in 900ms cubic-bezier(0.16, 0.84, 0.24, 1) both;
   }
 
   .sonic-mark-loop {
-    animation: sonic-mark-in 1600ms ease-in-out infinite;
-  }
-
-  .sonic-flare-loop {
-    position: absolute;
-    height: 46px;
-    width: 46px;
-    border-radius: 9999px;
-    background: radial-gradient(circle, #B86E0A 0%, rgba(184, 110, 10, 0) 70%);
-    pointer-events: none;
-    opacity: 0;
-    animation: sonic-flare-flash 1600ms ease-out infinite;
-  }
-
-  .sonic-particle-loop {
-    position: absolute;
-    border-radius: 9999px;
-    pointer-events: none;
-    opacity: 0;
-    animation-name: sonic-particle-in;
-    animation-duration: 1600ms;
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    animation-iteration-count: infinite;
+    animation: sonic-mark-loop-pulse 1600ms ease-in-out infinite;
   }
 
   .sonic-unfurl-path {
@@ -361,6 +346,17 @@
   }
   .sonic-flare-ambient { animation-delay: 390ms; }
 
+  .sonic-flare-loop {
+    position: absolute;
+    height: 46px;
+    width: 46px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(184, 110, 10, 0.9) 0%, rgba(184, 110, 10, 0) 70%);
+    pointer-events: none;
+    opacity: 0;
+    animation: sonic-flare-flash 1600ms ease-out infinite;
+  }
+
   .sonic-particle {
     position: absolute;
     border-radius: 9999px;
@@ -369,6 +365,14 @@
     animation-name: sonic-particle-in;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     animation-fill-mode: both;
+  }
+
+  .sonic-particle-loop {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+    opacity: 0;
+    animation: sonic-particle-in 1600ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
   .sonic-text-1 {
@@ -382,13 +386,13 @@
 @media (prefers-reduced-motion: reduce) {
   .sonic-mark-in,
   .sonic-mark-loop,
-  .sonic-flare-loop,
-  .sonic-particle-loop,
   .sonic-unfurl-path,
   .sonic-pulse,
   .sonic-dot,
   .sonic-flare,
+  .sonic-flare-loop,
   .sonic-particle,
+  .sonic-particle-loop,
   .sonic-text-1,
   .sonic-text-2 {
     animation: none;
@@ -408,5 +412,19 @@
 @media (min-width: 768px) {
   .app-stage-wide .max-w-md {
     max-width: 60rem; /* 960px */
+  }
+}
+
+.tab-swipe-stage {
+  touch-action: pan-y;
+}
+
+.study-chat-screen {
+  height: calc(100dvh - 5rem);
+}
+
+@media (min-width: 768px) {
+  .study-chat-screen {
+    height: calc(100dvh - 3rem);
   }
 }

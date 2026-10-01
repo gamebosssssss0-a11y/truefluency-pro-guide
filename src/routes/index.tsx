@@ -199,9 +199,11 @@ function Router() {
       <TopNavBar />
       {/* Padding keeps the persistent mobile tab bar from covering content. */}
       <div
+        data-tab-swipe-stage
         className={cn(
-          hidesTabBar(view) ? undefined : "pb-20 md:pb-8",
+          hidesTabBar(view) ? undefined : view === "chatbot" ? "overflow-hidden" : "pb-20 md:pb-8",
           !examFocus && "app-stage-wide",
+          "tab-swipe-stage",
         )}
       >
         {screen}
