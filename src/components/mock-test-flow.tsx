@@ -21,7 +21,6 @@ import { MathText } from "@/components/math-text";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
-import { canonicalCourseCode } from "@/lib/course-code";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
