@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, Image as ImageIcon, Paperclip, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
@@ -20,6 +20,27 @@ import { canonicalCourseCode } from "@/lib/course-code";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
+/** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
+const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
+type Mode = (typeof MODES)[number];
+
+export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string };
+
+function readPendingPageAttachment(): PageAttachment | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("truefluency-chat-explain-page");
+    if (!raw) return null;
+    sessionStorage.removeItem("truefluency-chat-explain-page");
+    const value = JSON.parse(raw) as Partial<PageAttachment>;
+    if (typeof value.courseCode !== "string" || typeof value.fileName !== "string" ||
+      typeof value.text !== "string" || typeof value.page !== "number") return null;
+    return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000) };
+  } catch {
+    return null;
+  }
+}
+
 type Message = {
   id: number;
   from: "student" | "assistant" | "notice";
@@ -31,6 +52,9 @@ type Message = {
   /** Local preview of a photo the student just sent (this session only). */
   imageUrl?: string;
   createdAt?: string;
+  sendError?: boolean;
+  retryCourse?: string;
+  retryMode?: Mode;
 };
 
 /** Starter prompts per mode — what each tab actually does when you tap it. */
@@ -65,10 +89,6 @@ async function cacheKey(scope: string): Promise<string | null> {
   }
 }
 
-/** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
-const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
-type Mode = (typeof MODES)[number];
-
 function displayCode(code: string) {
   return canonicalCourseCode(code);
 }
@@ -77,49 +97,28 @@ function speechSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-export function ChatbotScreen() {
-  const { profile, activeCourseCode, navigate } = useProfile();
+export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment }: { embedded?: boolean; pageAttachment?: PageAttachment | null } = {}) {
+  const { profile, activeCourseCode, navigate, view } = useProfile();
   const { access } = useEntitlement();
+  const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
 
   const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
     ? canonicalCourseCode(activeCourseCode!)
     : canonicalCourseCode(profile.courses[0]?.code ?? "");
-  const [selected, setSelected] = useState<string>(defaultCourse);
+  const [selected, setSelected] = useState<string>(() => attachedPage?.courseCode ?? defaultCourse);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
-  // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
-  // wiped outright on every auth change (see the effect below) — belt AND
-  // suspenders. A course code alone (the old key) is not unique to one
-  // student: shared gen-ed codes like GST312/GES301 are common across
-  // completely unrelated students, so a course-code-only cache key could
-  // show one student's cached messages to a different student the moment
-  // this screen didn't fully unmount between one session ending and another
-  // beginning on the same device/tab. The explicit clear-on-auth-change
-  // below is the real fix; the key scoping is the second layer in case a
-  // key ever gets reused before that effect fires.
-  const currentUid = useRef<string | null>(null);
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const nextUid = session?.user.id ?? null;
-      if (nextUid !== currentUid.current) {
-        threadCache.current.clear();
-        setMessages([]);
-      }
-      currentUid.current = nextUid;
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-  const cacheMapKey = (course: string) => `${currentUid.current ?? "anon"}:${canonicalCourseCode(course)}`;
   const historyLoaded = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const imageUrls = useRef(new Set<string>());
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => attachedPage ? `Explain page ${attachedPage.page} of ${attachedPage.fileName}.` : "");
   const [isSending, setIsSending] = useState(false);
   const [mode, setMode] = useState<Mode>("Explain");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -128,32 +127,27 @@ export function ChatbotScreen() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [speechAvailable, setSpeechAvailable] = useState(false);
+  const retryFiles = useRef(new Map<number, File>());
+  const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
   const loadToken = useRef(0);
-  // SessionStorage-backed, not a plain useRef, and on purpose: this screen
-  // can remount on a simple tab switch (navigating away and back), and a
-  // plain useRef resets on every remount — which meant "start fresh" was
-  // firing (and archiving a conversation you were actively having, plus
-  // paying for an extra archive+fetch round trip) on every single return to
-  // this tab, not once per real visit to the app. sessionStorage survives a
-  // remount but still resets on a new browser tab/session, which is what
-  // "fresh each time you open the app" actually means.
-  function hasStartedFreshThisSession(): boolean {
-    try {
-      return sessionStorage.getItem(`tf-chat-fresh:${currentUid.current ?? "anon"}`) === "1";
-    } catch {
-      return false;
-    }
-  }
-  function markStartedFreshThisSession(): void {
-    try {
-      sessionStorage.setItem(`tf-chat-fresh:${currentUid.current ?? "anon"}`, "1");
-    } catch {
-      /* sessionStorage unavailable — falls back to "always fresh", which is safe, just not optimal */
-    }
-  }
+  const hasStartedFreshThisVisit = useRef(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+
+  const resizeComposer = () => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    const maxHeight = 160;
+    composer.style.height = "auto";
+    composer.style.height = `${Math.min(composer.scrollHeight, maxHeight)}px`;
+    composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  useEffect(() => {
+    resizeComposer();
+  }, [draft]);
 
   const courseOptions = profile.courses
     .map((course) => canonicalCourseCode(course.code))
@@ -167,7 +161,7 @@ export function ChatbotScreen() {
   }));
 
   const persistCache = (course: string, thread: Message[]) => {
-    threadCache.current.set(cacheMapKey(course), thread);
+    threadCache.current.set(canonicalCourseCode(course), thread);
     void cacheKey(canonicalCourseCode(course)).then((key) => {
       if (!key) return;
       try { sessionStorage.setItem(key, JSON.stringify(thread.slice(-60))); }
@@ -175,10 +169,20 @@ export function ChatbotScreen() {
     });
   };
 
+  useEffect(() => {
+    if (!suppliedPageAttachment) return;
+    navigate(view, { courseCode: suppliedPageAttachment.courseCode });
+    setAttachedPage(suppliedPageAttachment);
+    setSelected(suppliedPageAttachment.courseCode);
+    setDraft(`Explain page ${suppliedPageAttachment.page} of ${suppliedPageAttachment.fileName}.`);
+  }, [suppliedPageAttachment]);
+
   const selectCourse = (course: string) => {
     const key = canonicalCourseCode(course);
     setSelected(key);
-    setMessages(threadCache.current.get(cacheMapKey(key)) ?? []);
+    navigate(view, { courseCode: key });
+    setAttachedPage(null);
+    setMessages(threadCache.current.get(key) ?? []);
     setDraft("");
     setPhotoFile(null);
     setPhotoName(null);
@@ -189,26 +193,25 @@ export function ChatbotScreen() {
     let alive = true;
     const token = ++loadToken.current;
     const key = canonicalCourseCode(selected);
-    const isFirstLoadThisVisit = !hasStartedFreshThisSession();
-    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(cacheMapKey(key));
+    const isFirstLoadThisVisit = !hasStartedFreshThisVisit.current;
+    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(key);
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
     // Opening the chat screen should feel like opening a fresh conversation
     // — old content stays reachable in History, not sitting here waiting to
-    // reappear. This fires exactly once per real visit to the app (tracked
-    // in sessionStorage — see hasStartedFreshThisSession — NOT once per
-    // remount, which a tab switch triggers far more often than a genuine
-    // "I opened the app" event). archive_conversation is a safe no-op when
-    // there's nothing active yet, so this never errors out a normal load —
-    // best-effort, awaited so the fetch below sees the fresh thread rather
-    // than racing it.
-    const freshStart = hasStartedFreshThisSession()
+    // reappear. This fires exactly once per visit to this screen (not on
+    // every course switch within the same visit, which would archive real
+    // conversations just for tapping between course chips). archive_conversation
+    // is a safe no-op when there's nothing active yet, so this never errors
+    // out a normal load — best-effort, awaited so the fetch below sees the
+    // fresh thread rather than racing it.
+    const freshStart = hasStartedFreshThisVisit.current
       ? Promise.resolve()
       : startNewChatThread(key).catch(() => {
           /* best-effort — worst case this visit resumes the old thread, same as before */
         });
-    markStartedFreshThisSession();
+    hasStartedFreshThisVisit.current = true;
 
     void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
@@ -227,7 +230,7 @@ export function ChatbotScreen() {
               id: nextId.current++,
               imageUrl: undefined,
             }));
-            threadCache.current.set(cacheMapKey(key), restored);
+            threadCache.current.set(key, restored);
             setMessages(restored);
           }
         } catch { /* unavailable cache */ }
@@ -246,7 +249,7 @@ export function ChatbotScreen() {
     setHistoryLoading(true);
     void Promise.all(courseOptions.map(async (course) => {
       const raw = (await getCourseHistory(course)).messages;
-      if (!threadCache.current.has(cacheMapKey(course))) persistCache(course, toUiMessages(raw));
+      if (!threadCache.current.has(course)) persistCache(course, toUiMessages(raw));
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
         const date = message.created_at
@@ -316,12 +319,19 @@ export function ChatbotScreen() {
   const notice = (text: string) =>
     setMessages((cur) => [...cur, { id: nextId.current++, from: "notice", text }]);
 
-  const send = async (override?: string) => {
+  const send = async (
+    override?: string,
+    retry?: { messageId: number; course: string; mode: Mode },
+  ) => {
     const text = (override ?? draft).trim();
-    if (!selected || (!text && !photoFile)) return;
+    const course = retry?.course ?? selected;
+    const sendMode = retry?.mode ?? mode;
+    const fileToSend = retry ? retryFiles.current.get(retry.messageId) ?? null : photoFile;
+    const pageToSend = retry ? retryPageAttachments.current.get(retry.messageId) ?? null : attachedPage;
+    if (!course || (!text && !fileToSend)) return;
     if (isSending || isUploadingPhoto) return;
 
-    if (!text && photoFile) {
+    if (!text && fileToSend) {
       setPhotoFile(null);
       setPhotoName(null);
       notice("Photo questions are coming later|Add a text question for now. Your photo was not uploaded.");
@@ -334,22 +344,25 @@ export function ChatbotScreen() {
       return;
     }
 
-    const fileToSend = photoFile;
     const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : undefined;
-    setDraft("");
-    setPhotoFile(null);
-    setPhotoName(null);
-    setMessages((cur) => {
-      const next = [...cur, {
-        id: nextId.current++,
-        from: "student" as const,
-        text,
-        createdAt: new Date().toISOString(),
-        imageUrl: previewUrl,
-      }];
-      persistCache(selected, next);
-      return next;
-    });
+    const messageId = retry?.messageId ?? nextId.current++;
+    if (retry) {
+      setMessages((cur) => cur.map((message) => message.id === messageId
+        ? { ...message, sendError: undefined }
+        : message));
+    } else {
+      setMessages((cur) => {
+        const next = [...cur, {
+          id: messageId,
+          from: "student" as const,
+          text,
+          createdAt: new Date().toISOString(),
+          imageUrl: previewUrl,
+        }];
+        persistCache(course, next);
+        return next;
+      });
+    }
     setIsSending(true);
 
     try {
@@ -368,10 +381,13 @@ export function ChatbotScreen() {
         "Quiz me": "Ask me one question from my notes, then wait for my answer. Do not give the answer yet. ",
         "Work a problem": "Work this as steps from my notes. ",
       };
+      const pageContext = pageToSend
+        ? `\n\nAttached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
+        : "";
       const { reply, moderated, actions, saved } = await sendChatMessage(
-        modePrefix[mode] + text,
-        selected,
-        mode,
+        modePrefix[sendMode] + text + pageContext,
+        course,
+        sendMode,
         imagePath,
       );
       setMessages((cur) => {
@@ -389,17 +405,31 @@ export function ChatbotScreen() {
             text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
           }]),
         ];
-        persistCache(selected, next);
+        persistCache(course, next);
         return next;
       });
+      if (draft.trim() === text) setDraft("");
+      if (fileToSend && photoFile === fileToSend) {
+        setPhotoFile(null);
+        setPhotoName(null);
+      }
+      retryFiles.current.delete(messageId);
+      retryPageAttachments.current.delete(messageId);
+      if (pageToSend) setAttachedPage(null);
       if (!moderated) {
         try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
-    } catch (e) {
-      notice(
-        `Couldn't send that|${(e as Error)?.message || "Something went wrong. Try again."}`,
-      );
+    } catch {
+      if (fileToSend) retryFiles.current.set(messageId, fileToSend);
+      if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
+      setMessages((cur) => {
+        const next = cur.map((message) => message.id === messageId
+          ? { ...message, sendError: true, retryCourse: course, retryMode: sendMode }
+          : message);
+        persistCache(course, next);
+        return next;
+      });
     } finally {
       setIsSending(false);
     }
@@ -473,10 +503,9 @@ export function ChatbotScreen() {
   const placeholderCourse = displayCode(selected);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-[640px] flex-col px-4 pb-24 pt-4 sm:px-5 md:pb-8 md:pt-6">
-        {/* Header card: white, cream border, 4px navy left edge */}
-        <div className="surface-key-card mb-3 flex items-center gap-3 p-3.5">
+    <div className={`study-chat-screen min-h-0 overflow-hidden bg-background text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
+      <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
+        <div className="mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-xl font-semibold leading-tight text-foreground">
@@ -492,9 +521,19 @@ export function ChatbotScreen() {
             </span>
           ) : null}
         </div>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-foreground">Course</p>
-          <div className="flex gap-2">
+        <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setCoursePickerOpen(true)}
+            disabled={isSending || courseOptions.length === 0}
+            aria-haspopup="dialog"
+            className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-60"
+          >
+            <span className="text-muted-foreground">Course</span>
+            <span className="truncate">{selected ? displayCode(selected) : "Choose a course"}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+          <div className="flex shrink-0 gap-2">
             <button
               type="button"
               disabled={isSending || isLoadingThread}
@@ -522,35 +561,19 @@ export function ChatbotScreen() {
             <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy">History</button>
           </div>
         </div>
-        <div className="mb-3 flex flex-wrap gap-2">
-          {courseOptions.map((code) => {
-            const active = canonicalCourseCode(selected) === code;
-            return (
-              <button
-                key={code}
-                type="button"
-                onClick={() => selectCourse(code)}
-                className={
-                  "rounded-full border px-3 py-1 text-xs font-medium transition " +
-                  (active
-                    ? "border-amber bg-amber text-cream"
-                    : "border-border bg-card text-foreground hover:border-amber/60")
-                }
-              >
-                {displayCode(code)}
-              </button>
-            );
-          })}
-        </div>
         {isLoadingThread ? (
           <p className="mb-2 px-1 text-xs text-muted-foreground">Loading this conversation…</p>
         ) : null}
 
         {/* Thread */}
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2">
+        <div
+          data-swipe-lock
+          aria-label="Study Chat messages"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-2 touch-pan-y"
+        >
           {!isLoadingThread && messages.length === 0 ? (
-            <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
-              <p className="font-display text-[22px] font-semibold text-navy">
+            <div className="flex flex-col items-center justify-center px-4 text-center">
+              <p className="font-display text-[22px] font-semibold text-foreground">
                 {selected ? `Ask about ${placeholderCourse}` : "Add a course first."}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">Ask from this course’s notes. Not the open web.</p>
@@ -559,9 +582,9 @@ export function ChatbotScreen() {
                   <button
                     key={q}
                     type="button"
-                    onClick={() => send(q)}
+                    onClick={() => setDraft(q)}
                     disabled={isSending || isLoadingThread}
-                    className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-navy transition hover:border-amber/60 disabled:opacity-60"
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-card-foreground transition hover:border-accent/60 disabled:opacity-60"
                   >
                     {q}
                   </button>
@@ -572,13 +595,13 @@ export function ChatbotScreen() {
             <>
               {messages.map((m) =>
                 m.from === "student" ? (
-                  <div key={m.id} className="ml-auto max-w-[85%]">
+                  <div key={m.id} className="ml-auto w-fit max-w-[85%]">
                     {m.courseTag ? (
                       <p className="mb-1 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-sand p-3.5 text-sm text-foreground">
+                    <div className="rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] p-3.5 text-sm text-[#1B2A4A]">
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
@@ -588,52 +611,71 @@ export function ChatbotScreen() {
                       ) : null}
                       {m.text}
                     </div>
+                    {m.sendError ? (
+                      <div className="mt-1 flex items-center justify-end gap-3 text-xs">
+                        <span className="font-medium text-destructive">Couldn't send.</span>
+                        <button
+                          type="button"
+                          onClick={() => void send(m.text, {
+                            messageId: m.id,
+                            course: m.retryCourse ?? selected,
+                            mode: m.retryMode ?? mode,
+                          })}
+                          className="font-semibold text-foreground underline underline-offset-2"
+                        >Retry</button>
+                        <button
+                          type="button"
+                          onClick={() => void navigator.clipboard.writeText(m.text).then(() => toast.success("Message copied."), () => toast.error("Couldn't copy this message."))}
+                          className="font-semibold text-foreground underline underline-offset-2"
+                        >Copy</button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : m.from === "assistant" ? (
-                  <div key={m.id} className="mr-auto max-w-[90%]">
+                  <div key={m.id} className="w-full">
                     {m.courseTag ? (
                       <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-white p-4 text-sm text-navy">
+                    <div className="text-base leading-6 text-foreground">
                       <RichText>{m.text}</RichText>
-                      {m.actions && m.actions.length > 0 ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {m.actions.map((a) => (
-                            <button
-                              key={a.key}
-                              type="button"
-                              onClick={() => {
-                                if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
-                              }}
-                              className="rounded-full border border-amber/60 bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber transition hover:bg-amber/20"
-                            >
-                              {a.label} →
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
-                        <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-navy">
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </button>
-                        {speechAvailable ? (
-                          <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} className="inline-flex items-center gap-1 font-medium text-navy">
-                            {speakingId === m.id ? <><VolumeX className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Read aloud</>}
+                    </div>
+                    {m.actions && m.actions.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {m.actions.map((a) => (
+                          <button
+                            key={a.key}
+                            type="button"
+                            onClick={() => {
+                              if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
+                            }}
+                            className="rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent/20"
+                          >
+                            {a.label} →
                           </button>
-                        ) : null}
-                        <span className="text-muted-foreground">Token use connects when metering is live.</span>
-                        <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1 font-medium text-navy">
-                          <Share2 className="h-3.5 w-3.5" /> Share
-                        </button>
+                        ))}
                       </div>
+                    ) : null}
+                    <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-foreground">
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </button>
+                      {speechAvailable ? (
+                        <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} className="inline-flex items-center gap-1 font-medium text-foreground">
+                          {speakingId === m.id ? <><VolumeX className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Read aloud</>}
+                        </button>
+                      ) : null}
+                      <span className="text-muted-foreground">Token use connects when metering is live.</span>
+                      <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1 font-medium text-foreground">
+                        <Share2 className="h-3.5 w-3.5" /> Share
+                      </button>
                     </div>
                   </div>
                 ) : (
                   <div
                     key={m.id}
-                    className="mr-auto max-w-[90%] rounded-2xl border border-border bg-sand p-4"
+                    className="w-full rounded-xl border border-border bg-card p-3 text-foreground"
                   >
                     <p className="font-display text-base font-semibold text-foreground">
                       {m.text.split("|")[0]}
@@ -643,14 +685,18 @@ export function ChatbotScreen() {
                 ),
               )}
               {isSending ? (
-                <div className="mr-auto flex max-w-[90%] items-center gap-3 rounded-2xl border border-border bg-white p-3 text-sm text-muted-foreground">
-                  <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F7F3EA]">
-                    <LogoMark className="sonic-mark-in h-8 w-8 rounded-md" />
-                    <span className="sonic-flare sonic-flare-ambient left-1/2 top-1/2" />
-                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8, animationDuration: "1400ms", animationDelay: "250ms" } as CSSProperties} />
-                    <span className="sonic-particle left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65, animationDuration: "1400ms", animationDelay: "500ms" } as CSSProperties} />
+                <div className="flex w-full items-center gap-3 text-sm text-foreground">
+                  <span className="relative grid h-8 w-8 shrink-0 place-items-center">
+                    <LogoMark className="sonic-mark-loop h-8 w-8" />
+                    <span className="sonic-flare-loop left-1/2 top-1/2" />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "0px", "--dy": "-20px", "--po": 0.9, animationDelay: "0ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "17px", "--dy": "-10px", "--po": 0.82, animationDelay: "65ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "17px", "--dy": "10px", "--po": 0.88, animationDelay: "130ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "0px", "--dy": "20px", "--po": 0.78, animationDelay: "195ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
                   </span>
-                  <span>Working from your notes…</span>
+                  <span className="thinking-shimmer font-medium text-navy">Thinking</span>
                 </div>
               ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
@@ -661,26 +707,32 @@ export function ChatbotScreen() {
         </div>
 
         {/* Composer — sits clear of the bottom tab bar */}
-        <div className="mt-4 mb-3">
+        <div className="mt-2 mb-2 shrink-0">
+          {attachedPage ? (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
+              <span className="min-w-0 flex-1 truncate">Page {attachedPage.page} · {attachedPage.fileName}</span>
+              <button type="button" onClick={() => setAttachedPage(null)} className="shrink-0 underline underline-offset-2">Remove</button>
+            </div>
+          ) : null}
           <div className="relative mb-2">
             <button
               type="button"
               aria-haspopup="menu"
               aria-expanded={modeMenuOpen}
               onClick={() => setModeMenuOpen((open) => !open)}
-              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-navy"
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-card-foreground"
             >
               {mode} ▾
             </button>
             {modeMenuOpen ? (
-              <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-white p-1">
+              <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
                 {MODES.map((item) => (
                   <button
                     key={item}
                     type="button"
                     role="menuitem"
                     onClick={() => { setMode(item); setModeMenuOpen(false); }}
-                    className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-navy hover:bg-sand"
+                    className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-popover-foreground hover:bg-secondary"
                   >
                     {item}
                   </button>
@@ -689,7 +741,7 @@ export function ChatbotScreen() {
             ) : null}
           </div>
           {photoName ? (
-            <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-navy">
+            <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-card-foreground">
               <span className="truncate">
                 {isUploadingPhoto ? "Uploading… " : "Photo · "}
                 {photoName}
@@ -707,8 +759,8 @@ export function ChatbotScreen() {
             </div>
           ) : null}
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setAttachOpen(true)} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-white text-navy">
-              <Paperclip className="h-5 w-5" />
+            <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-chat-card text-chat-foreground disabled:opacity-60">
+              <Plus className="h-5 w-5" />
             </button>
             <input
               ref={cameraInput}
@@ -733,9 +785,14 @@ export function ChatbotScreen() {
                 setPhotoName(f?.name ?? null);
               }}
             />
-            <input
+            <textarea
+              ref={composerRef}
+              rows={1}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                resizeComposer();
+              }}
               maxLength={2000}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -745,14 +802,14 @@ export function ChatbotScreen() {
               }}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
-              className="h-12 min-w-0 flex-1 rounded-full border border-border bg-white px-4 text-sm text-navy outline-none placeholder:text-muted-foreground focus:border-amber/60 disabled:opacity-60"
+              className="max-h-40 min-h-12 min-w-0 flex-1 resize-none overflow-y-hidden rounded-2xl border border-border bg-chat-card px-4 py-3 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => send()}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-navy text-cream transition hover:bg-navy/90 disabled:opacity-60"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
               <Send className="h-5 w-5" />
             </button>
@@ -765,7 +822,7 @@ export function ChatbotScreen() {
         </div>
       </div>
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-[#F7F3EA] text-navy">
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-popover text-popover-foreground">
           <SheetHeader className="text-left">
             <SheetTitle>Study Chat history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>
@@ -785,13 +842,39 @@ export function ChatbotScreen() {
                   // flash and revert.
                   setSelected(row.course);
                   setHistoryOpen(false);
-                }} className="block w-full rounded-xl border border-border border-l-4 border-l-navy bg-white p-3 text-left">
+                }} className="block w-full rounded-xl border border-border border-l-4 border-l-accent bg-card p-3 text-left text-card-foreground">
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
                   <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
                 </button>
               ))}
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+      <Sheet open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
+        <SheetContent side="bottom" className="max-h-[75vh] overflow-y-auto rounded-t-2xl bg-popover text-popover-foreground">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-popover-foreground">Choose a course</SheetTitle>
+            <SheetDescription>Study Chat uses the notes for the selected course.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-2">
+            {courseOptions.map((code) => {
+              const active = canonicalCourseCode(selected) === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => { selectCourse(code); setCoursePickerOpen(false); }}
+                  className={active
+                    ? "flex w-full items-center justify-between rounded-xl bg-accent px-4 py-3 text-left text-sm font-semibold text-accent-foreground"
+                    : "flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium text-card-foreground hover:bg-secondary"}
+                >
+                  {displayCode(code)}
+                  {active ? <span className="text-xs">Active</span> : null}
+                </button>
+              );
+            })}
+          </div>
         </SheetContent>
       </Sheet>
       <Sheet open={shareOpen} onOpenChange={setShareOpen}>
