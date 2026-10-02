@@ -382,7 +382,7 @@ type Ctx = {
   go: (s: OnboardingStep | "dashboard") => void;
   navigate: (
     v: AppView,
-    opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
+    opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null; replace?: boolean },
   ) => void;
   resetSetup: () => void;
 };
@@ -783,7 +783,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   };
   const navigate = (
     v: AppView,
-    opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null },
+    opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null; replace?: boolean },
   ) => {
     const nextCourseCode = opts && "courseCode" in opts ? opts.courseCode ?? null : activeCourseCode;
     const nextAttemptId = opts && "attemptId" in opts ? opts.attemptId ?? null : activeAttemptId;
@@ -799,7 +799,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       courseCode: nextCourseCode,
       attemptId: nextAttemptId,
       deckId: nextDeckId,
-    }, false, historySessionId.current ?? undefined);
+    }, opts?.replace ?? false, historySessionId.current ?? undefined);
     setActiveCourseCode(nextCourseCode);
     setActiveAttemptId(nextAttemptId);
     setActiveDeckId(nextDeckId);

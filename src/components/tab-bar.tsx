@@ -68,13 +68,13 @@ export function TopNavBar() {
       <div className="mx-auto flex w-full max-w-[60rem] items-center gap-6 px-6 py-3">
         <button
           type="button"
-          onClick={() => navigate("home")}
+          onClick={() => navigate("home", { replace: true })}
           className="flex shrink-0 items-center gap-2"
           aria-label="TrueFluency Pro home"
         >
           <LogoMark className="h-7 w-7" />
           <span className="font-display text-base font-semibold tracking-tight text-foreground">
-            TrueFluency <span className="text-[#B86E0A]">Pro</span>
+            TrueFluency <span className="text-accent">Pro</span>
           </span>
         </button>
         <div className="ml-auto flex items-center gap-1">
@@ -84,11 +84,11 @@ export function TopNavBar() {
               <button
                 key={t.key}
                 type="button"
-                onClick={() => navigate(t.view)}
+                onClick={() => navigate(t.view, { replace: true })}
                 aria-current={on ? "page" : undefined}
                 className={cn(
                   "relative flex flex-col items-center rounded-lg px-3 py-2 text-sm transition",
-                  on ? "font-semibold text-[#B86E0A]" : "font-medium text-muted-foreground hover:text-foreground",
+                  on ? "font-semibold text-accent" : "font-medium text-muted-foreground hover:text-foreground",
                 )}
               >
                 <span className="flex items-center gap-1.5">
@@ -98,7 +98,7 @@ export function TopNavBar() {
                 <span
                   className={cn(
                     "mt-1 h-0.5 w-5 rounded-full",
-                    on ? "bg-[#B86E0A]" : "bg-transparent",
+                    on ? "bg-accent" : "bg-transparent",
                   )}
                 />
               </button>
@@ -129,11 +129,11 @@ export function BottomTabBar() {
             <button
               key={t.key}
               type="button"
-              onClick={() => navigate(t.view)}
+              onClick={() => navigate(t.view, { replace: true })}
               aria-current={on ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 px-1 pb-2.5 pt-2.5 transition",
-                on ? "text-[#B86E0A]" : "text-muted-foreground hover:text-foreground",
+                on ? "text-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <t.icon className={cn("h-5 w-5", on && "stroke-[2.5]")} />
@@ -143,7 +143,7 @@ export function BottomTabBar() {
               <span
                 className={cn(
                   "h-0.5 w-6 rounded-full transition-colors",
-                  on ? "bg-[#B86E0A]" : "bg-transparent",
+                  on ? "bg-accent" : "bg-transparent",
                 )}
               />
             </button>

@@ -195,28 +195,22 @@ export function FlashcardsScreen() {
           ) : null}
         </div>
 
-        {/* Optional course scope chips */}
-        <div className="mb-8 flex flex-wrap gap-2">
-          {courseOptions.map((code) => {
-            const isAll = code === ALL_SCOPE;
-            const active = selected === code;
-            const label = isAll ? "All my notes" : displayCode(code);
-            return (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setSelected(code)}
-                className={
-                  "rounded-full border px-3 py-1 text-xs font-medium transition " +
-                  (active
-                    ? "border-amber bg-sand text-amber"
-                    : "border-border bg-card text-navy hover:border-navy/30")
-                }
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div className="mb-8">
+          <label htmlFor="flashcards-course-filter" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Course
+          </label>
+          <select
+            id="flashcards-course-filter"
+            value={selected}
+            onChange={(event) => setSelected(event.target.value)}
+            className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-medium text-foreground outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+          >
+            {courseOptions.map((code) => (
+              <option key={code} value={code}>
+                {code === ALL_SCOPE ? "All my notes" : displayCode(code)}
+              </option>
+            ))}
+          </select>
         </div>
 
         {isLoadingDecks ? (
@@ -302,6 +296,7 @@ export function FlashcardsReviewScreen() {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [hasRevealedAnswer, setHasRevealedAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -313,6 +308,7 @@ export function FlashcardsReviewScreen() {
 
   const code = activeCourseCode ? displayCode(activeCourseCode) : "Notes";
   const current = cards[index];
+  const sessionComplete = cards.length > 0 && index >= cards.length;
 
   useEffect(() => {
     if (!activeDeckId) {
@@ -328,6 +324,8 @@ export function FlashcardsReviewScreen() {
           : loaded;
         setCards(list);
         setIndex(0);
+        setFlipped(false);
+        setHasRevealedAnswer(false);
       })
       .catch((e) => setError((e as Error)?.message || "Couldn't load this deck."))
       .finally(() => setIsLoading(false));
@@ -343,6 +341,7 @@ export function FlashcardsReviewScreen() {
     } finally {
       setIsGrading(false);
       setFlipped(false);
+      setHasRevealedAnswer(false);
       setIndex((i) => i + 1);
     }
   };
@@ -357,9 +356,9 @@ export function FlashcardsReviewScreen() {
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
-          {cards.length > 0 ? (
+          {current ? (
             <span className="text-sm font-semibold text-navy">
-              {code} · {Math.min(index + 1, cards.length)} of {cards.length}
+              {code} · {index + 1} of {cards.length}
             </span>
           ) : null}
         </div>
@@ -375,17 +374,29 @@ export function FlashcardsReviewScreen() {
           </div>
         ) : !current ? (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="font-display text-xl font-semibold text-navy">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {reviewMode === "due" ? "Nothing due. Come back tomorrow or use Cram." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
-            </p>
+            {sessionComplete ? (
+              <>
+                <p className="font-display text-xl font-semibold text-navy">Session complete</p>
+                <p className="mt-1 text-sm text-muted-foreground">You've finished this review session.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-display text-xl font-semibold text-navy">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {reviewMode === "due" ? "Nothing due. Come back tomorrow or use Cram." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <>
             {/* One huge card; tap flips front → navy back */}
             <button
               type="button"
-              onClick={() => setFlipped((f) => !f)}
+              onClick={() => setFlipped((wasFlipped) => {
+                if (!wasFlipped) setHasRevealedAnswer(true);
+                return !wasFlipped;
+              })}
               className={
                 "flex min-h-[22rem] w-full flex-col items-center justify-between rounded-3xl border p-8 text-center transition " +
                 (flipped ? "border-navy bg-navy" : "border-border bg-card")
@@ -404,8 +415,8 @@ export function FlashcardsReviewScreen() {
             </button>
 
             {reviewMode === "cram" ? (
-              <button type="button" onClick={() => { setFlipped(false); setIndex((currentIndex) => currentIndex + 1); }} className="mt-6 h-12 w-full rounded-full bg-amber text-sm font-semibold text-cream">Next</button>
-            ) : (
+              <button type="button" onClick={() => { setFlipped(false); setHasRevealedAnswer(false); setIndex((currentIndex) => currentIndex + 1); }} className="mt-6 h-12 w-full rounded-full bg-amber text-sm font-semibold text-cream">Next</button>
+            ) : hasRevealedAnswer ? (
               <div className="mt-6 grid grid-cols-2 gap-3">
                 {([
                   ["Again", 1], ["Hard", 2], ["Good", 3], ["Easy", 4],
@@ -416,7 +427,7 @@ export function FlashcardsReviewScreen() {
                   </button>
                 ))}
               </div>
-            )}
+            ) : null}
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
               Tap card to see the answer.

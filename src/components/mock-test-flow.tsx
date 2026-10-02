@@ -18,9 +18,9 @@ import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
-import { canonicalCourseCode } from "@/lib/course-code";
 import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
+import { canonicalCourseCode } from "@/lib/course-code";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
@@ -40,9 +40,7 @@ export type AIQuestion = {
 
 function useActiveCourse(): UserCourse | undefined {
   const { profile, activeCourseCode } = useProfile();
-  return profile.courses.find((c) =>
-    canonicalCourseCode(c.code) === canonicalCourseCode(activeCourseCode ?? "")
-  );
+  return profile.courses.find((c) => c.code === activeCourseCode);
 }
 
 /* ---------- 1. Generation screen ---------- */
@@ -106,11 +104,7 @@ export function MockGenerationScreen() {
   useEffect(() => {
     // One job at a time. Retry can only start a new job once the previous one
     // has settled, so a retry never stacks on top of a running request.
-    if (!course) {
-      navigate("mock-tests");
-      return;
-    }
-    if (fetchedRef.current || inFlightRef.current) return;
+    if (!course || fetchedRef.current || inFlightRef.current) return;
     fetchedRef.current = true;
     inFlightRef.current = true;
 
@@ -272,8 +266,6 @@ export function MockGenerationScreen() {
     );
   }
 
-
-  if (!course) return <p className="p-5 text-sm text-muted-foreground">Pick a course</p>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -469,8 +461,7 @@ export function MockConfigScreen() {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
   }, []);
 
-  if (!course) return <p className="p-5 text-sm text-muted-foreground">Pick a course</p>;
-  if (!smart || readiness !== "ready") return null;
+  if (!course || !smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
     setCount(smart.questionCount);
@@ -494,6 +485,7 @@ export function MockConfigScreen() {
   // previously generated question set (which may belong to another course).
   const analysedTopics = profile.courseTopicAnalysis[course.code]?.topics ?? [];
   const ALL_TOPICS = Array.from(new Set(analysedTopics.map((t) => t.topic)));
+  const topicFocusRequired = ALL_TOPICS.length >= MAX_TOPIC_FOCUS;
 
 
   const generate = () => {
@@ -596,11 +588,13 @@ export function MockConfigScreen() {
           {ALL_TOPICS.length > 0 && (
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Topic focus <span className="normal-case text-muted-foreground/70">(optional)</span>
+                Topic focus
               </label>
-              <p className="mb-2 text-[11px] text-muted-foreground">
-                Pick 3 topics from this upload.
-              </p>
+              {topicFocusRequired ? (
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Select exactly 3 topics from this upload to continue.
+                </p>
+              ) : null}
               <div className="flex flex-wrap gap-1.5">
                 {ALL_TOPICS.map((t) => {
                   const on = topicFocus.includes(t);
@@ -631,7 +625,7 @@ export function MockConfigScreen() {
           </button>
         </div>
 
-        <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
+        <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate} disabled={topicFocusRequired && topicFocus.length !== MAX_TOPIC_FOCUS}>
           <Zap className="mr-2 h-4 w-4" />
           <span className="flex flex-col items-start leading-tight">
             <span className="text-base font-semibold">Generate Mock Test</span>
@@ -641,6 +635,11 @@ export function MockConfigScreen() {
             </span>
           </span>
         </Button>
+        {topicFocusRequired && topicFocus.length !== MAX_TOPIC_FOCUS ? (
+          <p className="mt-2 text-center text-xs text-muted-foreground" aria-live="polite">
+            Choose {MAX_TOPIC_FOCUS - topicFocus.length} more topic{MAX_TOPIC_FOCUS - topicFocus.length === 1 ? "" : "s"} to continue.
+          </p>
+        ) : null}
 
         {profile.inProgressTest && profile.inProgressTest.courseCode === course.code ? (
           <p className="mt-3 text-center text-[11px] text-muted-foreground">

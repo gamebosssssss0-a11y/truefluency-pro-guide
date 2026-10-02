@@ -49,6 +49,29 @@ export const confirmMaterialUpload = createServerFn({ method: "POST" })
     return { exists: await storage.objectExists(data.path) };
   });
 
+/** Signed GET for one of the caller's own R2-backed course materials. */
+export const presignMaterialDownload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { materialId: string }) => {
+    const materialId = String(input?.materialId ?? "").trim();
+    if (!materialId || materialId.length > 64) throw new Error("This file couldn't be opened.");
+    return { materialId };
+  })
+  .handler(async ({ data, context }): Promise<{ url: string }> => {
+    const { data: material, error } = await context.supabase
+      .from("course_materials")
+      .select("file_path")
+      .eq("id", data.materialId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const path = material?.file_path;
+    if (error || !path || !path.startsWith(`${context.userId}/`)) {
+      throw new Error("This file couldn't be opened.");
+    }
+    const url = await storage.presignDownload({ path, expiresInSeconds: 60 * 30 });
+    return { url };
+  });
+
 /** Deletes one or more of the CALLER'S OWN files. Every path is checked
  * against the authenticated userId before anything is deleted — a request
  * can't be used to delete another student's object even if a path were

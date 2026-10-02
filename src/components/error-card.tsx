@@ -22,7 +22,7 @@ export function ErrorCard({
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 text-left">
-      <div className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-[#B86E0A]/12 text-[#B86E0A]">
+      <div className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-[#B86E0A]/12 text-accent">
         <AlertTriangle className="h-5 w-5" />
       </div>
       <h2 className="font-display text-lg font-semibold text-foreground">{title}</h2>

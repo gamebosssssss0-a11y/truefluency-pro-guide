@@ -11,7 +11,7 @@ export function HeaderLogo({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      onClick={() => navigate("home")}
+      onClick={() => navigate("home", { replace: true })}
       aria-label="TrueFluency Pro home"
       className={cn("shrink-0 rounded-lg shadow-sm transition hover:opacity-90", className)}
     >

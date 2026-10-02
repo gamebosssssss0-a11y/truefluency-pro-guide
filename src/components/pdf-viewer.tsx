@@ -518,7 +518,7 @@ export function PdfViewer({
       >
         {status === "loading" ? (
           <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
-            <Loader2 className="h-5 w-5 animate-spin text-[#B86E0A]" />
+            <Loader2 className="h-5 w-5 animate-spin text-accent" />
             <p className="text-sm font-medium text-foreground">Opening your file…</p>
             {onCancel ?? onClose ? (
               <Button

@@ -23,7 +23,7 @@ export function TrialWelcomeScreen() {
       title="Your 7-day full-access trial has started"
       subtitle={`Every account begins with a ${TRIAL_LINE}.`}
     >
-      <div className="space-y-3 rounded-2xl border border-[#E4DCC8] bg-white p-4 text-sm leading-relaxed text-[#1B2A4A] shadow-sm">
+      <div className="space-y-3 rounded-2xl border border-[#E4DCC8] bg-surface p-4 text-sm leading-relaxed text-[#1B2A4A] shadow-sm">
         <p>
           For the next 7 days you have full access: unlimited mock tests of up to{" "}
           {PAID_MAX_QUESTIONS} questions, unlimited topic refreshes, and the WHY
@@ -38,7 +38,7 @@ export function TrialWelcomeScreen() {
 
       <Button
         size="lg"
-        className="mt-6 h-12 w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#a4620a]"
+        className="mt-6 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
         onClick={start}
       >
         Got it, let's start

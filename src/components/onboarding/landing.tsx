@@ -49,7 +49,7 @@ export function LandingScreen() {
         <header className="mb-8 flex items-center gap-2">
           <LogoMark className="h-8 w-8" />
           <span className="font-display text-base font-semibold tracking-tight text-[#1B2A4A]">
-            TrueFluency <span className="text-[#B86E0A]">Pro</span>
+            TrueFluency <span className="text-accent">Pro</span>
           </span>
           <button
             type="button"
@@ -61,8 +61,8 @@ export function LandingScreen() {
         </header>
 
         <section>
-          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[#E4DCC8] bg-white px-3 py-1 text-xs font-medium text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-[#B86E0A]" />
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[#E4DCC8] bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-accent" />
             Every faculty, every department, 100L to final year
           </div>
           <h1 className="font-display text-[2rem] font-semibold leading-tight text-[#1B2A4A]">
@@ -76,7 +76,7 @@ export function LandingScreen() {
           <div className="mt-6 space-y-3">
             <Button
               size="lg"
-              className="h-12 min-h-[48px] w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#a4620a]"
+              className="h-12 min-h-[48px] w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
               onClick={() => go("disclaimer")}
             >
               Start 7-day free trial
@@ -90,7 +90,7 @@ export function LandingScreen() {
             <Button
               size="lg"
               variant="outline"
-              className="w-full border-[#E4DCC8] bg-white text-[#1B2A4A]"
+              className="w-full border-[#E4DCC8] bg-surface text-[#1B2A4A]"
               onClick={() =>
                 insideRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
               }
@@ -103,7 +103,7 @@ export function LandingScreen() {
         {/* Hero: one static frame of the real app, drawn in the page itself so
             it paints with the first render (no image request, no layout shift). */}
         <div
-          className="mt-9 overflow-hidden rounded-2xl border border-[#E4DCC8] bg-white p-4 shadow-sm"
+          className="mt-9 overflow-hidden rounded-2xl border border-[#E4DCC8] bg-surface p-4 shadow-sm"
           style={{ aspectRatio: "4 / 5" }}
         >
           <div className="flex items-center justify-between">
@@ -139,7 +139,7 @@ export function LandingScreen() {
               {["Raising the temperature", "Adding a catalyst", "Reducing the volume"].map((o) => (
                 <div
                   key={o}
-                  className="rounded-lg border border-[#E4DCC8] bg-white px-2.5 py-1.5 text-[11px] text-[#1B2A4A]"
+                  className="rounded-lg border border-[#E4DCC8] bg-surface px-2.5 py-1.5 text-[11px] text-[#1B2A4A]"
                 >
                   {o}
                 </div>
@@ -147,7 +147,7 @@ export function LandingScreen() {
             </div>
           </div>
 
-          <div className="mt-3 rounded-xl bg-[#B86E0A] px-3 py-2 text-center text-xs font-semibold text-white">
+          <div className="mt-3 rounded-xl bg-[#B86E0A] px-3 py-2 text-center text-xs font-semibold text-[#080D19]">
             Take a mock
           </div>
         </div>
@@ -174,8 +174,8 @@ export function LandingScreen() {
           </figure>
           <div className="mt-4 space-y-3">
             {features.map((f) => (
-              <div key={f.title} className="rounded-2xl border border-[#E4DCC8] bg-white p-4 shadow-sm">
-                <div className="mb-2 grid h-9 w-9 place-items-center rounded-xl bg-[#B86E0A]/10 text-[#B86E0A]">
+              <div key={f.title} className="rounded-2xl border border-[#E4DCC8] bg-surface p-4 shadow-sm">
+                <div className="mb-2 grid h-9 w-9 place-items-center rounded-xl bg-[#B86E0A]/10 text-accent">
                   <f.icon className="h-4 w-4" />
                 </div>
                 <h3 className="text-sm font-semibold text-[#1B2A4A]">{f.title}</h3>
@@ -185,7 +185,7 @@ export function LandingScreen() {
           </div>
         </div>
 
-        <div className="mt-10 rounded-2xl border border-[#E4DCC8] bg-white p-5 shadow-sm">
+        <div className="mt-10 rounded-2xl border border-[#E4DCC8] bg-surface p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[#1B2A4A]">
             Built for UI, across every faculty and department
           </h2>
@@ -205,7 +205,7 @@ export function LandingScreen() {
         <div className="mt-8">
           <Button
             size="lg"
-            className="h-12 min-h-[48px] w-full bg-[#B86E0A] text-[#FFFFFF] hover:bg-[#a4620a]"
+            className="h-12 min-h-[48px] w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
             onClick={() => go("disclaimer")}
           >
             Start 7-day free trial
@@ -232,12 +232,12 @@ function TopicRow({
 }) {
   const pillClass =
     tone === "strong"
-      ? "bg-[#B86E0A] text-white"
+      ? "bg-[#B86E0A] text-[#080D19]"
       : tone === "moderate"
         ? "bg-[#F3E6C8] text-[#1B2A4A]"
         : "bg-[#F7F3EA] text-muted-foreground border border-[#E4DCC8]";
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-[#E4DCC8] bg-white px-3 py-2">
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-[#E4DCC8] bg-surface px-3 py-2">
       <span className="truncate text-xs font-medium text-[#1B2A4A]">{topic}</span>
       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${pillClass}`}>
         {pill}

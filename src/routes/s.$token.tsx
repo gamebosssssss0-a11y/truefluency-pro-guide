@@ -135,7 +135,7 @@ function SharedFilePage() {
           </span>
         </div>
 
-        <div className="rounded-2xl border border-[#E4DCC8] bg-white p-4">
+        <div className="rounded-2xl border border-[#E4DCC8] bg-surface p-4">
           {state === "loading" ? (
             <Loader2 className="h-5 w-5 animate-spin text-[#5C5C70]" />
           ) : state === "gone" ? (

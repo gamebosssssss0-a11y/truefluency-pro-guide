@@ -132,8 +132,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const nextId = useRef(1);
   const loadToken = useRef(0);
   const hasStartedFreshThisVisit = useRef(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+
+  const resizeComposer = () => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    const maxHeight = 160;
+    composer.style.height = "auto";
+    composer.style.height = `${Math.min(composer.scrollHeight, maxHeight)}px`;
+    composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  useEffect(() => {
+    resizeComposer();
+  }, [draft]);
 
   const courseOptions = profile.courses
     .map((course) => canonicalCourseCode(course.code))
@@ -558,7 +572,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-2 touch-pan-y"
         >
           {!isLoadingThread && messages.length === 0 ? (
-            <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
+            <div className="flex flex-col items-center justify-center px-4 text-center">
               <p className="font-display text-[22px] font-semibold text-foreground">
                 {selected ? `Ask about ${placeholderCourse}` : "Add a course first."}
               </p>
@@ -675,8 +689,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   <span className="relative grid h-8 w-8 shrink-0 place-items-center">
                     <LogoMark className="sonic-mark-loop h-8 w-8" />
                     <span className="sonic-flare-loop left-1/2 top-1/2" />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "18px", "--dy": "-14px", "--po": 0.8 } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-18px", "--dy": "13px", "--po": 0.65 } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "0px", "--dy": "-20px", "--po": 0.9, animationDelay: "0ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "17px", "--dy": "-10px", "--po": 0.82, animationDelay: "65ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "17px", "--dy": "10px", "--po": 0.88, animationDelay: "130ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "0px", "--dy": "20px", "--po": 0.78, animationDelay: "195ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
+                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
                   </span>
                   <span className="thinking-shimmer font-medium text-navy">Thinking</span>
                 </div>
@@ -767,9 +785,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 setPhotoName(f?.name ?? null);
               }}
             />
-            <input
+            <textarea
+              ref={composerRef}
+              rows={1}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                resizeComposer();
+              }}
               maxLength={2000}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -779,7 +802,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               }}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
-              className="h-12 min-w-0 flex-1 rounded-full border border-border bg-chat-card px-4 text-sm text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
+              className="max-h-40 min-h-12 min-w-0 flex-1 resize-none overflow-y-hidden rounded-2xl border border-border bg-chat-card px-4 py-3 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
             />
             <button
               type="button"

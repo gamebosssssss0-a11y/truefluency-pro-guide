@@ -133,6 +133,14 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       window.setTimeout(() => {
         if (!node.isConnected) return;
         document.documentElement.style.overflowX = previousOverflowX;
+        // Swap the adjacent preview for the destination in one React update.
+        // Clearing the preview in the effect cleanup let both screens paint
+        // together for one frame after the stage snapped back to its origin.
+        node.style.transition = "none";
+        node.style.transform = "translate3d(0, 0, 0)";
+        node.style.willChange = "";
+        node.dataset.swipeActive = "false";
+        setPreview(null);
         navigateRef.current(target);
       }, TRANSITION_MS);
     };

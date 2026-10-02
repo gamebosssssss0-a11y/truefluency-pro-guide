@@ -85,11 +85,11 @@ export function GoogleProfileScreen() {
             {photoUrl ? (
               <img src={photoUrl} alt="Your photo" className="h-full w-full object-cover" />
             ) : uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-[#B86E0A]" />
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
             ) : (
               initial
             )}
-            <span className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full bg-[#B86E0A] text-white">
+            <span className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full bg-[#B86E0A] text-[#080D19]">
               <Camera className="h-3.5 w-3.5" />
             </span>
           </button>
@@ -97,7 +97,7 @@ export function GoogleProfileScreen() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="text-sm font-semibold text-[#B86E0A]"
+              className="text-sm font-semibold text-accent"
             >
               {photoUrl ? "Change photo" : "Add a photo"}
             </button>
@@ -146,7 +146,7 @@ export function GoogleProfileScreen() {
 
         <Button
           size="lg"
-          className="w-full bg-[#B86E0A] text-white hover:bg-[#B86E0A]/90"
+          className="w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
           disabled={!canContinue}
           onClick={() => void finish()}
         >

@@ -70,7 +70,7 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
             ))}
           </div>
           <Button
-            className="bg-[#B86E0A] text-white hover:bg-[#B86E0A]/90"
+            className="bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
             onClick={() => (last ? onClose() : setI(i + 1))}
           >
             {last ? "Got it" : "Next"}

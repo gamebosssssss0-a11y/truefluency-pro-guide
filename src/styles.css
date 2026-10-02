@@ -17,6 +17,7 @@
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -67,10 +68,11 @@
 
   --background: #F7F3EA;
   --foreground: #1B2A4A;
+  --surface: #FBF7EE;
 
-  --card: #FFFFFF;
+  --card: var(--surface);
   --card-foreground: #1B2A4A;
-  --popover: #FFFFFF;
+  --popover: var(--surface);
   --popover-foreground: #1B2A4A;
 
   --primary: #1B2A4A;
@@ -107,7 +109,7 @@
   --warn: #B86E0A;
   --bad: #8B2E2E;
   --chat-page: #F7F3EA;
-  --chat-card: #FFFFFF;
+  --chat-card: var(--surface);
   --chat-foreground: #1B2A4A;
 
 }
@@ -117,6 +119,7 @@
   --background: #020A1A;
   --foreground: #F7F3EA;
   --card: #0E1A33;
+  --surface: var(--card);
   --card-foreground: #F7F3EA;
   --popover: #132240;
   --popover-foreground: #F7F3EA;
@@ -213,6 +216,71 @@
   .surface-icon-well {
     background-color: #F3E6C8;
     color: #1B2A4A;
+  }
+
+  /* Keep the brand amber for fills while using readable amber text. */
+  .text-accent,
+  .text-amber,
+  .text-ppt-amber,
+  .text-warn {
+    color: #8B5106;
+  }
+
+  .text-accent:hover,
+  .text-amber:hover,
+  .text-ppt-amber:hover,
+  .text-warn:hover {
+    color: #8B5106;
+  }
+
+  .dark .text-accent,
+  .dark .text-amber,
+  .dark .text-ppt-amber,
+  .dark .text-warn,
+  .dark .text-accent:hover,
+  .dark .text-amber:hover,
+  .dark .text-ppt-amber:hover,
+  .dark .text-warn:hover {
+    color: #E3B36B;
+  }
+
+  .text-accent-foreground {
+    color: #080D19;
+  }
+
+  .dark .text-accent-foreground {
+    color: #020A1A;
+  }
+
+  .bg-accent.text-accent-foreground {
+    color: #080D19;
+  }
+
+  .dark .bg-accent.text-accent-foreground {
+    color: #020A1A;
+  }
+
+  .bg-amber.text-cream,
+  .bg-amber.text-white {
+    color: #080D19;
+  }
+
+  .dark .bg-amber.text-cream,
+  .dark .bg-amber.text-white {
+    color: #020A1A;
+  }
+
+  .bg-amber.text-cream:hover,
+  .bg-amber.text-white:hover {
+    background-color: #B86E0A;
+  }
+
+  .bg-accent.text-accent-foreground:hover {
+    background-color: var(--accent);
+  }
+
+  .dark .bg-accent.text-accent-foreground:hover {
+    color: #020A1A;
   }
 
   .dark .surface-wash {

@@ -25,6 +25,7 @@ import { getMyAvatar } from "@/lib/avatar";
 import { useProfile } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
+import { presignMaterialDownload } from "@/lib/storage.functions";
 import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
   savePeerFile, setMaterialPublished, SHARING_OFFLINE_MESSAGE,
@@ -85,7 +86,7 @@ function ReadyPill({ ready }: { ready: boolean }) {
       Ready for mocks
     </span>
   ) : (
-    <span className="rounded-full bg-[#B86E0A]/12 px-2 py-0.5 text-[10px] font-semibold text-[#B86E0A]">
+    <span className="rounded-full bg-[#B86E0A]/12 px-2 py-0.5 text-[10px] font-semibold text-accent">
       Reading only
     </span>
   );
@@ -272,22 +273,14 @@ export function LibraryScreen() {
       });
     try {
       if (!peer) {
-        // Own file: read it straight from storage with the user's own session,
-        // whether or not it is published. No service role, no shelf lookup.
-        const { data: row, error } = await supabase
-          .from("course_materials")
-          .select("file_path")
-          .eq("id", item.id)
-          .maybeSingle();
-        if (error || !row?.file_path) throw new Error("This file couldn't be opened.");
-        const signed = await supabase.storage
-          .from("course-materials")
-          .createSignedUrl(row.file_path, 60 * 30);
+        // The course-materials row points to an R2 object. The authenticated
+        // server function checks ownership and signs its matching R2 key.
+        const signed = await presignMaterialDownload({ data: { materialId: item.id } });
         setBusy(false);
-        if (signed.error || !signed.data?.signedUrl) throw new Error("This file couldn't be opened.");
+        if (!signed.url) throw new Error("This file couldn't be opened.");
         setPreview({
           id: item.id, file_name: item.file_name, file_type: item.file_type,
-          course_code: item.course_code, url: signed.data.signedUrl,
+          course_code: item.course_code, url: signed.url,
           readyForMocks: item.readyForMocks, peer: false,
         });
         return;

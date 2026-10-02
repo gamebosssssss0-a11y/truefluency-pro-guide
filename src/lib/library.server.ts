@@ -101,7 +101,10 @@ async function attributionFor(
     let avatar_url: string | null = null;
     if (showPhoto && data?.avatar_path) {
       try {
-        avatar_url = await r2.presignDownload({ path: data.avatar_path, expiresInSeconds: 60 * 60 });
+        const { data: signedAvatar, error } = await db.storage
+          .from("course-materials")
+          .createSignedUrl(data.avatar_path, 60 * 60);
+        if (!error) avatar_url = signedAvatar?.signedUrl ?? null;
       } catch {
         avatar_url = null;
       }
