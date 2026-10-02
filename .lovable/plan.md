@@ -1,71 +1,82 @@
-# Dark type, Study Chat layout, swipe motion, and back stack
+# TrueFluency Pro full bug-fix pass
 
-## Outcome
-- Keep the existing TrueFluency product, backend, quotas, mock flow, Library data, calculator formulas, PDF behavior, and five destinations.
-- Make dark mode use `#020a1a` for the page and `#F7F3EA` for body text everywhere requested, with raised surfaces using the supplied dark card tokens.
-- Rework only the existing Study Chat presentation and failure handling; no new chat product or service.
-- Make root-tab swipes visibly move and make browser Back reflect screens the student actually opened.
+## Confirmed current state
+- The latest preview build log is currently green, but no requested item will be reported as complete without live interaction testing.
+- Light cards, popovers, and chat surfaces still resolve to pure `#FFFFFF`; dark page/text tokens are already `#020A1A` and `#F7F3EA`.
+- Flashcards still render every course as a chip. Review ratings render before a flip, and a finished session reuses the initial empty-session copy.
+- Study Chat still uses a one-line input. Its empty state reserves a fixed minimum height, and its thinking mark has only two particles.
+- The upgrade CTA inherits non-wrapping button text, which can overflow when it contains the full pricing sentence.
+- **PDF diagnosis:** `LibraryScreen.openPreview()` in `src/components/library.tsx` still calls `supabase.storage.from("course-materials").createSignedUrl()` for the student's own files. Shelf/shared previews already use `storage.presignDownload()` against R2. This explains why own-file viewing can fail after the storage migration.
+- `MAX_TOPIC_FOCUS` and the chip-disable condition already use 3, but generation currently allows fewer than 3 selected topics.
+- Root-tab clicks and completed swipes still call `navigate()` without replace semantics, so they push browser entries. Child screens use the same API and must retain push behavior.
+- Google sign-in is a **full-page redirect**: `IdentityScreen.onGoogle()` calls `signInWithOAuth()` and then assigns `window.location.href` to the returned URL.
 
 ## Implementation
 
-### 1. Theme tokens and dark readability
-- Update the existing dark token values in `src/styles.css`:
-  - page `#020a1a`
-  - card `#0E1A33`
-  - raised sheet/popover `#132240`
-  - text `#F7F3EA`
-  - muted text `#C4B8A0`
-  - line `#243656`
-  - amber unchanged at `#B86E0A`
-- Keep light tokens unchanged and preserve the fixed PDF/DOC/PPT colors and white PDF page pixels.
-- Replace light-only chrome colors in Home, Account, Library, Practice, Study Chat, sheets, and tab bars with existing semantic tokens. Keep intentional fixed-color elements such as the sand student message with navy text and file-type chips.
-- Add only the requested looping thinking classes; leave all splash and existing one-shot animation classes unchanged. Reduced-motion users get a static logo.
+### 1. Warm ivory surface and dark contrast
+- Add `--surface: #FBF7EE` and `--color-surface`, then make light card/popover/chat-card roles use this token instead of pure white.
+- Replace card, sheet, input, and secondary-control `bg-white`/`#FFFFFF` literals with `bg-surface` or the matching semantic surface role across affected screens, including onboarding, shared-file, flashcard, Practice, Account, chat, Library, and PDF error chrome.
+- Preserve intentional white **foreground** on dark status/file chips and CTA text, and preserve PDF canvas/page pixels.
+- Audit dark-mode foreground/background pairs with computed contrast, replacing light-only navy text on dark semantic surfaces with `text-foreground`/`text-card-foreground`. Body and label text must meet 4.5:1 at rest.
 
-### 2. Study Chat structure and behavior
-- Keep `ChatbotScreen` and its existing successful send, quota, share, history, speech, and backend paths.
-- Replace the course chip wall with one active-course control that opens a themed course picker sheet. Remove “All my notes”; the active course remains the default.
-- Make starter/advisory chips populate the composer only. They never send automatically.
-- Keep student messages as compact right-aligned sand chips with navy text.
-- Render assistant replies full-width with no card background, rounded wrapper, or width cap. Put Copy, Read aloud, token status, and Share in a full-width hairline action row below each reply.
-- Replace the sending slab with a bare 32px looping `LogoMark` plus exactly “Thinking”.
-- Preserve the draft until a send succeeds. A failed send remains attached to that student message with “Couldn't send.”, Retry, and Copy; Retry reuses that message’s stored course and mode without adding a duplicate student message or consuming quota for a failed call.
-- Keep the existing `RichText`/`MathText` path. Make final results use the theme border/text tokens, preserve inline and display KaTeX, and style only step titles already present in the reply.
+### 2. Smooth root-tab motion
+- Keep `useSwipeTabs` as the only tab gesture mechanism and retain all swipe locks and reduced-motion behavior.
+- Remove the current settle/navigation race that can briefly show transformed old and new screens together. Keep one adjacent preview during drag, use one consistent transform/easing during commit or cancel, clip the stage, and reset only after the destination has mounted.
+- Root-tab swipes will replace history rather than push it.
 
-### 3. Docked chat layout and gesture isolation
-- Constrain Study Chat to the available viewport above the live tab bar, keep the composer docked with at least 8px clearance, and make only the thread scroll.
-- Add overscroll containment and vertical touch behavior to the message list, plus an explicit swipe lock so gestures beginning in the thread never change tabs.
-- Keep sheets and existing protected task screens excluded from tab swiping.
+### 3. Flashcards
+- Replace the course-chip wall with one active-course trigger and a themed bottom picker using the same interaction pattern as Study Chat.
+- Track “answer revealed for this card” separately from the current front/back face. Hide ratings until the first flip; keep them available if the student flips back; reset reveal state only when advancing to another card.
+- Track whether the loaded session began with cards and whether the student advanced past its final card. Show distinct completion copy with course code and reviewed count only after finishing; preserve the existing zero-card messages for sessions that started empty.
 
-### 4. Root-tab swipe motion
-- Extend the existing five-tab swipe hook and screen stage rather than adding another navigation system.
-- Track the finger’s horizontal offset on eligible root screens, visually translate the stage during a clear horizontal shell gesture, then animate the outgoing/current stage and incoming destination in the swipe direction.
-- Commit at most one adjacent tab per gesture in this order: Home → Practice → My Files → Study Chat → Account.
-- Cancel back to the current tab for short/vertical gestures; never start a tab swipe from the Study Chat message list, mock run/review, Library preview, or flashcard review.
+### 4. Study Chat composer, spacing, and thinking particles
+- Replace the single-line input with an auto-growing textarea that wraps, grows to roughly six lines, then scrolls vertically; Enter sends and Shift+Enter inserts a line break.
+- Remove fixed empty-state/thread spacing that creates the dead buffer, while keeping the thread as the flexible scroll region and the composer directly above the tab bar.
+- Render six sharp 4–6px particles around the thinking logo with radial offsets and staggered delays. Adjust only particle opacity/scale timing so dots remain distinct until the final convergence; leave `sonic-mark-loop`, `thinking-shimmer`, and the existing reduced-motion disabling intact.
 
-### 5. Browser back stack
-- Give app-created history entries a current-session marker and store only the screen and parameters actually opened.
-- Make repeated navigation to the current screen a no-op, and replace rather than push when establishing Home as the dashboard root.
-- On Back, restore only valid entries from the current session. Skip stale app entries from earlier sessions without rendering them, preventing Home from showing phantom Practice, Support, or Account screens.
-- Preserve the existing in-progress mock leave guard as a separate mechanism.
-- Keep sub-screen entries so phone Back returns once to the screen that actually opened them.
+### 5. Upgrade mobile fit
+- Keep `PRICE_LINE` and every price unchanged.
+- Make the pricing rows and CTA shrink/wrap within 360–400px, override inherited no-wrap behavior where needed, and add safe word wrapping without horizontal scrolling.
+
+### 6. R2 PDF previews
+- Add an authenticated server function for an owner's preview URL. It will validate the material ID, query through the authenticated Supabase client so ownership/RLS applies, and call the existing server-only `storage.presignDownload()` helper.
+- Change only the own-file branch of `LibraryScreen.openPreview()` to use that server function. Shelf/shared previews keep their already-working R2 path.
+- Keep all `R2_*` reads inside server-only code, preserve the exact Retry/Close fallback, and make no database or environment changes.
+
+### 7. Exact three-topic selection
+- Preserve `MAX_TOPIC_FOCUS = 3` and the existing two-topic smart default.
+- Keep unselected topics enabled at two selections, disable only unselected topics at three, and re-enable them immediately after a deselection.
+- Disable mock generation until exactly three topics are selected whenever analysed topics are available; never permit more than three.
+
+### 8. Browser history and Home floor
+- Extend `navigate()` with an optional `replace` flag and pass it into `writeAppLocation()`.
+- Make desktop and mobile root-tab clicks, plus root-tab swipes, use replace semantics. Keep all genuine child-screen navigation on the existing push path.
+- Preserve current-session markers, duplicate no-ops, stale-entry skipping, and the independent mock-run leave guard.
+- Because Google uses redirect OAuth, establish a marked Home floor after the completed sign-in flow. Handle that marker during Back so one user Back action skips the internal floor/redirect remnants instead of rendering onboarding or an old app screen. Do not treat a normal warm reload as a fresh OAuth completion.
 
 ## Verification
-- Confirm the existing build remains green and check browser/runtime logs.
-- At 360px, verify dark Home, Practice, My Files, Study Chat, Account, tab bar, and sheets use the requested page/text values with no unreadable navy-on-page chrome.
-- Verify Study Chat: active-course picker, suggestion fill-only behavior, full-width assistant reply, sand student chip, KaTeX display/inline rendering, boxed final result, looping “Thinking” row, failed-send Retry/Copy, preserved draft, and docked composer.
-- Verify gestures: vertical chat scrolling does not switch tabs; an eligible root swipe follows the finger, moves one tab, and shows directional transition.
-- Verify browser Back: Home does not reveal phantom app screens; a real sub-screen returns exactly once to its origin; mock-run guard remains intact.
+- Run the focused checks and confirm the latest preview build log is green.
+- Use the live preview at 360px and desktop widths, in light and dark themes. Measure representative dark text/background contrast rather than judging visually.
+- Live-test items 1–9 through their actual screens, including Flashcards picker/reveal/completion, multiline chat drafting and send, chat short/long threads, tab gestures, and upgrade overflow.
+- With an authenticated real file, open an own PDF from My Files/Library, retry once, and verify the PDF renders; also open a shelf/shared PDF when available. Inspect browser requests and built client assets to confirm no R2 credential name/value is exposed as client configuration.
+- Exercise the topic picker at 2, 3, and back to 2 selections, and confirm proceeding is blocked below 3.
+- Verify repeated root-tab taps and swipes do not increase `history.length`; verify course detail, mock result/review, and flashcard review still return to their parent tab. Verify Home Back exits the app in a normal session and after a real Google redirect flow when that flow is available.
+- Report each item 1–13 as `DONE`, `FAIL`, or `NOT LIVE-TESTED`; never infer live success from compilation. Include every requested item-specific answer and the complete touched-file list.
 
-## Files expected to change
+## Expected files
 - `src/styles.css`
+- Surface-literal consumers found by the audit, limited to cards/sheets/inputs/secondary backgrounds
+- `src/components/flashcards.tsx`
 - `src/components/chatbot.tsx`
-- `src/components/rich-text.tsx`
+- `src/components/upgrade.tsx`
+- `src/components/library.tsx`
+- `src/lib/storage.functions.ts`
+- `src/components/mock-test-flow.tsx`
 - `src/hooks/use-swipe-tabs.ts`
 - `src/routes/index.tsx`
 - `src/lib/profile-store.tsx`
 - `src/components/tab-bar.tsx`
-- Only the requested Home/Account/Library/Practice presentation files where a light-only chrome literal blocks the shared dark tokens
-- `AGENTS.md` for the history/swipe architecture rule
+- `AGENTS.md` only if the established history architecture rule needs clarification
 
-## Locked areas
-No splash changes, PDF engine or page-pixel changes, Vite exclusions, mock polling/generation changes, quota number changes, Library schema changes, calculator formula changes, Cloud changes, environment changes, payment work, or automatic sending from suggestion chips.
+## Locked scope
+No Supabase schema/policy/data changes, no new Cloud project, no `.env` edits, no payment integration, no price/cap/formula changes, no PDF engine/page-pixel changes, no mock polling/generation changes, and no changes to the protected mock leave confirmation.
