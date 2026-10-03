@@ -173,3 +173,116 @@ export async function startNewChatThread(courseCode: string): Promise<void> {
     throw new Error(readErrorDetail(text, res.status));
   }
 }
+
+/**
+ * Same request as sendChatMessage, but reads the reply as it streams in
+ * instead of waiting for the whole thing — see chat.py's stream_chat_reply.
+ * onDelta is called with each new chunk of text as it arrives (already
+ * de-duplicated — call it with the growing full text, or accumulate it
+ * yourself; this function does NOT accumulate on your behalf, so you always
+ * get exactly the new piece).
+ *
+ * The backend's moderation/quota short-circuits (blocked message, image
+ * rejected, out of replies) are NOT streamed — they come back as a normal
+ * JSON response instead, same shape sendChatMessage already returns. This
+ * function handles both: if the response isn't actually an event-stream,
+ * it falls back to reading it as plain JSON, calls onDelta once with the
+ * whole reply (so callers don't need two code paths), and returns.
+ */
+export async function streamChatMessage(
+  message: string,
+  courseCode: string,
+  mode: string,
+  imagePath: string | null | undefined,
+  onDelta: (deltaText: string) => void,
+): Promise<{
+  conversationId?: string;
+  reply: string;
+  moderated?: boolean;
+  actions: ChatAction[];
+  saved: boolean;
+}> {
+  const url = `${base()}/chat`;
+  const auth = await authHeader();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...auth },
+    body: JSON.stringify({
+      message,
+      course_code: courseCode,
+      mode,
+      image_path: imagePath || undefined,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(readErrorDetail(text, res.status));
+  }
+
+  const contentType = res.headers.get("content-type") ?? "";
+
+  // Moderation/quota short-circuits come back as plain JSON, not a stream —
+  // same shape as sendChatMessage's return. Surface it through onDelta once
+  // so the caller's single render path still works for this case.
+  if (!contentType.includes("text/event-stream") || !res.body) {
+    const data = (await res.json()) as {
+      conversation_id?: string;
+      reply: string;
+      moderated?: boolean;
+      actions?: ChatAction[];
+      saved?: boolean;
+    };
+    onDelta(data.reply);
+    return {
+      conversationId: data.conversation_id,
+      reply: data.reply,
+      moderated: data.moderated,
+      actions: Array.isArray(data.actions) ? data.actions : [],
+      saved: data.saved !== false,
+    };
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullReply = "";
+  let actions: ChatAction[] = [];
+  let saved = true;
+  let streamError: string | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE messages are separated by a blank line.
+    let boundary: number;
+    while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const line = rawEvent.split("\n").find((l) => l.startsWith("data: "));
+      if (!line) continue;
+      let parsed: { delta?: string; done?: boolean; actions?: ChatAction[]; saved?: boolean; error?: string };
+      try {
+        parsed = JSON.parse(line.slice("data: ".length));
+      } catch {
+        continue; // a malformed chunk shouldn't kill an otherwise-working stream
+      }
+      if (parsed.error) {
+        streamError = parsed.error;
+      } else if (parsed.delta) {
+        fullReply += parsed.delta;
+        onDelta(parsed.delta);
+      } else if (parsed.done) {
+        actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+        saved = parsed.saved !== false;
+      }
+    }
+  }
+
+  if (streamError) throw new Error(streamError);
+  if (!fullReply.trim()) throw new Error("The study chat had a problem. Please try again.");
+
+  return { reply: fullReply, moderated: false, actions, saved };
+}
