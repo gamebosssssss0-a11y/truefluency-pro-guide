@@ -106,6 +106,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     ? canonicalCourseCode(activeCourseCode!)
     : canonicalCourseCode(profile.courses[0]?.code ?? "");
   const [selected, setSelected] = useState<string>(() => attachedPage?.courseCode ?? defaultCourse);
+  // Bumped on every History-row click so the load effect below always
+  // re-fetches, even for the course already on screen (setSelected alone is
+  // a no-op there — same string in, same string out, React skips both the
+  // re-render and the effect).
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
@@ -132,7 +137,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     return () => sub.subscription.unsubscribe();
   }, []);
   const cacheMapKey = (course: string) => `${currentUid.current ?? "anon"}:${canonicalCourseCode(course)}`;
-  const historyLoaded = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -288,10 +292,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (alive && loadToken.current === token) setIsLoadingThread(false);
     });
     return () => { alive = false; };
-  }, [selected]);
+  }, [selected, reloadNonce]);
 
   useEffect(() => {
-    if (!historyOpen || historyLoaded.current) return;
+    // Re-fetches every time the sheet opens, on purpose — no "already loaded"
+    // latch. One used to exist here (historyLoaded, a useRef set true after
+    // the first successful load and never reset) which meant History showed
+    // its first-ever snapshot for the rest of the session: every message
+    // sent afterwards was genuinely saved server-side, just never visible
+    // here, because this effect refused to run again.
+    if (!historyOpen) return;
     let alive = true;
     setHistoryError(null);
     setHistoryLoading(true);
@@ -314,7 +324,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     })).then((rows) => {
       if (alive) {
         setHistoryRows(rows.flat());
-        historyLoaded.current = true;
       }
     }).catch((error) => {
       if (alive) {
@@ -920,6 +929,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   // show a frozen snapshot of one past day that would just
                   // flash and revert.
                   setSelected(row.course);
+                  setReloadNonce((n) => n + 1);
                   setHistoryOpen(false);
                 }} className="block w-full rounded-xl border border-border border-l-4 border-l-accent bg-card p-3 text-left text-card-foreground">
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
