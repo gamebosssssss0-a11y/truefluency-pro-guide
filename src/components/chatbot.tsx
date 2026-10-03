@@ -11,7 +11,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, startNewChatThread, sendChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
@@ -109,6 +109,29 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
+  // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
+  // wiped outright on every auth change (see the effect below) — belt AND
+  // suspenders. A course code alone is not unique to one student: shared
+  // gen-ed codes like GST312/GES301 are common across completely unrelated
+  // students, so a course-code-only cache key could show one student's
+  // cached messages to a different student the moment this screen didn't
+  // fully unmount between one session ending and another beginning on the
+  // same device/tab. The explicit clear-on-auth-change below is the real
+  // fix; the key scoping is the second layer in case a key is ever read
+  // before that effect fires.
+  const currentUid = useRef<string | null>(null);
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUid = session?.user.id ?? null;
+      if (nextUid !== currentUid.current) {
+        threadCache.current.clear();
+        setMessages([]);
+      }
+      currentUid.current = nextUid;
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  const cacheMapKey = (course: string) => `${currentUid.current ?? "anon"}:${canonicalCourseCode(course)}`;
   const historyLoaded = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
@@ -120,6 +143,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [draft, setDraft] = useState(() => attachedPage ? `Explain page ${attachedPage.page} of ${attachedPage.fileName}.` : "");
   const [isSending, setIsSending] = useState(false);
+  // Non-null once the first chunk of a reply has arrived — used only to hide
+  // the "Thinking" indicator once there's a real, growing bubble to show
+  // instead of it.
+  const [streamingBubbleId, setStreamingBubbleId] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("Explain");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
@@ -131,7 +158,28 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
   const loadToken = useRef(0);
-  const hasStartedFreshThisVisit = useRef(false);
+  // SessionStorage-backed, not a plain useRef, and on purpose: this screen
+  // can remount on a simple tab switch (navigating away and back), and a
+  // plain useRef resets on every remount — which meant "start fresh" was
+  // firing (and archiving a conversation you were actively having, plus
+  // paying for an extra archive+fetch round trip) on every single return to
+  // this tab, not once per real visit to the app. sessionStorage survives a
+  // remount but still resets on a new browser tab/session, which is what
+  // "fresh each time you open the app" actually means.
+  function hasStartedFreshThisSession(): boolean {
+    try {
+      return sessionStorage.getItem(`tf-chat-fresh:${currentUid.current ?? "anon"}`) === "1";
+    } catch {
+      return false;
+    }
+  }
+  function markStartedFreshThisSession(): void {
+    try {
+      sessionStorage.setItem(`tf-chat-fresh:${currentUid.current ?? "anon"}`, "1");
+    } catch {
+      /* sessionStorage unavailable — falls back to "always fresh", which is safe, just not optimal */
+    }
+  }
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -161,7 +209,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }));
 
   const persistCache = (course: string, thread: Message[]) => {
-    threadCache.current.set(canonicalCourseCode(course), thread);
+    threadCache.current.set(cacheMapKey(course), thread);
     void cacheKey(canonicalCourseCode(course)).then((key) => {
       if (!key) return;
       try { sessionStorage.setItem(key, JSON.stringify(thread.slice(-60))); }
@@ -182,7 +230,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setSelected(key);
     navigate(view, { courseCode: key });
     setAttachedPage(null);
-    setMessages(threadCache.current.get(key) ?? []);
+    setMessages(threadCache.current.get(cacheMapKey(key)) ?? []);
     setDraft("");
     setPhotoFile(null);
     setPhotoName(null);
@@ -193,8 +241,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     let alive = true;
     const token = ++loadToken.current;
     const key = canonicalCourseCode(selected);
-    const isFirstLoadThisVisit = !hasStartedFreshThisVisit.current;
-    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(key);
+    const isFirstLoadThisVisit = !hasStartedFreshThisSession();
+    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(cacheMapKey(key));
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
@@ -206,12 +254,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     // is a safe no-op when there's nothing active yet, so this never errors
     // out a normal load — best-effort, awaited so the fetch below sees the
     // fresh thread rather than racing it.
-    const freshStart = hasStartedFreshThisVisit.current
+    const freshStart = hasStartedFreshThisSession()
       ? Promise.resolve()
       : startNewChatThread(key).catch(() => {
           /* best-effort — worst case this visit resumes the old thread, same as before */
         });
-    hasStartedFreshThisVisit.current = true;
+    markStartedFreshThisSession();
 
     void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
@@ -230,7 +278,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               id: nextId.current++,
               imageUrl: undefined,
             }));
-            threadCache.current.set(key, restored);
+            threadCache.current.set(cacheMapKey(key), restored);
             setMessages(restored);
           }
         } catch { /* unavailable cache */ }
@@ -249,7 +297,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setHistoryLoading(true);
     void Promise.all(courseOptions.map(async (course) => {
       const raw = (await getCourseHistory(course)).messages;
-      if (!threadCache.current.has(course)) persistCache(course, toUiMessages(raw));
+      if (!threadCache.current.has(cacheMapKey(course))) persistCache(course, toUiMessages(raw));
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
         const date = message.created_at
@@ -384,27 +432,57 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       const pageContext = pageToSend
         ? `\n\nAttached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
         : "";
-      const { reply, moderated, actions, saved } = await sendChatMessage(
+
+      // Streams in as the model replies, rather than popping the whole
+      // answer in at once — see chat.py's stream_chat_reply. A live bubble
+      // is created on the FIRST chunk (replacing the "Thinking" indicator,
+      // which only shows while no assistant message exists yet for this
+      // turn) and grown in place as more text arrives.
+      let streamId: number | null = null;
+      const { reply, moderated, actions, saved } = await streamChatMessage(
         modePrefix[sendMode] + text + pageContext,
         course,
         sendMode,
         imagePath,
+        (delta) => {
+          setMessages((cur) => {
+            if (streamId === null) {
+              streamId = nextId.current++;
+              setStreamingBubbleId(streamId);
+              return [...cur, {
+                id: streamId,
+                from: "assistant" as const,
+                text: delta,
+                createdAt: new Date().toISOString(),
+              }];
+            }
+            return cur.map((msg) => (msg.id === streamId ? { ...msg, text: msg.text + delta } : msg));
+          });
+        },
       );
+
+      // One corrective pass once the full reply is known: the moderation
+      // short-circuit path (blocked message, image rejected) isn't streamed
+      // at all — streamChatMessage's onDelta fires once with the whole
+      // canned reply, so the bubble above was created as a plain assistant
+      // message and needs restyling into a notice here, same as the old
+      // non-streaming code did up front.
       setMessages((cur) => {
-        const next = [...cur,
-          {
-            id: nextId.current++,
-            from: moderated ? "notice" as const : "assistant" as const,
-            text: moderated ? `Can't help with that|${reply}` : reply,
-            actions: moderated ? undefined : actions,
-            createdAt: new Date().toISOString(),
-          },
-          ...(saved ? [] : [{
-            id: nextId.current++,
-            from: "notice" as const,
-            text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
-          }]),
-        ];
+        const finalized = streamId === null
+          ? cur
+          : cur.map((msg) => (msg.id === streamId
+            ? {
+              ...msg,
+              from: moderated ? ("notice" as const) : ("assistant" as const),
+              text: moderated ? `Can't help with that|${reply}` : reply,
+              actions: moderated ? undefined : actions,
+            }
+            : msg));
+        const next = saved ? finalized : [...finalized, {
+          id: nextId.current++,
+          from: "notice" as const,
+          text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
+        }];
         persistCache(course, next);
         return next;
       });
@@ -432,6 +510,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       });
     } finally {
       setIsSending(false);
+      setStreamingBubbleId(null);
     }
   };
 
@@ -684,7 +763,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   </div>
                 ),
               )}
-              {isSending ? (
+              {isSending && streamingBubbleId === null ? (
                 <div className="flex w-full items-center gap-3 text-sm text-foreground">
                   <span className="relative grid h-8 w-8 shrink-0 place-items-center">
                     <LogoMark className="sonic-mark-loop h-8 w-8" />
