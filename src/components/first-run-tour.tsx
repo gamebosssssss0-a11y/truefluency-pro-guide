@@ -41,7 +41,7 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#1B2A4A]/60 p-4 sm:place-items-center">
       <div className="w-full max-w-md rounded-3xl border border-[#E4DCC8] bg-card p-5 shadow-lg">
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A]">
+          <div className="on-sand grid h-11 w-11 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A]">
             <step.icon className="h-5 w-5" />
           </div>
           <button
