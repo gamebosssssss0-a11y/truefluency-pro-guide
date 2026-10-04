@@ -181,7 +181,7 @@ export function FlashcardsScreen() {
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-card p-4">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
-            <h1 className="font-display text-xl font-semibold leading-tight text-navy">
+            <h1 className="font-display text-xl font-semibold leading-tight text-foreground">
               Flashcards
             </h1>
             <p className="text-xs text-muted-foreground">
@@ -220,7 +220,7 @@ export function FlashcardsScreen() {
             {decks.map((deck) => (
               <div key={deck.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
                 <div className="min-w-0">
-                  <p className="truncate font-display text-base font-semibold text-navy">{deckLabel(deck)}</p>
+                  <p className="truncate font-display text-base font-semibold text-foreground">{deckLabel(deck)}</p>
                   <p className="text-xs text-muted-foreground">
                     {displayCode(deck.course_code)} · {deck.card_count} cards
                     {dueCounts[deck.id] !== undefined ? ` · ${dueCounts[deck.id]} due` : ""}
@@ -231,7 +231,7 @@ export function FlashcardsScreen() {
                     <button key={mode} type="button" onClick={() => {
                       sessionStorage.setItem("truefluency-flashcard-mode", mode);
                       navigate("flashcards-review", { courseCode: deck.course_code, deckId: deck.id });
-                    }} className="rounded-full border border-navy px-3 py-1.5 text-xs font-semibold text-navy">
+                    }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
                       {mode === "due" ? "Due" : mode === "new" ? "New" : "Cram"}
                     </button>
                   ))}
@@ -244,7 +244,7 @@ export function FlashcardsScreen() {
                 type="button"
                 onClick={generate}
                 disabled={isGenerating}
-                className="mt-2 h-12 w-full rounded-full border-2 border-navy text-sm font-semibold text-navy transition hover:bg-navy/5 disabled:opacity-60"
+                className="mt-2 h-12 w-full rounded-full border-2 border-border text-sm font-semibold text-foreground transition hover:bg-secondary disabled:opacity-60"
               >
                 {isGenerating ? "Generating…" : "Make another 15-card deck"}
               </button>
@@ -258,7 +258,7 @@ export function FlashcardsScreen() {
             <div className="mb-4 grid h-20 w-20 place-items-center rounded-full bg-sand">
               <Layers className="h-9 w-9 text-navy" />
             </div>
-            <p className="mb-5 font-display text-2xl font-semibold text-navy">No deck yet</p>
+            <p className="mb-5 font-display text-2xl font-semibold text-foreground">No deck yet</p>
 
             {deckCapReached ? (
               <p className="max-w-xs text-xs text-muted-foreground">{PRICE_LINE}</p>
@@ -357,7 +357,7 @@ export function FlashcardsReviewScreen() {
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
           {current ? (
-            <span className="text-sm font-semibold text-navy">
+            <span className="text-sm font-semibold text-foreground">
               {code} · {index + 1} of {cards.length}
             </span>
           ) : null}
@@ -406,7 +406,7 @@ export function FlashcardsReviewScreen() {
               {flipped ? (
                 <div className="font-display text-xl font-semibold leading-relaxed text-cream"><RichText>{current.back}</RichText></div>
               ) : (
-                <div className="font-display text-2xl font-semibold leading-snug text-navy"><RichText>{current.front}</RichText></div>
+                <div className="font-display text-2xl font-semibold leading-snug text-foreground"><RichText>{current.front}</RichText></div>
               )}
               <span className="flex-1" />
               <span className={"text-xs " + (flipped ? "text-cream/60" : "text-muted-foreground")}>
@@ -422,7 +422,7 @@ export function FlashcardsReviewScreen() {
                   ["Again", 1], ["Hard", 2], ["Good", 3], ["Easy", 4],
                 ] as const).map(([label, rating]) => (
                   <button key={label} type="button" onClick={() => void grade(rating)} disabled={isGrading}
-                    className="h-12 rounded-full border-2 border-navy text-sm font-semibold text-navy disabled:opacity-60">
+                    className="h-12 rounded-full border-2 border-border text-sm font-semibold text-foreground disabled:opacity-60">
                     {label}
                   </button>
                 ))}
