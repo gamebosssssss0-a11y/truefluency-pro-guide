@@ -40,11 +40,6 @@ export type CourseMaterial = {
     | "scanned_pdf";
   extraction_error: string | null;
   created_at: string;
-  /** Full-document scan output (up to 500 pages/slides) — null until a
-   * student triggers it via MaterialRow's "Scan the rest" action. See
-   * main.py's /analyze/start. Upload-time extraction only covers the first
-   * ~70 pages (extracted_content, capped at ~20,000 characters). */
-  full_text_index?: string | null;
 };
 
 /** Minimum characters of pasted text that can produce useful predictions. */
@@ -234,13 +229,15 @@ export async function uploadCourseMaterial(opts: {
     }
   }
 
-  const contentType =
-    file.type ||
-    (fileType === "docx"
-      ? DOCX_TYPE
-      : fileType === "pptx"
-        ? PPTX_TYPE
-        : "application/octet-stream");
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  const contentType = file.type || (
+    fileType === "docx" ? DOCX_TYPE :
+    fileType === "pptx" ? PPTX_TYPE :
+    fileType === "pdf" ? PDF_TYPE :
+    fileType === "image" && extension === "png" ? "image/png" :
+    fileType === "image" && (extension === "jpg" || extension === "jpeg") ? "image/jpeg" :
+    "application/octet-stream"
+  );
 
   let path: string;
   try {
@@ -506,9 +503,10 @@ export async function listAllUserMaterials() {
 }
 
 
-export async function deleteMaterial(m: CourseMaterial) {
+export async function deleteMaterial(m: Pick<CourseMaterial, "id" | "file_path">) {
   await deleteMaterialFiles({ data: { paths: [m.file_path] } });
-  await supabase.from("course_materials").delete().eq("id", m.id);
+  const { error } = await supabase.from("course_materials").delete().eq("id", m.id);
+  if (error) throw error;
 }
 
 /** Wipe every uploaded file (storage + DB) for the signed-in user. */
