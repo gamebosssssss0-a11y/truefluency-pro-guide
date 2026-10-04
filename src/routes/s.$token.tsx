@@ -126,7 +126,7 @@ function SharedFilePage() {
 
 
   return (
-    <div className="min-h-screen bg-[#F7F3EA]">
+    <div className="on-sand min-h-screen bg-[#F7F3EA]">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6 md:max-w-2xl">
         <div className="mb-5 flex items-center gap-2">
           <LogoMark className="h-7 w-7" />
@@ -182,7 +182,7 @@ function SharedFilePage() {
               </p>
               <p className="mt-1 text-[11px] text-[#5C5C70]">This link is one file only.</p>
 
-              <div className="mt-4 h-[52vh] overflow-hidden rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
+              <div className="mt-4 h-[52vh] min-w-0 w-full max-w-full overflow-hidden rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
                 {previewOff ? (
                   <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
                     <p className="text-sm text-[#5C5C70]">Preview closed.</p>
