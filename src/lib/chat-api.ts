@@ -48,6 +48,11 @@ export type ChatMessage = {
   content: string;
   /** Backend timestamp used to group saved history by day. */
   created_at?: string;
+  /** Present on getCourseHistory results — lets the History sheet group by
+   * an actual conversation instead of by date alone, so a row can be opened
+   * or deleted precisely. Absent on live-thread reads, where it's implied
+   * by the single active conversation already being viewed. */
+  conversation_id?: string;
 };
 
 /**
@@ -285,4 +290,19 @@ export async function streamChatMessage(
   if (!fullReply.trim()) throw new Error("The study chat had a problem. Please try again.");
 
   return { reply: fullReply, moderated: false, actions, saved };
+}
+
+/**
+ * Permanently deletes one conversation (and every message in it) from the
+ * History sheet. See main.py's DELETE /chat/conversation/{id} — ownership
+ * is enforced server-side, never trust-on-click here.
+ */
+export async function deleteChatConversation(conversationId: string): Promise<void> {
+  const url = `${base()}/chat/conversation/${encodeURIComponent(conversationId)}`;
+  const auth = await authHeader();
+  const res = await fetch(url, { method: "DELETE", headers: auth });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(readErrorDetail(text, res.status));
+  }
 }
