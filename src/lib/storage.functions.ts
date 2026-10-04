@@ -8,10 +8,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import * as storage from "@/lib/storage.server";
+import { isOwnedMaterialPath, isPathSegment } from "@/lib/storage-path";
 
 function safeName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
 }
+
+const ALLOWED_UPLOAD_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+]);
 
 /** One student's own prefix, always — the path is built server-side from
  * the authenticated userId, never trusted from the client, so a request
@@ -22,8 +33,9 @@ export const presignMaterialUpload = createServerFn({ method: "POST" })
     const courseCode = String(input?.courseCode ?? "").trim();
     const fileName = String(input?.fileName ?? "").trim();
     const contentType = String(input?.contentType ?? "application/octet-stream").trim();
-    if (!courseCode || courseCode.length > 32) throw new Error("A course is required.");
-    if (!fileName || fileName.length > 200) throw new Error("A file name is required.");
+    if (courseCode.length > 32 || !isPathSegment(courseCode)) throw new Error("A course is required.");
+    if (fileName.length > 200 || !isPathSegment(fileName)) throw new Error("A file name is required.");
+    if (!ALLOWED_UPLOAD_TYPES.has(contentType)) throw new Error("This file type isn't supported.");
     return { courseCode, fileName, contentType };
   })
   .handler(async ({ data, context }): Promise<{ path: string; uploadUrl: string }> => {
@@ -45,7 +57,7 @@ export const confirmMaterialUpload = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<{ exists: boolean }> => {
     const { userId } = context;
-    if (!data.path.startsWith(`${userId}/`)) throw new Error("Not found.");
+    if (!isOwnedMaterialPath(data.path, userId)) throw new Error("Not found.");
     return { exists: await storage.objectExists(data.path) };
   });
 
@@ -65,7 +77,7 @@ export const presignMaterialDownload = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
     const path = material?.file_path;
-    if (error || !path || !path.startsWith(`${context.userId}/`)) {
+    if (error || !path || !isOwnedMaterialPath(path, context.userId)) {
       throw new Error("This file couldn't be opened.");
     }
     const url = await storage.presignDownload({ path, expiresInSeconds: 60 * 30 });
@@ -85,7 +97,7 @@ export const deleteMaterialFiles = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { userId } = context;
-    const owned = data.paths.filter((p) => p.startsWith(`${userId}/`));
+    const owned = data.paths.filter((p) => isOwnedMaterialPath(p, userId));
     if (owned.length !== data.paths.length) throw new Error("Not found.");
     await storage.deleteObjects(owned);
     return { ok: true };
