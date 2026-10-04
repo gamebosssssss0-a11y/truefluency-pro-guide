@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
 import { canonicalCourseCode } from "@/lib/course-code";
-import { analyzeMaterial } from "@/lib/backend-api";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -835,7 +834,7 @@ export function MaterialRow({
   m, onDelete, showCourse, isFromInactiveCourse,
 }: {
   m: CourseMaterial;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
   showCourse?: boolean;
   isFromInactiveCourse?: boolean;
 }) {
@@ -846,32 +845,9 @@ export function MaterialRow({
   const kb = Math.round(m.size_bytes / 1024);
   const [flag, setFlag] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const canRetry = isRetryableMaterial(m);
-  // extracted_content is capped at upload time (~70 pages / ~20,000 chars —
-  // see MAX_SAVED_CHARS in main.py); a value at/near that cap is the signal
-  // there's more document the student hasn't seen scanned yet. Once
-  // full_text_index exists, the full document has already been read.
-  const likelyTruncated = (m.extracted_content?.length ?? 0) >= 19_000;
-  const canScanMore =
-    hasExtraction && m.extraction_status === "success" && !m.full_text_index && likelyTruncated;
-
-  const handleScanMore = async () => {
-    setScanning(true);
-    try {
-      const { topics } = await analyzeMaterial(m.id);
-      toast.success(
-        topics.length
-          ? `Scanned the whole document — found ${topics.length} topic${topics.length === 1 ? "" : "s"}.`
-          : "Scanned the whole document.",
-      );
-      window.dispatchEvent(new Event("course-materials-refresh")); // picks up the now-populated full_text_index
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't finish scanning this file.");
-    } finally {
-      setScanning(false);
-    }
-  };
 
   useEffect(() => {
     setFlag(getMetadataFlag(m.id));
@@ -899,6 +875,19 @@ export function MaterialRow({
       window.dispatchEvent(new Event("course-materials-refresh"));
     } finally {
       setRetrying(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete();
+      setConfirmDelete(false);
+    } catch (error) {
+      console.error("[materials] delete failed", error);
+      toast.error("We couldn't remove that file. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -958,7 +947,8 @@ export function MaterialRow({
           </button>
         ) : null}
         <button
-          onClick={onDelete}
+          onClick={() => setConfirmDelete(true)}
+          disabled={deleting}
           className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
           aria-label="Delete"
         >
@@ -968,20 +958,24 @@ export function MaterialRow({
 
       {hasExtraction ? <ExtractionGuidance material={m} /> : null}
 
-      {canScanMore ? (
-        <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-amber/30 bg-amber/5 p-2.5 text-[11px] text-navy">
-          <span>This file has more pages than were scanned at upload.</span>
-          <button
-            onClick={() => void handleScanMore()}
-            disabled={scanning}
-            className="shrink-0 rounded-lg border border-amber/60 bg-amber/10 px-2.5 py-1 text-[11px] font-semibold text-amber transition hover:bg-amber/20 disabled:opacity-60"
-          >
-            {scanning ? "Scanning…" : "Scan the rest"}
-          </button>
-        </div>
-      ) : m.full_text_index ? (
-        <div className="mt-2.5 text-[11px] text-muted-foreground">Fully scanned — the whole document is available to your tutor.</div>
-      ) : null}
+      <AlertDialog open={confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this file?</AlertDialogTitle>
+            <AlertDialogDescription className="break-words">{m.file_name}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(event) => { event.preventDefault(); void handleDelete(); }}
+            >
+              Remove file
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
 
@@ -1050,3 +1044,4 @@ function ExtractionGuidance({ material }: { material: CourseMaterial }) {
     </div>
   );
 }
+
