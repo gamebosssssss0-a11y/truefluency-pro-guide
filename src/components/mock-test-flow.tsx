@@ -21,6 +21,7 @@ import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
 import { canonicalCourseCode } from "@/lib/course-code";
+import { getStreakState } from "@/lib/streak-state";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
@@ -946,7 +947,7 @@ export function MockRunScreen() {
         {q ? (
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="font-display text-[17px] font-semibold leading-snug text-navy"><MathText>{q.question}</MathText></div>
+            <div className="font-display text-[17px] font-semibold leading-snug text-foreground"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -959,7 +960,7 @@ export function MockRunScreen() {
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="min-w-0 break-words text-sm text-navy"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 break-words text-sm text-foreground"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
@@ -1177,6 +1178,8 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
 
 export function MockResultScreen() {
   const { profile, navigate } = useProfile();
+  const { access } = useEntitlement();
+  const streak = getStreakState(profile, access?.watToday);
   const attempt = profile.attempts.find((a) => a.id === profile.lastResultId);
 
   if (!attempt) {
@@ -1216,7 +1219,7 @@ export function MockResultScreen() {
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {celebratory ? "Nice work!" : "Result"}
           </div>
-          <div className="mt-1 font-display text-5xl font-semibold text-navy">
+          <div className="mt-1 font-display text-5xl font-semibold text-foreground">
             {attempt.correct} <span className="text-2xl text-muted-foreground">/ {attempt.total}</span>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
@@ -1225,9 +1228,9 @@ export function MockResultScreen() {
           <div className="mt-2">
             <DifficultyChip difficulty={attempt.settings?.difficulty} />
           </div>
-          {profile.streakDays > 0 ? (
+          {streak.state !== "none" ? (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
-              🔥 {profile.streakDays}-day streak
+              {streak.state === "fire" ? "🔥" : "🥶"} {streak.days}-day streak{streak.state === "frozen" ? " frozen" : ""}
             </div>
           ) : null}
         </div>
@@ -1318,7 +1321,7 @@ export function AttemptReviewScreen() {
         {/* Header */}
         <div className="rounded-3xl border border-border bg-card p-5">
           <div className="text-xs font-medium text-muted-foreground">{attempt.courseCode}</div>
-          <div className="mt-0.5 break-words font-display text-xl font-semibold leading-tight text-navy">
+          <div className="mt-0.5 break-words font-display text-xl font-semibold leading-tight text-foreground">
             {attempt.courseTitle}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
@@ -1336,7 +1339,7 @@ export function AttemptReviewScreen() {
             <DifficultyChip difficulty={attempt.settings?.difficulty} />
           </div>
           <div className="mt-4 flex items-baseline gap-2 border-t border-border pt-4">
-            <span className="font-display text-4xl font-semibold leading-none text-navy">
+            <span className="font-display text-4xl font-semibold leading-none text-foreground">
               {attempt.correct} <span className="text-xl text-muted-foreground">/ {attempt.total}</span>
             </span>
             <span className="text-xs text-muted-foreground">{attempt.score}%</span>
@@ -1402,7 +1405,7 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="font-display text-[17px] font-semibold leading-snug text-navy"><MathText>{q.question}</MathText></div>
+                  <div className="font-display text-[17px] font-semibold leading-snug text-foreground"><MathText>{q.question}</MathText></div>
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
@@ -1414,13 +1417,13 @@ export function AttemptReviewScreen() {
                           key={oi}
                           className={cn(
                             "flex items-start gap-2.5 rounded-xl border border-border bg-card p-2.5 text-sm",
-                            isAnswer && "border-l-[3px] border-l-navy",
-                            wrongPick && "border-l-[3px] border-l-wine",
+                            isAnswer && "border-l-[3px] border-l-success",
+                            wrongPick && "border-l-[3px] border-l-destructive",
                           )}
                         >
                           <span className="mt-0.5 shrink-0">
                             {isAnswer ? (
-                              <Check className="h-4 w-4 text-navy" aria-label="Correct answer" />
+                              <Check className="h-4 w-4 text-good" aria-label="Correct answer" />
                             ) : isPicked ? (
                               <X className="h-4 w-4 text-wine" aria-label="Your incorrect answer" />
                             ) : (
@@ -1432,7 +1435,7 @@ export function AttemptReviewScreen() {
                           <span
                             className={cn(
                               "min-w-0 flex-1 break-words",
-                              isAnswer || wrongPick ? "text-navy" : "text-muted-foreground",
+                              isAnswer || wrongPick ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
                             <MathText>{opt}</MathText>
@@ -1578,7 +1581,7 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
           <div className="text-[11px] font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
-          <div className="mt-1 break-words text-sm leading-[1.45] text-navy">
+          <div className="mt-1 break-words text-sm leading-[1.45] text-foreground">
             <MathText>{row.body}</MathText>
           </div>
         </div>

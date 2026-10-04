@@ -96,7 +96,7 @@ export function UpgradeScreen() {
           className="mt-5 h-auto min-h-12 w-full whitespace-normal break-words px-3 py-3 text-center leading-tight bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
           onClick={() => setComingSoon(true)}
         >
-          Upgrade, {PRICE_LINE}
+          Upgrade
         </Button>
         <Button
           variant="outline"

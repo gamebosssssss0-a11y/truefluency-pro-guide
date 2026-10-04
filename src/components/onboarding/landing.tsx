@@ -44,7 +44,7 @@ export function LandingScreen() {
   const insideRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    <div className="min-h-screen bg-[#F7F3EA]">
+    <div className="on-sand min-h-screen bg-[#F7F3EA]">
       <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col px-5 pb-10 pt-6">
         <header className="mb-8 flex items-center gap-2">
           <LogoMark className="h-8 w-8" />
@@ -127,7 +127,7 @@ export function LandingScreen() {
             <TopicRow topic="Reaction kinetics" pill="Mentioned briefly" tone="brief" />
           </div>
 
-          <div className="mt-4 rounded-xl border border-[#E4DCC8] bg-[#F7F3EA] p-3">
+          <div className="on-sand mt-4 rounded-xl border border-[#E4DCC8] bg-[#F7F3EA] p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Mock test
             </div>
@@ -234,8 +234,8 @@ function TopicRow({
     tone === "strong"
       ? "bg-[#B86E0A] text-[#080D19]"
       : tone === "moderate"
-        ? "bg-[#F3E6C8] text-[#1B2A4A]"
-        : "bg-[#F7F3EA] text-muted-foreground border border-[#E4DCC8]";
+        ? "on-sand bg-[#F3E6C8] text-[#1B2A4A]"
+        : "on-sand bg-[#F7F3EA] text-muted-foreground border border-[#E4DCC8]";
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl border border-[#E4DCC8] bg-surface px-3 py-2">
       <span className="truncate text-xs font-medium text-[#1B2A4A]">{topic}</span>

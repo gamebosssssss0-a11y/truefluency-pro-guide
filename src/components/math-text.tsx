@@ -1,16 +1,22 @@
 /**
- * Renders text that may contain LaTeX delimited by \( ... \) (inline) or
- * \[ ... \] (block). Everything outside those delimiters is left exactly as
- * it was, so plain-text questions render unchanged. Invalid LaTeX falls back
- * to showing the raw source instead of throwing.
+ * Renders delimited LaTeX through the app's existing KaTeX wrapper. Invalid
+ * formulas fall back to ordinary text, never KaTeX's red error treatment.
  */
 import { useMemo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
-type Segment = { kind: "text" | "inline" | "block"; value: string };
+type Segment = { kind: "text" | "inline" | "block"; value: string; source?: string };
 
-const PATTERN = /\\\((.+?)\\\)|\\\[([\s\S]+?)\\\]/g;
+const PATTERN = /\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+
+function unescapeDelimiters(input: string) {
+  return input
+    .replace(/\\\\\(/g, "\\(")
+    .replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[")
+    .replace(/\\\\\]/g, "\\]");
+}
 
 function split(input: string): Segment[] {
   const out: Segment[] = [];
@@ -18,25 +24,22 @@ function split(input: string): Segment[] {
   for (const match of input.matchAll(PATTERN)) {
     const at = match.index ?? 0;
     if (at > last) out.push({ kind: "text", value: input.slice(last, at) });
-    if (match[1] !== undefined) out.push({ kind: "inline", value: match[1] });
-    else if (match[2] !== undefined) out.push({ kind: "block", value: match[2] });
+    if (match[1] !== undefined) out.push({ kind: "block", value: match[1], source: match[0] });
+    else if (match[2] !== undefined) out.push({ kind: "inline", value: match[2], source: match[0] });
+    else if (match[3] !== undefined) out.push({ kind: "block", value: match[3], source: match[0] });
+    else if (match[4] !== undefined) out.push({ kind: "inline", value: match[4], source: match[0] });
     last = at + match[0].length;
   }
   if (last < input.length) out.push({ kind: "text", value: input.slice(last) });
+  if (out.length === 0) out.push({ kind: "text", value: input });
   return out;
 }
 
-// Rendered content originates from an LLM response, which is itself grounded
-// in a student-uploaded document — so it is attacker-influenceable (a PDF
-// containing prompt-injection text could try to make the model emit
-// pathological LaTeX). KaTeX's `trust` already defaults to false, which is
-// what blocks \href / \includegraphics / \class from injecting arbitrary
-// HTML or URLs — set explicitly here so that stays true even if a future
-// KaTeX version changes its default. maxExpand and maxSize cap macro-
-// expansion and rendered-element size, which is what stops a deeply nested
-// expression from hanging the tab (a real, documented KaTeX DoS class).
+// KaTeX is fed model text grounded in student documents. Keep its HTML/URL
+// trust disabled and cap expansion/size, while throwing parse errors so they
+// can be rendered as normal body text instead of red .katex-error markup.
 const KATEX_OPTIONS = {
-  throwOnError: false,
+  throwOnError: true,
   strict: false,
   output: "html" as const,
   trust: false,
@@ -44,26 +47,7 @@ const KATEX_OPTIONS = {
   maxSize: 25,
 };
 
-// A legitimate equation is never this long. Anything past this is either a
-// pathological input or a rendering bug upstream — render it as plain text
-// instead of handing KaTeX a huge string to chew on.
 const MAX_TEX_LENGTH = 2000;
-
-function wholeFormula(input: string): { tex: string; display: boolean } | null {
-  const trimmed = input.trim();
-  const block = trimmed.match(/^\\\[([\s\S]+)\\\]$/);
-  if (block?.[1]) return { tex: block[1], display: true };
-  const inline = trimmed.match(/^\\\(([\s\S]+)\\\)$/);
-  if (inline?.[1]) {
-    const needsDisplay = /\\(?:frac|dfrac|tfrac|sqrt)\b/.test(inline[1]) || inline[1].includes("√");
-    return { tex: inline[1], display: needsDisplay };
-  }
-  if (/\\(?:frac|dfrac|tfrac|sqrt|sum|int|cdot|times|mathrm|mathbf)\b/.test(trimmed)
-      && /^[A-Za-z0-9\s{}()[\]_=+*/.,^\\-]+$/.test(trimmed)) {
-    return { tex: trimmed, display: true };
-  }
-  return null;
-}
 
 function render(tex: string, display: boolean): string | null {
   if (tex.length > MAX_TEX_LENGTH) return null;
@@ -74,38 +58,42 @@ function render(tex: string, display: boolean): string | null {
   }
 }
 
+function mathClass(display: boolean) {
+  return display
+    ? "my-3 block max-w-full overflow-x-auto text-center text-[1.15em]"
+    : "inline";
+}
+
 export function MathText({ children }: { children: string | null | undefined }) {
   const text = children ?? "";
-  const segments = useMemo(() => split(text), [text]);
-  const whole = useMemo(() => wholeFormula(text), [text]);
+  const normalized = useMemo(() => unescapeDelimiters(text), [text]);
+  const segments = useMemo(() => split(normalized), [normalized]);
+  const trimmedSegments = useMemo(() => split(normalized.trim()), [normalized]);
+  const onlyFormula = trimmedSegments.length === 1 && trimmedSegments[0]?.kind !== "text" ? trimmedSegments[0] : null;
 
-  if (whole) {
-    const html = render(whole.tex, whole.display);
-    if (!html) return <>{text}</>;
+  if (onlyFormula) {
+    const html = render(onlyFormula.value, true);
+    if (!html) return <>{normalized}</>;
     return (
       <span
-        className={whole.display ? "my-3 block overflow-x-auto text-center text-[1.15em]" : "inline"}
+        className={mathClass(true)}
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
   }
 
-  if (!text.includes("\\(") && !text.includes("\\[")) return <>{text}</>;
+  if (!segments.some((segment) => segment.kind !== "text")) return <>{text}</>;
 
   return (
     <>
-      {segments.map((seg, i) => {
-        if (seg.kind === "text") return <span key={i}>{seg.value}</span>;
-        const html = render(seg.value, seg.kind === "block");
-        if (!html) {
-          const raw = seg.kind === "block" ? `\\[${seg.value}\\]` : `\\(${seg.value}\\)`;
-          return <span key={i}>{raw}</span>;
-        }
+      {segments.map((segment, index) => {
+        if (segment.kind === "text") return <span key={index}>{segment.value}</span>;
+        const html = render(segment.value, segment.kind === "block");
+        if (!html) return <span key={index}>{segment.source ?? segment.value}</span>;
         return (
           <span
-            key={i}
-            className={seg.kind === "block" ? "my-3 block overflow-x-auto text-center text-[1.15em]" : "inline"}
-            // KaTeX output is generated locally from the question text.
+            key={index}
+            className={mathClass(segment.kind === "block")}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );

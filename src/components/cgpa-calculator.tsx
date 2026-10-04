@@ -481,7 +481,7 @@ export function CgpaCalculatorScreen() {
               <div key={s.id} className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-navy">
+                    <div className="text-sm font-semibold text-foreground">
                       {s.session} · {s.term} semester
                     </div>
                     <div className="text-[11px] text-muted-foreground">

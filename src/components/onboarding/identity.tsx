@@ -114,6 +114,8 @@ export function IdentityScreen() {
         return;
       }
       if (data?.url) {
+        try { sessionStorage.setItem("truefluency-google-oauth-floor-pending", "1"); }
+        catch { /* history floor is best-effort when storage is unavailable */ }
         window.location.href = data.url;
         return;
       }

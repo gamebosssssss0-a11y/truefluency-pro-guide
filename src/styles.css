@@ -209,8 +209,39 @@
     background-color: var(--sand);
     border: 1px solid var(--border);
     border-radius: 16px;
-    color: var(--navy);
+    color: #1B2A4A;
     box-shadow: none;
+  }
+
+  .on-sand,
+  .surface-wash,
+  .surface-icon-well,
+  .bg-sand,
+  [class*="bg-sand/"],
+  .bg-cream,
+  [class*="bg-cream/"] {
+    --foreground: #1B2A4A;
+    --card-foreground: #1B2A4A;
+    --muted-foreground: #5C5C70;
+    color: #1B2A4A;
+  }
+
+  .on-sand :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  .surface-wash :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  .surface-icon-well :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  .bg-sand :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  [class*="bg-sand/"] :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  .bg-cream :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  [class*="bg-cream/"] :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  .on-sand.text-accent,
+  .on-sand.text-amber,
+  .on-sand.text-warn,
+  .on-sand.text-ppt-amber,
+  .surface-wash.text-accent,
+  .surface-wash.text-amber,
+  .surface-wash.text-warn,
+  .surface-wash.text-ppt-amber {
+    color: #8B5106;
   }
 
   .surface-icon-well {
@@ -283,8 +314,52 @@
     color: #020A1A;
   }
 
-  .dark .surface-wash {
-    color: var(--foreground);
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) .text-navy,
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-navy {
+    color: #1B2A4A;
+  }
+
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-accent,
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-amber,
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-warn,
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-ppt-amber {
+    color: #8B5106;
+  }
+
+  .dark [class*="bg-sand/"] {
+    background-color: var(--sand);
+  }
+
+  .dark [class*="bg-cream/"] {
+    background-color: var(--cream);
+  }
+
+  .dark .text-navy.text-wine,
+  .dark .text-wine {
+    color: #ED9A9A;
+  }
+
+  .dark .text-doc-blue {
+    color: #9EC5F0;
+  }
+
+  .dark .text-good {
+    color: #A7D5BC;
+  }
+
+  .dark .text-bad {
+    color: #F2A3A3;
+  }
+
+  .dark .text-warn,
+  .dark .text-warning {
+    color: #F2C27E;
+  }
+
+  .dark .thinking-shimmer {
+    color: #F7F3EA;
+    background-image: linear-gradient(90deg, #F7F3EA 0%, #F7F3EA 38%, #E3B36B 50%, #F7F3EA 62%, #F7F3EA 100%);
   }
 
   /* High-contrast quote card: dark ink panel, glowing amber edge. */
@@ -494,6 +569,14 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dark .thinking-shimmer {
+    color: #F7F3EA;
+    background: none;
+    -webkit-text-fill-color: #F7F3EA;
+  }
+}
+
 /* ---------------------------------------------------------------
    Desktop shell: widen the phone column into a centred stage at
    >= 768px. Layout only, no new UI. The mock run/review screens opt
@@ -512,6 +595,7 @@
 
 .tab-swipe-stage {
   touch-action: pan-y;
+  overscroll-behavior-x: contain;
 }
 
  .study-chat-screen {

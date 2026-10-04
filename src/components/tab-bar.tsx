@@ -54,9 +54,9 @@ export function hidesTabBar(view: AppView): boolean {
  * Desktop (>= 768px) top navigation. Same five destinations as the mobile
  * tab bar, no extra items: this is a layout change, not a new feature.
  */
-export function TopNavBar() {
+export function TopNavBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
   const { view, navigate } = useProfile();
-  const active = tabForView(view);
+  const active = tabForView(highlightedView ?? view);
 
   if (hidesTabBar(view)) return null;
 
@@ -111,9 +111,9 @@ export function TopNavBar() {
 
 }
 
-export function BottomTabBar() {
+export function BottomTabBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
   const { view, navigate } = useProfile();
-  const active = tabForView(view);
+  const active = tabForView(highlightedView ?? view);
 
   if (hidesTabBar(view)) return null;
 

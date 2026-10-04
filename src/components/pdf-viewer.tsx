@@ -89,6 +89,7 @@ function ScrollPage({
   width,
   active,
   distance,
+  estimatedPageHeight,
   register,
 }: {
   doc: PdfDoc;
@@ -96,6 +97,7 @@ function ScrollPage({
   width: number;
   active: boolean;
   distance: number;
+  estimatedPageHeight: number;
   register: (n: number, el: HTMLDivElement | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -176,14 +178,14 @@ function ScrollPage({
       ref={(el) => register(pageNumber, el)}
       data-page={pageNumber}
       className="mx-auto mb-2 flex justify-center"
-      style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? 0 }}
+      style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? estimatedPageHeight }}
     >
       {active || (distance <= 8 && hasPainted) ? (
         <canvas ref={canvasRef} className="block rounded-md bg-white shadow-sm" />
       ) : (
         <div
           className="rounded-md bg-white/60 shadow-sm"
-          style={{ width: boxWidth, height: pageHeight ?? 0 }}
+          style={{ width: boxWidth, height: pageHeight ?? estimatedPageHeight }}
         />
       )}
     </div>
@@ -222,6 +224,9 @@ export function PdfViewer({
   const pageNodes = useRef(new Map<number, HTMLDivElement>());
   const pageRef = useRef(1);
   const lastPageUpdateRef = useRef(0);
+  const ignoreObserverUntilRef = useRef(0);
+  const pageNavPointerRef = useRef(false);
+  const [pageAspect, setPageAspect] = useState(Math.SQRT2);
 
   pageRef.current = page;
 
@@ -388,6 +393,7 @@ export function PdfViewer({
     if (!root) return;
     const io = new IntersectionObserver(
       (entries) => {
+        if (Date.now() < ignoreObserverUntilRef.current) return;
         let best: { n: number; r: number } | null = null;
         for (const entry of entries) {
           const n = Number((entry.target as HTMLElement).dataset.page);
@@ -398,6 +404,7 @@ export function PdfViewer({
           const now = Date.now();
           if (now - lastPageUpdateRef.current < 500) return;
           lastPageUpdateRef.current = now;
+          pageRef.current = best.n;
           setPage(best.n);
           setPageInput(String(best.n));
         }
@@ -411,11 +418,23 @@ export function PdfViewer({
   // Land on the current page when entering full screen.
   useEffect(() => {
     if (!expanded || status !== "ready") return;
+    ignoreObserverUntilRef.current = Date.now() + 800;
     const timer = setTimeout(() => {
       pageNodes.current.get(pageRef.current)?.scrollIntoView({ block: "start" });
     }, 60);
     return () => clearTimeout(timer);
   }, [expanded, status]);
+
+  useEffect(() => {
+    if (!doc || !expanded) return;
+    let cancelled = false;
+    void doc.getPage(pageRef.current).then((current) => {
+      if (cancelled) return;
+      const viewport = current.getViewport({ scale: 1 });
+      if (viewport.width > 0 && viewport.height > 0) setPageAspect(viewport.height / viewport.width);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [doc, expanded, width]);
 
   useEffect(() => {
     if (status === "ready") writeLastPage(fileKey, page);
@@ -428,15 +447,16 @@ export function PdfViewer({
 
   const explainCurrentPage = async () => {
     if (!doc || !onExplain) return;
+    const currentPageNumber = pageRef.current;
     try {
-      const currentPage = await doc.getPage(page);
+      const currentPage = await doc.getPage(currentPageNumber);
       const content = await currentPage.getTextContent?.();
       const text = (content?.items ?? []).map((item) => item.str ?? "").join(" ").replace(/\s+/g, " ").trim();
       if (text.length < 50) {
         toast.error("This page has too little selectable text.");
         return;
       }
-      onExplain({ page, fileName, text: text.slice(0, 4000) });
+      onExplain({ page: currentPageNumber, fileName, text: text.slice(0, 4000) });
     } catch {
       toast.error("Couldn't read selectable text from this page.");
     }
@@ -444,6 +464,8 @@ export function PdfViewer({
 
   const go = (n: number) => {
     const next = Math.min(Math.max(1, n), total || 1);
+    pageRef.current = next;
+    if (expanded) ignoreObserverUntilRef.current = Date.now() + 500;
     setPage(next);
     setPageInput(String(next));
     if (expanded) {
@@ -476,8 +498,8 @@ export function PdfViewer({
       data-swipe-lock=""
       className={
         expanded
-          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background"
-          : "flex h-full flex-col bg-background"
+          ? "fixed inset-0 z-50 flex min-w-0 flex-col overflow-hidden bg-background"
+          : "flex h-full min-w-0 w-full max-w-full flex-col overflow-hidden bg-background"
       }
       style={expanded && explainPanelOpen ? { left: 16, right: 396, top: 16, bottom: 16, width: "auto", height: "auto" } : undefined}
     >
@@ -542,6 +564,7 @@ export function PdfViewer({
               width={width || 340}
               distance={Math.abs(n - page)}
               active={Math.abs(n - page) <= 4}
+              estimatedPageHeight={Math.max(1, Math.round(Math.max(120, (width || 340) - 8) * pageAspect))}
               register={registerPage}
             />
           ))
@@ -556,47 +579,66 @@ export function PdfViewer({
       </div>
 
       {status === "ready" ? (
-        <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+        <div
+          className="grid min-w-0 grid-cols-[minmax(44px,1fr)_auto_minmax(44px,1fr)] gap-x-2 gap-y-2 border-t border-border px-3 py-2"
+          style={expanded ? { paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" } : undefined}
+        >
           <Button
-            size="sm"
+            type="button"
+            size="icon"
             variant="outline"
-            className="border-border text-foreground"
-            onClick={() => go(page - 1)}
+            aria-label="Previous page"
+            data-page-nav=""
+            onPointerDown={() => { pageNavPointerRef.current = true; }}
+            className="h-11 w-full min-w-11 border-border text-foreground"
+            onClick={() => go(pageRef.current - 1)}
             disabled={page <= 1}
           >
-            <ChevronLeft className="mr-1 h-4 w-4" /> Back
+            <ChevronLeft className="h-4 w-4" />
           </Button>
           <form
-            className="flex items-center gap-1"
+            className="flex h-11 items-center gap-1"
             onSubmit={(e) => {
               e.preventDefault();
-              go(Number(pageInput) || page);
+              go(Number(pageInput) || pageRef.current);
             }}
           >
             <Input
               value={pageInput}
               onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
-              onBlur={() => go(Number(pageInput) || page)}
+              onBlur={() => {
+                if (pageNavPointerRef.current) {
+                  pageNavPointerRef.current = false;
+                  setPageInput(String(pageRef.current));
+                  return;
+                }
+                const target = Number(pageInput) || pageRef.current;
+                if (target !== pageRef.current) go(target);
+              }}
               inputMode="numeric"
               aria-label="Go to page"
-              className="h-8 w-14 border-border bg-card text-center text-[12px] text-foreground"
+              className="h-10 w-14 border-border bg-card text-center text-[12px] text-foreground"
             />
-            <span className="text-[11px] text-muted-foreground">/ {total}</span>
+            <span className="whitespace-nowrap text-[11px] text-muted-foreground">/ {total}</span>
           </form>
-          {onExplain ? (
-            <Button size="sm" variant="outline" className="border-border text-foreground" onClick={() => void explainCurrentPage()}>
-              Explain this page
-            </Button>
-          ) : null}
           <Button
-            size="sm"
+            type="button"
+            size="icon"
             variant="outline"
-            className="border-border text-foreground"
-            onClick={() => go(page + 1)}
+            aria-label="Next page"
+            data-page-nav=""
+            onPointerDown={() => { pageNavPointerRef.current = true; }}
+            className="h-11 w-full min-w-11 border-border text-foreground"
+            onClick={() => go(pageRef.current + 1)}
             disabled={page >= total}
           >
-            Next <ChevronRight className="ml-1 h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
+          {onExplain ? (
+            <Button size="sm" variant="outline" data-page-nav="" className="col-span-3 h-11 min-w-0 w-full border-border text-foreground" onClick={() => void explainCurrentPage()}>
+              <span className="truncate">Explain this page</span>
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>

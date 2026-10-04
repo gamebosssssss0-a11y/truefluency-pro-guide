@@ -6,7 +6,7 @@ const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"]
 const SWIPE_THRESHOLD = 70;
 const TRANSITION_MS = 180;
 
-type SwipePreview = { tab: AppView; side: "left" | "right" };
+export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null };
 
 /** Which root tab (if any) the current view is. Sub-screens are not swipeable. */
 function rootIndex(view: AppView): number {
@@ -36,8 +36,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     let deltaX = 0;
     let stage: HTMLElement | null = null;
     let settleTimer = 0;
-    let previousOverflowX = "";
-
     const restoreStage = (node: HTMLElement, removePreview = true) => {
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       node.style.transition = reduced ? "none" : `transform ${TRANSITION_MS}ms ease`;
@@ -88,14 +86,16 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         if (Math.abs(dx) < 8 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
         horizontal = true;
         stage.style.willChange = "transform";
-        previousOverflowX = document.documentElement.style.overflowX;
-        document.documentElement.style.overflowX = "hidden";
       }
       deltaX = dx;
       const adjacentIndex = index + (dx < 0 ? 1 : -1);
       const adjacent = ORDER[adjacentIndex];
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (adjacent && !reduced) setPreview({ tab: adjacent, side: dx < 0 ? "right" : "left" });
+      if (adjacent && !reduced) setPreview({
+        tab: adjacent,
+        side: dx < 0 ? "right" : "left",
+        highlightedTab: Math.abs(dx) >= window.innerWidth / 2 ? adjacent : null,
+      });
       else setPreview(null);
       const resisted = adjacent ? dx : dx * 0.25;
       stage.style.transition = "none";
@@ -111,37 +111,29 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const targetIndex = index + (deltaX < 0 ? 1 : -1);
       const target = ORDER[targetIndex];
       if (!horizontal || !target || Math.abs(deltaX) < SWIPE_THRESHOLD) {
+        if (horizontal && target) setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: null });
         restoreStage(node);
-        document.documentElement.style.overflowX = previousOverflowX;
         return;
       }
 
       const outgoing = deltaX < 0 ? -1 : 1;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduced) {
-        node.style.transition = "none";
-        node.style.transform = "translate3d(0, 0, 0)";
-        node.dataset.swipeActive = "false";
-        document.documentElement.style.overflowX = previousOverflowX;
-        navigateRef.current(target);
+        navigateRef.current(target, { replace: true });
         setPreview(null);
         return;
       }
 
+      setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target });
       node.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       node.style.transform = `translate3d(${outgoing * window.innerWidth}px, 0, 0)`;
       window.setTimeout(() => {
         if (!node.isConnected) return;
-        document.documentElement.style.overflowX = previousOverflowX;
-        // Swap the adjacent preview for the destination in one React update.
-        // Clearing the preview in the effect cleanup let both screens paint
-        // together for one frame after the stage snapped back to its origin.
-        node.style.transition = "none";
-        node.style.transform = "translate3d(0, 0, 0)";
-        node.style.willChange = "";
-        node.dataset.swipeActive = "false";
+        // ProfileProvider commits the destination while the stage remains
+        // off-screen. Router resets the transform in a layout effect after
+        // that destination has committed, so no empty frame can paint.
         setPreview(null);
-        navigateRef.current(target);
+        navigateRef.current(target, { replace: true });
       }, TRANSITION_MS);
     };
 
@@ -149,7 +141,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       tracking = false;
       horizontal = false;
       if (stage) restoreStage(stage);
-      document.documentElement.style.overflowX = previousOverflowX;
     };
 
     window.addEventListener("touchstart", onStart, { passive: true });
@@ -168,7 +159,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         stage.style.willChange = "";
         stage.dataset.swipeActive = "false";
       }
-      document.documentElement.style.overflowX = previousOverflowX;
       setPreview(null);
     };
   }, [enabled, index]);

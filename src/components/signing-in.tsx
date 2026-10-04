@@ -7,7 +7,7 @@ import { LogoMark } from "@/components/logo-mark";
 
 export function SigningInScreen() {
   return (
-    <div className="grid min-h-screen place-items-center bg-[#F7F3EA] px-8">
+    <div className="on-sand grid min-h-screen place-items-center bg-[#F7F3EA] px-8">
       <div className="flex flex-col items-center">
         <LogoMark className="h-24 w-24" />
         <h1 className="mt-8 font-display text-3xl font-bold tracking-tight text-[#1B2A4A]">

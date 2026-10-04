@@ -629,7 +629,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               identity: local.identity ?? snapshot.identity ?? null,
               courses: snapshot.courses?.length ? snapshot.courses : local.courses,
               attempts: snapshot.attempts?.length ? snapshot.attempts : local.attempts,
-              streakDays: Math.max(local.streakDays, snapshot.streakDays ?? 0),
+              streakDays: snapshot.streakDays ?? local.streakDays,
             };
             profileRef.current = syncedProfile;
             setProfile(syncedProfile);
@@ -779,6 +779,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (s === "dashboard") {
       setView("home");
       writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
+      try {
+        if (sessionStorage.getItem("truefluency-google-oauth-floor-pending") === "1") {
+          sessionStorage.removeItem("truefluency-google-oauth-floor-pending");
+          const state = window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+          window.history.pushState({ ...state, __trueFluencyHomeFloor: true }, "", window.location.href);
+        }
+      } catch { /* a missing floor marker must not block sign-in */ }
     }
   };
   const navigate = (
