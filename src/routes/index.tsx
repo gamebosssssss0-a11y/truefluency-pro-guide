@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile, type AppView } from "@/lib/profile-store";
@@ -75,17 +75,64 @@ function Index() {
 }
 
 
-function SwipePreviewScreen({ view }: { view: AppView }) {
-  switch (view) {
-    case "home":
-    case "dashboard": return <HomeScreen />;
-    case "mock-tests": return <MockTestsScreen />;
-    case "library": return <LibraryScreen />;
-    case "chatbot": return <ChatbotScreen />;
-    case "account":
-    case "settings": return <AccountScreen />;
-    default: return null;
-  }
+const ROOT_TABS: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
+
+function rootTabFor(view: AppView): AppView | null {
+  if (view === "home" || view === "dashboard") return "home";
+  if (ROOT_TABS.includes(view)) return view;
+  if (view === "settings") return "account";
+  return null;
+}
+
+function SwipePreviewScreen({ view, side }: { view: AppView; side: "left" | "right" }) {
+  const title = view === "mock-tests" ? "Practice"
+    : view === "library" ? "My Files"
+      : view === "chatbot" ? "Study Chat"
+        : view === "account" ? "Account" : "Home";
+  return (
+    <div
+      aria-hidden="true"
+      data-swipe-lock=""
+      className="pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background"
+      style={{ left: side === "right" ? "100%" : "-100%" }}
+    >
+      <div className="mx-auto max-w-md px-5 pt-6">
+        <div className="mb-5 h-4 w-24 rounded bg-muted" />
+        <h2 className="mb-3 font-display text-xl font-semibold text-foreground">{title}</h2>
+        <div className="space-y-3">
+          <div className="h-28 rounded-2xl border border-border bg-card" />
+          <div className="h-16 rounded-2xl border border-border bg-card" />
+          <div className="h-16 rounded-2xl border border-border bg-card" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RootTabs({ view }: { view: AppView }) {
+  const activeTab = rootTabFor(view);
+  const [visited, setVisited] = useState<AppView[]>(() => [activeTab ?? "home"]);
+
+  useEffect(() => {
+    if (activeTab && !visited.includes(activeTab)) setVisited((tabs) => [...tabs, activeTab]);
+  }, [activeTab, visited]);
+
+  return (
+    <>
+      {(activeTab && !visited.includes(activeTab) ? [...visited, activeTab] : visited).map((tab) => {
+        const active = activeTab === tab;
+        return (
+          <div key={tab} hidden={!active} aria-hidden={!active} data-root-tab={tab}>
+            {tab === "home" ? <HomeScreen active={active} />
+              : tab === "mock-tests" ? <MockTestsScreen active={active} />
+                : tab === "library" ? <LibraryScreen active={active} />
+                  : tab === "chatbot" ? <ChatbotScreen active={active} />
+                    : <AccountScreen />}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 function Router() {
@@ -94,6 +141,27 @@ function Router() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
+  const previousView = useRef(view);
+  const rootScroll = useRef(new Map<AppView, number>());
+
+  useLayoutEffect(() => {
+    const stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");
+    if (stage) {
+      // The destination is committed before this layout effect runs. Resetting
+      // here keeps the atomic screen swap off-screen until the new view exists.
+      stage.style.transition = "none";
+      stage.style.transform = "translate3d(0, 0, 0)";
+      stage.style.willChange = "";
+      stage.dataset.swipeActive = "false";
+    }
+
+    const oldRoot = rootTabFor(previousView.current);
+    if (oldRoot) rootScroll.current.set(oldRoot, window.scrollY);
+    const nextRoot = rootTabFor(view);
+    if (nextRoot) window.scrollTo(0, rootScroll.current.get(nextRoot) ?? 0);
+    else window.scrollTo(0, 0);
+    previousView.current = view;
+  }, [view]);
 
   useEffect(() => {
     if (view !== "mock-run" && view !== "mock-gen") {
@@ -141,14 +209,6 @@ function Router() {
   }, [profile.identity?.kind, profile.identity?.email]);
 
 
-  // All in-app screens render on this same "/" route, so the router's scroll
-  // restoration never fires on a view switch. Without this, opening a screen
-  // from a scrolled position (e.g. the Flashcards card partway down Home)
-  // keeps the old scroll offset and the new screen looks truncated at the top.
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [view, step]);
-
   // A session must finish identity restore and local hydration before any
   // onboarding or dashboard screen can render.
   const sessionRestoring = authPending;
@@ -177,19 +237,19 @@ function Router() {
   const screen = (() => {
     switch (view) {
       case "home":
-      case "dashboard": return <HomeScreen />;
+      case "dashboard": return null;
       case "course-detail": return <CourseDetailScreen />;
-      case "mock-tests": return <MockTestsScreen />;
+      case "mock-tests": return null;
       case "test-history": return <TestHistoryScreen />;
       case "mock-gen": return <MockGenerationScreen />;
       case "mock-config": return <MockConfigScreen />;
       case "mock-run": return <MockRunScreen />;
       case "mock-result": return <MockResultScreen />;
       case "attempt-review": return <AttemptReviewScreen />;
-      case "library": return <LibraryScreen />;
-      case "chatbot": return <ChatbotScreen />;
+      case "library": return null;
+      case "chatbot": return null;
       case "account":
-      case "settings": return <AccountScreen />;
+      case "settings": return null;
       case "all-uploads": return <AllUploadsScreen />;
       case "flashcards": return <FlashcardsScreen />;
       case "flashcards-review": return <FlashcardsReviewScreen />;
@@ -207,32 +267,27 @@ function Router() {
   // Mock run and review stay a narrow single column at every width so the
   // exam surface matches mobile exactly.
   const examFocus = view === "mock-run" || view === "mock-gen" || view === "attempt-review";
+  const currentRootTab = rootTabFor(view);
 
   return (
     <>
-      <TopNavBar />
+      <TopNavBar highlightedView={swipePreview?.highlightedTab} />
       {/* Padding keeps the persistent mobile tab bar from covering content. */}
       <div
         data-tab-swipe-stage
         className={cn(
-          hidesTabBar(view) ? undefined : view === "chatbot" && !swipePreview ? "overflow-hidden" : view === "chatbot" ? "overflow-visible" : "pb-20 md:pb-8",
+          hidesTabBar(view) ? undefined : view === "chatbot" ? "overflow-hidden" : "pb-20 md:pb-8 overflow-x-hidden",
           !examFocus && "app-stage-wide",
-          "tab-swipe-stage relative",
+          "tab-swipe-stage relative overflow-x-hidden",
         )}
       >
-        {screen}
+        <RootTabs view={view} />
+        {!currentRootTab ? screen : null}
         {swipePreview ? (
-          <div
-            aria-hidden="true"
-            data-swipe-lock=""
-            className="pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background"
-            style={{ left: swipePreview.side === "right" ? "100%" : "-100%" }}
-          >
-            <SwipePreviewScreen view={swipePreview.tab} />
-          </div>
+          <SwipePreviewScreen view={swipePreview.tab} side={swipePreview.side} />
         ) : null}
       </div>
-      <BottomTabBar />
+      <BottomTabBar highlightedView={swipePreview?.highlightedTab} />
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
