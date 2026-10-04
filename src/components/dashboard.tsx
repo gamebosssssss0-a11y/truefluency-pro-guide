@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronRight, Flame, Quote as QuoteIcon, Lightbulb, Calculator, Target,
+  ChevronRight, Flame, Snowflake, Quote as QuoteIcon, Lightbulb, Calculator, Target,
   Layers, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,18 +17,106 @@ import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-material
 import { getMyAvatar } from "@/lib/avatar";
 import { FirstRunTourHost } from "@/components/first-run-tour";
 import { lagosDay } from "@/lib/wat-day";
+import { getStreakState, type StreakState } from "@/lib/streak-state";
 
 /* ================= Tab 1: Home ================= */
 
 const ROTATE_MS = 6000;
 
+const STREAK_EMOJI: Record<StreakState, string> = {
+  fire: "🔥",
+  frozen: "🥶",
+  none: "🥲",
+};
+const STREAK_LABEL: Record<StreakState, string> = {
+  fire: "Streak active",
+  frozen: "Streak frozen",
+  none: "No streak",
+};
+let streakEmojiGlyphCache: Record<StreakState, boolean> | null = null;
+
+function getStreakEmojiGlyphSupport(): Record<StreakState, boolean> | null {
+  if (streakEmojiGlyphCache) return streakEmojiGlyphCache;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.font = "24px sans-serif";
+  const missing = context.measureText("\u0378");
+  const supports = (glyph: string) => {
+    const measured = context.measureText(glyph);
+    return Math.abs(measured.width - missing.width) > 0.5 ||
+      Math.abs(measured.actualBoundingBoxAscent - missing.actualBoundingBoxAscent) > 0.5 ||
+      Math.abs(measured.actualBoundingBoxDescent - missing.actualBoundingBoxDescent) > 0.5;
+  };
+  streakEmojiGlyphCache = {
+    fire: supports(STREAK_EMOJI.fire),
+    frozen: supports(STREAK_EMOJI.frozen),
+    none: supports(STREAK_EMOJI.none),
+  };
+  return streakEmojiGlyphCache;
+}
+
+function StreakGlyph({ state }: { state: StreakState }) {
+  const [glyphSupport, setGlyphSupport] = useState<boolean | null>(() => {
+    const support = getStreakEmojiGlyphSupport();
+    return support ? support[state] : null;
+  });
+  useEffect(() => {
+    const support = getStreakEmojiGlyphSupport();
+    setGlyphSupport(support ? support[state] : null);
+  }, [state]);
+
+  const Icon = state === "frozen" ? Snowflake : Flame;
+  return (
+    <span role="img" aria-label={STREAK_LABEL[state]} className="grid h-10 w-10 shrink-0 place-items-center">
+      {glyphSupport ? (
+        <span aria-hidden="true" className="text-[22px] leading-none">{STREAK_EMOJI[state]}</span>
+      ) : (
+        <Icon aria-hidden="true" className={state === "none" ? "h-5 w-5 opacity-40" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 text-accent"} />
+      )}
+    </span>
+  );
+}
+
+type HomeDisplayCache = {
+  avatarUrl?: string | null;
+  mocksToday?: number;
+  access?: { tier: string; trialEndsAt: string | null };
+};
+const HOME_DISPLAY_CACHE_KEY = "truefluency-home-display-v1";
+let homeDisplayCache: HomeDisplayCache | null = null;
+
+function readHomeDisplayCache(): HomeDisplayCache | null {
+  if (homeDisplayCache) return homeDisplayCache;
+  if (typeof window === "undefined") return null;
+  try {
+    const value = JSON.parse(localStorage.getItem(HOME_DISPLAY_CACHE_KEY) || "null") as HomeDisplayCache | null;
+    if (value && typeof value === "object") homeDisplayCache = value;
+  } catch { /* stale or blocked display cache */ }
+  return homeDisplayCache;
+}
+
+function writeHomeDisplayCache(update: HomeDisplayCache) {
+  homeDisplayCache = { ...readHomeDisplayCache(), ...update };
+  try { localStorage.setItem(HOME_DISPLAY_CACHE_KEY, JSON.stringify(homeDisplayCache)); }
+  catch { /* display cache is optional */ }
+}
+
 /** One chip only: the live trial, paid access, or the founding price line. */
 function PlanChip() {
   const { access } = useEntitlement();
-  if (!access) return null;
+  const cached = readHomeDisplayCache()?.access;
+  const displayAccess = access ?? cached ?? null;
+  useEffect(() => {
+    if (access) writeHomeDisplayCache({ access: { tier: access.tier, trialEndsAt: access.trialEndsAt ?? null } });
+  }, [access]);
+  if (!displayAccess) {
+    return <div aria-hidden="true" className="mb-5 h-11 rounded-2xl border border-border/50 bg-sand/40" />;
+  }
 
-  if (access.tier === "trial" && access.trialEndsAt) {
-    const msLeft = new Date(access.trialEndsAt).getTime() - Date.now();
+  if (displayAccess.tier === "trial" && displayAccess.trialEndsAt) {
+    const msLeft = new Date(displayAccess.trialEndsAt).getTime() - Date.now();
     if (msLeft > 0) {
       const days = Math.max(1, Math.ceil(msLeft / 86_400_000));
       return (
@@ -38,7 +126,7 @@ function PlanChip() {
       );
     }
   }
-  if (access.tier === "paid") return <ChipShell>Full access, this month</ChipShell>;
+  if (displayAccess.tier === "paid") return <ChipShell>Full access, this month</ChipShell>;
   return <ChipShell>{PRICE_LINE}</ChipShell>;
 }
 
@@ -47,22 +135,22 @@ function ChipShell({ children }: { children: React.ReactNode }) {
   return (
     <button
       onClick={() => navigate("upgrade")}
-      className="surface-key-card mb-5 flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
+      className="mb-5 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
     >
-      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-foreground">
+      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
         {children}
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-[#1B2A4A]/60" />
     </button>
   );
 }
 
-const TYPE_CHIP: Record<string, { label: string; color: string }> = {
-  pdf: { label: "PDF", color: "#8B2E2E" },
-  docx: { label: "DOC", color: "#1D4E89" },
-  pptx: { label: "PPT", color: "#B86E0A" },
-  image: { label: "IMG", color: "#1B2A4A" },
-  pasted: { label: "TXT", color: "#1B2A4A" },
+const TYPE_CHIP: Record<string, { label: string; color: string; textColor: string }> = {
+  pdf: { label: "PDF", color: "#8B2E2E", textColor: "#F7F3EA" },
+  docx: { label: "DOC", color: "#1D4E89", textColor: "#F7F3EA" },
+  pptx: { label: "PPT", color: "#B86E0A", textColor: "#080D19" },
+  image: { label: "IMG", color: "#1B2A4A", textColor: "#F7F3EA" },
+  pasted: { label: "TXT", color: "#1B2A4A", textColor: "#F7F3EA" },
 };
 
 /** Latest file this student uploaded themselves. Peer copies never appear here. */
@@ -72,7 +160,8 @@ function ContinueFileCard() {
 
   useEffect(() => {
     let live = true;
-    listAllUserMaterials()
+    const loadLatest = () => {
+      void listAllUserMaterials()
       .then((items) => {
         const own = items.filter(
           (m) => !(m as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy,
@@ -80,8 +169,12 @@ function ContinueFileCard() {
         if (live) setLatest(own[0] ?? null);
       })
       .catch((e) => console.warn("[home] couldn't read uploads", e));
+    };
+    loadLatest();
+    window.addEventListener("course-materials-refresh", loadLatest);
     return () => {
       live = false;
+      window.removeEventListener("course-materials-refresh", loadLatest);
     };
   }, []);
 
@@ -89,11 +182,11 @@ function ContinueFileCard() {
   const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
 
   return (
-    <div className="surface-key-card mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-3.5">
+    <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <div
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold text-white"
-          style={{ backgroundColor: chip.color }}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold"
+          style={{ backgroundColor: chip.color, color: chip.textColor }}
         >
           {chip.label}
         </div>
@@ -126,7 +219,8 @@ function NextStepCard() {
 
   useEffect(() => {
     let live = true;
-    listAllUserMaterials()
+    const loadNextStepMaterials = () => {
+      void listAllUserMaterials()
       .then((items) => {
         const own = items.filter(
           (m) => !(m as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy,
@@ -137,7 +231,13 @@ function NextStepCard() {
       })
       // A failed read must never be read as "this student has no files".
       .catch((e) => { console.warn("[home] couldn't read uploads", e); });
-    return () => { live = false; };
+    };
+    loadNextStepMaterials();
+    window.addEventListener("course-materials-refresh", loadNextStepMaterials);
+    return () => {
+      live = false;
+      window.removeEventListener("course-materials-refresh", loadNextStepMaterials);
+    };
   }, []);
 
   const lastAttempt = profile.attempts[0];
@@ -181,14 +281,14 @@ function NextStepCard() {
   })();
 
   return (
-    <div className="surface-wash mb-5 p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#B86E0A]">
+        <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">
         Do this next
       </div>
       <h2 className="mt-1 font-display text-lg font-semibold text-foreground">{next.title}</h2>
       <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{next.line}</p>
       <Button
-        className="mt-3 w-full bg-[#B86E0A] text-white hover:bg-[#B86E0A]/90"
+        className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90"
         onClick={next.go}
       >
         {next.cta} <ChevronRight className="ml-0.5 h-4 w-4" />
@@ -230,8 +330,8 @@ function StrengthsCard() {
   );
 }
 
-export function HomeScreen() {
-  const { profile, navigate } = useProfile();
+export function HomeScreen({ active = true }: { active?: boolean } = {}) {
+  const { profile, navigate, hydrated } = useProfile();
   const { access } = useEntitlement();
   /** First name only, in title case: never the full legal name, never ALL-CAPS. */
   const name = (() => {
@@ -242,26 +342,32 @@ export function HomeScreen() {
   })();
 
   // Photo when the student has set one, otherwise the existing letter circle.
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => readHomeDisplayCache()?.avatarUrl ?? null);
   useEffect(() => {
     let alive = true;
     void getMyAvatar()
-      .then((r) => { if (alive) setAvatarUrl(r.url); })
-      .catch(() => { if (alive) setAvatarUrl(null); });
+      .then((r) => { if (alive) { setAvatarUrl(r.url); writeHomeDisplayCache({ avatarUrl: r.url }); } })
+      .catch(() => { if (alive && !readHomeDisplayCache()?.avatarUrl) setAvatarUrl(null); });
     return () => { alive = false; };
   }, []);
 
-  const activeToday = !!access && profile.lastActiveDate === access.watToday;
+  const today = access?.watToday ?? lagosDay(Date.now());
+  const activeToday = profile.lastActiveDate === today;
   const subline = greetingSubline(profile.goal);
-  const hasStreak = profile.streakDays > 0;
+  const streak = getStreakState(profile, today);
 
   // Saved history is the source of truth for today's mocks: the server counter
   // stays at 0 on trial / full access, which used to zero the meter.
-  const mocksToday = useMemo(() => {
+  const liveMocksToday = useMemo(() => {
     const today = lagosDay(Date.now());
     const fromHistory = profile.attempts.filter((a) => lagosDay(a.submittedAt) === today).length;
     return Math.max(fromHistory, access?.usageToday.mock_sets ?? 0);
   }, [profile.attempts, access]);
+  const cachedHome = readHomeDisplayCache();
+  const mocksToday = hydrated ? liveMocksToday : cachedHome?.mocksToday ?? liveMocksToday;
+  useEffect(() => {
+    if (hydrated) writeHomeDisplayCache({ mocksToday: liveMocksToday });
+  }, [hydrated, liveMocksToday]);
 
   const meta = useMemo(
     () =>
@@ -312,28 +418,32 @@ export function HomeScreen() {
         <PlanChip />
 
         {/* Streak: cloud-backed qualifying mock activity only. */}
-        {hasStreak ? (
-          <div className="surface-key-card mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-3.5">
-            <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
-              <Flame className="h-4.5 w-4.5" />
+        <div className="mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
+              <StreakGlyph state={streak.state} />
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">Current streak</div>
-              <div className="text-[11px] text-muted-foreground">
-                {activeToday ? "Qualified today." : `${profile.freezesAvailable} ${profile.freezesAvailable === 1 ? "freeze" : "freezes"} available`}
+              <div className="break-words text-[11px] leading-4 text-muted-foreground">
+                {streak.state === "frozen"
+                  ? "Frozen: you missed yesterday. Complete a mock today to keep your streak."
+                  : streak.state === "none"
+                    ? "No streak yet. Complete a mock test to start one."
+                    : activeToday
+                      ? "Qualified today."
+                      : `${profile.freezesAvailable} ${profile.freezesAvailable === 1 ? "freeze" : "freezes"} available`}
               </div>
             </div>
             <div className="text-right">
               <div className="font-display text-xl font-semibold text-accent">
-                {profile.streakDays}
+                {streak.days}
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">days</div>
+              <div className="text-[10px] tracking-wider text-muted-foreground">{streak.days === 1 ? "day" : "days"}</div>
             </div>
-          </div>
-        ) : null}
+        </div>
 
-        {access || mocksToday > 0 ? (
-          <div className="surface-wash mb-5 p-3.5">
+        {access || cachedHome?.access || mocksToday > 0 ? (
+          <div className="mb-5 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>
@@ -352,7 +462,7 @@ export function HomeScreen() {
               />
             </div>
           </div>
-        ) : null}
+        ) : !hydrated ? <div aria-hidden="true" className="mb-5 h-[68px] rounded-2xl border border-border/50 bg-card" /> : null}
 
         {/* Straight routes to the two lists students look for most. */}
         <div className="mb-5 grid gap-2">
@@ -381,9 +491,9 @@ export function HomeScreen() {
             {/* Flashcards: link only, no generator. */}
             <button
               onClick={() => navigate("flashcards")}
-              className="surface-key-card mt-5 flex w-full items-center gap-3 p-4 text-left md:mt-0"
+              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
             >
-              <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Layers className="h-4.5 w-4.5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -395,7 +505,7 @@ export function HomeScreen() {
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
 
-            <RotatingWisdomCard />
+          <RotatingWisdomCard active={active} />
           </div>
         </div>
 
@@ -413,10 +523,10 @@ function HomeRowLink({ label, onClick }: { label: string; onClick: () => void })
   return (
     <button
       onClick={onClick}
-      className="surface-list-row flex w-full items-center gap-2 p-3.5 text-left"
+      className="flex w-full items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-left"
     >
-      <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{label}</span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-[#B86E0A]" />
+      <span className="min-w-0 flex-1 text-sm font-medium text-card-foreground">{label}</span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-accent" />
     </button>
   );
 }
@@ -433,9 +543,9 @@ function QuickLink({
   return (
     <button
       onClick={onClick}
-      className="surface-list-row flex items-center gap-2 p-3.5 text-left"
+      className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-left"
     >
-      <span className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">{icon}</span>
+      <span className="shrink-0 text-primary">{icon}</span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </button>
@@ -450,9 +560,9 @@ function CgpaStatusCard() {
   return (
     <button
       onClick={() => navigate("cgpa")}
-      className="surface-list-row flex w-full items-center gap-3 p-4 text-left"
+      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left"
     >
-      <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
         <GraduationCap className="h-4.5 w-4.5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -488,7 +598,7 @@ function CgpaStatusCard() {
   );
 }
 
-function RotatingWisdomCard() {
+function RotatingWisdomCard({ active }: { active: boolean }) {
   const [deck] = useState<Rotating[]>(() => buildRotatingDeck());
   const [i, setI] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -502,10 +612,10 @@ function RotatingWisdomCard() {
   }, []);
 
   useEffect(() => {
-    if (reduceMotion) return;
+    if (reduceMotion || !active) return;
     const id = window.setInterval(() => setI((c) => (c + 1) % deck.length), ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [deck.length, reduceMotion]);
+  }, [active, deck.length, reduceMotion]);
 
   const item = deck[i];
   if (!item) return null;
