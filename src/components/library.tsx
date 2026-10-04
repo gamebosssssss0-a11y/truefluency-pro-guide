@@ -20,8 +20,13 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAvatar } from "@/lib/avatar";
+import { deleteMaterial } from "@/lib/course-materials";
 import { useProfile } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -38,6 +43,7 @@ type Rail = "locker" | "shelf";
 type LockerFile = {
   id: string;
   course_code: string;
+  file_path: string;
   file_name: string;
   file_type: string;
   size_bytes: number;
@@ -47,6 +53,8 @@ type LockerFile = {
   peer_alias: string | null;
   readyForMocks: boolean;
 };
+
+let lockerDisplayCache: LockerFile[] | null = null;
 
 type ShelfItem = {
   id: string;
@@ -60,20 +68,20 @@ type ShelfItem = {
   readyForMocks: boolean;
 };
 
-function typeChip(fileType: string): { label: string; color: string } {
+function typeChip(fileType: string): { label: string; color: string; textColor: string } {
   const t = fileType.toLowerCase();
-  if (t === "pdf") return { label: "PDF", color: "#8B2E2E" };
-  if (t === "docx" || t === "doc") return { label: "DOC", color: "#1D4E89" };
-  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "#B86E0A" };
-  return { label: "TXT", color: "#5C5C70" };
+  if (t === "pdf") return { label: "PDF", color: "#8B2E2E", textColor: "#F7F3EA" };
+  if (t === "docx" || t === "doc") return { label: "DOC", color: "#1D4E89", textColor: "#F7F3EA" };
+  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "#B86E0A", textColor: "#080D19" };
+  return { label: "TXT", color: "#5C5C70", textColor: "#F7F3EA" };
 }
 
 function TypeChip({ fileType }: { fileType: string }) {
-  const { label, color } = typeChip(fileType);
+  const { label, color, textColor } = typeChip(fileType);
   return (
     <span
-      className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-      style={{ backgroundColor: color }}
+      className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      style={{ backgroundColor: color, color: textColor }}
     >
       {label}
     </span>
@@ -82,7 +90,7 @@ function TypeChip({ fileType }: { fileType: string }) {
 
 function ReadyPill({ ready }: { ready: boolean }) {
   return ready ? (
-    <span className="rounded-full bg-[#2F6B4F]/12 px-2 py-0.5 text-[10px] font-semibold text-[#2F6B4F]">
+    <span className="rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good">
       Ready for mocks
     </span>
   ) : (
@@ -98,20 +106,23 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
-export function LibraryScreen() {
+export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const { navigate, profile, activeCourseCode } = useProfile();
   const [rail, setRail] = useState<Rail>("locker");
-  const [locker, setLocker] = useState<LockerFile[] | null>(null);
+  const [locker, setLocker] = useState<LockerFile[] | null>(() => lockerDisplayCache);
+  const [lockerError, setLockerError] = useState(false);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const [shelf, setShelf] = useState<{ items: ShelfItem[]; courses: { course_code: string; count: number }[] } | null>(null);
   const [shelfOffline, setShelfOffline] = useState(false);
   const [shelfCourse, setShelfCourse] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [shelfLoading, setShelfLoading] = useState(false);
 
   const [ownerSheet, setOwnerSheet] = useState<LockerFile | null>(null);
   const [publishTarget, setPublishTarget] = useState<LockerFile | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LockerFile | null>(null);
   const [linkSheet, setLinkSheet] = useState<
     { fileName: string; token: string; expiresAt: string; usesLeft: number; maxUses: number } | null
   >(null);
@@ -127,27 +138,27 @@ export function LibraryScreen() {
   const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
 
   const loadLocker = useCallback(async () => {
-    const { data: session } = await supabase.auth.getSession();
-    const uid = session.session?.user.id;
-    if (!uid) {
-      setLocker([]);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("course_materials")
-      .select(
-        "id, course_code, file_name, file_type, size_bytes, created_at, published, is_peer_copy, peer_alias, extracted_content",
-      )
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false });
-    if (error) {
-      setLocker([]);
-      return;
-    }
-    setLocker(
-      (data ?? []).map((r) => ({
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) {
+        lockerDisplayCache = [];
+        setLocker([]);
+        setLockerError(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("course_materials")
+        .select(
+          "id, course_code, file_path, file_name, file_type, size_bytes, created_at, published, is_peer_copy, peer_alias, extracted_content",
+        )
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const files = (data ?? []).map((r) => ({
         id: r.id,
         course_code: r.course_code,
+        file_path: r.file_path,
         file_name: r.file_name,
         file_type: r.file_type,
         size_bytes: r.size_bytes,
@@ -156,28 +167,41 @@ export function LibraryScreen() {
         is_peer_copy: r.is_peer_copy,
         peer_alias: r.peer_alias,
         readyForMocks: (r.extracted_content ?? "").trim().length >= READY_MIN_CHARS,
-      })),
-    );
+      }));
+      lockerDisplayCache = files;
+      setLocker(files);
+      setLockerError(false);
+    } catch {
+      setLockerError(true);
+    }
   }, []);
 
   const loadShelf = useCallback(async () => {
     setShelfLoading(true);
     try {
       const result = await listShelfItems({
-        data: { courseCode: shelfCourse ?? undefined, search: search || undefined },
+        data: { courseCode: shelfCourse ?? undefined, search: debouncedSearch || undefined },
       });
       setShelfOffline(result.offline);
       setShelf({ items: result.items, courses: result.courses });
     } catch {
       setShelfOffline(true);
-      setShelf({ items: [], courses: [] });
     } finally {
       setShelfLoading(false);
     }
-  }, [shelfCourse, search]);
+  }, [shelfCourse, debouncedSearch]);
 
-  useEffect(() => { void loadLocker(); }, [loadLocker]);
-  useEffect(() => { if (rail === "shelf") void loadShelf(); }, [rail, loadShelf]);
+  useEffect(() => { if (active) void loadLocker(); }, [active, loadLocker]);
+  useEffect(() => {
+    const refresh = () => { if (active) void loadLocker(); };
+    window.addEventListener("course-materials-refresh", refresh);
+    return () => window.removeEventListener("course-materials-refresh", refresh);
+  }, [active, loadLocker]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+  useEffect(() => { if (active && rail === "shelf") void loadShelf(); }, [active, rail, loadShelf]);
   // Only used to decide whether the "show my photo" tick box can appear.
   useEffect(() => {
     let alive = true;
@@ -255,10 +279,20 @@ export function LibraryScreen() {
 
   const doRemove = async (file: LockerFile) => {
     setBusy(true);
-    const { error } = await supabase.from("course_materials").delete().eq("id", file.id);
+    try {
+      await deleteMaterial({ id: file.id, file_path: file.file_path });
+    } catch (error) {
+      setBusy(false);
+      toast.error("We couldn't remove that file.");
+      console.error("[library] remove failed", error);
+      return;
+    }
     setBusy(false);
+    const remaining = (locker ?? []).filter((item) => item.id !== file.id);
+    lockerDisplayCache = remaining;
+    setLocker(remaining);
+    setDeleteTarget(null);
     setOwnerSheet(null);
-    if (error) { toast.error("We couldn't remove that file."); return; }
     toast.success("Removed from your locker.");
     void loadLocker();
   };
@@ -389,9 +423,12 @@ export function LibraryScreen() {
             </Button>
 
             {locker === null ? (
-              <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
+              lockerError ? (
+                <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
+              ) : <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
             ) : openFolder ? (
               <>
+                {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
                 <button
                   onClick={() => setOpenFolder(null)}
                   className="flex items-center gap-1.5 text-sm font-semibold text-foreground"
@@ -412,7 +449,7 @@ export function LibraryScreen() {
                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">On shelf</span>
                           ) : null}
                           {f.is_peer_copy ? (
-                            <span className="rounded-full bg-[#1D4E89]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1D4E89]">
+                            <span className="rounded-full bg-doc-blue/10 px-2 py-0.5 text-[10px] font-semibold text-doc-blue">
                               Peer copy: {f.peer_alias ?? "A peer"}
                             </span>
                           ) : null}
@@ -430,30 +467,37 @@ export function LibraryScreen() {
                 ))}
               </>
             ) : folders.length === 0 ? (
-              <Card>
-                <p className="text-sm text-muted-foreground">
-                  Nothing in your locker yet. Upload a past paper or lecture note from a course to get started.
-                </p>
-              </Card>
+              lockerError ? (
+                <ErrorCard title="We couldn't load your locker." body="Try again to refresh your files." actionLabel="Retry" onAction={() => void loadLocker()} />
+              ) : (
+                <Card>
+                  <p className="text-sm text-muted-foreground">
+                    Nothing in your locker yet. Upload a past paper or lecture note from a course to get started.
+                  </p>
+                </Card>
+              )
             ) : (
-              folders.map(([code, files]) => (
-                <button key={code} onClick={() => setOpenFolder(code)} className="w-full text-left">
-                  <Card>
-                    <div className="flex items-center gap-3">
-                      <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
-                        <FolderOpen className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="break-words font-semibold text-foreground">{code}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {files.length} file{files.length === 1 ? "" : "s"}
-                          {files.some((f) => f.published) ? " · some on shelf" : ""}
+              <>
+                {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
+                {folders.map(([code, files]) => (
+                  <button key={code} onClick={() => setOpenFolder(code)} className="w-full text-left">
+                    <Card>
+                      <div className="flex items-center gap-3">
+                        <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
+                          <FolderOpen className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="break-words font-semibold text-foreground">{code}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {files.length} file{files.length === 1 ? "" : "s"}
+                            {files.some((f) => f.published) ? " · some on shelf" : ""}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                </button>
-              ))
+                    </Card>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         ) : (
@@ -468,12 +512,14 @@ export function LibraryScreen() {
               />
             </div>
 
-            {shelfOffline ? (
+            {shelfOffline && shelf === null ? (
               <Card><p className="text-sm text-muted-foreground">{SHARING_OFFLINE_MESSAGE}</p></Card>
-            ) : shelfLoading ? (
+            ) : shelf === null ? (
               <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
             ) : (
               <>
+                {shelfLoading ? <p className="text-xs text-muted-foreground" role="status">Updating course shelf…</p> : null}
+                {shelfOffline ? <Card><p className="text-sm text-muted-foreground">Couldn't refresh the course shelf. Showing the last results.</p></Card> : null}
                 {shelfCourse ? (
                   <button
                     onClick={() => setShelfCourse(null)}
@@ -502,7 +548,7 @@ export function LibraryScreen() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
-                      <span className="flex items-center gap-1.5 rounded-full bg-[#1D4E89]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1D4E89]">
+                      <span className="flex items-center gap-1.5 rounded-full bg-doc-blue/10 px-2 py-0.5 text-[10px] font-semibold text-doc-blue">
                         {it.avatar_url ? (
                           <img
                             src={it.avatar_url}
@@ -568,12 +614,31 @@ export function LibraryScreen() {
                 <Copy className="mr-2 h-4 w-4" /> Copy one-file link
               </Button>
             ) : null}
-            <Button variant="outline" className="h-11 w-full justify-start border-border text-wine" onClick={() => ownerSheet && void doRemove(ownerSheet)} disabled={busy}>
+            <Button variant="outline" className="h-11 w-full justify-start border-border text-wine" onClick={() => ownerSheet && setDeleteTarget(ownerSheet)} disabled={busy}>
               <Trash2 className="mr-2 h-4 w-4" /> Remove
             </Button>
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{deleteTarget?.is_peer_copy ? "Remove your saved copy?" : "Remove this file?"}</AlertDialogTitle>
+            <AlertDialogDescription className="break-words">{deleteTarget?.file_name}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => { event.preventDefault(); if (deleteTarget) void doRemove(deleteTarget); }}
+              disabled={busy}
+            >
+              {deleteTarget?.is_peer_copy ? "Remove copy" : "Remove file"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Publish confirm */}
       <Dialog open={publishTarget !== null} onOpenChange={(o) => !o && setPublishTarget(null)}>
@@ -647,15 +712,15 @@ export function LibraryScreen() {
 
       {/* In-app preview */}
       <Sheet open={preview !== null} onOpenChange={(o) => { if (!o) { setPreview(null); setPageExplanation(null); } }}>
-        <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl bg-card text-card-foreground md:inset-4 md:flex md:h-auto md:w-auto md:max-w-none md:flex-col md:rounded-2xl">
+        <SheetContent side="bottom" className="h-[92vh] min-w-0 w-full max-w-full overflow-x-hidden rounded-t-2xl bg-card text-card-foreground md:inset-4 md:flex md:h-auto md:w-auto md:max-w-none md:flex-col md:rounded-2xl">
           <SheetHeader>
             <SheetTitle className="break-words text-foreground">{preview?.file_name}</SheetTitle>
             <SheetDescription className="text-muted-foreground">
               {preview?.course_code} · viewing in app, no download
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-3 flex h-[64vh] min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background md:flex-1 md:flex-row md:gap-3 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
-            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-background md:min-w-0">
+          <div className="mt-3 flex h-[64vh] min-h-0 min-w-0 w-full max-w-full flex-col overflow-hidden rounded-xl border border-border bg-background md:flex-1 md:flex-row md:gap-3 md:overflow-hidden md:rounded-none md:border-0 md:bg-transparent">
+            <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto rounded-xl border border-border bg-background md:min-w-0">
               {preview?.failed ? (
                 <div data-swipe-lock="" className="grid h-full place-items-center p-4">
                   <ErrorCard
