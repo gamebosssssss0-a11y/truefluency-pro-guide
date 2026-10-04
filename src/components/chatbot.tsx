@@ -5,13 +5,13 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, deleteChatConversation, type ChatAction, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
@@ -142,7 +142,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [shareOpen, setShareOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const imageUrls = useRef(new Set<string>());
-  const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; messages: ChatMessage[] }[]>([]);
+  const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; conversationId: string; messages: ChatMessage[] }[]>([]);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [draft, setDraft] = useState(() => attachedPage ? `Explain page ${attachedPage.page} of ${attachedPage.fileName}.` : "");
@@ -308,19 +310,28 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     void Promise.all(courseOptions.map(async (course) => {
       const raw = (await getCourseHistory(course)).messages;
       if (!threadCache.current.has(cacheMapKey(course))) persistCache(course, toUiMessages(raw));
+      // Grouped by conversation_id, not date — a row is now exactly one real
+      // conversation, so it can be opened or deleted precisely. Legacy
+      // messages saved before conversation_id was exposed (shouldn't exist
+      // going forward) fall back to a per-course bucket rather than crashing.
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
-        const date = message.created_at
-          ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date(message.created_at))
-          : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date());
-        grouped.set(date, [...(grouped.get(date) ?? []), message]);
+        const convKey = message.conversation_id ?? `legacy:${course}`;
+        grouped.set(convKey, [...(grouped.get(convKey) ?? []), message]);
       }
-      return [...grouped.entries()].map(([date, items]) => ({
-        course,
-        date,
-        title: items.find((message) => message.role === "user")?.content ?? "Study chat",
-        messages: items,
-      }));
+      return [...grouped.entries()].map(([conversationId, items]) => {
+        const first = items[0];
+        const date = first?.created_at
+          ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date(first.created_at))
+          : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date());
+        return {
+          course,
+          date,
+          conversationId,
+          title: items.find((message) => message.role === "user")?.content ?? "Study chat",
+          messages: items,
+        };
+      });
     })).then((rows) => {
       if (alive) {
         setHistoryRows(rows.flat());
@@ -336,6 +347,27 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     });
     return () => { alive = false; };
   }, [historyOpen, profile.courses]);
+
+  const handleDeleteConversation = async (conversationId: string, course: string) => {
+    setDeletingConvId(conversationId);
+    try {
+      await deleteChatConversation(conversationId);
+      setHistoryRows((cur) => cur.filter((row) => row.conversationId !== conversationId));
+      if (expandedConvId === conversationId) setExpandedConvId(null);
+      // If this was the course's currently-active conversation, the live
+      // chat screen would otherwise keep showing now-deleted messages from
+      // its own cache until the next real reload — force one.
+      if (course === selected) {
+        threadCache.current.delete(cacheMapKey(course));
+        setReloadNonce((n) => n + 1);
+      }
+      toast.success("Conversation deleted.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't delete that conversation.");
+    } finally {
+      setDeletingConvId(null);
+    }
+  };
 
   useEffect(() => {
     const currentUrls = new Set(messages.flatMap((message) => message.imageUrl ? [message.imageUrl] : []));
@@ -921,21 +953,51 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
           ) : (
             <div className="mt-4 space-y-2">
-              {historyRows.map((row, index) => (
-                <button key={row.course + row.date + index} type="button" onClick={() => {
-                  // Jumps to that course's live chat (switching courses
-                  // re-fetches from the server, which will immediately
-                  // overwrite anything set here) rather than pretending to
-                  // show a frozen snapshot of one past day that would just
-                  // flash and revert.
-                  setSelected(row.course);
-                  setReloadNonce((n) => n + 1);
-                  setHistoryOpen(false);
-                }} className="block w-full rounded-xl border border-border border-l-4 border-l-accent bg-card p-3 text-left text-card-foreground">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
-                  <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
-                </button>
-              ))}
+              {historyRows.map((row) => {
+                const isExpanded = expandedConvId === row.conversationId;
+                return (
+                  <div key={row.conversationId} className="rounded-xl border border-border border-l-4 border-l-accent bg-card text-card-foreground">
+                    <div className="flex items-start gap-2 p-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedConvId(isExpanded ? null : row.conversationId)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {displayCode(row.course)} · {row.date}
+                        </div>
+                        <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Delete this conversation"
+                        disabled={deletingConvId === row.conversationId}
+                        onClick={() => void handleDeleteConversation(row.conversationId, row.course)}
+                        className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {isExpanded ? (
+                      <div className="space-y-2 border-t border-border p-3">
+                        {row.messages.map((m, i) => (
+                          <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
+                            <div
+                              className={
+                                m.role === "user"
+                                  ? "inline-block rounded-2xl bg-sand px-3 py-2 text-left text-xs text-navy"
+                                  : "inline-block rounded-2xl border border-border bg-chat-card px-3 py-2 text-left text-xs text-chat-foreground"
+                              }
+                            >
+                              <RichText>{m.content}</RichText>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           )}
         </SheetContent>
