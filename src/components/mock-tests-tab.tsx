@@ -15,26 +15,36 @@ import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-mat
 
 /* ================= Tab 2: Mock Tests ================= */
 
-export function MockTestsScreen() {
+// A display-only snapshot lets a revisited tab paint course readiness before
+// the background material refresh finishes. Starting a mock still goes
+// through the live analysis and entitlement checks below.
+let practiceMaterialCache: Record<string, string | null> = {};
+
+export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
   const { profile, navigate } = useProfile();
-  const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>({});
-  const [materialsLoading, setMaterialsLoading] = useState(true);
+  const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>(() => ({ ...practiceMaterialCache }));
+  const [materialsLoading, setMaterialsLoading] = useState(() =>
+    profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)),
+  );
 
   useEffect(() => {
+    if (!active) return;
     let cancelled = false;
     const loadMaterials = async () => {
-      setMaterialsLoading(true);
-      try {
-        const rows = await Promise.all(profile.courses.map(async (course) => {
+      setMaterialsLoading(profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)));
+      const results = await Promise.allSettled(profile.courses.map(async (course) => {
           const materials = await listMaterialsForCourse(course.code);
           return [course.code, pickAnalyzableMaterial(materials)?.id ?? null] as const;
-        }));
-        if (!cancelled) setReadyMaterialIds(Object.fromEntries(rows));
-      } catch (error) {
-        console.error("[practice] materials load failed", error);
-        if (!cancelled) setReadyMaterialIds({});
-      } finally {
-        if (!cancelled) setMaterialsLoading(false);
+      }));
+      const next = { ...practiceMaterialCache };
+      for (const result of results) {
+        if (result.status === "fulfilled") next[result.value[0]] = result.value[1];
+        else console.error("[practice] course materials load failed", result.reason);
+      }
+      practiceMaterialCache = next;
+      if (!cancelled) {
+        setReadyMaterialIds({ ...next });
+        setMaterialsLoading(profile.courses.some((course) => !Object.hasOwn(next, course.code)));
       }
     };
     void loadMaterials();
@@ -43,7 +53,7 @@ export function MockTestsScreen() {
       cancelled = true;
       window.removeEventListener("course-materials-refresh", loadMaterials);
     };
-  }, [profile.courses]);
+  }, [active, profile.courses]);
 
   const attempts = [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt);
   const recent = attempts.slice(0, 3);
@@ -85,10 +95,10 @@ export function MockTestsScreen() {
               return (
                 <div
                   key={c.code}
-                  className="surface-key-card p-4 transition hover:border-accent/50"
+                  className="rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 shadow-sm transition hover:border-accent/50"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="surface-icon-well grid h-10 w-10 shrink-0 place-items-center rounded-xl">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
                       <BookOpen className="h-4.5 w-4.5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -167,7 +177,7 @@ function AttemptRow({ attempt }: { attempt: MockAttempt }) {
   return (
     <button
       onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
-      className="surface-list-row flex w-full items-center gap-3 p-3.5 text-left transition hover:border-accent/50"
+      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition hover:border-accent/50"
     >
       <div
         className={cn(
@@ -418,7 +428,7 @@ export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
 
   return (
     <div className="mt-4">
-      <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground">
+      <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-primary-foreground/70">
           <Trophy className="h-3.5 w-3.5" /> Across {chronological.length} attempt
           {chronological.length === 1 ? "" : "s"}
@@ -447,7 +457,7 @@ export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
       <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Score over time
       </h2>
-      <div className="surface-list-row space-y-2 p-4">
+      <div className="space-y-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
         {chronological.map((a) => (
           <div key={a.id} className="flex items-center gap-3">
             <span className="w-14 shrink-0 text-[10px] text-muted-foreground">
