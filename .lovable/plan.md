@@ -1,79 +1,61 @@
-# TrueFluency Pro — In-App Analytics Page
+# /admin, Phase 1 only
 
-## Purpose
+Scope is the seven items you listed and nothing else. The stability pass is merged (f04bfed), and none of its files get reopened. No charts, no new tab, no new sign-in, no Paystack, no `.env` changes, same Supabase project.
 
-A private, owner-only dashboard inside the app that answers four questions at a glance:
+## Findings that change the brief
 
-1. **Growth** — how many students are signing up, and how many are on trial vs paid.
-2. **Engagement** — are students actually studying (mocks taken, flashcards reviewed, chats sent, files uploaded)?
-3. **Retention** — do students come back (daily/weekly active users, streak distribution)?
-4. **Content health** — which courses/faculties are most used, so you know where to focus.
+1. **No UpgradeSheet exists.** Upgrade is a full screen, and limits are shown inline by `PaywallNotice` inside the mock flow and chat, which are both locked. So gate hits get recorded on the server at the point where the existing quota check refuses an action (`consumeFeatureQuota`). No locked screen is edited.
+   - Counted: `mock_cap`, `questions_over_30`, `chat_cap`, and `deck_cap` (only if decks go through the same check).
+   - `why_lock`: there is no server event, so it shows "not counted yet".
+2. **Students can currently edit their own profile row.** Without a guard, a student could set `is_admin` to true themselves. The migration adds a lock so only the table editor or the service role can change `is_admin`.
+3. **"Started" mocks are not stored**, only submitted ones. Mock completion shows submitted only, with that caveat written on the card.
+4. **Flashcard review history is not stored.** Only each card's latest `last_reviewed_at` exists, so reviews count from that column. The page says this.
 
-This is an admin tool for you (the founder), not a student-facing feature.
+## What the page shows (all numbers, no charts)
 
-## Page Layout (draft)
+- **Cards:** registered students, active today (Lagos time: mock submit, chat send, or flashcard review), trials still inside 7 days, mocks submitted in the last 7 days.
+- **Top courses (20):** code, uploads, submitted mocks, distinct students. Sorted by mocks. Course code only.
+- **Ratios:** each shows its count over its denominator, or "—" when the denominator is 0.
+  - Upload to practice within 1 hour.
+  - Mock completion (submitted only, see finding 3).
+  - 7-day depth: students active on 4 or more Lagos days out of 7, over registered students.
+- **Pipeline health:** "usable" and "failed" totals, then up to 50 failed rows showing course code, status, created date and material id. No links and no text.
+- **Paywall hits (7 days):** a count per gate. No users are shown.
+- Anything that can't be counted from an existing table shows "not counted yet".
 
-Route: `/admin/analytics` — hidden from the tab bar; reachable only by direct URL for admins.
+## Security
 
-```text
-┌─────────────────────────────────────┐
-│ Analytics                    [7d|30d]│
-├─────────────────────────────────────┤
-│ KPI cards (2x2 grid)                │
-│  Total students | Active today      │
-│  Paid / Trial   | Mocks this week   │
-├─────────────────────────────────────┤
-│ Signups over time (line chart)      │
-├─────────────────────────────────────┤
-│ Activity mix (bar chart)            │
-│  mocks / flashcards / chats / files │
-├─────────────────────────────────────┤
-│ Streak distribution (histogram)     │
-├─────────────────────────────────────┤
-│ Top courses by activity (table)     │
-│  course | students | mocks | files  │
-├─────────────────────────────────────┤
-│ Recent signups (last 10, email+date)│
-└─────────────────────────────────────┘
-```
+- New `profiles.is_admin` column, default false. It is never set true in a migration; founders flip it in the table editor.
+- The `requireAdmin` server function needs a signed-in session and `is_admin` true.
+- All counts come from one database function that re-checks `is_admin` and only ever returns counts, course codes, statuses, ids and dates.
+- Non-admins visiting `/admin` are sent to the normal app. Same sign-in as today.
+- `gate_hits` table: students can only insert their own rows (through the server), and only admins can read them.
 
-- Mobile-first (360px), matches existing dark/light tokens — no new colors.
-- Time-range toggle: 7 days / 30 days.
-- Charts via a lightweight lib already in the stack (or simple CSS bars — no heavy chart dependency unless needed).
+## Technical details
 
-## What Data It Keeps
+Migration:
+- `profiles.is_admin boolean not null default false`.
+- A trigger that rejects changes to `is_admin` unless the request comes from the service role or the table editor.
+- A `public.is_admin()` security-definer function.
+- The `gate_hits` table:
+  - Columns: `id`, `user_id`, `gate` checked against the five gate names, `created_at`.
+  - Grants: insert/select for authenticated users, all for service role.
+  - Row security on: insert own rows, select only where `is_admin()`.
+- A security-definer `admin_dashboard_stats()` function that raises an error unless `is_admin()` is true and returns aggregate JSON. It never selects `extracted_content`, `file_path`, `file_name`, chat `content`, or question/answer data.
 
-Two categories:
+Files:
+- New `src/lib/admin.functions.ts`: `requireAdmin` and `getAdminStats`, using `requireSupabaseAuth` and calling the database function as the signed-in user.
+- New `src/routes/admin.tsx`:
+  - The page runs in the browser only and does its admin check before showing anything.
+  - Non-admins get a replace-redirect to `/`.
+  - Cards and tables use the existing design tokens.
+  - Its own page title and description; marked noindex.
+- `src/lib/entitlements.server.ts`: after a denied verdict, insert the matching row into `gate_hits` (best-effort, never blocks the student). Prices, caps and messages stay the same.
+- No other files.
 
-**1. Aggregates computed from existing tables (no new storage):**
-- Signup counts and dates — from `auth.users` / profiles
-- Mocks taken, flashcard reviews, chat messages, uploads — counts from existing activity tables
-- Streak distribution — from the existing streak data
-
-**2. A lightweight daily roll-up table (new, optional but recommended):**
-- `analytics_daily` — one row per day: date, signups, active users, mocks, flashcard reviews, chats, uploads
-- Written once per day by a scheduled job (pg_cron hitting a secured `/api/public/cron/analytics-rollup` endpoint)
-- Keeps the dashboard instant — it reads one small table instead of scanning everything on every load
-
-**What it will NOT keep:** message contents, file contents, answers to mock questions, or any per-student drill-down beyond counts. Aggregate numbers only — no student can be individually profiled from this page.
-
-## Security Model
-
-- **Admin gate, server-side:** a new `user_roles` table (`admin` role) with a `has_role()` security-definer function, per the standard Supabase pattern. Your account gets the admin role via a one-time SQL statement. No client-side role checks, no localStorage flags.
-- **Route protection:** the page lives under the `_authenticated` layout plus an admin check in the loader that redirects non-admins to Home. The data itself is served by a protected server function (`requireSupabaseAuth` + `has_role` check) — so even if a non-admin guesses the URL, the data call returns 401/403.
-- **RLS on the roll-up table:** `SELECT` allowed only where `has_role(auth.uid(), 'admin')`; writes only from the cron endpoint using the service role. No `anon` grant.
-- **Cron endpoint:** verifies a shared secret header before running; lives under `/api/public/` only because cron callers can't hold a session.
-- **No secrets in the browser:** everything reads through server functions; nothing new goes to `VITE_`.
-
-## Constraints Respected
-
-- Uses the existing Lovable Cloud / Supabase project — no new services, no `.env` changes, no Paystack, no price/cap/formula changes.
-- No changes to splash, mock poll, Library schema, or calculator formulas.
-
-## Build Steps
-
-1. Migration: `app_role` enum + `user_roles` table + `has_role()` function + `analytics_daily` table (with GRANTs and RLS), plus one statement granting you the admin role.
-2. `src/lib/analytics.functions.ts` — protected server function returning all dashboard aggregates (admin-checked).
-3. `src/routes/api/public/cron/analytics-rollup.ts` — secret-verified daily roll-up writer.
-4. `src/routes/_authenticated/admin.analytics.tsx` — the page (KPI cards, charts, tables) per the layout above.
-5. Verify: typecheck, build, then a live check signed in as admin (page renders with real numbers) and as a non-admin (redirected, data call rejected).
+Verification:
+- Run the privacy grep on the admin function and the database function for `extracted_content`, `file_path`, `content`, `stem`, `option`, `explanation` and `signedUrl`. The expected result is zero hits.
+- Typecheck and build.
+- Live check signed in as a student with `is_admin` false: confirm the redirect and that the data call is refused.
+- Live check as an admin. If no admin account can be minted, the report says NOT LIVE-TESTED.
+- Final self-report answers your four questions and lists the files touched.
