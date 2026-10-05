@@ -1,21 +1,79 @@
-# TrueFluency Pro full bug-fix pass
+# TrueFluency Pro — In-App Analytics Page
 
-## Scope
-Implement the uploaded final checklist against the current source while preserving its locked prices, caps, formulas, theme hex values, backend contract, quota timing, database, and protected screens. No Cloud, Paystack, `.env`, or database changes.
+## Purpose
 
-## Plan
-1. **Baseline and safeguards.** Record the starting `bun run typecheck` and `bun run build` results (both currently pass). Reconfirm file-by-file before editing and preserve the checklist's execution order.
-2. **Surfaces and dark contrast (items 1–2).** Reuse the existing `--surface` token; audit pure-white usages and sand/light-text versus adaptive-dark surfaces. Add the scoped fixed-light text treatment, replace fixed-dark text on adaptive surfaces, and check tinted notices and semantic status text without changing locked palette values. Calculate/report before-and-after contrast and remaining white hits.
-3. **One coordinated navigation change (items 3, 13, 17).** Make swipe destination commit and preview removal atomic; stop changing document-wide overflow; retain reduced-motion and gesture-lock behavior. Keep visited root tabs mounted/hidden to prevent duplicate effects and loading flashes. Make root-tab tap and swipe history replacements, preserve child-screen pushes and Home as the floor, and investigate the full-page Google OAuth return before adding any floor guard.
-4. **One coordinated Study Chat change (items 15, 19, 16).** Move the header into the scrollable thread, manage composer visibility and bottom-following, and remove dead space. Refresh History on each opening with cached/progressive per-course results and four-second retry rows. Allow typing during thread load while preventing sends, preserve notices containing `|`, and remove duplicated mode wording only if the referenced server instructions can be verified; otherwise leave that behavior unchanged. Then polish real streaming for safe partial formatting, action-row timing, interrupted replies, accessibility, reduced motion, and scroll position without changing the API or quota moment.
-5. **Files and storage (items 20–21).** Add confirmation and reliable error handling for owner and peer-copy removal, route through the shared delete helper without deleting another user's object, distinguish locker errors from empty results, and debounce shelf search. Verify existing upload limits; add only server-side limits already stated by the upload UI, plus strict path-segment validation in upload/confirm/download/delete. No new dependency or schema change.
-6. **PDF viewer (item 14).** Keep the PDF engine, page cap, cache, remembered page, and error card unchanged. Fix narrow-width toolbar layout, full-screen viewport sizing and safe-area footer, stable page controls, and page restoration/observer timing so Explain uses the visible page.
-7. **Upgrade and streak display (items 9, 18).** Shorten only the upgrade button label. Read the existing streak function rules (one missed Lagos day can be covered; `freeze_used_on` stores the day the freeze is applied; zero freezes causes the next qualifying mock to reset the streak), then implement the checklist's derived display state and server-truth merge only for streak fields.
-8. **Verification-only checks (items 4–7, 10–12).** Test the existing flashcard picker/rating/completion, composer growth, PDF signed-URL call sites and secret boundaries, thinking particles/reduced motion, and exact-three topic selection. Change these only if a live check fails.
-9. **Live verification and final baseline.** Interact with the preview for each requested flow, including mobile widths and dark mode; record anything unavailable as `NOT LIVE-TESTED`. Run `bun run typecheck` and `bun run build` after the grouped edits and at the end; report all outcomes and every touched file.
+A private, owner-only dashboard inside the app that answers four questions at a glance:
 
-## Technical notes
-- Root tabs remain the existing five destinations managed by `ProfileProvider`; no second router or tab-swipe mechanism will be added.
-- Any display cache remains presentation-only; gated actions continue to use their current live checks.
-- The external Render `chat.py` instructions are not present in the checked repository. If they remain unavailable, the duplicate mode-prefix change will be skipped and reported, as the checklist requires; chat request shape and backend behavior will not be changed.
-- The checklist requires live interaction before claiming an item complete. Any account- or source-dependent flow that cannot be exercised will be explicitly marked `NOT LIVE-TESTED`.
+1. **Growth** — how many students are signing up, and how many are on trial vs paid.
+2. **Engagement** — are students actually studying (mocks taken, flashcards reviewed, chats sent, files uploaded)?
+3. **Retention** — do students come back (daily/weekly active users, streak distribution)?
+4. **Content health** — which courses/faculties are most used, so you know where to focus.
+
+This is an admin tool for you (the founder), not a student-facing feature.
+
+## Page Layout (draft)
+
+Route: `/admin/analytics` — hidden from the tab bar; reachable only by direct URL for admins.
+
+```text
+┌─────────────────────────────────────┐
+│ Analytics                    [7d|30d]│
+├─────────────────────────────────────┤
+│ KPI cards (2x2 grid)                │
+│  Total students | Active today      │
+│  Paid / Trial   | Mocks this week   │
+├─────────────────────────────────────┤
+│ Signups over time (line chart)      │
+├─────────────────────────────────────┤
+│ Activity mix (bar chart)            │
+│  mocks / flashcards / chats / files │
+├─────────────────────────────────────┤
+│ Streak distribution (histogram)     │
+├─────────────────────────────────────┤
+│ Top courses by activity (table)     │
+│  course | students | mocks | files  │
+├─────────────────────────────────────┤
+│ Recent signups (last 10, email+date)│
+└─────────────────────────────────────┘
+```
+
+- Mobile-first (360px), matches existing dark/light tokens — no new colors.
+- Time-range toggle: 7 days / 30 days.
+- Charts via a lightweight lib already in the stack (or simple CSS bars — no heavy chart dependency unless needed).
+
+## What Data It Keeps
+
+Two categories:
+
+**1. Aggregates computed from existing tables (no new storage):**
+- Signup counts and dates — from `auth.users` / profiles
+- Mocks taken, flashcard reviews, chat messages, uploads — counts from existing activity tables
+- Streak distribution — from the existing streak data
+
+**2. A lightweight daily roll-up table (new, optional but recommended):**
+- `analytics_daily` — one row per day: date, signups, active users, mocks, flashcard reviews, chats, uploads
+- Written once per day by a scheduled job (pg_cron hitting a secured `/api/public/cron/analytics-rollup` endpoint)
+- Keeps the dashboard instant — it reads one small table instead of scanning everything on every load
+
+**What it will NOT keep:** message contents, file contents, answers to mock questions, or any per-student drill-down beyond counts. Aggregate numbers only — no student can be individually profiled from this page.
+
+## Security Model
+
+- **Admin gate, server-side:** a new `user_roles` table (`admin` role) with a `has_role()` security-definer function, per the standard Supabase pattern. Your account gets the admin role via a one-time SQL statement. No client-side role checks, no localStorage flags.
+- **Route protection:** the page lives under the `_authenticated` layout plus an admin check in the loader that redirects non-admins to Home. The data itself is served by a protected server function (`requireSupabaseAuth` + `has_role` check) — so even if a non-admin guesses the URL, the data call returns 401/403.
+- **RLS on the roll-up table:** `SELECT` allowed only where `has_role(auth.uid(), 'admin')`; writes only from the cron endpoint using the service role. No `anon` grant.
+- **Cron endpoint:** verifies a shared secret header before running; lives under `/api/public/` only because cron callers can't hold a session.
+- **No secrets in the browser:** everything reads through server functions; nothing new goes to `VITE_`.
+
+## Constraints Respected
+
+- Uses the existing Lovable Cloud / Supabase project — no new services, no `.env` changes, no Paystack, no price/cap/formula changes.
+- No changes to splash, mock poll, Library schema, or calculator formulas.
+
+## Build Steps
+
+1. Migration: `app_role` enum + `user_roles` table + `has_role()` function + `analytics_daily` table (with GRANTs and RLS), plus one statement granting you the admin role.
+2. `src/lib/analytics.functions.ts` — protected server function returning all dashboard aggregates (admin-checked).
+3. `src/routes/api/public/cron/analytics-rollup.ts` — secret-verified daily roll-up writer.
+4. `src/routes/_authenticated/admin.analytics.tsx` — the page (KPI cards, charts, tables) per the layout above.
+5. Verify: typecheck, build, then a live check signed in as admin (page renders with real numbers) and as a non-admin (redirected, data call rejected).
