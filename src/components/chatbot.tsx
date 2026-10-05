@@ -4,14 +4,14 @@
  * opens its own persistent, account-tied thread.
  * Cached messages paint immediately while the selected course revalidates.
  */
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, startNewChatThread, sendChatMessage, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, getConversation, startNewChatThread, streamChatMessage, ChatConversationGoneError, type ChatAction, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
@@ -56,7 +56,40 @@ type Message = {
   retryCourse?: string;
   retryMode?: Mode;
 };
-type HistoryRow = { course: string; date: string; title: string; messages: ChatMessage[]; loadError?: boolean };
+type HistoryRow = {
+  course: string;
+  date: string;
+  title: string;
+  messages: ChatMessage[];
+  loadError?: boolean;
+  /** The conversation this row opens. Absent only for rows from an older backend. */
+  conversationId?: string;
+  count?: number;
+  lastAt?: string;
+};
+
+const WAT_DATE = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" });
+function formatHistoryDate(iso?: string): string {
+  const parsed = iso ? new Date(iso) : new Date();
+  return WAT_DATE.format(Number.isNaN(parsed.getTime()) ? new Date() : parsed);
+}
+
+/** What the student actually typed: the stored text also carries the mode prefix and any attached page. */
+function historyTitle(raw: string | undefined): string {
+  if (!raw) return "Study chat";
+  const withoutPage = raw.split("\n\nAttached PDF page")[0];
+  const withoutPrefix = withoutPage
+    .replace(/^Explain from my notes\.\s*/i, "")
+    .replace(/^Ask me one question from my notes, then wait for my answer\. Do not give the answer yet\.\s*/i, "")
+    .replace(/^Work this as steps from my notes\.\s*/i, "")
+    .trim();
+  return withoutPrefix || "Study chat";
+}
+
+/** Memoised so a streaming reply re-renders only ITSELF: markdown + maths for every earlier message is skipped. */
+const MessageRichText = memo(function MessageRichText({ text }: { text: string }) {
+  return <RichText>{text}</RichText>;
+});
 
 // These are presentation caches only. Server responses remain authoritative,
 // and quota or other gated actions always use the live entitlement checks.
@@ -166,6 +199,19 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
   const loadToken = useRef(0);
+  // The conversation currently ON SCREEN (null = "the course's active thread").
+  // Every send targets this id, so a chat reopened from History is continued in
+  // place instead of the message landing in whichever thread was active.
+  const conversationIdRef = useRef<string | null>(null);
+  // Bumped whenever the thread on screen changes identity (course switch, New
+  // chat, opening from History). An in-flight reply compares against it so it
+  // can't paint itself into a different thread than the one it was sent from.
+  const viewToken = useRef(0);
+  // Set when History opens a conversation in another course, so the course-change
+  // load effect doesn't immediately overwrite it with that course's active thread.
+  const skipLoadFor = useRef<string | null>(null);
+  const [streamingId, setStreamingId] = useState<number | null>(null);
+  const viewedFromHistory = useRef(false);
   const hasStartedFreshThisVisit = useRef(false);
   const threadScrollRef = useRef<HTMLDivElement>(null);
   const followThreadBottom = useRef(true);
@@ -250,6 +296,9 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
 
   const selectCourse = (course: string) => {
     const key = canonicalCourseCode(course);
+    conversationIdRef.current = null;
+    viewedFromHistory.current = false;
+    viewToken.current += 1;
     setSelected(key);
     navigate(view, { courseCode: key });
     setAttachedPage(null);
@@ -261,10 +310,15 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
 
   useEffect(() => {
     if (!active || !selected) { if (!selected) { setMessages([]); setIsLoadingThread(false); } return; }
+    // History just opened a conversation in this course and is loading it itself.
+    if (skipLoadFor.current === canonicalCourseCode(selected)) { skipLoadFor.current = null; return; }
     let alive = true;
     const token = ++loadToken.current;
     const key = canonicalCourseCode(selected);
-    const cached = threadCache.get(key);
+    // A conversation opened from History stays open across tab switches; only
+    // otherwise do we show (and cache) the course's active thread.
+    const viewedId = conversationIdRef.current;
+    const cached = viewedId ? undefined : threadCache.get(key);
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
@@ -283,10 +337,24 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
         });
     hasStartedFreshThisVisit.current = true;
 
-    void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
+    const loadActive = () => freshStart
+      .then(() => getCourseThread(key))
+      .then((r) => ({ conversationId: r.conversationId, messages: r.messages, viewed: false }));
+    const loader = viewedId
+      ? getConversation(viewedId)
+          .then((r) => ({ conversationId: r.conversationId, messages: r.messages, viewed: true }))
+          .catch((e) => {
+            if (e instanceof ChatConversationGoneError) { conversationIdRef.current = null; return loadActive(); }
+            throw e;
+          })
+      : loadActive();
+
+    void loader.then(({ conversationId, messages: thread, viewed }) => {
       if (!alive || loadToken.current !== token) return;
+      conversationIdRef.current = conversationId;
+      viewedFromHistory.current = viewed;
       const painted = toUiMessages(thread);
-      persistCache(key, painted);
+      if (!viewed) persistCache(key, painted); // the cache holds a course's ACTIVE thread only
       setMessages(painted);
     }).catch(async (error) => {
       if (!alive || loadToken.current !== token) return;
@@ -322,20 +390,30 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
     const refreshCourse = async (course: string) => {
       try {
         const raw = (await withHistoryTimeout(getCourseHistory(course), 4000)).messages;
-        if (!threadCache.has(course)) persistCache(course, toUiMessages(raw));
+        // NOTE: this response is EVERY conversation in the course, merged. It used
+        // to be written into threadCache as if it were the live thread, so
+        // switching course chips afterwards painted all past chats into one.
+        // Group by conversation (one row per real chat). Rows from an older
+        // backend that doesn't send conversation_id fall back to per-day grouping.
         const grouped = new Map<string, ChatMessage[]>();
         for (const message of raw) {
-          const date = message.created_at
-            ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date(message.created_at))
-            : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date());
-          grouped.set(date, [...(grouped.get(date) ?? []), message]);
+          const groupKey = message.conversation_id ?? `date:${formatHistoryDate(message.created_at)}`;
+          grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), message]);
         }
-        const rows = [...grouped.entries()].map(([date, items]) => ({
-          course,
-          date,
-          title: items.find((message) => message.role === "user")?.content ?? "Study chat",
-          messages: items,
-        }));
+        const rows: HistoryRow[] = [...grouped.values()]
+          .map((items) => {
+            const last = items[items.length - 1];
+            return {
+              course,
+              conversationId: items[0].conversation_id,
+              date: formatHistoryDate(last.created_at),
+              title: historyTitle(items.find((message) => message.role === "user")?.content),
+              messages: items,
+              count: items.length,
+              lastAt: last.created_at,
+            };
+          })
+          .sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""));
         if (!alive) return;
         historyRowsCache = [...historyRowsCache.filter((row) => row.course !== course), ...rows];
       } catch {
@@ -398,6 +476,40 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
   const notice = (text: string) =>
     setMessages((cur) => [...cur, { id: nextId.current++, from: "notice", text }]);
 
+  // True while a conversation opened from History (not the course's active
+  // thread) is on screen — its messages must not be cached as the active thread.
+  const viewedElsewhere = () => viewedFromHistory.current;
+
+  const openConversation = async (row: HistoryRow) => {
+    setHistoryOpen(false);
+    if (!row.conversationId) { selectCourse(row.course); return; } // older backend: no per-conversation id
+    const key = canonicalCourseCode(row.course);
+    const token = ++loadToken.current;
+    viewToken.current += 1;
+    conversationIdRef.current = row.conversationId;
+    viewedFromHistory.current = true;
+    if (key !== canonicalCourseCode(selected)) {
+      skipLoadFor.current = key; // we load this conversation ourselves; don't let the course effect replace it
+      setSelected(key);
+      navigate(view, { courseCode: key });
+      setAttachedPage(null);
+      setDraft(draftCache.get(key) ?? "");
+    }
+    setMessages(toUiMessages(row.messages)); // instant paint from the history row
+    setIsLoadingThread(true);
+    try {
+      const r = await getConversation(row.conversationId);
+      if (loadToken.current !== token) return;
+      setMessages(toUiMessages(r.messages));
+    } catch (error) {
+      if (loadToken.current !== token) return;
+      if (error instanceof ChatConversationGoneError) conversationIdRef.current = null;
+      toast.error(error instanceof Error ? error.message : "Couldn't open that conversation.");
+    } finally {
+      if (loadToken.current === token) setIsLoadingThread(false);
+    }
+  };
+
   const send = async (
     override?: string,
     retry?: { messageId: number; course: string; mode: Mode },
@@ -444,6 +556,9 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
       });
     }
     setIsSending(true);
+    const sentView = viewToken.current;
+    const stillHere = () => viewToken.current === sentView;
+    let streamedId: number | null = null;
 
     try {
       let imagePath: string | null = null;
@@ -464,30 +579,52 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
       const pageContext = pageToSend
         ? `\n\nAttached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
         : "";
-      const { reply, moderated, actions, saved } = await sendChatMessage(
+      const result = await streamChatMessage(
         modePrefix[sendMode] + text + pageContext,
         course,
         sendMode,
         imagePath,
+        (delta) => {
+          if (!stillHere()) return;
+          if (streamedId === null) {
+            const id = nextId.current++;
+            streamedId = id;
+            setStreamingId(id);
+            setMessages((cur) => [...cur, { id, from: "assistant" as const, text: delta, createdAt: new Date().toISOString() }]);
+          } else {
+            const id = streamedId;
+            setMessages((cur) => cur.map((m) => (m.id === id ? { ...m, text: m.text + delta } : m)));
+          }
+        },
+        { conversationId: conversationIdRef.current },
       );
-      setMessages((cur) => {
-        const next = [...cur,
-          {
-            id: nextId.current++,
-            from: moderated ? "notice" as const : "assistant" as const,
+      const { reply, moderated, actions, saved, interrupted } = result;
+      if (stillHere() && result.conversationId && !conversationIdRef.current) conversationIdRef.current = result.conversationId;
+      if (stillHere()) {
+        setMessages((cur) => {
+          const finalMsg: Message = {
+            id: streamedId ?? nextId.current++,
+            from: moderated ? "notice" : "assistant",
             text: moderated ? `Can't help with that|${reply}` : reply,
             actions: moderated ? undefined : actions,
             createdAt: new Date().toISOString(),
-          },
-          ...(saved ? [] : [{
-            id: nextId.current++,
-            from: "notice" as const,
-            text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
-          }]),
-        ];
-        persistCache(course, next);
-        return next;
-      });
+          };
+          const base = streamedId === null ? [...cur, finalMsg] : cur.map((m) => (m.id === streamedId ? finalMsg : m));
+          const next = [...base,
+            ...(interrupted ? [{
+              id: nextId.current++,
+              from: "notice" as const,
+              text: "Connection dropped|This reply may be incomplete. Ask again if it cut off.",
+            }] : saved ? [] : [{
+              id: nextId.current++,
+              from: "notice" as const,
+              text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
+            }]),
+          ];
+          if (!viewedElsewhere()) persistCache(course, next);
+          return next;
+        });
+      }
       if (draft.trim() === text) setDraft("");
       if (fileToSend && photoFile === fileToSend) {
         setPhotoFile(null);
@@ -500,7 +637,12 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
         try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ChatConversationGoneError) conversationIdRef.current = null;
+      if (streamedId !== null) {
+        const dead = streamedId;
+        setMessages((cur) => cur.filter((m) => m.id !== dead));
+      }
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
@@ -511,6 +653,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
         return next;
       });
     } finally {
+      setStreamingId(null);
       setIsSending(false);
     }
   };
@@ -625,6 +768,10 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
               onClick={async () => {
                 const key = canonicalCourseCode(selected);
                 const previous = messages;
+                const previousConversation = conversationIdRef.current;
+                conversationIdRef.current = null;
+                viewedFromHistory.current = false;
+                viewToken.current += 1;
                 loadToken.current += 1; // supersede any in-flight load for this course
                 setIsLoadingThread(false);
                 setMessages([]); // optimistic — reverted below if the archive call fails
@@ -635,6 +782,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                   await startNewChatThread(key);
                   persistCache(key, []); // now genuinely correct: the server thread is really empty
                 } catch (error) {
+                  conversationIdRef.current = previousConversation;
                   setMessages(previous); // the old thread is still live server-side — don't hide it on a failed archive
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
                 }
@@ -724,7 +872,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                       </p>
                     ) : null}
                     <div className="text-base leading-6 text-foreground">
-                      <RichText>{m.text}</RichText>
+                      <MessageRichText text={m.text} />
                     </div>
                     {m.actions && m.actions.length > 0 ? (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -742,6 +890,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                         ))}
                       </div>
                     ) : null}
+                    {m.id === streamingId ? null : (
                     <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
                       <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-foreground">
                         <Copy className="h-3.5 w-3.5" /> Copy
@@ -756,10 +905,11 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                         <Share2 className="h-3.5 w-3.5" /> Share
                       </button>
                     </div>
+                    )}
                   </div>
                 ) : <NoticeBubble key={m.id} text={m.text} />,
               )}
-              {isSending ? (
+              {isSending && streamingId === null ? (
                 <div className="flex w-full items-center gap-3 text-sm text-foreground">
                   <span className="relative grid h-8 w-8 shrink-0 place-items-center">
                     <LogoMark className="sonic-mark-loop h-8 w-8" />
@@ -919,20 +1069,14 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
           ) : historyRows.length > 0 ? (
             <div className="mt-2 space-y-2">
               {historyRows.map((row, index) => (
-                <button key={row.course + row.date + index} type="button" onClick={() => {
+                <button key={(row.conversationId ?? row.course + row.date) + index} type="button" onClick={() => {
                   if (row.loadError) { setHistoryRetryToken((token) => token + 1); return; }
-                  // Jumps to that course's live chat (switching courses
-                  // re-fetches from the server, which will immediately
-                  // overwrite anything set here) rather than pretending to
-                  // show a frozen snapshot of one past day that would just
-                  // flash and revert.
-                  setSelected(row.course);
-                  setHistoryOpen(false);
+                  void openConversation(row);
                 }} className="block w-full rounded-xl border border-border border-l-4 border-l-accent bg-card p-3 text-left text-card-foreground">
                   {row.loadError ? (
                     <div className="text-sm font-semibold text-warn">{displayCode(row.course)} · {row.title}</div>
                   ) : <>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}{row.count ? ` · ${row.count} messages` : ""}</div>
                     <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
                   </>}
                 </button>
