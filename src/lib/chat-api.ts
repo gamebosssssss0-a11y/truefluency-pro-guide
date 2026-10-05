@@ -55,71 +55,38 @@ export type ChatMessage = {
   conversation_id?: string;
 };
 
+/** The conversation the client asked to continue no longer exists (deleted, or not theirs). */
+export class ChatConversationGoneError extends Error {
+  constructor() {
+    super("That conversation couldn't be found. Open it again from History.");
+    this.name = "ChatConversationGoneError";
+  }
+}
+
+export type ChatSendResult = {
+  conversationId?: string;
+  reply: string;
+  moderated?: boolean;
+  actions: ChatAction[];
+  saved: boolean;
+  /** The connection dropped after some of the reply had arrived. */
+  interrupted?: boolean;
+};
+
 /**
- * Sends one message in the given course's thread and gets a
- * reply grounded in that course's uploaded material. The thread itself is
- * resolved and persisted server-side from (account, courseCode) — nothing
- * to pass or remember beyond the course code the student is currently in.
+ * Non-streaming convenience wrapper. The backend's /chat answers with a
+ * Server-Sent-Events stream for normal replies and plain JSON only for the
+ * moderation short-circuits; this used to call res.json() unconditionally, which
+ * throws on a stream. It now goes through the same parser as streamChatMessage.
  */
 export async function sendChatMessage(
   message: string,
   courseCode: string,
   mode: string,
   imagePath?: string | null,
-): Promise<{
-  conversationId: string;
-  reply: string;
-  moderated?: boolean;
-  actions: ChatAction[];
-  saved: boolean;
-}> {
-  const url = `${base()}/chat`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 35_000);
-
-  try {
-    const auth = await authHeader();
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...auth },
-      body: JSON.stringify({
-        message,
-        course_code: courseCode,
-        mode,
-        image_path: imagePath || undefined,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("[chat] request failed", { status: res.status, text });
-      throw new Error(readErrorDetail(text, res.status));
-    }
-
-    const data = (await res.json()) as {
-      conversation_id: string;
-      reply: string;
-      moderated?: boolean;
-      actions?: ChatAction[];
-      saved?: boolean;
-    };
-    return {
-      conversationId: data.conversation_id,
-      reply: data.reply,
-      moderated: data.moderated,
-      actions: Array.isArray(data.actions) ? data.actions : [],
-      saved: data.saved !== false,
-    };
-  } catch (e) {
-    if ((e as Error)?.name === "AbortError") throw new Error("Study chat timed out. Try again.");
-    if (e instanceof TypeError) {
-      throw new Error("Couldn't reach study chat. Check your connection and try again.");
-    }
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
+  conversationId?: string | null,
+): Promise<ChatSendResult> {
+  return streamChatMessage(message, courseCode, mode, imagePath, () => {}, { conversationId });
 }
 
 /**
@@ -179,20 +146,36 @@ export async function startNewChatThread(courseCode: string): Promise<void> {
   }
 }
 
+/** No bytes at all for this long -> treat the stream as dead. */
+const STREAM_IDLE_TIMEOUT_MS = 45_000;
+/** Hard ceiling on one reply, however steadily it trickles in. */
+const STREAM_MAX_MS = 150_000;
+
+type StreamEvent = {
+  delta?: string;
+  done?: boolean;
+  actions?: ChatAction[];
+  saved?: boolean;
+  error?: string;
+  conversation_id?: string;
+};
+
 /**
- * Same request as sendChatMessage, but reads the reply as it streams in
- * instead of waiting for the whole thing — see chat.py's stream_chat_reply.
- * onDelta is called with each new chunk of text as it arrives (already
- * de-duplicated — call it with the growing full text, or accumulate it
- * yourself; this function does NOT accumulate on your behalf, so you always
- * get exactly the new piece).
+ * Sends one message and reads the reply as it streams in — see chat.py's
+ * stream_chat_reply. onDelta receives each NEW piece of text as it arrives (it
+ * does not accumulate for you).
  *
- * The backend's moderation/quota short-circuits (blocked message, image
- * rejected, out of replies) are NOT streamed — they come back as a normal
- * JSON response instead, same shape sendChatMessage already returns. This
- * function handles both: if the response isn't actually an event-stream,
- * it falls back to reading it as plain JSON, calls onDelta once with the
- * whole reply (so callers don't need two code paths), and returns.
+ * conversationId is the conversation the student has open. Pass it and the
+ * message goes to THAT conversation (resuming it if it was archived); omit it
+ * and the course's active thread is used.
+ *
+ * The backend's moderation/quota short-circuits come back as plain JSON rather
+ * than a stream; both shapes are handled here so callers have a single path.
+ *
+ * Failure handling: an idle/overall timeout aborts the request; a stream that
+ * ends early after partial text resolves with `interrupted: true` (so the
+ * student keeps what they were shown) instead of throwing it away; one that
+ * ends with nothing throws.
  */
 export async function streamChatMessage(
   message: string,
@@ -200,96 +183,182 @@ export async function streamChatMessage(
   mode: string,
   imagePath: string | null | undefined,
   onDelta: (deltaText: string) => void,
-): Promise<{
-  conversationId?: string;
-  reply: string;
-  moderated?: boolean;
-  actions: ChatAction[];
-  saved: boolean;
-}> {
+  options: { conversationId?: string | null } = {},
+): Promise<ChatSendResult> {
   const url = `${base()}/chat`;
   const auth = await authHeader();
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...auth },
-    body: JSON.stringify({
-      message,
-      course_code: courseCode,
-      mode,
-      image_path: imagePath || undefined,
-    }),
-  });
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout = () => { timedOut = true; controller.abort(); };
+  let idleTimer = setTimeout(timeout, STREAM_IDLE_TIMEOUT_MS);
+  const hardTimer = setTimeout(timeout, STREAM_MAX_MS);
+  const touch = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(timeout, STREAM_IDLE_TIMEOUT_MS);
+  };
 
+  let fullReply = "";
+  let actions: ChatAction[] = [];
+  let saved = true;
+  let conversationId: string | undefined;
+  let sawDone = false;
+  let streamError: string | null = null;
+
+  const handleEvent = (rawEvent: string) => {
+    // An SSE event is one or more "data:" lines; ours are always one JSON line.
+    const data = rawEvent
+      .split("\n")
+      .filter((l) => l.startsWith("data:"))
+      .map((l) => l.slice(5).trimStart())
+      .join("\n");
+    if (!data) return;
+    let parsed: StreamEvent;
+    try {
+      parsed = JSON.parse(data) as StreamEvent;
+    } catch {
+      return; // a malformed chunk shouldn't kill an otherwise-working stream
+    }
+    if (parsed.error) {
+      streamError = parsed.error;
+    } else if (parsed.delta) {
+      fullReply += parsed.delta;
+      onDelta(parsed.delta);
+    } else if (parsed.done) {
+      sawDone = true;
+      actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+      saved = parsed.saved !== false;
+      if (typeof parsed.conversation_id === "string") conversationId = parsed.conversation_id;
+    }
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify({
+        message,
+        course_code: courseCode,
+        mode,
+        image_path: imagePath || undefined,
+        conversation_id: options.conversationId || undefined,
+      }),
+      signal: controller.signal,
+    });
+    touch();
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[chat] request failed", { status: res.status, text });
+      if (res.status === 404 && options.conversationId) throw new ChatConversationGoneError();
+      throw new Error(readErrorDetail(text, res.status));
+    }
+
+    const contentType = res.headers.get("content-type") ?? "";
+
+    // Moderation/quota short-circuits come back as plain JSON, not a stream.
+    if (!contentType.includes("text/event-stream") || !res.body) {
+      const data = (await res.json()) as {
+        conversation_id?: string;
+        reply: string;
+        moderated?: boolean;
+        actions?: ChatAction[];
+        saved?: boolean;
+      };
+      onDelta(data.reply);
+      return {
+        conversationId: data.conversation_id,
+        reply: data.reply,
+        moderated: data.moderated,
+        actions: Array.isArray(data.actions) ? data.actions : [],
+        saved: data.saved !== false,
+      };
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let dropped = false;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        touch();
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, "\n");
+        // SSE events are separated by a blank line.
+        let boundary: number;
+        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+          handleEvent(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+        }
+      }
+      buffer += decoder.decode().replace(/\r\n?/g, "\n");
+      if (buffer.trim()) handleEvent(buffer); // a final event with no trailing blank line
+    } catch (e) {
+      // The connection died mid-stream (network drop, our own timeout). Keep any
+      // text already shown rather than discarding it.
+      dropped = true;
+      if (!fullReply.trim()) {
+        if (timedOut || (e as Error)?.name === "AbortError") throw new Error("Study chat timed out. Try again.");
+        throw new Error("Couldn't reach study chat. Check your connection and try again.");
+      }
+    }
+
+    if (streamError) throw new Error(streamError);
+    if (!fullReply.trim()) throw new Error("The study chat had a problem. Please try again.");
+
+    // Stream ended without its terminal event: the reply is incomplete, and we
+    // can't know whether the server managed to save it.
+    const interrupted = dropped || !sawDone;
+    return {
+      conversationId,
+      reply: fullReply,
+      moderated: false,
+      actions,
+      saved: interrupted ? false : saved,
+      interrupted,
+    };
+  } catch (e) {
+    if (e instanceof ChatConversationGoneError) throw e;
+    if ((e as Error)?.name === "AbortError") throw new Error("Study chat timed out. Try again.");
+    if (e instanceof TypeError) {
+      throw new Error("Couldn't reach study chat. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(idleTimer);
+    clearTimeout(hardTimer);
+  }
+}
+
+/**
+ * Opens ONE specific conversation (for the History sheet). Returns only that
+ * conversation's messages — never merged with the course's other conversations.
+ * Throws ChatConversationGoneError if it no longer exists.
+ */
+export async function getConversation(
+  conversationId: string,
+): Promise<{ conversationId: string; courseCode: string; archived: boolean; messages: ChatMessage[] }> {
+  const url = `${base()}/chat/conversation/${encodeURIComponent(conversationId)}`;
+  const auth = await authHeader();
+  const res = await fetch(url, { method: "GET", headers: auth });
+  if (res.status === 404) throw new ChatConversationGoneError();
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(readErrorDetail(text, res.status));
   }
-
-  const contentType = res.headers.get("content-type") ?? "";
-
-  // Moderation/quota short-circuits come back as plain JSON, not a stream —
-  // same shape as sendChatMessage's return. Surface it through onDelta once
-  // so the caller's single render path still works for this case.
-  if (!contentType.includes("text/event-stream") || !res.body) {
-    const data = (await res.json()) as {
-      conversation_id?: string;
-      reply: string;
-      moderated?: boolean;
-      actions?: ChatAction[];
-      saved?: boolean;
-    };
-    onDelta(data.reply);
-    return {
-      conversationId: data.conversation_id,
-      reply: data.reply,
-      moderated: data.moderated,
-      actions: Array.isArray(data.actions) ? data.actions : [],
-      saved: data.saved !== false,
-    };
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let fullReply = "";
-  let actions: ChatAction[] = [];
-  let saved = true;
-  let streamError: string | null = null;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    // SSE messages are separated by a blank line.
-    let boundary: number;
-    while ((boundary = buffer.indexOf("\n\n")) !== -1) {
-      const rawEvent = buffer.slice(0, boundary);
-      buffer = buffer.slice(boundary + 2);
-      const line = rawEvent.split("\n").find((l) => l.startsWith("data: "));
-      if (!line) continue;
-      let parsed: { delta?: string; done?: boolean; actions?: ChatAction[]; saved?: boolean; error?: string };
-      try {
-        parsed = JSON.parse(line.slice("data: ".length));
-      } catch {
-        continue; // a malformed chunk shouldn't kill an otherwise-working stream
-      }
-      if (parsed.error) {
-        streamError = parsed.error;
-      } else if (parsed.delta) {
-        fullReply += parsed.delta;
-        onDelta(parsed.delta);
-      } else if (parsed.done) {
-        actions = Array.isArray(parsed.actions) ? parsed.actions : [];
-        saved = parsed.saved !== false;
-      }
-    }
-  }
-
-  if (streamError) throw new Error(streamError);
-  if (!fullReply.trim()) throw new Error("The study chat had a problem. Please try again.");
-
-  return { reply: fullReply, moderated: false, actions, saved };
+  const data = (await res.json()) as {
+    conversation_id: string;
+    course_code: string;
+    archived?: boolean;
+    messages: ChatMessage[];
+  };
+  return {
+    conversationId: data.conversation_id,
+    courseCode: data.course_code,
+    archived: data.archived === true,
+    messages: data.messages ?? [],
+  };
 }
 
 /**
