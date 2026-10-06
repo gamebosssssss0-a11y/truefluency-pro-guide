@@ -4,14 +4,14 @@
  * opens its own persistent, account-tied thread.
  * Cached messages paint immediately while the selected course revalidates.
  */
-import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2 } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, getConversation, startNewChatThread, streamChatMessage, ChatConversationGoneError, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
@@ -56,54 +56,6 @@ type Message = {
   retryCourse?: string;
   retryMode?: Mode;
 };
-type HistoryRow = {
-  course: string;
-  date: string;
-  title: string;
-  messages: ChatMessage[];
-  loadError?: boolean;
-  /** The conversation this row opens. Absent only for rows from an older backend. */
-  conversationId?: string;
-  count?: number;
-  lastAt?: string;
-};
-
-const WAT_DATE = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" });
-function formatHistoryDate(iso?: string): string {
-  const parsed = iso ? new Date(iso) : new Date();
-  return WAT_DATE.format(Number.isNaN(parsed.getTime()) ? new Date() : parsed);
-}
-
-/** What the student actually typed: the stored text also carries the mode prefix and any attached page. */
-function historyTitle(raw: string | undefined): string {
-  if (!raw) return "Study chat";
-  const withoutPage = raw.split("\n\nAttached PDF page")[0];
-  const withoutPrefix = withoutPage
-    .replace(/^Explain from my notes\.\s*/i, "")
-    .replace(/^Ask me one question from my notes, then wait for my answer\. Do not give the answer yet\.\s*/i, "")
-    .replace(/^Work this as steps from my notes\.\s*/i, "")
-    .trim();
-  return withoutPrefix || "Study chat";
-}
-
-/** Memoised so a streaming reply re-renders only ITSELF: markdown + maths for every earlier message is skipped. */
-const MessageRichText = memo(function MessageRichText({ text }: { text: string }) {
-  return <RichText>{text}</RichText>;
-});
-
-// These are presentation caches only. Server responses remain authoritative,
-// and quota or other gated actions always use the live entitlement checks.
-const threadCache = new Map<string, Message[]>();
-const draftCache = new Map<string, string>();
-let historyRowsCache: HistoryRow[] = [];
-
-function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error("history-timeout")), timeoutMs); }),
-  ]).finally(() => { if (timer) clearTimeout(timer); });
-}
 
 /** Starter prompts per mode — what each tab actually does when you tap it. */
 const STARTERS: Record<string, string[]> = {
@@ -141,53 +93,78 @@ function displayCode(code: string) {
   return canonicalCourseCode(code);
 }
 
-function splitNotice(text: string): { title: string; body: string } {
-  const separator = text.indexOf("|");
-  return separator < 0
-    ? { title: text, body: "" }
-    : { title: text.slice(0, separator), body: text.slice(separator + 1) };
-}
-
-function NoticeBubble({ text }: { text: string }) {
-  const notice = splitNotice(text);
-  return (
-    <div className="w-full rounded-xl border border-border bg-card p-3 text-foreground">
-      <p className="font-display text-base font-semibold text-foreground">{notice.title}</p>
-      {notice.body ? <p className="mt-1 text-sm text-muted-foreground">{notice.body}</p> : null}
-    </div>
-  );
-}
-
 function speechSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-export function ChatbotScreen({ embedded = false, active = true, pageAttachment: suppliedPageAttachment }: { embedded?: boolean; active?: boolean; pageAttachment?: PageAttachment | null } = {}) {
+export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment }: { embedded?: boolean; pageAttachment?: PageAttachment | null } = {}) {
   const { profile, activeCourseCode, navigate, view } = useProfile();
   const { access } = useEntitlement();
-  const initialAttachment = suppliedPageAttachment ?? readPendingPageAttachment();
-  const initialChatCourse = canonicalCourseCode(initialAttachment?.courseCode ?? "");
-  const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(initialAttachment);
+  const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
 
   const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
     ? canonicalCourseCode(activeCourseCode!)
     : canonicalCourseCode(profile.courses[0]?.code ?? "");
   const [selected, setSelected] = useState<string>(() => attachedPage?.courseCode ?? defaultCourse);
-  const chatCourseAtMount = initialChatCourse || defaultCourse;
-  const [messages, setMessages] = useState<Message[]>(() => threadCache.get(chatCourseAtMount) ?? []);
+  // Bumped on every History-row click so the load effect below always
+  // re-fetches, even for the course already on screen (setSelected alone is
+  // a no-op there — same string in, same string out, React skips both the
+  // re-render and the effect).
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const threadCache = useRef(new Map<string, Message[]>());
+  // No auto-scroll existed anywhere in this screen before — messages just
+  // appeared below the fold with no way to see them without scrolling
+  // manually. Barely noticeable with instant replies; very noticeable now
+  // that streaming grows a reply's height over several seconds while the
+  // view doesn't follow it. Scrolls on every change to `messages` — new
+  // array reference on every streamed chunk too (the update uses .map to
+  // grow one message's text), so this re-fires smoothly as a reply streams in.
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
+  // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
+  // wiped outright on every auth change (see the effect below) — belt AND
+  // suspenders. A course code alone is not unique to one student: shared
+  // gen-ed codes like GST312/GES301 are common across completely unrelated
+  // students, so a course-code-only cache key could show one student's
+  // cached messages to a different student the moment this screen didn't
+  // fully unmount between one session ending and another beginning on the
+  // same device/tab. The explicit clear-on-auth-change below is the real
+  // fix; the key scoping is the second layer in case a key is ever read
+  // before that effect fires.
+  const currentUid = useRef<string | null>(null);
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUid = session?.user.id ?? null;
+      if (nextUid !== currentUid.current) {
+        threadCache.current.clear();
+        setMessages([]);
+      }
+      currentUid.current = nextUid;
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  const cacheMapKey = (course: string) => `${currentUid.current ?? "anon"}:${canonicalCourseCode(course)}`;
   const [historyOpen, setHistoryOpen] = useState(false);
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const imageUrls = useRef(new Set<string>());
-  const [historyRows, setHistoryRows] = useState<HistoryRow[]>(() => historyRowsCache);
+  const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; conversationId: string; messages: ChatMessage[] }[]>([]);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
+  const [resumingConvId, setResumingConvId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyRetryToken, setHistoryRetryToken] = useState(0);
-  const [draft, setDraft] = useState(() => initialAttachment
-    ? `Explain page ${initialAttachment.page} of ${initialAttachment.fileName}.`
-    : draftCache.get(chatCourseAtMount) ?? "");
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [draft, setDraft] = useState(() => attachedPage ? `Explain page ${attachedPage.page} of ${attachedPage.fileName}.` : "");
   const [isSending, setIsSending] = useState(false);
+  // Non-null once the first chunk of a reply has arrived — used only to hide
+  // the "Thinking" indicator once there's a real, growing bubble to show
+  // instead of it.
+  const [streamingBubbleId, setStreamingBubbleId] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("Explain");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
@@ -199,23 +176,28 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
   const loadToken = useRef(0);
-  // The conversation currently ON SCREEN (null = "the course's active thread").
-  // Every send targets this id, so a chat reopened from History is continued in
-  // place instead of the message landing in whichever thread was active.
-  const conversationIdRef = useRef<string | null>(null);
-  // Bumped whenever the thread on screen changes identity (course switch, New
-  // chat, opening from History). An in-flight reply compares against it so it
-  // can't paint itself into a different thread than the one it was sent from.
-  const viewToken = useRef(0);
-  // Set when History opens a conversation in another course, so the course-change
-  // load effect doesn't immediately overwrite it with that course's active thread.
-  const skipLoadFor = useRef<string | null>(null);
-  const [streamingId, setStreamingId] = useState<number | null>(null);
-  const viewedFromHistory = useRef(false);
-  const hasStartedFreshThisVisit = useRef(false);
-  const threadScrollRef = useRef<HTMLDivElement>(null);
-  const followThreadBottom = useRef(true);
-  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  // SessionStorage-backed, not a plain useRef, and on purpose: this screen
+  // can remount on a simple tab switch (navigating away and back), and a
+  // plain useRef resets on every remount — which meant "start fresh" was
+  // firing (and archiving a conversation you were actively having, plus
+  // paying for an extra archive+fetch round trip) on every single return to
+  // this tab, not once per real visit to the app. sessionStorage survives a
+  // remount but still resets on a new browser tab/session, which is what
+  // "fresh each time you open the app" actually means.
+  function hasStartedFreshThisSession(): boolean {
+    try {
+      return sessionStorage.getItem(`tf-chat-fresh:${currentUid.current ?? "anon"}`) === "1";
+    } catch {
+      return false;
+    }
+  }
+  function markStartedFreshThisSession(): void {
+    try {
+      sessionStorage.setItem(`tf-chat-fresh:${currentUid.current ?? "anon"}`, "1");
+    } catch {
+      /* sessionStorage unavailable — falls back to "always fresh", which is safe, just not optimal */
+    }
+  }
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -233,35 +215,6 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
     resizeComposer();
   }, [draft]);
 
-  const onThreadScroll = () => {
-    const node = threadScrollRef.current;
-    if (!node) return;
-    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight <= 80;
-    followThreadBottom.current = nearBottom;
-    setShowJumpToLatest(!nearBottom);
-  };
-
-  useEffect(() => {
-    const node = threadScrollRef.current;
-    if (!node || !followThreadBottom.current) {
-      setShowJumpToLatest(Boolean(messages.length));
-      return;
-    }
-    node.scrollTop = node.scrollHeight;
-    setShowJumpToLatest(false);
-  }, [messages, isSending]);
-
-  const jumpToLatest = () => {
-    const node = threadScrollRef.current;
-    if (!node) return;
-    followThreadBottom.current = true;
-    setShowJumpToLatest(false);
-    node.scrollTo({
-      top: node.scrollHeight,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-    });
-  };
-
   const courseOptions = profile.courses
     .map((course) => canonicalCourseCode(course.code))
     .filter((code, index, all) => all.indexOf(code) === index);
@@ -274,17 +227,13 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
   }));
 
   const persistCache = (course: string, thread: Message[]) => {
-    threadCache.set(canonicalCourseCode(course), thread);
+    threadCache.current.set(cacheMapKey(course), thread);
     void cacheKey(canonicalCourseCode(course)).then((key) => {
       if (!key) return;
       try { sessionStorage.setItem(key, JSON.stringify(thread.slice(-60))); }
       catch { /* optional cache */ }
     });
   };
-
-  useEffect(() => {
-    if (selected) draftCache.set(canonicalCourseCode(selected), draft);
-  }, [draft, selected]);
 
   useEffect(() => {
     if (!suppliedPageAttachment) return;
@@ -296,29 +245,22 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
 
   const selectCourse = (course: string) => {
     const key = canonicalCourseCode(course);
-    conversationIdRef.current = null;
-    viewedFromHistory.current = false;
-    viewToken.current += 1;
     setSelected(key);
     navigate(view, { courseCode: key });
     setAttachedPage(null);
-    setMessages(threadCache.get(key) ?? []);
-    setDraft(draftCache.get(key) ?? "");
+    setMessages(threadCache.current.get(cacheMapKey(key)) ?? []);
+    setDraft("");
     setPhotoFile(null);
     setPhotoName(null);
   };
 
   useEffect(() => {
-    if (!active || !selected) { if (!selected) { setMessages([]); setIsLoadingThread(false); } return; }
-    // History just opened a conversation in this course and is loading it itself.
-    if (skipLoadFor.current === canonicalCourseCode(selected)) { skipLoadFor.current = null; return; }
+    if (!selected) { setMessages([]); setIsLoadingThread(false); return; }
     let alive = true;
     const token = ++loadToken.current;
     const key = canonicalCourseCode(selected);
-    // A conversation opened from History stays open across tab switches; only
-    // otherwise do we show (and cache) the course's active thread.
-    const viewedId = conversationIdRef.current;
-    const cached = viewedId ? undefined : threadCache.get(key);
+    const isFirstLoadThisVisit = !hasStartedFreshThisSession();
+    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(cacheMapKey(key));
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
@@ -330,31 +272,17 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
     // is a safe no-op when there's nothing active yet, so this never errors
     // out a normal load — best-effort, awaited so the fetch below sees the
     // fresh thread rather than racing it.
-    const freshStart = hasStartedFreshThisVisit.current
+    const freshStart = hasStartedFreshThisSession()
       ? Promise.resolve()
       : startNewChatThread(key).catch(() => {
           /* best-effort — worst case this visit resumes the old thread, same as before */
         });
-    hasStartedFreshThisVisit.current = true;
+    markStartedFreshThisSession();
 
-    const loadActive = () => freshStart
-      .then(() => getCourseThread(key))
-      .then((r) => ({ conversationId: r.conversationId, messages: r.messages, viewed: false }));
-    const loader = viewedId
-      ? getConversation(viewedId)
-          .then((r) => ({ conversationId: r.conversationId, messages: r.messages, viewed: true }))
-          .catch((e) => {
-            if (e instanceof ChatConversationGoneError) { conversationIdRef.current = null; return loadActive(); }
-            throw e;
-          })
-      : loadActive();
-
-    void loader.then(({ conversationId, messages: thread, viewed }) => {
+    void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
-      conversationIdRef.current = conversationId;
-      viewedFromHistory.current = viewed;
       const painted = toUiMessages(thread);
-      if (!viewed) persistCache(key, painted); // the cache holds a course's ACTIVE thread only
+      persistCache(key, painted);
       setMessages(painted);
     }).catch(async (error) => {
       if (!alive || loadToken.current !== token) return;
@@ -368,7 +296,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
               id: nextId.current++,
               imageUrl: undefined,
             }));
-            threadCache.set(key, restored);
+            threadCache.current.set(cacheMapKey(key), restored);
             setMessages(restored);
           }
         } catch { /* unavailable cache */ }
@@ -378,64 +306,102 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
       if (alive && loadToken.current === token) setIsLoadingThread(false);
     });
     return () => { alive = false; };
-  }, [active, selected]);
+  }, [selected, reloadNonce]);
 
-  const courseOptionsKey = JSON.stringify(courseOptions);
   useEffect(() => {
+    // Re-fetches every time the sheet opens, on purpose — no "already loaded"
+    // latch. One used to exist here (historyLoaded, a useRef set true after
+    // the first successful load and never reset) which meant History showed
+    // its first-ever snapshot for the rest of the session: every message
+    // sent afterwards was genuinely saved server-side, just never visible
+    // here, because this effect refused to run again.
     if (!historyOpen) return;
     let alive = true;
-    setHistoryRows(historyRowsCache);
+    setHistoryError(null);
     setHistoryLoading(true);
-
-    const refreshCourse = async (course: string) => {
-      try {
-        const raw = (await withHistoryTimeout(getCourseHistory(course), 4000)).messages;
-        // NOTE: this response is EVERY conversation in the course, merged. It used
-        // to be written into threadCache as if it were the live thread, so
-        // switching course chips afterwards painted all past chats into one.
-        // Group by conversation (one row per real chat). Rows from an older
-        // backend that doesn't send conversation_id fall back to per-day grouping.
-        const grouped = new Map<string, ChatMessage[]>();
-        for (const message of raw) {
-          const groupKey = message.conversation_id ?? `date:${formatHistoryDate(message.created_at)}`;
-          grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), message]);
-        }
-        const rows: HistoryRow[] = [...grouped.values()]
-          .map((items) => {
-            const last = items[items.length - 1];
-            return {
-              course,
-              conversationId: items[0].conversation_id,
-              date: formatHistoryDate(last.created_at),
-              title: historyTitle(items.find((message) => message.role === "user")?.content),
-              messages: items,
-              count: items.length,
-              lastAt: last.created_at,
-            };
-          })
-          .sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""));
-        if (!alive) return;
-        historyRowsCache = [...historyRowsCache.filter((row) => row.course !== course), ...rows];
-      } catch {
-        if (!alive) return;
-        const cachedRows = historyRowsCache.filter((row) => row.course === course && !row.loadError);
-        if (cachedRows.length) {
-          historyRowsCache = [...historyRowsCache.filter((row) => row.course !== course || !row.loadError), {
-            course, date: "", title: "Couldn't refresh this course. Retry", messages: [], loadError: true,
-          }];
-        } else {
-          historyRowsCache = [...historyRowsCache.filter((row) => row.course !== course), {
-            course, date: "", title: "Couldn't load this course. Retry", messages: [], loadError: true,
-          }];
-        }
+    void Promise.all(courseOptions.map(async (course) => {
+      const raw = (await getCourseHistory(course)).messages;
+      if (!threadCache.current.has(cacheMapKey(course))) persistCache(course, toUiMessages(raw));
+      // Grouped by conversation_id, not date — a row is now exactly one real
+      // conversation, so it can be opened or deleted precisely. Legacy
+      // messages saved before conversation_id was exposed (shouldn't exist
+      // going forward) fall back to a per-course bucket rather than crashing.
+      const grouped = new Map<string, ChatMessage[]>();
+      for (const message of raw) {
+        const convKey = message.conversation_id ?? `legacy:${course}`;
+        grouped.set(convKey, [...(grouped.get(convKey) ?? []), message]);
       }
-      if (alive) setHistoryRows(historyRowsCache);
-    };
-
-    const requests = courseOptions.map((course) => refreshCourse(course));
-    void Promise.allSettled(requests).then(() => { if (alive) setHistoryLoading(false); });
+      return [...grouped.entries()].map(([conversationId, items]) => {
+        const first = items[0];
+        const date = first?.created_at
+          ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date(first.created_at))
+          : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Lagos" }).format(new Date());
+        return {
+          course,
+          date,
+          conversationId,
+          title: items.find((message) => message.role === "user")?.content ?? "Study chat",
+          messages: items,
+        };
+      });
+    })).then((rows) => {
+      if (alive) {
+        setHistoryRows(rows.flat());
+      }
+    }).catch((error) => {
+      if (alive) {
+        const message = error instanceof Error ? error.message : "Couldn't load chat history.";
+        setHistoryError(message);
+        toast.error(message);
+      }
+    }).finally(() => {
+      if (alive) setHistoryLoading(false);
+    });
     return () => { alive = false; };
-  }, [historyOpen, courseOptionsKey, historyRetryToken]);
+  }, [historyOpen, profile.courses]);
+
+  const handleResumeConversation = async (conversationId: string) => {
+    setResumingConvId(conversationId);
+    try {
+      const { courseCode } = await resumeConversation(conversationId);
+      // Prevents the load effect's own "start fresh" step from immediately
+      // archiving the conversation we just resumed — without this, opening
+      // the live chat screen for the first time this session would
+      // re-archive it right back the moment it loads, undoing the resume.
+      markStartedFreshThisSession();
+      threadCache.current.delete(cacheMapKey(courseCode)); // force a real fetch, not a stale cached view
+      setSelected(courseCode);
+      setReloadNonce((n) => n + 1);
+      setExpandedConvId(null);
+      setHistoryOpen(false);
+      toast.success("Continuing that conversation.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't resume that conversation.");
+    } finally {
+      setResumingConvId(null);
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId: string, course: string) => {
+    setDeletingConvId(conversationId);
+    try {
+      await deleteChatConversation(conversationId);
+      setHistoryRows((cur) => cur.filter((row) => row.conversationId !== conversationId));
+      if (expandedConvId === conversationId) setExpandedConvId(null);
+      // If this was the course's currently-active conversation, the live
+      // chat screen would otherwise keep showing now-deleted messages from
+      // its own cache until the next real reload — force one.
+      if (course === selected) {
+        threadCache.current.delete(cacheMapKey(course));
+        setReloadNonce((n) => n + 1);
+      }
+      toast.success("Conversation deleted.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't delete that conversation.");
+    } finally {
+      setDeletingConvId(null);
+    }
+  };
 
   useEffect(() => {
     const currentUrls = new Set(messages.flatMap((message) => message.imageUrl ? [message.imageUrl] : []));
@@ -476,45 +442,10 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
   const notice = (text: string) =>
     setMessages((cur) => [...cur, { id: nextId.current++, from: "notice", text }]);
 
-  // True while a conversation opened from History (not the course's active
-  // thread) is on screen — its messages must not be cached as the active thread.
-  const viewedElsewhere = () => viewedFromHistory.current;
-
-  const openConversation = async (row: HistoryRow) => {
-    setHistoryOpen(false);
-    if (!row.conversationId) { selectCourse(row.course); return; } // older backend: no per-conversation id
-    const key = canonicalCourseCode(row.course);
-    const token = ++loadToken.current;
-    viewToken.current += 1;
-    conversationIdRef.current = row.conversationId;
-    viewedFromHistory.current = true;
-    if (key !== canonicalCourseCode(selected)) {
-      skipLoadFor.current = key; // we load this conversation ourselves; don't let the course effect replace it
-      setSelected(key);
-      navigate(view, { courseCode: key });
-      setAttachedPage(null);
-      setDraft(draftCache.get(key) ?? "");
-    }
-    setMessages(toUiMessages(row.messages)); // instant paint from the history row
-    setIsLoadingThread(true);
-    try {
-      const r = await getConversation(row.conversationId);
-      if (loadToken.current !== token) return;
-      setMessages(toUiMessages(r.messages));
-    } catch (error) {
-      if (loadToken.current !== token) return;
-      if (error instanceof ChatConversationGoneError) conversationIdRef.current = null;
-      toast.error(error instanceof Error ? error.message : "Couldn't open that conversation.");
-    } finally {
-      if (loadToken.current === token) setIsLoadingThread(false);
-    }
-  };
-
   const send = async (
     override?: string,
     retry?: { messageId: number; course: string; mode: Mode },
   ) => {
-    if (isLoadingThread) return;
     const text = (override ?? draft).trim();
     const course = retry?.course ?? selected;
     const sendMode = retry?.mode ?? mode;
@@ -556,9 +487,6 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
       });
     }
     setIsSending(true);
-    const sentView = viewToken.current;
-    const stillHere = () => viewToken.current === sentView;
-    let streamedId: number | null = null;
 
     try {
       let imagePath: string | null = null;
@@ -579,52 +507,60 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
       const pageContext = pageToSend
         ? `\n\nAttached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
         : "";
-      const result = await streamChatMessage(
+
+      // Streams in as the model replies, rather than popping the whole
+      // answer in at once — see chat.py's stream_chat_reply. A live bubble
+      // is created on the FIRST chunk (replacing the "Thinking" indicator,
+      // which only shows while no assistant message exists yet for this
+      // turn) and grown in place as more text arrives.
+      let streamId: number | null = null;
+      const { reply, moderated, actions, saved } = await streamChatMessage(
         modePrefix[sendMode] + text + pageContext,
         course,
         sendMode,
         imagePath,
         (delta) => {
-          if (!stillHere()) return;
-          if (streamedId === null) {
-            const id = nextId.current++;
-            streamedId = id;
-            setStreamingId(id);
-            setMessages((cur) => [...cur, { id, from: "assistant" as const, text: delta, createdAt: new Date().toISOString() }]);
-          } else {
-            const id = streamedId;
-            setMessages((cur) => cur.map((m) => (m.id === id ? { ...m, text: m.text + delta } : m)));
-          }
+          setMessages((cur) => {
+            if (streamId === null) {
+              streamId = nextId.current++;
+              setStreamingBubbleId(streamId);
+              return [...cur, {
+                id: streamId,
+                from: "assistant" as const,
+                text: delta,
+                createdAt: new Date().toISOString(),
+              }];
+            }
+            return cur.map((msg) => (msg.id === streamId ? { ...msg, text: msg.text + delta } : msg));
+          });
         },
-        { conversationId: conversationIdRef.current },
       );
-      const { reply, moderated, actions, saved, interrupted } = result;
-      if (stillHere() && result.conversationId && !conversationIdRef.current) conversationIdRef.current = result.conversationId;
-      if (stillHere()) {
-        setMessages((cur) => {
-          const finalMsg: Message = {
-            id: streamedId ?? nextId.current++,
-            from: moderated ? "notice" : "assistant",
-            text: moderated ? `Can't help with that|${reply}` : reply,
-            actions: moderated ? undefined : actions,
-            createdAt: new Date().toISOString(),
-          };
-          const base = streamedId === null ? [...cur, finalMsg] : cur.map((m) => (m.id === streamedId ? finalMsg : m));
-          const next = [...base,
-            ...(interrupted ? [{
-              id: nextId.current++,
-              from: "notice" as const,
-              text: "Connection dropped|This reply may be incomplete. Ask again if it cut off.",
-            }] : saved ? [] : [{
-              id: nextId.current++,
-              from: "notice" as const,
-              text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
-            }]),
-          ];
-          if (!viewedElsewhere()) persistCache(course, next);
-          return next;
-        });
-      }
+
+      // One corrective pass once the full reply is known: the moderation
+      // short-circuit path (blocked message, image rejected) isn't streamed
+      // at all — streamChatMessage's onDelta fires once with the whole
+      // canned reply, so the bubble above was created as a plain assistant
+      // message and needs restyling into a notice here, same as the old
+      // non-streaming code did up front.
+      setMessages((cur) => {
+        const finalized = streamId === null
+          ? cur
+          : cur.map((msg) => (msg.id === streamId
+            ? {
+              ...msg,
+              from: moderated ? ("notice" as const) : ("assistant" as const),
+              text: moderated ? `Can't help with that|${reply}` : reply,
+              actions: moderated ? undefined : actions,
+            }
+            : msg));
+        const next = saved ? finalized : [...finalized, {
+          id: nextId.current++,
+          from: "notice" as const,
+          text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
+        }];
+        persistCache(course, next);
+        return next;
+      });
       if (draft.trim() === text) setDraft("");
       if (fileToSend && photoFile === fileToSend) {
         setPhotoFile(null);
@@ -637,12 +573,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
         try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
-    } catch (error) {
-      if (error instanceof ChatConversationGoneError) conversationIdRef.current = null;
-      if (streamedId !== null) {
-        const dead = streamedId;
-        setMessages((cur) => cur.filter((m) => m.id !== dead));
-      }
+    } catch {
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
@@ -653,8 +584,8 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
         return next;
       });
     } finally {
-      setStreamingId(null);
       setIsSending(false);
+      setStreamingBubbleId(null);
     }
   };
 
@@ -727,12 +658,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
 
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden bg-background text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
-      <div className={`mx-auto flex h-full min-h-0 min-w-0 flex-col pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
-        <div
-          ref={threadScrollRef}
-          onScroll={onThreadScroll}
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y"
-        >
+      <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
         <div className="mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
@@ -768,10 +694,6 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
               onClick={async () => {
                 const key = canonicalCourseCode(selected);
                 const previous = messages;
-                const previousConversation = conversationIdRef.current;
-                conversationIdRef.current = null;
-                viewedFromHistory.current = false;
-                viewToken.current += 1;
                 loadToken.current += 1; // supersede any in-flight load for this course
                 setIsLoadingThread(false);
                 setMessages([]); // optimistic — reverted below if the archive call fails
@@ -782,16 +704,15 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                   await startNewChatThread(key);
                   persistCache(key, []); // now genuinely correct: the server thread is really empty
                 } catch (error) {
-                  conversationIdRef.current = previousConversation;
                   setMessages(previous); // the old thread is still live server-side — don't hide it on a failed archive
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
                 }
               }}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-chat-foreground disabled:opacity-60"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-60"
             >
               New chat
             </button>
-            <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-chat-foreground">History</button>
+            <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy">History</button>
           </div>
         </div>
         {isLoadingThread ? (
@@ -802,7 +723,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
         <div
           data-swipe-lock
           aria-label="Study Chat messages"
-          className="min-w-0 space-y-4 py-2"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-2 touch-pan-y"
         >
           {!isLoadingThread && messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-4 text-center">
@@ -834,7 +755,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="on-sand rounded-2xl border border-[#E4DCC8] bg-sand p-3.5 text-sm text-navy">
+                    <div className="rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] p-3.5 text-sm text-[#1B2A4A]">
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
@@ -872,7 +793,7 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                       </p>
                     ) : null}
                     <div className="text-base leading-6 text-foreground">
-                      <MessageRichText text={m.text} />
+                      <RichText>{m.text}</RichText>
                     </div>
                     {m.actions && m.actions.length > 0 ? (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -890,7 +811,6 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                         ))}
                       </div>
                     ) : null}
-                    {m.id === streamingId ? null : (
                     <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
                       <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-foreground">
                         <Copy className="h-3.5 w-3.5" /> Copy
@@ -905,11 +825,20 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
                         <Share2 className="h-3.5 w-3.5" /> Share
                       </button>
                     </div>
-                    )}
                   </div>
-                ) : <NoticeBubble key={m.id} text={m.text} />,
+                ) : (
+                  <div
+                    key={m.id}
+                    className="w-full rounded-xl border border-border bg-card p-3 text-foreground"
+                  >
+                    <p className="font-display text-base font-semibold text-foreground">
+                      {m.text.split("|")[0]}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{m.text.split("|")[1]}</p>
+                  </div>
+                ),
               )}
-              {isSending && streamingId === null ? (
+              {isSending && streamingBubbleId === null ? (
                 <div className="flex w-full items-center gap-3 text-sm text-foreground">
                   <span className="relative grid h-8 w-8 shrink-0 place-items-center">
                     <LogoMark className="sonic-mark-loop h-8 w-8" />
@@ -929,20 +858,11 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
               ) : null}
             </>
           ) : null}
-        </div>
-        {showJumpToLatest ? (
-          <button
-            type="button"
-            onClick={jumpToLatest}
-            className="sticky bottom-2 left-1/2 mx-auto mt-2 block rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm"
-          >
-            Jump to latest
-          </button>
-        ) : null}
+          <div ref={scrollAnchorRef} />
         </div>
 
         {/* Composer — sits clear of the bottom tab bar */}
-        <div className="mt-2 mb-0 shrink-0">
+        <div className="mt-2 mb-2 shrink-0">
           {attachedPage ? (
             <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
               <span className="min-w-0 flex-1 truncate">Page {attachedPage.page} · {attachedPage.fileName}</span>
@@ -1032,11 +952,10 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  if (isLoadingThread) return;
                   send();
                 }
               }}
-              disabled={!selected || isSending || isUploadingPhoto}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
               className="max-h-40 min-h-12 min-w-0 flex-1 resize-none overflow-y-hidden rounded-2xl border border-border bg-chat-card px-4 py-3 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
             />
@@ -1063,26 +982,67 @@ export function ChatbotScreen({ embedded = false, active = true, pageAttachment:
             <SheetTitle>Study Chat history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>
           </SheetHeader>
-          {historyLoading ? <p className="py-3 text-xs text-muted-foreground">Refreshing history…</p> : null}
-          {historyRows.length === 0 && !historyLoading ? (
+          {historyLoading ? <p className="py-6 text-sm text-muted-foreground">Loading history…</p> : historyError ? (
+            <p className="py-6 text-sm text-muted-foreground">{historyError}</p>
+          ) : historyRows.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
-          ) : historyRows.length > 0 ? (
-            <div className="mt-2 space-y-2">
-              {historyRows.map((row, index) => (
-                <button key={(row.conversationId ?? row.course + row.date) + index} type="button" onClick={() => {
-                  if (row.loadError) { setHistoryRetryToken((token) => token + 1); return; }
-                  void openConversation(row);
-                }} className="block w-full rounded-xl border border-border border-l-4 border-l-accent bg-card p-3 text-left text-card-foreground">
-                  {row.loadError ? (
-                    <div className="text-sm font-semibold text-warn">{displayCode(row.course)} · {row.title}</div>
-                  ) : <>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{displayCode(row.course)} · {row.date}{row.count ? ` · ${row.count} messages` : ""}</div>
-                    <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
-                  </>}
-                </button>
-              ))}
+          ) : (
+            <div className="mt-4 space-y-2">
+              {historyRows.map((row) => {
+                const isExpanded = expandedConvId === row.conversationId;
+                return (
+                  <div key={row.conversationId} className="rounded-xl border border-border border-l-4 border-l-accent bg-card text-card-foreground">
+                    <div className="flex items-start gap-2 p-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedConvId(isExpanded ? null : row.conversationId)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {displayCode(row.course)} · {row.date}
+                        </div>
+                        <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Delete this conversation"
+                        disabled={deletingConvId === row.conversationId}
+                        onClick={() => void handleDeleteConversation(row.conversationId, row.course)}
+                        className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {isExpanded ? (
+                      <div className="space-y-2 border-t border-border p-3">
+                        {row.messages.map((m, i) => (
+                          <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
+                            <div
+                              className={
+                                m.role === "user"
+                                  ? "inline-block rounded-2xl bg-sand px-3 py-2 text-left text-xs text-navy"
+                                  : "inline-block rounded-2xl border border-border bg-chat-card px-3 py-2 text-left text-xs text-chat-foreground"
+                              }
+                            >
+                              <RichText>{m.content}</RichText>
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={resumingConvId === row.conversationId}
+                          onClick={() => void handleResumeConversation(row.conversationId)}
+                          className="mt-2 w-full rounded-lg border border-accent/60 bg-accent/10 py-2 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60"
+                        >
+                          {resumingConvId === row.conversationId ? "Opening…" : "Continue this conversation →"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-          ) : null}
+          )}
         </SheetContent>
       </Sheet>
       <Sheet open={coursePickerOpen} onOpenChange={setCoursePickerOpen}>
