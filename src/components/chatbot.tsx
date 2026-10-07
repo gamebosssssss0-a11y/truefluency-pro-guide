@@ -513,6 +513,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // is created on the FIRST chunk (replacing the "Thinking" indicator,
       // which only shows while no assistant message exists yet for this
       // turn) and grown in place as more text arrives.
+      //
+      // The bubble id is claimed HERE, outside the setMessages updater, and
+      // both updaters below are pure. It used to be claimed inside the
+      // updater (`streamId = nextId.current++` mid-updater), which broke under
+      // React StrictMode — on by default in TanStack Start's client entry —
+      // because StrictMode runs every updater twice and keeps only the second
+      // result: the first (discarded) run claimed the id and added the
+      // bubble, the second (kept) run saw the id already claimed and took the
+      // "grow existing bubble" branch on a list that never had it. Every
+      // chunk then grew a bubble that didn't exist, so the reply streamed in
+      // successfully from the backend and never appeared on screen.
       let streamId: number | null = null;
       const { reply, moderated, actions, saved } = await streamChatMessage(
         modePrefix[sendMode] + text + pageContext,
@@ -520,19 +531,21 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         sendMode,
         imagePath,
         (delta) => {
-          setMessages((cur) => {
-            if (streamId === null) {
-              streamId = nextId.current++;
-              setStreamingBubbleId(streamId);
-              return [...cur, {
-                id: streamId,
-                from: "assistant" as const,
-                text: delta,
-                createdAt: new Date().toISOString(),
-              }];
-            }
-            return cur.map((msg) => (msg.id === streamId ? { ...msg, text: msg.text + delta } : msg));
-          });
+          if (streamId === null) {
+            const id = nextId.current++;
+            const createdAt = new Date().toISOString();
+            streamId = id;
+            setStreamingBubbleId(id);
+            setMessages((cur) => [...cur, {
+              id,
+              from: "assistant" as const,
+              text: delta,
+              createdAt,
+            }]);
+            return;
+          }
+          const id = streamId;
+          setMessages((cur) => cur.map((msg) => (msg.id === id ? { ...msg, text: msg.text + delta } : msg)));
         },
       );
 
@@ -574,9 +587,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
     } catch (error) {
-      // TEMP DIAGNOSTIC — tells us what's actually failing instead of hiding it.
-      console.error("[chat] send failed:", error);
-      toast.error(error instanceof Error ? error.message : "Couldn't send that message.");
+      // Logged so a failed send is visible in DevTools → Console with the real
+      // reason (backend error text, network failure) instead of only the
+      // generic "Couldn't send." under the message.
+      console.error("[chat] send failed", error);
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
