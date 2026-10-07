@@ -573,7 +573,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
-    } catch {
+    } catch (error) {
+      // TEMP DIAGNOSTIC — tells us what's actually failing instead of hiding it.
+      console.error("[chat] send failed:", error);
+      toast.error(error instanceof Error ? error.message : "Couldn't send that message.");
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
