@@ -238,17 +238,19 @@ function CoursePrimaryActions({
   const actions = ready ? (
     <div className="mt-5 grid grid-cols-2 gap-2">
       {analyzeButton}
+      {/* Mock tests only need an upload whose text has been read — the
+       * generator samples the whole document itself. Analyze is optional:
+       * it predicts likely exam topics (and lets you leave topics out). */}
       <Button
         size="lg"
-        disabled={!hasCurrentAnalysis || analysis.busy}
         onClick={() => navigate("mock-config", { courseCode })}
       >
         <Zap className="mr-1.5 h-4 w-4" />
-        {analysis.busy ? "Reading your file…" : "Customize Mock Test"}
+        Customize Mock Test
       </Button>
       {!hasCurrentAnalysis && !analysis.busy ? (
         <p className="col-span-2 text-center text-[11px] text-muted-foreground">
-          Analyze this upload first.
+          Analyze is optional: it predicts the topics most likely to come up.
         </p>
       ) : null}
       <div className="col-span-2">
@@ -505,6 +507,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   const [lastError, setLastError] = useState<{ file: File } | null>(null);
   const [noResponse, setNoResponse] = useState(false);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastStageKind = useRef<UploadStage["kind"] | null>(null);
 
   const clearWatchdog = () => {
     if (watchdog.current) {
@@ -527,31 +530,44 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   const runUpload = async (file: File) => {
     console.info("[upload] runUpload start", { name: file.name, courseCode });
     setLastError(null);
+    const refreshList = () => {
+      try { window.dispatchEvent(new Event("course-materials-refresh")); } catch (e) {
+        console.error("[upload] refresh event dispatch failed", e);
+      }
+    };
     try {
       const result = await uploadCourseMaterial({
         file,
         courseCode,
         onStage: (s) => {
+          lastStageKind.current = s.kind;
           try { setStage(s); } catch (e) { console.error("[upload] setStage failed", e); }
+        },
+        // Text is read in the background after the upload finishes; this
+        // reports how that went (the list already shows the file as "Reading…").
+        onProcessed: (fresh) => {
+          if (fresh?.extraction_status === "success") {
+            toast.success(`${file.name}: text ready. You can generate a mock test now.`);
+          } else if (fresh && fresh.extraction_status !== "pending") {
+            toast.message(`We couldn't read the text in ${file.name}`, {
+              description: extractionToastMessage(fresh),
+            });
+          } else {
+            toast.message(`Still reading ${file.name}`, {
+              description: "Scanned pages take a little longer. It will show as ready in your list when done.",
+            });
+          }
+          refreshList();
         },
       });
       console.info("[upload] runUpload success", { id: result.id, status: result.extraction_status });
       const t = result.file_type;
       if (t === "pdf" || t === "docx" || t === "pptx") {
-        if (result.extraction_status === "success") {
-          toast.success(`Added to ${courseCode}. Text ready.`);
-        } else {
-          toast.message(`Added to ${courseCode}, but we couldn't read its text`, {
-            description: extractionToastMessage(result),
-          });
-        }
+        toast.success(`Uploaded to ${courseCode}. Reading its text…`);
       } else {
-
         toast.success(`Added to ${courseCode}`);
       }
-      try { window.dispatchEvent(new Event("course-materials-refresh")); } catch (e) {
-        console.error("[upload] refresh event dispatch failed", e);
-      }
+      refreshList();
     } catch (err) {
       console.error("[upload] runUpload caught error", err);
       setLastError({ file });
@@ -561,7 +577,8 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         console.error("[upload] toast.error failed", toastErr);
       }
     } finally {
-      setTimeout(() => setStage(null), 1500);
+      // Leave "Uploaded. Reading your file…" up long enough to be read.
+      setTimeout(() => setStage(null), lastStageKind.current === "uploaded" ? 4000 : 1500);
     }
   };
 
@@ -593,7 +610,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
     }
   };
 
-  const busy = stage !== null && stage.kind !== "done" && stage.kind !== "error";
+  const busy = stage !== null && stage.kind !== "done" && stage.kind !== "error" && stage.kind !== "uploaded";
 
   return (
     <>
@@ -608,7 +625,8 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       />
       {busy ? (
         <Button size="lg" variant="outline" className="w-full" disabled>
-          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Uploading…
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          {stage?.kind === "uploading" ? `Uploading… ${stage.pct}%` : "Uploading…"}
         </Button>
       ) : (
         <Button asChild size="lg" variant="outline" className="w-full">
@@ -774,8 +792,21 @@ function StageBanner({ stage }: { stage: UploadStage }) {
       )}
       {stage.kind === "uploading" && (
         <div>
-          <div className="font-semibold text-foreground">Uploading…</div>
+          <div className="flex items-center justify-between font-semibold text-foreground">
+            <span>Uploading…</span>
+            <span>{stage.pct}%</span>
+          </div>
           <Progress value={stage.pct} className="mt-2 h-1.5" />
+        </div>
+      )}
+      {stage.kind === "uploaded" && (
+        <div>
+          <div className="flex items-center gap-1.5 font-semibold text-foreground">
+            <CheckCircle2 className="h-4 w-4 text-primary" /> Uploaded. Reading your file…
+          </div>
+          <p className="mt-0.5 text-muted-foreground">
+            You can keep using the app. We'll let you know when the text is ready.
+          </p>
         </div>
       )}
       {stage.kind === "extracting" && (
