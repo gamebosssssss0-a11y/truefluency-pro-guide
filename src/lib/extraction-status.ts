@@ -58,7 +58,7 @@ export function extractionSummary(m: CourseMaterial): ExtractionSummary | null {
         nextSteps: FAILED_STEPS,
       };
     }
-    return { label: "Extracting…", tone: "working", nextSteps: [] };
+    return { label: "Extracting text…", tone: "working", nextSteps: [] };
   }
 
   if (status === "scanned_pdf") {

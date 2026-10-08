@@ -318,7 +318,9 @@ export async function uploadCourseMaterial(opts: {
   // for the whole read, including a sleeping server's cold start.
   if (needsExtraction) {
     const uploadedRow = row;
-    emit({ kind: "uploaded" });
+    // "extracting" stays on screen until onProcessed fires, so the student
+    // can see their text is being read rather than wondering if it stalled.
+    emit({ kind: "extracting" });
     void (async () => {
       onProcessed?.(await readUploadedText(uploadedRow, fileType, file));
     })();
