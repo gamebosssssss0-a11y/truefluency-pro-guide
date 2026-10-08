@@ -11,8 +11,8 @@
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
-import { processMaterialOnServer, warmBackend } from "@/lib/backend-api";
-import { extractSelectablePdfText } from "@/lib/pdf-extraction.browser";
+import { processMaterialOnServer, submitExtractedPdfText, warmBackend } from "@/lib/backend-api";
+import { extractPdfPageTexts, extractSelectablePdfText } from "@/lib/pdf-extraction.browser";
 import { presignMaterialUpload, confirmMaterialUpload, deleteMaterialFiles } from "@/lib/storage.functions";
 
 export type UploadStage =
@@ -20,7 +20,8 @@ export type UploadStage =
   | { kind: "uploading"; pct: number }
   /** File is stored; its text is being read in the background. */
   | { kind: "uploaded" }
-  | { kind: "extracting" }
+  /** Text is being read; page/total when the browser is reading a PDF page by page. */
+  | { kind: "extracting"; page?: number; total?: number; where?: "device" | "server" }
   | { kind: "done" }
   | { kind: "error"; message: string };
 
@@ -322,7 +323,7 @@ export async function uploadCourseMaterial(opts: {
     // can see their text is being read rather than wondering if it stalled.
     emit({ kind: "extracting" });
     void (async () => {
-      onProcessed?.(await readUploadedText(uploadedRow, fileType, file));
+      onProcessed?.(await readUploadedText(uploadedRow, fileType, file, emit));
     })();
     return uploadedRow;
   }
@@ -336,7 +337,51 @@ async function readUploadedText(
   row: CourseMaterial,
   fileType: CourseMaterial["file_type"],
   file: File,
+  emit: (s: UploadStage) => void,
 ): Promise<CourseMaterial | null> {
+  const refetch = async (): Promise<CourseMaterial | null> => {
+    try {
+      const { data } = await supabase.from("course_materials").select("*").eq("id", row.id).maybeSingle();
+      return (data as CourseMaterial | null) ?? null;
+    } catch (e) {
+      console.error("[upload] refetch after extraction failed", e);
+      return null;
+    }
+  };
+
+  // Typed PDFs: read on the student's device (pdf.js), many times faster than
+  // the free Render instance — a 294-page PDF timed out there. The backend
+  // only saves + indexes the page texts. A scan has no text layer, so it
+  // falls through to the server, the only place OCR can run.
+  if (fileType === "pdf") {
+    let pageTexts: string[] | null = null;
+    try {
+      pageTexts = await extractPdfPageTexts(file, (page, total) =>
+        emit({ kind: "extracting", page, total, where: "device" }),
+      );
+    } catch (e) {
+      console.warn("[upload] in-browser PDF reading failed, using the server", e);
+    }
+    if (pageTexts && pageTexts.join("").replace(/\s/g, "").length >= MIN_EXTRACTED_CHARS) {
+      emit({ kind: "extracting", where: "server" });
+      try {
+        const res = await submitExtractedPdfText(row.id, pageTexts);
+        if (res.status === "ready") return await refetch();
+      } catch (e) {
+        // Backend unreachable: keep the text anyway (no search index until
+        // the chat's backfill builds one from it).
+        console.error("[upload] couldn't send page texts, saving them directly", e);
+        const text = pageTexts.filter((p) => p.trim()).join("\n\n");
+        const { error } = await supabase
+          .from("course_materials")
+          .update({ extracted_content: text, extraction_status: "success", extraction_error: null })
+          .eq("id", row.id);
+        if (!error) return await refetch();
+      }
+    }
+    emit({ kind: "extracting", where: "server" });
+  }
+
   const outcome = await processMaterialOnServer(row.id);
   console.info("[upload] server processing", outcome);
   // ready / failed: the backend has already written the final status and
@@ -367,17 +412,7 @@ async function readUploadedText(
     }
   }
 
-  try {
-    const { data } = await supabase
-      .from("course_materials")
-      .select("*")
-      .eq("id", row.id)
-      .maybeSingle();
-    return (data as CourseMaterial | null) ?? null;
-  } catch (e) {
-    console.error("[upload] refetch after extraction failed", e);
-    return null;
-  }
+  return await refetch();
 }
 
 /**

@@ -420,6 +420,19 @@ export async function analyzeMaterial(
 }
 
 /**
+ * Sends page texts the browser already extracted from a typed PDF
+ * (main.py POST /materials/text). The backend only saves and indexes them.
+ * "no_text" means the PDF is a scan — use processMaterialOnServer for OCR.
+ */
+export async function submitExtractedPdfText(
+  materialId: string,
+  pageTexts: string[],
+): Promise<{ status: "ready" | "no_text" }> {
+  // 120s: covers a sleeping free Render instance waking up (~1 min).
+  return postJson("/materials/text", { material_id: materialId, page_texts: pageTexts }, 120_000);
+}
+
+/**
  * Fire-and-forget ping that wakes a sleeping free-plan Render backend (its
  * cold start takes about a minute). Called the moment a student picks a file,
  * so the wake-up overlaps the upload. no-cors: nothing is read back, the

@@ -1,11 +1,16 @@
 /**
- * Browser fallback for PDF extraction.
+ * In-browser PDF text extraction (pdf.js, already bundled for the viewer).
  *
- * The primary extractor runs on the server. This fallback uses the bytes the
- * student just selected, so a transient server-function failure cannot leave a
- * normal text PDF stuck at `pending`.
+ * This is now the PRIMARY reader for typed PDFs: the student's own device
+ * reads a long PDF many times faster than the free Render instance, where a
+ * 294-page file timed out. The page texts are sent to the backend
+ * (/materials/text), which only saves and indexes them. It also remains the
+ * fallback when the backend can't be reached at all.
  */
-const MAX_PDF_PAGES = 400;
+/** Matches the backend's security.MAX_PDF_PAGES. */
+const MAX_PDF_PAGES = 500;
+/** Matches the backend's per-page cap (main.MAX_PAGE_TEXT_CHARS). */
+const MAX_PAGE_TEXT_CHARS = 20_000;
 
 function tidyPdfText(raw: string): string {
   return raw
@@ -16,7 +21,15 @@ function tidyPdfText(raw: string): string {
     .trim();
 }
 
-export async function extractSelectablePdfText(file: Blob): Promise<string> {
+/**
+ * Text of every page, in order — an empty string for a page with no text
+ * layer, so page numbers stay true (the study chat cites them).
+ * onProgress(done, total) fires after each page.
+ */
+export async function extractPdfPageTexts(
+  file: Blob,
+  onProgress?: (done: number, total: number) => void,
+): Promise<string[]> {
   // Uses pdfjs-dist (already bundled for the in-app viewer) rather than unpdf,
   // which is a server-side module and breaks the client build.
   const pdfjs = await import("pdfjs-dist");
@@ -28,6 +41,7 @@ export async function extractSelectablePdfText(file: Blob): Promise<string> {
   const limit = Math.min(pageCount, MAX_PDF_PAGES);
   const pages: string[] = [];
   let failedPages = 0;
+  const started = Date.now();
 
   try {
     for (let pageNumber = 1; pageNumber <= limit; pageNumber += 1) {
@@ -40,26 +54,31 @@ export async function extractSelectablePdfText(file: Blob): Promise<string> {
             return `${item.str}${item.hasEOL ? "\n" : ""}`;
           })
           .join("");
-        if (text.trim()) pages.push(text);
+        pages.push(tidyPdfText(text).slice(0, MAX_PAGE_TEXT_CHARS));
+        page.cleanup();
       } catch (error) {
         failedPages += 1;
-        console.warn("[extraction] browser fallback skipped page", {
-          page: pageNumber,
-          error,
-        });
+        pages.push("");
+        console.warn("[extraction] browser skipped page", { page: pageNumber, error });
       }
+      onProgress?.(pageNumber, limit);
     }
   } finally {
     await pdf.cleanup().catch(() => undefined);
   }
 
-  const text = tidyPdfText(pages.join("\n\n"));
-  console.info("[extraction] browser fallback completed", {
+  console.info("[extraction] browser read pages", {
     pageCount,
     parsedPages: limit - failedPages,
     failedPages,
-    chars: text.length,
+    seconds: Math.round((Date.now() - started) / 100) / 10,
     truncated: pageCount > limit,
   });
-  return text;
+  return pages;
+}
+
+/** Whole-document text (pages joined) — the fallback path writes this directly. */
+export async function extractSelectablePdfText(file: Blob): Promise<string> {
+  const pages = await extractPdfPageTexts(file);
+  return tidyPdfText(pages.filter((p) => p.trim()).join("\n\n"));
 }
