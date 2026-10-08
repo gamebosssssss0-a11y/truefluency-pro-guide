@@ -334,6 +334,30 @@ export type Database = {
           },
         ]
       }
+      gate_hits: {
+        Row: {
+          course_code: string | null
+          created_at: string
+          gate: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          course_code?: string | null
+          created_at?: string
+          gate: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          course_code?: string | null
+          created_at?: string
+          gate?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_question_log: {
         Row: {
           created_at: string | null
@@ -398,6 +422,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "library_shares_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "course_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          course_code: string
+          course_key: string | null
+          created_at: string
+          file_name: string | null
+          id: number
+          material_id: string
+          page_end: number | null
+          page_start: number | null
+          tsv: unknown
+          user_id: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          course_code: string
+          course_key?: string | null
+          created_at?: string
+          file_name?: string | null
+          id?: never
+          material_id: string
+          page_end?: number | null
+          page_start?: number | null
+          tsv?: unknown
+          user_id: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          course_code?: string
+          course_key?: string | null
+          created_at?: string
+          file_name?: string | null
+          id?: never
+          material_id?: string
+          page_end?: number | null
+          page_start?: number | null
+          tsv?: unknown
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_chunks_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "course_materials"
@@ -603,6 +680,27 @@ export type Database = {
         }
         Relationships: []
       }
+      site_settings: {
+        Row: {
+          id: boolean
+          maintenance_message: string
+          maintenance_mode: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          maintenance_message?: string
+          maintenance_mode?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          maintenance_message?: string
+          maintenance_mode?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string | null
@@ -705,11 +803,43 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      index_material_chunks: {
+        Args: { p_material_id: string }
+        Returns: number
+      }
       match_course_context: {
         Args: {
           match_count?: number
@@ -733,9 +863,27 @@ export type Database = {
           today_wat: string
         }[]
       }
+      search_material_chunks: {
+        Args: {
+          p_course_key: string
+          p_limit?: number
+          p_query: string
+          p_user_id: string
+        }
+        Returns: {
+          chunk_index: number
+          content: string
+          file_name: string
+          file_type: string
+          material_id: string
+          page_end: number
+          page_start: number
+          rank: number
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -862,6 +1010,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin"],
+    },
   },
 } as const
