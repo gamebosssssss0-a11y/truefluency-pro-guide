@@ -97,7 +97,7 @@ function speechSupported() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment }: { embedded?: boolean; pageAttachment?: PageAttachment | null } = {}) {
+export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment, active = true }: { embedded?: boolean; pageAttachment?: PageAttachment | null; active?: boolean } = {}) {
   const { profile, activeCourseCode, navigate, view } = useProfile();
   const { access } = useEntitlement();
   const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
@@ -435,6 +435,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     };
   }, []);
 
+  // Root tabs stay mounted once visited (index.tsx only hides them), so the
+  // unmount cleanup above never runs on a tab switch — without this, a reply
+  // kept being read aloud after the student moved to another tab.
+  useEffect(() => {
+    if (!active && speechSupported()) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
+  }, [active]);
+
   const messagesUsed = access?.usageToday.chatbot_messages ?? 0;
   const messageLimit = access?.dailyLimits.chatbot_messages ?? 10;
   const chatCapReached = !!access && !access.fullAccess && messagesUsed >= messageLimit;
@@ -499,14 +509,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         }
       }
 
-      const modePrefix: Record<Mode, string> = {
-        Explain: "Explain from my notes. ",
-        "Quiz me": "Ask me one question from my notes, then wait for my answer. Do not give the answer yet. ",
-        "Work a problem": "Work this as steps from my notes. ",
-      };
+      // No per-mode prefix on the message any more: the backend already
+      // applies each mode's instructions (chat.py MODE_INSTRUCTIONS). The old
+      // "Ask me one question ... Do not give the answer yet" prefix was glued
+      // to EVERY Quiz-mode message — including the student's answers — so the
+      // bot asked a fresh question instead of marking the answer.
+      // The attached page travels in its own field: inside the message it
+      // pushed most real pages past the 2,000-character limit ("Couldn't send.").
       const pageContext = pageToSend
-        ? `\n\nAttached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
-        : "";
+        ? `Attached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
+        : null;
 
       // Streams in as the model replies, rather than popping the whole
       // answer in at once — see chat.py's stream_chat_reply. A live bubble
@@ -526,7 +538,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // successfully from the backend and never appeared on screen.
       let streamId: number | null = null;
       const { reply, moderated, actions, saved } = await streamChatMessage(
-        modePrefix[sendMode] + text + pageContext,
+        text,
         course,
         sendMode,
         imagePath,
@@ -547,6 +559,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           const id = streamId;
           setMessages((cur) => cur.map((msg) => (msg.id === id ? { ...msg, text: msg.text + delta } : msg)));
         },
+        pageContext,
       );
 
       // One corrective pass once the full reply is known: the moderation
