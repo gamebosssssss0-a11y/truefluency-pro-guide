@@ -351,8 +351,6 @@ function GenStat({ label, value }: { label: string; value: string }) {
 export const MIN_QUESTIONS = 20;
 /** Caps live in @/lib/entitlements so the UI and the server gate can't drift. */
 export const MAX_QUESTIONS = PAID_MAX_QUESTIONS;
-/** A student focuses a set on at most three topics from their upload. */
-export const MAX_TOPIC_FOCUS = 3;
 
 export const QUESTION_OPTIONS = [
   { count: FREE_MAX_QUESTIONS, label: "Standard set", minutes: 40 },
@@ -373,22 +371,19 @@ const DIFFICULTY_OPTIONS: { key: Difficulty; label: string; blurb: string }[] = 
   { key: "exam", label: "Exam-level", blurb: "Full pressure" },
 ];
 
-function smartDefaultsFor(courseCode: string, profile: ReturnType<typeof useProfile>["profile"]): CourseTestSettings {
-  const timeline = timelineDefaults(profile.timeline);
-  const hasHistory = profile.attempts.some((a) => a.courseCode === courseCode);
-  let topicFocus: string[] = [];
-  if (hasHistory) {
-    topicFocus = profile.topicScores
-      .filter((t) => t.course === courseCode && t.score < 60)
-      .sort((a, b) => a.score - b.score)
-      .slice(0, 2)
-      .map((t) => t.topic);
-  }
+// Topics are opt-OUT: every topic in the upload is included by default and
+// the student can exclude ones they don't want. topicFocus (what's sent to
+// the backend) is therefore [] unless something was excluded — and [] makes
+// the backend sample evenly across the WHOLE document (main.py
+// sample_across_document) at the same prompt size, so a full-coverage mock
+// costs no extra generation time. It used to be "pick exactly 3 topics",
+// which blocked the Generate button and narrowed every set to 3 topics.
+function smartDefaultsFor(_courseCode: string, _profile: ReturnType<typeof useProfile>["profile"]): CourseTestSettings {
   return {
     questionCount: FREE_MAX_QUESTIONS,
     minutes: defaultMinutesForCount(FREE_MAX_QUESTIONS),
     difficulty: "balanced",
-    topicFocus,
+    topicFocus: [],
   };
 }
 
@@ -445,7 +440,22 @@ export function MockConfigScreen() {
   const [count, setCount] = useState(initialCount);
   const [minutes, setMinutes] = useState(initial?.minutes ?? defaultMinutesForCount(initialCount));
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
-  const [topicFocus, setTopicFocus] = useState<string[]>(initial?.topicFocus ?? []);
+
+  // Topic options come from THIS course's stored analysis, not from a
+  // previously generated question set (which may belong to another course).
+  const ALL_TOPICS = useMemo(
+    () => Array.from(new Set((analysisForCourse?.topics ?? []).map((t) => t.topic))),
+    [analysisForCourse],
+  );
+  // A remembered non-empty topicFocus means "these were kept", so everything
+  // else in today's topic list starts out excluded.
+  const [excludedRaw, setExcluded] = useState<string[]>(() => {
+    const kept = initial?.topicFocus ?? [];
+    return kept.length ? ALL_TOPICS.filter((t) => !kept.includes(t)) : [];
+  });
+  // Ignore exclusions for topics a re-analysis no longer lists.
+  const excluded = excludedRaw.filter((t) => ALL_TOPICS.includes(t));
+  const topicFocus = excluded.length ? ALL_TOPICS.filter((t) => !excluded.includes(t)) : [];
 
   useEffect(() => {
     setCount((c) => Math.min(c, maxQuestionsPerSet));
@@ -468,25 +478,19 @@ export function MockConfigScreen() {
     setCount(smart.questionCount);
     setMinutes(smart.minutes);
     setDifficulty(smart.difficulty);
-    setTopicFocus(smart.topicFocus);
+    setExcluded([]);
   };
 
-  const toggleTopic = (t: string) => {
-    setTopicFocus((cur) => {
+  const toggleExcluded = (t: string) => {
+    setExcluded((cur) => {
       if (cur.includes(t)) return cur.filter((x) => x !== t);
-      // At most three topics per set, so the questions stay focused.
-      if (cur.length >= MAX_TOPIC_FOCUS) return cur;
+      // Never exclude the last remaining topic — that would leave nothing to ask about.
+      if (ALL_TOPICS.length - cur.length <= 1) return cur;
       return [...cur, t];
     });
   };
 
   const difficultyLabel = DIFFICULTY_OPTIONS.find((d) => d.key === difficulty)?.label ?? "Balanced";
-
-  // Topic focus options come from THIS course's stored analysis, not from a
-  // previously generated question set (which may belong to another course).
-  const analysedTopics = profile.courseTopicAnalysis[course.code]?.topics ?? [];
-  const ALL_TOPICS = Array.from(new Set(analysedTopics.map((t) => t.topic)));
-  const topicFocusRequired = ALL_TOPICS.length >= MAX_TOPIC_FOCUS;
 
 
   const generate = () => {
@@ -589,27 +593,35 @@ export function MockConfigScreen() {
           {ALL_TOPICS.length > 0 && (
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Topic focus
+                Topics
               </label>
-              {topicFocusRequired ? (
-                <p className="mb-2 text-[11px] text-muted-foreground">
-                  Select exactly 3 topics from this upload to continue.
-                </p>
-              ) : null}
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                {excluded.length === 0
+                  ? "Questions cover your whole upload. Tap a topic to leave it out."
+                  : `Leaving out ${excluded.length} topic${excluded.length > 1 ? "s" : ""}. Tap again to include.`}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_TOPICS.map((t) => {
-                  const on = topicFocus.includes(t);
-                  const full = !on && topicFocus.length >= MAX_TOPIC_FOCUS;
+                  const out = excluded.includes(t);
+                  const lastOne = !out && ALL_TOPICS.length - excluded.length <= 1;
                   return (
-                    <button key={t} type="button" onClick={() => toggleTopic(t)} disabled={full}
+                    <button key={t} type="button" onClick={() => toggleExcluded(t)} disabled={lastOne}
+                      aria-pressed={!out}
                       className={cn("rounded-full border px-2.5 py-1 text-[11px] transition",
-                        on ? "border-accent bg-accent/15 text-accent-foreground" : "border-border bg-background text-muted-foreground hover:border-accent/50",
-                        full && "opacity-50")}>
+                        out
+                          ? "border-border bg-background text-muted-foreground line-through opacity-60"
+                          : "border-accent bg-accent/15 text-accent-foreground hover:border-accent/50")}>
                       {t}
                     </button>
                   );
                 })}
               </div>
+              {excluded.length > 0 ? (
+                <button type="button" onClick={() => setExcluded([])}
+                  className="mt-2 text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                  Include all topics
+                </button>
+              ) : null}
             </div>
           )}
 
@@ -626,21 +638,16 @@ export function MockConfigScreen() {
           </button>
         </div>
 
-        <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate} disabled={topicFocusRequired && topicFocus.length !== MAX_TOPIC_FOCUS}>
+        <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
           <Zap className="mr-2 h-4 w-4" />
           <span className="flex flex-col items-start leading-tight">
             <span className="text-base font-semibold">Generate Mock Test</span>
             <span className="text-[11px] font-normal opacity-90">
               {count} questions · {minutes} min · {difficultyLabel}
-              {topicFocus.length > 0 ? ` · ${topicFocus.length} topic${topicFocus.length > 1 ? "s" : ""}` : ""}
+              {excluded.length > 0 ? ` · ${topicFocus.length} of ${ALL_TOPICS.length} topics` : ""}
             </span>
           </span>
         </Button>
-        {topicFocusRequired && topicFocus.length !== MAX_TOPIC_FOCUS ? (
-          <p className="mt-2 text-center text-xs text-muted-foreground" aria-live="polite">
-            Choose {MAX_TOPIC_FOCUS - topicFocus.length} more topic{MAX_TOPIC_FOCUS - topicFocus.length === 1 ? "" : "s"} to continue.
-          </p>
-        ) : null}
 
         {profile.inProgressTest && profile.inProgressTest.courseCode === course.code ? (
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
