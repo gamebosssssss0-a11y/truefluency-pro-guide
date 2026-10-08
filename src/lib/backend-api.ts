@@ -418,3 +418,51 @@ export async function analyzeMaterial(
   }
   throw new Error("This is taking longer than expected. Try again in a moment.");
 }
+
+/**
+ * - ready:       text saved and searchable (the backend wrote status "success")
+ * - failed:      the backend recorded the reason on the row itself
+ * - processing:  still going after maxWaitMs — normally a scan being OCR'd;
+ *                the row stays "pending" and updates by itself when done
+ * - unavailable: the backend couldn't be reached at all; the caller falls back
+ */
+export type MaterialProcessingOutcome = {
+  status: "ready" | "failed" | "processing" | "unavailable";
+  error?: string;
+};
+
+/**
+ * Asks the backend to read an uploaded file from storage, save its text and
+ * build its search index (main.py's POST /materials/process), then polls
+ * until the text is ready. Replaces extractMaterialText, which downloaded
+ * from Supabase Storage after uploads had moved to R2 and so never worked.
+ */
+export async function processMaterialOnServer(
+  materialId: string,
+  options?: { maxWaitMs?: number },
+): Promise<MaterialProcessingOutcome> {
+  if (!isBackendConfigured()) return { status: "unavailable" };
+
+  let started: { job_id: string; status: string };
+  try {
+    // 90s: a sleeping free Render instance can take most of a minute to wake.
+    started = await postJson("/materials/process", { material_id: materialId }, 90_000);
+  } catch (e) {
+    console.error("[backend] material processing didn't start", e);
+    return { status: "unavailable" };
+  }
+
+  const deadline = Date.now() + (options?.maxWaitMs ?? 90_000);
+  while (Date.now() < deadline) {
+    await sleep(1_500);
+    let data: { status: string; error?: string | null } | null = null;
+    try {
+      data = await getJson(`/materials/process/${started.job_id}`);
+    } catch {
+      continue; // a single poll blip shouldn't end the wait
+    }
+    if (data?.status === "ready") return { status: "ready" };
+    if (data?.status === "failed") return { status: "failed", error: data.error ?? undefined };
+  }
+  return { status: "processing" };
+}

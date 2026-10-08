@@ -7,8 +7,13 @@
  */
 import type { CourseMaterial } from "@/lib/course-materials";
 
-/** A pending row older than this is treated as abandoned, never as "working". */
-export const STUCK_PENDING_MS = 90_000;
+/**
+ * A pending row older than this is treated as abandoned, never as "working".
+ * Was 90s — but a scanned PDF now stays pending while the backend's OCR
+ * service reads it (up to 10 min OCR + 5 min compression + queueing), and a
+ * 90s cutoff marked every such scan "failed" while it was still being read.
+ */
+export const STUCK_PENDING_MS = 25 * 60_000;
 
 export const STUCK_PENDING_REASON =
   "Reading this file was interrupted before it finished. Tap retry to try again.";

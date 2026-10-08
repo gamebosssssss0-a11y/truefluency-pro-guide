@@ -200,6 +200,8 @@ export async function streamChatMessage(
   mode: string,
   imagePath: string | null | undefined,
   onDelta: (deltaText: string) => void,
+  /** "Explain this page" text — sent separately so it doesn't count toward the message length limit. */
+  pageContext?: string | null,
 ): Promise<{
   conversationId?: string;
   reply: string;
@@ -217,6 +219,7 @@ export async function streamChatMessage(
       course_code: courseCode,
       mode,
       image_path: imagePath || undefined,
+      page_context: pageContext || undefined,
     }),
   });
 

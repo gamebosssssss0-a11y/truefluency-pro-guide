@@ -2,15 +2,16 @@
  * Shared upload logic for course materials.
  *
  * Handles: transactional upload (storage+DB rollback on failure), duplicate
- * detection, image compression with fallback, PDF text extraction with a
- * 30s timeout, and cross-course listing for the "All My Uploads" view.
+ * detection, image compression with fallback, text extraction on the backend
+ * (with an in-browser PDF fallback), and cross-course listing for the
+ * "All My Uploads" view.
  *
  * Path: course-materials/{user_id}/{course_code}/{timestamp}-{filename}
  */
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
-import { extractMaterialText } from "@/lib/extraction.functions";
+import { processMaterialOnServer } from "@/lib/backend-api";
 import { extractSelectablePdfText } from "@/lib/pdf-extraction.browser";
 import { presignMaterialUpload, confirmMaterialUpload, deleteMaterialFiles } from "@/lib/storage.functions";
 
@@ -55,21 +56,6 @@ const PPTX_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.
 // Which file types carry extractable text.
 const EXTRACTABLE_TYPES: CourseMaterial["file_type"][] = ["pdf", "docx", "pptx"];
 const MIN_EXTRACTED_CHARS = 20;
-const EXTRACTION_TIMEOUT_MS = 45_000;
-
-async function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("Text extraction took too long.")), milliseconds);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
 
 async function persistLocalPdfFallback(materialId: string, file: File): Promise<boolean> {
   try {
@@ -295,25 +281,23 @@ export async function uploadCourseMaterial(opts: {
     console.error("[upload] metadata heuristic failed, ignoring", e);
   }
 
-  // 6) Extract text in-app. The server function resolves the storage path from
-  // the caller's own row, so nothing about the file location is trusted here.
+  // 6) Read the text on the backend (main.py POST /materials/process). It
+  // resolves the storage path from the caller's own row, fetches the file
+  // from R2 itself, saves the text, builds the study chat's search index, and
+  // sends scanned PDFs to the OCR service. The old in-app server function
+  // downloaded from Supabase Storage, where uploads no longer live, so it
+  // failed for every file — Word and PowerPoint uploads could never be read.
   if (needsExtraction) {
     emit({ kind: "extracting" });
-    let extracted = false;
-    try {
-      const result = await withTimeout(
-        extractMaterialText({ data: { materialId: row.id } }),
-        EXTRACTION_TIMEOUT_MS,
-      );
-      console.info("[upload] extraction finished", result);
-      extracted = result.status === "success";
-    } catch (e) {
-      console.error("[upload] extraction threw", e);
-    }
+    const outcome = await processMaterialOnServer(row.id);
+    console.info("[upload] server processing", outcome);
+    // ready / failed: the backend has already written the final status and
+    // reason on the row. processing: a scan is still being read — the row
+    // stays "pending" and updates itself when the OCR service finishes.
+    let extracted = outcome.status !== "unavailable";
 
-    // A server RPC can be interrupted before its handler records a verdict.
-    // For a freshly selected PDF, recover directly from the local bytes rather
-    // than telling the student their selectable text could not be read.
+    // Backend unreachable: for a freshly selected PDF, recover directly from
+    // the local bytes rather than telling the student their text couldn't be read.
     if (!extracted && fileType === "pdf") {
       extracted = await persistLocalPdfFallback(row.id, file);
     }
@@ -322,7 +306,7 @@ export async function uploadCourseMaterial(opts: {
       const reason =
         fileType === "pdf"
           ? "No selectable text was found. This may be a scan, an encrypted PDF, or a damaged file."
-          : "Text extraction failed unexpectedly.";
+          : "We couldn't reach the server to read this file. Tap retry in a moment.";
       try {
         const { error } = await supabase
           .from("course_materials")
@@ -547,21 +531,13 @@ export function isRetryableMaterial(m: CourseMaterial): boolean {
  * leaving the upload stuck at "Extracting…" forever.
  */
 export async function retryExtraction(materialId: string): Promise<CourseMaterial | null> {
-  try {
-    await extractMaterialText({ data: { materialId } });
-  } catch (e) {
-    const reason = (e as Error)?.message || "Text extraction failed unexpectedly.";
-    console.error("[extraction] retry threw", { materialId, error: e });
-    try {
-      await supabase
-        .from("course_materials")
-        .update({ extraction_status: "failed", extraction_error: reason })
-        .eq("id", materialId);
-    } catch (persistErr) {
-      console.error("[extraction] couldn't record the failure", persistErr);
-    }
-    throw e instanceof Error ? e : new Error(reason);
+  const outcome = await processMaterialOnServer(materialId);
+  if (outcome.status === "unavailable") {
+    // The row is left as it was — nothing new is known about the file itself.
+    throw new Error("We couldn't reach the server to read this file. Try again in a moment.");
   }
+  // ready / failed / processing: the backend has written the result to the
+  // row (or left it pending while a scan is still being read).
   const { data } = await supabase
     .from("course_materials")
     .select("*")
