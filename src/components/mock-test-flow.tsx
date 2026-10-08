@@ -393,6 +393,7 @@ export function MockConfigScreen() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [readiness, setReadiness] = useState<"checking" | "ready" | "blocked">("checking");
+  const [readyMaterialId, setReadyMaterialId] = useState<string | null>(null);
   const analysisForCourse = course ? profile.courseTopicAnalysis[course.code] : undefined;
   const defaults = useMemo(() => timelineDefaults(profile.timeline), [profile.timeline]);
 
@@ -405,14 +406,13 @@ export function MockConfigScreen() {
     setReadiness("checking");
     void listMaterialsForCourse(course.code)
       .then((materials) => {
+        // A mock only needs an upload whose text has been read: generation
+        // samples the whole document itself. Topic analysis (predict) is
+        // optional — it only adds topic chips to leave topics out with.
         const readyMaterial = pickAnalyzableMaterial(materials);
-        const currentAnalysis = profile.courseTopicAnalysis[course.code];
-        const allowed = Boolean(
-          readyMaterial &&
-          currentAnalysis?.materialId === readyMaterial.id &&
-          currentAnalysis.topics.length > 0,
-        );
+        const allowed = Boolean(readyMaterial);
         if (cancelled) return;
+        setReadyMaterialId(readyMaterial?.id ?? null);
         setReadiness(allowed ? "ready" : "blocked");
         if (!allowed) navigateRef.current("course-detail", { courseCode: course.code });
       })
@@ -443,9 +443,14 @@ export function MockConfigScreen() {
 
   // Topic options come from THIS course's stored analysis, not from a
   // previously generated question set (which may belong to another course).
+  // Only when the analysis belongs to the upload the mock will use — topics
+  // from an older upload would point the generator at the wrong material.
   const ALL_TOPICS = useMemo(
-    () => Array.from(new Set((analysisForCourse?.topics ?? []).map((t) => t.topic))),
-    [analysisForCourse],
+    () =>
+      analysisForCourse && readyMaterialId && analysisForCourse.materialId === readyMaterialId
+        ? Array.from(new Set(analysisForCourse.topics.map((t) => t.topic)))
+        : [],
+    [analysisForCourse, readyMaterialId],
   );
   // A remembered non-empty topicFocus means "these were kept", so everything
   // else in today's topic list starts out excluded.
@@ -453,6 +458,15 @@ export function MockConfigScreen() {
     const kept = initial?.topicFocus ?? [];
     return kept.length ? ALL_TOPICS.filter((t) => !kept.includes(t)) : [];
   });
+  // The topic list only arrives after the readiness check, so restore a
+  // remembered "left out" choice once, when it first appears.
+  const restoredExclusions = useRef(false);
+  useEffect(() => {
+    if (restoredExclusions.current || ALL_TOPICS.length === 0) return;
+    restoredExclusions.current = true;
+    const kept = initial?.topicFocus ?? [];
+    if (kept.length) setExcluded(ALL_TOPICS.filter((t) => !kept.includes(t)));
+  }, [ALL_TOPICS]);
   // Ignore exclusions for topics a re-analysis no longer lists.
   const excluded = excludedRaw.filter((t) => ALL_TOPICS.includes(t));
   const topicFocus = excluded.length ? ALL_TOPICS.filter((t) => !excluded.includes(t)) : [];
