@@ -546,6 +546,8 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         // Text is read in the background after the upload finishes; this
         // reports how that went (the list already shows the file as "Reading…").
         onProcessed: (fresh) => {
+          lastStageKind.current = null;
+          setStage(null); // the "Extracting text…" banner ends here; the toast reports the result
           if (fresh?.extraction_status === "success") {
             toast.success(`${file.name}: text ready. You can generate a mock test now.`);
           } else if (fresh && fresh.extraction_status !== "pending") {
@@ -577,8 +579,9 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         console.error("[upload] toast.error failed", toastErr);
       }
     } finally {
-      // Leave "Uploaded. Reading your file…" up long enough to be read.
-      setTimeout(() => setStage(null), lastStageKind.current === "uploaded" ? 4000 : 1500);
+      // "Extracting text…" stays until onProcessed clears it; anything else
+      // (done, error) clears after a moment.
+      if (lastStageKind.current !== "extracting") setTimeout(() => setStage(null), 1500);
     }
   };
 
@@ -610,7 +613,9 @@ function UploadButton({ courseCode }: { courseCode: string }) {
     }
   };
 
-  const busy = stage !== null && stage.kind !== "done" && stage.kind !== "error" && stage.kind !== "uploaded";
+  // Only compressing/uploading block the button: another file can be uploaded
+  // while the previous one's text is still being extracted.
+  const busy = stage?.kind === "compressing" || stage?.kind === "uploading";
 
   return (
     <>
@@ -776,6 +781,34 @@ function PasteTextButton({ courseCode }: { courseCode: string }) {
 }
 
 
+/** Shown from the moment the file is stored until its text has been read. */
+function ExtractingBanner() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 font-semibold text-foreground">
+        <CheckCircle2 className="h-4 w-4 text-primary" /> Uploaded
+      </div>
+      <div className="mt-1.5 flex items-center justify-between font-semibold text-foreground">
+        <span className="flex items-center gap-1.5">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Extracting text from your file…
+        </span>
+        <span className="font-normal text-muted-foreground">{seconds}s</span>
+      </div>
+      <Progress value={undefined} className="mt-2 h-1.5 animate-pulse" />
+      <p className="mt-1 text-muted-foreground">
+        {seconds < 20
+          ? "Reading every page so mock tests and chat can use it."
+          : "Still going. Long or scanned files take longer, and the first upload after a quiet spell waits for the server to wake up. You can keep using the app."}
+      </p>
+    </div>
+  );
+}
+
 function StageBanner({ stage }: { stage: UploadStage }) {
   return (
     <div className="col-span-2 mt-2 rounded-2xl border border-accent/40 bg-accent/10 p-3 text-xs">
@@ -809,12 +842,7 @@ function StageBanner({ stage }: { stage: UploadStage }) {
           </p>
         </div>
       )}
-      {stage.kind === "extracting" && (
-        <div>
-          <div className="font-semibold text-foreground">Extracting content…</div>
-          <Progress value={70} className="mt-2 h-1.5" />
-        </div>
-      )}
+      {stage.kind === "extracting" && <ExtractingBanner />}
       {stage.kind === "done" && (
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <CheckCircle2 className="h-4 w-4 text-primary" /> Uploaded
