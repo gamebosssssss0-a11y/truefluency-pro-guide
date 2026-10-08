@@ -420,6 +420,21 @@ export async function analyzeMaterial(
 }
 
 /**
+ * Fire-and-forget ping that wakes a sleeping free-plan Render backend (its
+ * cold start takes about a minute). Called the moment a student picks a file,
+ * so the wake-up overlaps the upload. no-cors: nothing is read back, the
+ * request only has to arrive.
+ */
+export function warmBackend(): void {
+  if (!isBackendConfigured()) return;
+  try {
+    void fetch(`${base()}/health`, { method: "GET", mode: "no-cors", cache: "no-store" }).catch(() => undefined);
+  } catch {
+    /* best effort */
+  }
+}
+
+/**
  * - ready:       text saved and searchable (the backend wrote status "success")
  * - failed:      the backend recorded the reason on the row itself
  * - processing:  still going after maxWaitMs — normally a scan being OCR'd;

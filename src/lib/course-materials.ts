@@ -11,13 +11,15 @@
 import Compressor from "compressorjs";
 import { supabase } from "@/integrations/supabase/client";
 import { inspectFileMetadata, setMetadataFlag } from "@/lib/material-metadata";
-import { processMaterialOnServer } from "@/lib/backend-api";
+import { processMaterialOnServer, warmBackend } from "@/lib/backend-api";
 import { extractSelectablePdfText } from "@/lib/pdf-extraction.browser";
 import { presignMaterialUpload, confirmMaterialUpload, deleteMaterialFiles } from "@/lib/storage.functions";
 
 export type UploadStage =
   | { kind: "compressing"; originalKB: number; compressedKB?: number }
   | { kind: "uploading"; pct: number }
+  /** File is stored; its text is being read in the background. */
+  | { kind: "uploaded" }
   | { kind: "extracting" }
   | { kind: "done" }
   | { kind: "error"; message: string };
@@ -106,16 +108,25 @@ async function uploadViaPresignedPut(
   courseCode: string,
   fileName: string,
   contentType: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<string> {
   const { path, uploadUrl } = await presignMaterialUpload({
     data: { courseCode, fileName, contentType },
   });
-  const putRes = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: payload,
+  // XMLHttpRequest rather than fetch: fetch can't report upload progress,
+  // which left the bar frozen for the whole upload on a slow connection.
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("Storage upload failed")));
+    xhr.onerror = () => reject(new TypeError("Failed to fetch"));
+    xhr.onabort = () => reject(new Error("Upload cancelled"));
+    xhr.send(payload);
   });
-  if (!putRes.ok) throw new Error("Storage upload failed");
   const { exists } = await confirmMaterialUpload({ data: { path } });
   if (!exists) throw new Error("Storage upload failed");
   return path;
@@ -158,8 +169,18 @@ export async function uploadCourseMaterial(opts: {
   file: File;
   courseCode: string;
   onStage?: (s: UploadStage) => void;
+  /**
+   * Called once the file's text has been read in the background (or reading
+   * failed), with the refreshed row. The upload itself resolves as soon as the
+   * file is stored, so the student isn't held on "Extracting…" while a
+   * sleeping server wakes up or a scan is being read.
+   */
+  onProcessed?: (row: CourseMaterial | null) => void;
 }): Promise<CourseMaterial> {
-  const { file, courseCode, onStage } = opts;
+  const { file, courseCode, onStage, onProcessed } = opts;
+  // Wake a sleeping (free-plan) backend now, so its ~1 min cold start
+  // overlaps the upload instead of starting after it.
+  warmBackend();
   const emit = (s: UploadStage) => {
     try {
       onStage?.(s);
@@ -226,8 +247,11 @@ export async function uploadCourseMaterial(opts: {
   );
 
   let path: string;
+  emit({ kind: "uploading", pct: 2 });
   try {
-    path = await uploadViaPresignedPut(payload, courseCode, file.name, contentType);
+    path = await uploadViaPresignedPut(payload, courseCode, file.name, contentType, (fraction) =>
+      emit({ kind: "uploading", pct: Math.max(2, Math.round(fraction * 90)) }),
+    );
   } catch (e) {
     console.error("[upload] storage upload failed", e);
     emit({
@@ -236,7 +260,7 @@ export async function uploadCourseMaterial(opts: {
     });
     throw e instanceof Error ? e : new Error("Storage upload failed");
   }
-  emit({ kind: "uploading", pct: 80 });
+  emit({ kind: "uploading", pct: 95 });
 
   // 5) Insert DB row — roll back storage on failure
   let row: CourseMaterial | null = null;
@@ -287,54 +311,71 @@ export async function uploadCourseMaterial(opts: {
   // sends scanned PDFs to the OCR service. The old in-app server function
   // downloaded from Supabase Storage, where uploads no longer live, so it
   // failed for every file — Word and PowerPoint uploads could never be read.
+  //
+  // Runs in the BACKGROUND: the upload resolves as soon as the file is stored
+  // (the row shows "pending" → "Reading…" in the list), and onProcessed
+  // reports the outcome. It used to hold the student on "Extracting content…"
+  // for the whole read, including a sleeping server's cold start.
   if (needsExtraction) {
-    emit({ kind: "extracting" });
-    const outcome = await processMaterialOnServer(row.id);
-    console.info("[upload] server processing", outcome);
-    // ready / failed: the backend has already written the final status and
-    // reason on the row. processing: a scan is still being read — the row
-    // stays "pending" and updates itself when the OCR service finishes.
-    let extracted = outcome.status !== "unavailable";
+    const uploadedRow = row;
+    emit({ kind: "uploaded" });
+    void (async () => {
+      onProcessed?.(await readUploadedText(uploadedRow, fileType, file));
+    })();
+    return uploadedRow;
+  }
 
-    // Backend unreachable: for a freshly selected PDF, recover directly from
-    // the local bytes rather than telling the student their text couldn't be read.
-    if (!extracted && fileType === "pdf") {
-      extracted = await persistLocalPdfFallback(row.id, file);
-    }
+  emit({ kind: "done" });
+  return row;
+}
 
-    if (!extracted) {
-      const reason =
-        fileType === "pdf"
-          ? "No selectable text was found. This may be a scan, an encrypted PDF, or a damaged file."
-          : "We couldn't reach the server to read this file. Tap retry in a moment.";
-      try {
-        const { error } = await supabase
-          .from("course_materials")
-          .update({ extraction_status: "failed", extraction_error: reason })
-          .eq("id", row.id)
-          .neq("extraction_status", "success");
-        if (error) throw error;
-      } catch (persistErr) {
-        console.error("[upload] couldn't record extraction failure", persistErr);
-      }
+/** Background half of an upload: read the text, then return the refreshed row. */
+async function readUploadedText(
+  row: CourseMaterial,
+  fileType: CourseMaterial["file_type"],
+  file: File,
+): Promise<CourseMaterial | null> {
+  const outcome = await processMaterialOnServer(row.id);
+  console.info("[upload] server processing", outcome);
+  // ready / failed: the backend has already written the final status and
+  // reason on the row. processing: a scan is still being read — the row
+  // stays "pending" and updates itself when the OCR service finishes.
+  let extracted = outcome.status !== "unavailable";
+
+  // Backend unreachable: for a freshly selected PDF, recover directly from
+  // the local bytes rather than telling the student their text couldn't be read.
+  if (!extracted && fileType === "pdf") {
+    extracted = await persistLocalPdfFallback(row.id, file);
+  }
+
+  if (!extracted) {
+    const reason =
+      fileType === "pdf"
+        ? "No selectable text was found. This may be a scan, an encrypted PDF, or a damaged file."
+        : "We couldn't reach the server to read this file. Tap retry in a moment.";
+    try {
+      const { error } = await supabase
+        .from("course_materials")
+        .update({ extraction_status: "failed", extraction_error: reason })
+        .eq("id", row.id)
+        .neq("extraction_status", "success");
+      if (error) throw error;
+    } catch (persistErr) {
+      console.error("[upload] couldn't record extraction failure", persistErr);
     }
   }
 
-  // 7) Refetch row to get updated extraction status
-  let fresh: CourseMaterial | null = null;
   try {
     const { data } = await supabase
       .from("course_materials")
       .select("*")
       .eq("id", row.id)
       .maybeSingle();
-    fresh = (data as CourseMaterial | null) ?? null;
+    return (data as CourseMaterial | null) ?? null;
   } catch (e) {
     console.error("[upload] refetch after extraction failed", e);
+    return null;
   }
-
-  emit({ kind: "done" });
-  return (fresh ?? row) as CourseMaterial;
 }
 
 /**
