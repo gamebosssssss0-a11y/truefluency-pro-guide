@@ -309,23 +309,19 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       });
     try {
       if (!peer) {
-        let signedReason: string | undefined;
-        const sign = async (): Promise<{ url: string; reason?: string }> => {
-          const signed = await presignMaterialDownload({ data: { materialId: item.id } });
-          if (!signed.url) {
-            signedReason = signed.reason || undefined;
-            throw new Error("This file couldn't be opened.");
-          }
-          return { url: signed.url, reason: signed.reason };
+        // The server function throws on failure, so one retry covers a
+        // transient signing error; the surfaced message is its error text.
+        const sign = async (): Promise<{ url: string }> => {
+          return await presignMaterialDownload({ data: { materialId: item.id } });
         };
-        let signed: { url: string; reason?: string };
+        let signed: { url: string };
         try {
           signed = await sign();
         } catch {
           try {
             signed = await sign();
           } catch (error) {
-            throw new Error(signedReason || (error instanceof Error ? error.message : String(error)));
+            throw new Error(error instanceof Error ? error.message : String(error));
           }
         }
         setBusy(false);
