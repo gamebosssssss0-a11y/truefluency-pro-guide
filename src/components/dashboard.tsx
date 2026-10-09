@@ -442,7 +442,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
             </div>
         </div>
 
-        {access || cachedHome?.access || mocksToday > 0 ? (
+        {hydrated || access || cachedHome?.access || mocksToday > 0 ? (
           <div className="mb-5 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -659,4 +659,3 @@ function RotatingWisdomCard({ active }: { active: boolean }) {
   );
 
 }
-

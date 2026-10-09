@@ -595,7 +595,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       retryFiles.current.delete(messageId);
       retryPageAttachments.current.delete(messageId);
       if (pageToSend) setAttachedPage(null);
-      if (!moderated) {
+      if (!moderated && saved) {
         try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
         catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
       }
@@ -689,7 +689,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden bg-background text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
-        <div className="mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+        <div className="sticky top-0 z-10 mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card bg-background/80 p-3.5 backdrop-blur-md">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-xl font-semibold leading-tight text-foreground">

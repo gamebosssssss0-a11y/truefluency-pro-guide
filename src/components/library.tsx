@@ -88,6 +88,21 @@ function TypeChip({ fileType }: { fileType: string }) {
   );
 }
 
+async function presignMaterialDownload({ data }: { data: { materialId: string } }): Promise<{ url?: string; reason?: string }> {
+  const { data: row, error } = await supabase
+    .from("course_materials")
+    .select("file_path")
+    .eq("id", data.materialId)
+    .maybeSingle();
+  if (error || !row?.file_path) return { reason: error?.message || "This file couldn't be opened." };
+
+  const { data: signed, error: signedError } = await supabase.storage
+    .from("course-materials")
+    .createSignedUrl(row.file_path, 60 * 30);
+  if (signedError || !signed?.signedUrl) return { reason: signedError?.message || "This file couldn't be opened." };
+  return { url: signed.signedUrl };
+}
+
 function ReadyPill({ ready }: { ready: boolean }) {
   return ready ? (
     <span className="rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good">
@@ -127,7 +142,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     { fileName: string; token: string; expiresAt: string; usesLeft: number; maxUses: number } | null
   >(null);
   const [preview, setPreview] = useState<
-    { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; failed?: boolean } | null
+    { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; failed?: boolean; reason?: string } | null
   >(null);
   const [pageExplanation, setPageExplanation] = useState<{ courseCode: string; page: number; fileName: string; text: string } | null>(null);
 
@@ -299,19 +314,35 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
 
   const openPreview = async (item: { id: string; file_name: string; file_type: string; course_code: string; readyForMocks: boolean }, peer: boolean) => {
     setBusy(true);
-    const fallback = (failed: boolean) =>
+    const fallback = (failed: boolean, reason?: string) =>
       setPreview({
         id: item.id, file_name: item.file_name, file_type: item.file_type,
         course_code: item.course_code, url: null, readyForMocks: item.readyForMocks, peer,
         ...(failed ? { failed: true } : {}),
+        ...(reason ? { reason } : {}),
       });
     try {
       if (!peer) {
-        // The course-materials row points to an R2 object. The authenticated
-        // server function checks ownership and signs its matching R2 key.
-        const signed = await presignMaterialDownload({ data: { materialId: item.id } });
+        let signedReason: string | undefined;
+        const sign = async (): Promise<{ url: string; reason?: string }> => {
+          const signed = await presignMaterialDownload({ data: { materialId: item.id } });
+          if (!signed.url) {
+            signedReason = signed.reason || undefined;
+            throw new Error("This file couldn't be opened.");
+          }
+          return { url: signed.url, reason: signed.reason };
+        };
+        let signed: { url: string; reason?: string };
+        try {
+          signed = await sign();
+        } catch {
+          try {
+            signed = await sign();
+          } catch (error) {
+            throw new Error(signedReason || (error instanceof Error ? error.message : String(error)));
+          }
+        }
         setBusy(false);
-        if (!signed.url) throw new Error("This file couldn't be opened.");
         setPreview({
           id: item.id, file_name: item.file_name, file_type: item.file_type,
           course_code: item.course_code, url: signed.url,
@@ -331,7 +362,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       // error card, never a blank frame.
       console.warn("[library] preview failed", e);
       setBusy(false);
-      fallback(true);
+      fallback(true, e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -350,6 +381,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     }
     sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify(attachment));
     setPageExplanation(null);
+    setOwnerSheet(null);
     setPreview(null);
     navigate("chatbot", { courseCode: attachment.courseCode });
   };

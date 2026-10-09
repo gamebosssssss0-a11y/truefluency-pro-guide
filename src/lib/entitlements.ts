@@ -23,8 +23,20 @@ export const FREE_DAILY_LIMITS: Record<GatedFeature, number> = {
   library_uploads: 0,
 };
 
+export const CORE_DAILY_LIMITS: Record<GatedFeature, number | null> = {
+  mock_sets: 3,
+  chatbot_messages: 30,
+  flashcard_decks: 4,
+  library_uploads: null,
+};
+
 export const FREE_MAX_QUESTIONS = 30;
-export const PAID_MAX_QUESTIONS = 60;
+export const PAID_MAX_QUESTIONS = 45;
+
+export const EXAM_LATER_PRICE_NAIRA = 4000;
+export const EXAM_LATER_MOCKS = 6;
+export const EXAM_LATER_QUESTIONS = 60;
+export const EXAM_LATER_DECKS = 8;
 
 export type Tier = "trial" | "free" | "paid";
 
@@ -62,8 +74,8 @@ export function paywallCopy(
   feature: GatedFeature,
   verdict: QuotaVerdict,
 ): { title: string; body: string } {
-  const price = formatNaira(verdict.priceNaira);
-  const upsell = `Full access is ${price} per month at our founding price, and it unlocks unlimited mock tests, up to ${PAID_MAX_QUESTIONS} questions a set, and the WHY behind every answer.`;
+  const upsell =
+    "Core is 3 mock sets a day, up to 45 questions a set, and the WHY behind every answer.";
 
   if (verdict.reason === "question_cap") {
     return {

@@ -15,14 +15,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { HeaderLogo } from "@/components/brand";
-import { NOT_SECOND_PRODUCT, NO_PAYMENT_YET, PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
-import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, formatNaira, STANDARD_PRICE_NAIRA, FOUNDING_PRICE_NAIRA, FOUNDING_USER_LIMIT } from "@/lib/entitlements";
+import {
+  EXAM_LATER_LINE,
+  NOT_SECOND_PRODUCT,
+  NO_PAYMENT_YET,
+  PRICE_LINE,
+  TOPUP_LATER_LINE,
+  TRIAL_LINE,
+} from "@/lib/pricing-copy";
+import { formatNaira, STANDARD_PRICE_NAIRA, FOUNDING_PRICE_NAIRA, FOUNDING_USER_LIMIT } from "@/lib/entitlements";
 
 const INCLUDED = [
-  `Up to ${PAID_MAX_QUESTIONS} questions a set, instead of ${FREE_MAX_QUESTIONS}`,
-  "Unlimited mock tests, no daily cap",
+  "3 mock sets a day, instead of 2",
+  "Up to 45 questions a set, instead of 30",
   "The WHY behind every answer in review",
-  "Uploads to your Library",
+  "Peer-save on",
+  "30 chat messages a day, instead of 10",
+  "4 new flashcard decks a day, instead of 2",
 ];
 
 export function UpgradeScreen() {
@@ -75,6 +84,18 @@ export function UpgradeScreen() {
             </span>
           </div>
           <p className="mt-3 break-words text-xs font-medium text-foreground">{PRICE_LINE}</p>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Exam · later</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {EXAM_LATER_LINE} 6 mock sets a day, 60 questions, 8 decks. Not for sale.
+          </p>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Chat top-up · later</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{TOPUP_LATER_LINE}</p>
         </div>
 
         <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">

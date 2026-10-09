@@ -210,6 +210,7 @@ export function TestHistoryScreen() {
   const { profile, navigate, update } = useProfile();
   const [tab, setTab] = useState<HistoryTab>("attempts");
   const [courseFilter, setCourseFilter] = useState<string>("all");
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
 
   const all = useMemo(
     () => [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt),
@@ -271,7 +272,10 @@ export function TestHistoryScreen() {
             </div>
 
             <div className="mt-4 space-y-2.5">
-              {filtered.map((a) => (
+              {filtered.map((a) => {
+                const sortedTopics = [...a.topics].sort((left, right) => left.score - right.score);
+                const showAllTopics = expandedTopics.has(a.id);
+                return (
                 <div key={a.id} className="rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-start gap-3">
                     <div
@@ -318,15 +322,31 @@ export function TestHistoryScreen() {
                   </div>
 
                   {a.topics.length ? (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {a.topics.map((t) => (
-                        <TopicPill
-                          key={t.topic}
-                          label={`${t.topic} ${t.score}%`}
-                          strength={scoreToStrength(t.score)}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {sortedTopics.slice(0, showAllTopics ? undefined : 3).map((t) => (
+                          <TopicPill
+                            key={t.topic}
+                            label={`${t.topic} ${t.score}%`}
+                            strength={scoreToStrength(t.score)}
+                          />
+                        ))}
+                      </div>
+                      {a.topics.length > 3 ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedTopics((current) => {
+                            const next = new Set(current);
+                            if (next.has(a.id)) next.delete(a.id);
+                            else next.add(a.id);
+                            return next;
+                          })}
+                          className="mt-2 text-xs font-semibold text-foreground underline underline-offset-2"
+                        >
+                          {showAllTopics ? "Show fewer topics" : "Show all topics"}
+                        </button>
+                      ) : null}
+                    </>
                   ) : null}
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
@@ -355,7 +375,8 @@ export function TestHistoryScreen() {
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         ) : (
@@ -405,13 +426,18 @@ export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
   /** Topics scored under 60% in at least two separate attempts. */
   const struggles = useMemo(() => {
     const map = new Map<string, { low: number; total: number; last: number }>();
+    const lastByTopicVariant = new Map<string, Map<string, number>>();
     chronological.forEach((a) => {
       a.topics.forEach((t) => {
-        const key = `${a.courseCode}||${t.topic}`;
+        const normalizedTopic = t.topic.toLowerCase();
+        const key = `${a.courseCode}||${normalizedTopic}`;
         const cur = map.get(key) ?? { low: 0, total: 0, last: t.score };
         cur.total += 1;
         if (t.score < 60) cur.low += 1;
-        cur.last = t.score;
+        const variantScores = lastByTopicVariant.get(key) ?? new Map<string, number>();
+        variantScores.set(t.topic, t.score);
+        lastByTopicVariant.set(key, variantScores);
+        cur.last = Math.min(...variantScores.values());
         map.set(key, cur);
       });
     });
@@ -463,7 +489,7 @@ export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
             <span className="w-14 shrink-0 text-[10px] text-muted-foreground">
               {new Date(a.submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
             </span>
-            <Progress value={a.score} className="h-1.5 flex-1" />
+            <Progress value={a.score} className="h-3 flex-1" />
             <span className="w-14 shrink-0 text-right text-[11px] font-semibold text-foreground">
               {a.score}% <span className="font-normal text-muted-foreground">{a.courseCode}</span>
             </span>

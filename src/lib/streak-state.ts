@@ -30,5 +30,5 @@ export function getStreakState(
   // freeze_used_on records the day a freeze was applied. In the migration,
   // that is also last_active_date, so it is already handled as alive above.
   void input.freezeUsedOn;
-  return { state: "none", days: 0 };
+  return { state: "none", days: input.streakDays };
 }

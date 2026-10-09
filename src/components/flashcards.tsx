@@ -169,7 +169,7 @@ export function FlashcardsScreen() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-5 pb-24 pt-6 md:pb-8">
+      <div className="mx-auto max-w-md px-5 pb-24 pt-[max(1.5rem,env(safe-area-inset-top))] md:pb-8">
         <button
           onClick={() => navigate("home")}
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -231,7 +231,11 @@ export function FlashcardsScreen() {
                     <button key={mode} type="button" onClick={() => {
                       sessionStorage.setItem("truefluency-flashcard-mode", mode);
                       navigate("flashcards-review", { courseCode: deck.course_code, deckId: deck.id });
-                    }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
+                    }} className={mode === "due"
+                      ? "rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
+                      : mode === "new"
+                        ? "rounded-full border-2 border-accent px-3 py-1.5 text-xs font-semibold text-foreground"
+                        : "rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground"}>
                       {mode === "due" ? "Due" : mode === "new" ? "New" : "Cram"}
                     </button>
                   ))}

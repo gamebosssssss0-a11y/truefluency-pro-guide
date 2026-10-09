@@ -452,6 +452,10 @@ export function PdfViewer({
       const currentPage = await doc.getPage(currentPageNumber);
       const content = await currentPage.getTextContent?.();
       const text = (content?.items ?? []).map((item) => item.str ?? "").join(" ").replace(/\s+/g, " ").trim();
+      if (!text) {
+        toast.error("Couldn't read selectable text from this page.");
+        return;
+      }
       if (text.length < 50) {
         toast.error("This page has too little selectable text.");
         return;
