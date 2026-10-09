@@ -88,20 +88,6 @@ function TypeChip({ fileType }: { fileType: string }) {
   );
 }
 
-async function presignMaterialDownload({ data }: { data: { materialId: string } }): Promise<{ url?: string; reason?: string }> {
-  const { data: row, error } = await supabase
-    .from("course_materials")
-    .select("file_path")
-    .eq("id", data.materialId)
-    .maybeSingle();
-  if (error || !row?.file_path) return { reason: error?.message || "This file couldn't be opened." };
-
-  const { data: signed, error: signedError } = await supabase.storage
-    .from("course-materials")
-    .createSignedUrl(row.file_path, 60 * 30);
-  if (signedError || !signed?.signedUrl) return { reason: signedError?.message || "This file couldn't be opened." };
-  return { url: signed.signedUrl };
-}
 
 function ReadyPill({ ready }: { ready: boolean }) {
   return ready ? (

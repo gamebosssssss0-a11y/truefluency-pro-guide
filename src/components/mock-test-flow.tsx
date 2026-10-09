@@ -21,7 +21,6 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
-import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
 
 // The analysis service accepts at most 60 questions per request.
