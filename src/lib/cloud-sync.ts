@@ -63,6 +63,11 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
   const row = profileRes.data;
   if (!row) return null;
 
+  const rowLastActiveDate = row.last_active_date ?? row.last_qualifying_day ?? null;
+  const localHasLaterStreak = !!local?.lastActiveDate &&
+    (!rowLastActiveDate || local.lastActiveDate > rowLastActiveDate);
+  const streakDatesMatch = !!local?.lastActiveDate && local.lastActiveDate === rowLastActiveDate;
+
   const snapshot: Partial<Profile> = {
     goal: (row.goal as Goal | null) ?? null,
     timeline: (row.timeline as Timeline | null) ?? null,
@@ -79,9 +84,9 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
     streakDays: row.streak_days ?? 0,
     // Prefer the new last_active_date column; fall back to the legacy
     // last_qualifying_day for existing rows that haven't been migrated yet.
-    lastActiveDate: row.last_active_date ?? row.last_qualifying_day ?? null,
-    freezesAvailable: row.freezes_available ?? 1,
-    freezeUsedOn: row.freeze_used_on ?? null,
+    lastActiveDate: localHasLaterStreak ? local?.lastActiveDate ?? null : rowLastActiveDate,
+    freezesAvailable: localHasLaterStreak ? local?.freezesAvailable ?? 1 : row.freezes_available ?? 1,
+    freezeUsedOn: localHasLaterStreak ? local?.freezeUsedOn ?? null : row.freeze_used_on ?? null,
     tourSeen: row.tour_seen ?? false,
     hasCompletedFirstMock: !!row.has_completed_first_mock,
     masteredCourses: (row.mastered_courses as unknown as string[]) ?? [],

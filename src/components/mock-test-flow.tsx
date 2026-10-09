@@ -16,6 +16,7 @@ import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib
 import { PaywallNotice } from "@/components/paywall-notice";
 import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
+import { canonicalCourseCode } from "@/lib/course-code";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
@@ -41,7 +42,9 @@ export type AIQuestion = {
 
 function useActiveCourse(): UserCourse | undefined {
   const { profile, activeCourseCode } = useProfile();
-  return profile.courses.find((c) => c.code === activeCourseCode);
+  return profile.courses.find((c) =>
+    canonicalCourseCode(c.code) === canonicalCourseCode(activeCourseCode ?? "")
+  );
 }
 
 /* ---------- 1. Generation screen ---------- */
@@ -105,7 +108,11 @@ export function MockGenerationScreen() {
   useEffect(() => {
     // One job at a time. Retry can only start a new job once the previous one
     // has settled, so a retry never stacks on top of a running request.
-    if (!course || fetchedRef.current || inFlightRef.current) return;
+    if (!course) {
+      navigate("mock-tests");
+      return;
+    }
+    if (fetchedRef.current || inFlightRef.current) return;
     fetchedRef.current = true;
     inFlightRef.current = true;
 
@@ -229,7 +236,9 @@ export function MockGenerationScreen() {
 
     return () => clearInterval(animId);
     // retryKey re-runs the exact same generation request from "Try again".
-  }, [course?.code, retryKey]);
+  }, [course?.code, retryKey, navigate]);
+
+  if (!course) return <p className="p-4 text-sm text-foreground">Pick a course</p>;
 
   if (refused) {
     return (
@@ -486,7 +495,8 @@ export function MockConfigScreen() {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
   }, []);
 
-  if (!course || !smart || readiness !== "ready") return null;
+  if (!course) return <p className="p-4 text-sm text-foreground">Pick a course</p>;
+  if (!smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
     setCount(smart.questionCount);

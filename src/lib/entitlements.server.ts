@@ -11,6 +11,7 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   FOUNDING_PRICE_NAIRA,
   FOUNDING_USER_LIMIT,
+  CORE_DAILY_LIMITS,
   FREE_DAILY_LIMITS,
   FREE_MAX_QUESTIONS,
   PAID_MAX_QUESTIONS,
@@ -174,10 +175,13 @@ export async function resolveAccess(userId: string): Promise<AccessSummary> {
     libraryUploadsUnlocked: fullAccess,
     usageToday: await usageToday(userId),
     dailyLimits: {
-      mock_sets: fullAccess ? null : FREE_DAILY_LIMITS.mock_sets,
-      chatbot_messages: fullAccess ? null : FREE_DAILY_LIMITS.chatbot_messages,
-      flashcard_decks: fullAccess ? null : FREE_DAILY_LIMITS.flashcard_decks,
-      library_uploads: fullAccess ? null : FREE_DAILY_LIMITS.library_uploads,
+      mock_sets: fullAccess ? CORE_DAILY_LIMITS.mock_sets : FREE_DAILY_LIMITS.mock_sets,
+      chatbot_messages:
+        fullAccess ? CORE_DAILY_LIMITS.chatbot_messages : FREE_DAILY_LIMITS.chatbot_messages,
+      flashcard_decks:
+        fullAccess ? CORE_DAILY_LIMITS.flashcard_decks : FREE_DAILY_LIMITS.flashcard_decks,
+      library_uploads:
+        fullAccess ? CORE_DAILY_LIMITS.library_uploads : FREE_DAILY_LIMITS.library_uploads,
     },
     watToday: todayInLagos(),
   };
