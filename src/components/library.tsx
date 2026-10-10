@@ -312,7 +312,9 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         // The server function throws on failure, so one retry covers a
         // transient signing error; the surfaced message is its error text.
         const sign = async (): Promise<{ url: string }> => {
-          return await presignMaterialDownload({ data: { materialId: item.id } });
+          const signed = await presignMaterialDownload({ data: { materialId: item.id } });
+          if (!signed.url) throw new Error("This file couldn't be opened.");
+          return signed;
         };
         let signed: { url: string };
         try {
@@ -739,7 +741,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                 <div data-swipe-lock="" className="grid h-full place-items-center p-4">
                   <ErrorCard
                     title={preview.file_type.toLowerCase() === "pdf" ? "We couldn't open this PDF here." : "We couldn't open this file."}
-                    body="The file may have been removed or its link may have expired."
+                    body={preview.reason || "The file may have been removed or its link may have expired."}
                     onAction={() => void retryPreview()}
                     linkLabel="Close"
                     onLink={() => { setPreview(null); setPageExplanation(null); }}

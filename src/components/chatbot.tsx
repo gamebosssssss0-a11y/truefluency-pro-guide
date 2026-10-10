@@ -604,6 +604,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // reason (backend error text, network failure) instead of only the
       // generic "Couldn't send." under the message.
       console.error("[chat] send failed", error);
+      toast.error(error instanceof Error ? error.message : String(error));
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
