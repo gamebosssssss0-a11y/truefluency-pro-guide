@@ -15,7 +15,7 @@ import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessag
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
-import { consumeFeatureQuota } from "@/lib/entitlements.functions";
+import { warmBackend } from "@/lib/backend-api";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -53,6 +53,8 @@ type Message = {
   imageUrl?: string;
   createdAt?: string;
   sendError?: boolean;
+  /** Why the last send failed (shown under "Couldn't send."). */
+  sendErrorText?: string;
   retryCourse?: string;
   retryMode?: Mode;
 };
@@ -99,7 +101,12 @@ function speechSupported() {
 
 export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment, active = true }: { embedded?: boolean; pageAttachment?: PageAttachment | null; active?: boolean } = {}) {
   const { profile, activeCourseCode, navigate, view } = useProfile();
-  const { access } = useEntitlement();
+  const { access, refresh: refreshAccess } = useEntitlement();
+  // Opening the chat is the moment to wake a sleeping (free-plan) backend, so
+  // it is already up by the time the first message is sent.
+  useEffect(() => {
+    warmBackend();
+  }, []);
   const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
 
   const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
@@ -481,7 +488,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const messageId = retry?.messageId ?? nextId.current++;
     if (retry) {
       setMessages((cur) => cur.map((message) => message.id === messageId
-        ? { ...message, sendError: undefined }
+        ? { ...message, sendError: undefined, sendErrorText: undefined }
         : message));
     } else {
       setMessages((cur) => {
@@ -595,21 +602,28 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       retryFiles.current.delete(messageId);
       retryPageAttachments.current.delete(messageId);
       if (pageToSend) setAttachedPage(null);
-      if (!moderated && saved) {
-        try { await consumeFeatureQuota({ data: { feature: "chatbot_messages" } }); }
-        catch (quotaError) { console.warn("[chat] quota update failed after successful reply", quotaError); }
+      // The backend counts the reply itself (it is the authoritative gate). This
+      // used to call the website's own counter as well, so every reply cost a
+      // free student TWO of their daily replies. Just re-read the count.
+      if (!moderated) {
+        void refreshAccess().catch((e) => console.warn("[chat] couldn't refresh the reply count", e));
       }
     } catch (error) {
       // Logged so a failed send is visible in DevTools → Console with the real
       // reason (backend error text, network failure) instead of only the
       // generic "Couldn't send." under the message.
       console.error("[chat] send failed", error);
-      toast.error(error instanceof Error ? error.message : String(error));
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
         const next = cur.map((message) => message.id === messageId
-          ? { ...message, sendError: true, retryCourse: course, retryMode: sendMode }
+          ? {
+            ...message,
+            sendError: true,
+            sendErrorText: error instanceof Error ? error.message : undefined,
+            retryCourse: course,
+            retryMode: sendMode,
+          }
           : message);
         persistCache(course, next);
         return next;
@@ -690,7 +704,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden bg-background text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
-        <div className="sticky top-0 z-10 mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card bg-background/80 p-3.5 backdrop-blur-md">
+        <div className="mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
           <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-xl font-semibold leading-tight text-foreground">
@@ -798,7 +812,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     </div>
                     {m.sendError ? (
                       <div className="mt-1 flex items-center justify-end gap-3 text-xs">
-                        <span className="font-medium text-destructive">Couldn't send.</span>
+                        <span className="font-medium text-destructive">{m.sendErrorText || "Couldn't send."}</span>
                         <button
                           type="button"
                           onClick={() => void send(m.text, {

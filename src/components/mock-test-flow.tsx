@@ -10,17 +10,17 @@ import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
-import { generateMock, submitResults } from "@/lib/backend-api";
+import { findResumableMockJob, generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
 import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
-import { canonicalCourseCode } from "@/lib/course-code";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
+import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
 
 // The analysis service accepts at most 60 questions per request.
@@ -41,9 +41,7 @@ export type AIQuestion = {
 
 function useActiveCourse(): UserCourse | undefined {
   const { profile, activeCourseCode } = useProfile();
-  return profile.courses.find((c) =>
-    canonicalCourseCode(c.code) === canonicalCourseCode(activeCourseCode ?? "")
-  );
+  return profile.courses.find((c) => c.code === activeCourseCode);
 }
 
 /* ---------- 1. Generation screen ---------- */
@@ -107,11 +105,7 @@ export function MockGenerationScreen() {
   useEffect(() => {
     // One job at a time. Retry can only start a new job once the previous one
     // has settled, so a retry never stacks on top of a running request.
-    if (!course) {
-      navigate("mock-tests");
-      return;
-    }
-    if (fetchedRef.current || inFlightRef.current) return;
+    if (!course || fetchedRef.current || inFlightRef.current) return;
     fetchedRef.current = true;
     inFlightRef.current = true;
 
@@ -141,25 +135,34 @@ export function MockGenerationScreen() {
           return;
         }
 
+        // A refresh (or a second tab) lands here while the first request is
+        // still generating, or finished before its result was picked up. Ask
+        // the backend FIRST and carry on with that job: the plan check below
+        // would otherwise refuse a student who had already used their last set
+        // on this very mock, and a second start would generate (and charge) twice.
+        const resumeJobId = await findResumableMockJob(course.code, ready.id);
+
         // Daily set limit and question cap are decided on the server; a refusal
         // is a friendly upsell, not an error.
         let allowedCount = Math.min(MAX_GENERATED_QUESTIONS, count);
-        try {
-          const verdict = await consumeFeatureQuota({
-            // Preview only: the generation service records the usage and is
-            // the authoritative gate, so this must not double-count the set.
-            data: { feature: "mock_sets", requestedQuestions: count, dryRun: true },
-          });
-          if (!verdict.allowed) {
-            clearInterval(animId);
-            setRefused(verdict);
-            return;
+        if (!resumeJobId) {
+          try {
+            const verdict = await consumeFeatureQuota({
+              // Preview only: the generation service records the usage and is
+              // the authoritative gate, so this must not double-count the set.
+              data: { feature: "mock_sets", requestedQuestions: count, dryRun: true },
+            });
+            if (!verdict.allowed) {
+              clearInterval(animId);
+              setRefused(verdict);
+              return;
+            }
+            if (verdict.allowedQuestions) {
+              allowedCount = Math.min(MAX_GENERATED_QUESTIONS, verdict.allowedQuestions);
+            }
+          } catch (e) {
+            console.warn("[mock] couldn't check your plan, continuing", e);
           }
-          if (verdict.allowedQuestions) {
-            allowedCount = Math.min(MAX_GENERATED_QUESTIONS, verdict.allowedQuestions);
-          }
-        } catch (e) {
-          console.warn("[mock] couldn't check your plan, continuing", e);
         }
 
         // Shared client: attaches the signed-in bearer token, normalises the
@@ -184,6 +187,7 @@ export function MockGenerationScreen() {
               if (done === null) return;
               setReadyLine(`${done} of ${total ?? allowedCount} ready`);
             },
+            resumeJobId: resumeJobId ?? undefined,
           },
         );
 
@@ -235,9 +239,7 @@ export function MockGenerationScreen() {
 
     return () => clearInterval(animId);
     // retryKey re-runs the exact same generation request from "Try again".
-  }, [course?.code, retryKey, navigate]);
-
-  if (!course) return <p className="p-4 text-sm text-foreground">Pick a course</p>;
+  }, [course?.code, retryKey]);
 
   if (refused) {
     return (
@@ -494,8 +496,7 @@ export function MockConfigScreen() {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
   }, []);
 
-  if (!course) return <p className="p-4 text-sm text-foreground">Pick a course</p>;
-  if (!smart || readiness !== "ready") return null;
+  if (!course || !smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
     setCount(smart.questionCount);
@@ -815,9 +816,10 @@ export function MockRunScreen() {
       masteredCourses: mastered,
     });
 
-    // Three writes belong to a submitted mock, in the same handler:
-    // 1. the attempt row (History reads this), 2. the daily mock-set count,
-    // 3. the study streak when at least five answers were given.
+    // Two writes belong to a submitted mock, in the same handler:
+    // 1. the attempt row (History reads this),
+    // 2. the study streak when at least five answers were given.
+    // (The daily mock-set count is recorded by the generation service.)
     try {
       const { pushMockAttempt } = await import("@/lib/cloud-sync");
       await pushMockAttempt(attempt);
@@ -826,27 +828,9 @@ export function MockRunScreen() {
       toast.error("Couldn't save this test to your account.");
     }
 
-    const COUNTED_KEY = "tf.counted.mock_sets";
-    const alreadyCounted = (() => {
-      try {
-        return (JSON.parse(localStorage.getItem(COUNTED_KEY) || "[]") as string[]).includes(attempt.id);
-      } catch {
-        return false;
-      }
-    })();
-    if (!alreadyCounted) {
-      try {
-        await consumeFeatureQuota({ data: { feature: "mock_sets" } });
-        try {
-          const prev = JSON.parse(localStorage.getItem(COUNTED_KEY) || "[]") as string[];
-          localStorage.setItem(COUNTED_KEY, JSON.stringify([...prev.slice(-40), attempt.id]));
-        } catch {
-          /* bookkeeping only */
-        }
-      } catch (error) {
-        toast.error((error as Error)?.message || "Your daily mock count couldn't be updated.");
-      }
-    }
+    // No daily-count write here any more. The generation service already
+    // recorded this set (when it succeeded); counting it again on submit made
+    // every finished mock cost TWO of a free student's daily sets.
 
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
     if (answeredCount >= 5) {
