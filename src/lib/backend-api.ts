@@ -31,6 +31,8 @@ function readErrorDetail(text: string, status: number): string {
     }
   } catch { /* not JSON */ }
   if (status === 402) return "You've hit your free limit for today.";
+  if (status === 413) return "That request was too large to send.";
+  if (status === 429) return "Too many requests. Please wait a moment and try again.";
   if (status === 404) return "We couldn't find that upload on the analysis service.";
   if (status === 503) return "The analysis service isn't fully configured yet.";
   if (status >= 500) return "The analysis service had a problem. Please try again.";
@@ -234,6 +236,13 @@ export async function generateMock(
     onProgress?: (progress: { ready: number | null; total: number | null }) => void;
     /** Max total time to keep polling before giving up. Default 5 minutes. */
     maxWaitMs?: number;
+    /**
+     * A job the backend says is already running (or finished but never
+     * delivered) for this course and upload — from findResumableMockJob().
+     * Polled instead of starting a new generation, so a page refresh neither
+     * regenerates nor costs another mock set.
+     */
+    resumeJobId?: string;
   }
 ): Promise<AIQuestion[]> {
   if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
@@ -254,7 +263,19 @@ export async function generateMock(
   // Step 1: kick off the job (or resume one already running for this user —
   // see startMockJob's docstring for why a plain postJson() call here would
   // have silently broken the resume-after-refresh flow).
-  const started = await startMockJob(body);
+  let started: { job_id: string; resumed: boolean } = options?.resumeJobId
+    ? { job_id: options.resumeJobId, resumed: true }
+    : await startMockJob(body);
+  if (options?.resumeJobId) {
+    // The backend may have restarted since (it forgets its jobs): if the job
+    // can't be found any more, start a fresh one instead of polling a ghost.
+    try {
+      await getJson(`/generate-mock/status/${started.job_id}`);
+    } catch {
+      console.info("[mock] the earlier job is gone, starting a new one");
+      started = await startMockJob(body);
+    }
+  }
   if (started.resumed) {
     console.info("[mock] resuming an in-progress job from before a refresh, instead of starting a new one");
   }
@@ -333,6 +354,23 @@ export async function generateMock(
 
   if (questions.length === 0) throw new Error("No questions came back from the generator.");
   return questions;
+}
+
+/**
+ * Asks the backend whether this student already has a mock for this course and
+ * upload that is still generating, or finished while the page was gone (a
+ * refresh). Returns its job_id, or null — including when the backend can't be
+ * reached, in which case generation simply proceeds as usual.
+ */
+export async function findResumableMockJob(courseCode: string, materialId: string): Promise<string | null> {
+  if (!isBackendConfigured()) return null;
+  try {
+    const q = `course_code=${encodeURIComponent(courseCode)}&material_id=${encodeURIComponent(materialId)}`;
+    const data = await getJson<{ job_id: string | null }>(`/generate-mock/resumable?${q}`, 20_000);
+    return typeof data?.job_id === "string" ? data.job_id : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

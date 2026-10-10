@@ -32,6 +32,8 @@ function readErrorDetail(text: string, status: number): string {
     /* not JSON */
   }
   if (status === 402) return "You've hit your free chat limit for today.";
+  if (status === 413) return "That message is too long. Shorten it and try again.";
+  if (status === 429) return "You're sending messages too fast. Wait a few seconds and try again.";
   if (status === 502) return "The study chat couldn't get a reply right now. Try again.";
   return "The study chat had a problem. Please try again.";
 }
@@ -211,7 +213,7 @@ export async function streamChatMessage(
 }> {
   const url = `${base()}/chat`;
   const auth = await authHeader();
-  const res = await fetch(url, {
+  const request = {
     method: "POST",
     headers: { "Content-Type": "application/json", ...auth },
     body: JSON.stringify({
@@ -221,7 +223,31 @@ export async function streamChatMessage(
       image_path: imagePath || undefined,
       page_context: pageContext || undefined,
     }),
-  });
+  };
+
+  // One automatic retry, only for a failure BEFORE any reply started: the
+  // server is waking from sleep (the free Render plan sleeps when idle and
+  // answers 502/503/504 or drops the connection for the first seconds), or
+  // the network blinked. Nothing has been saved or charged at that point, so
+  // repeating the request is safe; a reply that already started is never repeated.
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      res = await fetch(url, request);
+    } catch (e) {
+      if (attempt === 0 && e instanceof TypeError) {
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+      }
+      throw e;
+    }
+    if (attempt === 0 && [502, 503, 504].includes(res.status)) {
+      await new Promise((r) => setTimeout(r, 3000));
+      continue;
+    }
+    break;
+  }
+  if (!res) throw new Error("Couldn't reach study chat. Check your connection and try again.");
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
