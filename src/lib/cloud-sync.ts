@@ -81,7 +81,11 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
     // A saved display name is the account-level proof that the welcome screen
     // has already been completed, so it is never asked for twice.
     profileCompleted: !!(row.display_name ?? "").trim(),
-    streakDays: row.streak_days ?? 0,
+    streakDays: localHasLaterStreak
+      ? local?.streakDays ?? 0
+      : streakDatesMatch
+        ? Math.max(row.streak_days ?? 0, local?.streakDays ?? 0)
+        : row.streak_days ?? 0,
     // Prefer the new last_active_date column; fall back to the legacy
     // last_qualifying_day for existing rows that haven't been migrated yet.
     lastActiveDate: localHasLaterStreak ? local?.lastActiveDate ?? null : rowLastActiveDate,
