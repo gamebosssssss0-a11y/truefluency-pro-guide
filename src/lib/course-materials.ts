@@ -51,6 +51,16 @@ export const MIN_PASTED_CHARS = 200;
 export const PASTED_TOO_SHORT_MESSAGE =
   "This looks too short to generate useful predictions from, try adding more content.";
 
+/**
+ * Largest PDF / Word / PowerPoint file a student can upload, in MB. The server
+ * refuses anything bigger too (MAX_UPLOAD_MB in the backend's security.py, and
+ * the scan reader's MAX_PDF_BYTES) — keep the numbers equal. Checked BEFORE
+ * uploading so nobody waits through a big upload that was always going to be
+ * refused. Photos are shrunk before upload, so they're not held to this.
+ */
+export const MAX_DOCUMENT_MB = 35;
+const MAX_DOCUMENT_BYTES = MAX_DOCUMENT_MB * 1024 * 1024;
+
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PDF_TYPE = "application/pdf";
 const DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -216,6 +226,13 @@ export async function uploadCourseMaterial(opts: {
   }
   const isImage = fileType === "image";
   const needsExtraction = EXTRACTABLE_TYPES.includes(fileType);
+  if (!isImage && file.size > MAX_DOCUMENT_BYTES) {
+    const msg =
+      `That file is ${(file.size / (1024 * 1024)).toFixed(0)} MB — the limit is ${MAX_DOCUMENT_MB} MB. ` +
+      "Split it into parts or export a smaller copy, then try again.";
+    emit({ kind: "error", message: msg });
+    throw new Error(msg);
+  }
 
   // 3) (Image only) compress with graceful fallback
   let payload: Blob = file;
