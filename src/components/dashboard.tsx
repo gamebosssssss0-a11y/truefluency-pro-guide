@@ -382,22 +382,22 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         {/* Header */}
         <div className="mb-5">
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <HeaderLogo />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">
               Home
             </span>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-semibold leading-tight text-foreground">
+              <h1 className="font-display text-2xl font-semibold leading-tight text-[#F7F3EA]">
                 Welcome back, {name}
               </h1>
-              {meta ? <p className="mt-1 text-sm text-muted-foreground">{meta}</p> : null}
+              {meta ? <p className="mt-1 text-sm text-[#F3E6C8]/80">{meta}</p> : null}
               {subline ? (
-                <p className="mt-1 text-[12px] text-muted-foreground">{subline}</p>
+                <p className="mt-1 text-[12px] text-[#F3E6C8]/80">{subline}</p>
               ) : null}
-              <p className="mt-1 text-[12px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-[#F3E6C8]/80">
                 Your study home: upload a file, practise on it, revise it.
               </p>
             </div>

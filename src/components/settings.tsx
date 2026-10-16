@@ -275,12 +275,12 @@ export function AccountScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">
             Account
           </span>
         </div>
-        <h1 className="font-display text-3xl font-semibold text-foreground">Account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="font-display text-3xl font-semibold text-[#F7F3EA]">Account</h1>
+        <p className="mt-1 text-sm text-[#F3E6C8]/80">
           Your profile, your tools, and your data.
         </p>
 

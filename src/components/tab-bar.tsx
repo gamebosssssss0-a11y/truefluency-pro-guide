@@ -21,6 +21,8 @@ export function tabForView(view: AppView): TabKey {
     case "mock-result":
     case "test-history":
     case "attempt-review":
+    case "flashcards":
+    case "flashcards-review":
       return "mock-tests";
     case "library":
     case "course-detail":
@@ -32,8 +34,6 @@ export function tabForView(view: AppView): TabKey {
     case "all-uploads":
     case "cgpa":
     case "cgpa-goal":
-    case "flashcards":
-    case "flashcards-review":
     case "upgrade":
     case "add-course":
     case "support":

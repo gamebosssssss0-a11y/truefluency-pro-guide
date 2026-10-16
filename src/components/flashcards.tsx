@@ -168,7 +168,7 @@ export function FlashcardsScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-24 pt-[max(1.5rem,env(safe-area-inset-top))] md:pb-8">
         <button
           onClick={() => navigate("home")}
@@ -214,7 +214,18 @@ export function FlashcardsScreen() {
         </div>
 
         {isLoadingDecks ? (
-          <p className="text-center text-sm text-muted-foreground">Loading your decks…</p>
+          <div role="status" aria-live="polite" className="space-y-3">
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex flex-col items-center justify-center py-4">
+                <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-sand border-t-accent" />
+                <p className="mt-2 text-xs text-muted-foreground">Loading your decks…</p>
+              </div>
+              <div aria-hidden="true" className="space-y-2">
+                <div className="h-3 w-2/5 animate-pulse rounded bg-sand/60" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-sand/40" />
+              </div>
+            </div>
+          </div>
         ) : decks.length > 0 ? (
           <div className="space-y-3">
             {decks.map((deck) => (
@@ -351,7 +362,7 @@ export function FlashcardsReviewScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-10 pt-6">
         <div className="mb-6 flex items-center justify-between">
           <button

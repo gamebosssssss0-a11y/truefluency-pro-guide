@@ -396,11 +396,11 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       <div className="mx-auto max-w-md px-5 pb-28 pt-6 md:max-w-3xl">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">My Files</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">My Files</span>
         </div>
 
-        <h1 className="font-display text-2xl font-semibold text-foreground">My files</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="font-display text-2xl font-semibold text-[#F7F3EA]">My files</h1>
+        <p className="mt-1 text-sm text-[#F3E6C8]/80">
           Upload past papers and notes here. Your locker is private; the course shelf only shows
           what coursemates chose to publish.
         </p>
