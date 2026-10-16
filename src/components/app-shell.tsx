@@ -18,7 +18,7 @@ export function AppShell({
 }) {
   const pct = step && total ? Math.round((step / total) * 100) : 0;
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
         <header className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">

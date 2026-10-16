@@ -271,7 +271,7 @@ export function AccountScreen() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />

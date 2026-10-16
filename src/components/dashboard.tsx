@@ -378,7 +378,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         {/* Header */}
         <div className="mb-5">

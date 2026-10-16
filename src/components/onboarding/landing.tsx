@@ -44,7 +44,7 @@ export function LandingScreen() {
   const insideRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    <div className="on-sand min-h-screen bg-[#F7F3EA]">
+    <div className="on-sand min-h-screen">
       <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col px-5 pb-10 pt-6">
         <header className="mb-8 flex items-center gap-2">
           <LogoMark className="h-8 w-8" />

@@ -392,7 +392,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen text-foreground">
       <div className="mx-auto max-w-md px-5 pb-28 pt-6 md:max-w-3xl">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
