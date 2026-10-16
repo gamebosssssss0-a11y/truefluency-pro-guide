@@ -310,7 +310,10 @@ function CoursePrimaryActions({
             size="lg"
             variant="outline"
             className="mt-4 w-full"
-            onClick={() => navigate("flashcards", { courseCode })}
+            onClick={() => {
+              sessionStorage.setItem("truefluency-flashcards-origin", "course-detail");
+              navigate("flashcards", { courseCode });
+            }}
           >
             Flashcards for {courseCode}
           </Button>
@@ -1115,4 +1118,3 @@ function ExtractionGuidance({ material }: { material: CourseMaterial }) {
     </div>
   );
 }
-

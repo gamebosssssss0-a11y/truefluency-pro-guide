@@ -201,6 +201,7 @@ function Router() {
       }
       if (result.reason !== "oauth-or-missing-account") {
         toast.message("You're working offline", {
+          id: "offline-status",
           description: "We couldn't reach your account, so changes are saved on this device for now.",
         });
       }

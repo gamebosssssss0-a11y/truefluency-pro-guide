@@ -62,7 +62,7 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
 
   return (
     <nav
-      aria-label="Main"
+      aria-label="Desktop primary navigation"
       className="sticky top-0 z-40 hidden border-b border-border bg-background md:block"
     >
       <div className="mx-auto flex w-full max-w-[60rem] items-center gap-6 px-6 py-3">
@@ -119,7 +119,7 @@ export function BottomTabBar({ highlightedView }: { highlightedView?: AppView | 
 
   return (
     <nav
-      aria-label="Main"
+      aria-label="Mobile navigation"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background md:hidden"
     >
       <div className="mx-auto flex max-w-md items-stretch">

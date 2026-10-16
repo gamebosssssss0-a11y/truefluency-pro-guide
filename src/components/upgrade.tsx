@@ -52,13 +52,13 @@ export function UpgradeScreen() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
             Premium
           </span>
         </div>
 
-        <h1 className="font-display text-3xl font-semibold text-foreground">Full access</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] dark:text-[#F7F3EA]">Full access</h1>
+        <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
           Everything in TrueFluency Pro, for one month. {NOT_SECOND_PRODUCT}
         </p>
 

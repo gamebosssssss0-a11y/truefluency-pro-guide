@@ -266,7 +266,10 @@ export function AccountScreen() {
       blurb: "Quick recall practice from your own uploads.",
       icon: Layers,
       surface: "key",
-      onClick: () => navigate("flashcards"),
+      onClick: () => {
+        sessionStorage.setItem("truefluency-flashcards-origin", "account");
+        navigate("flashcards");
+      },
     },
   ];
 
@@ -275,12 +278,12 @@ export function AccountScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
             Account
           </span>
         </div>
-        <h1 className="font-display text-3xl font-semibold text-[#F7F3EA]">Account</h1>
-        <p className="mt-1 text-sm text-[#F3E6C8]/80">
+        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] dark:text-[#F7F3EA]">Account</h1>
+        <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
           Your profile, your tools, and your data.
         </p>
 

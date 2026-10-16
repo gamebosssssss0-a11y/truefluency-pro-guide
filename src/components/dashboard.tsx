@@ -111,9 +111,7 @@ function PlanChip() {
   useEffect(() => {
     if (access) writeHomeDisplayCache({ access: { tier: access.tier, trialEndsAt: access.trialEndsAt ?? null } });
   }, [access]);
-  if (!displayAccess) {
-    return <div aria-hidden="true" className="mb-5 h-11 rounded-2xl border border-border/50 bg-sand/40" />;
-  }
+  if (!displayAccess) return null;
 
   if (displayAccess.tier === "trial" && displayAccess.trialEndsAt) {
     const msLeft = new Date(displayAccess.trialEndsAt).getTime() - Date.now();
@@ -384,20 +382,20 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         <div className="mb-5">
           <div className="mb-4 flex items-center gap-2">
             <HeaderLogo />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
               Home
             </span>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-semibold leading-tight text-[#F7F3EA]">
+              <h1 className="font-display text-2xl font-bold leading-tight text-[#F7F3EA] dark:text-[#F7F3EA]">
                 Welcome back, {name}
               </h1>
-              {meta ? <p className="mt-1 text-sm text-[#F3E6C8]/80">{meta}</p> : null}
+              {meta ? <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">{meta}</p> : null}
               {subline ? (
-                <p className="mt-1 text-[12px] text-[#F3E6C8]/80">{subline}</p>
+                <p className="mt-1 text-[12px] text-[#F3E6C8]/80 dark:text-[#C4B8A0]">{subline}</p>
               ) : null}
-              <p className="mt-1 text-[12px] text-[#F3E6C8]/80">
+              <p className="mt-1 text-[12px] text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
                 Your study home: upload a file, practise on it, revise it.
               </p>
             </div>
@@ -490,7 +488,10 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           <div className="min-w-0">
             {/* Flashcards: link only, no generator. */}
             <button
-              onClick={() => navigate("flashcards")}
+              onClick={() => {
+                sessionStorage.setItem("truefluency-flashcards-origin", "home");
+                navigate("flashcards");
+              }}
               className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">

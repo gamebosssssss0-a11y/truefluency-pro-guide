@@ -63,18 +63,18 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
             Practice
           </span>
         </div>
 
-        <h1 className="font-display text-3xl font-semibold text-[#F7F3EA]">Practice</h1>
-        <p className="mt-1 text-sm text-[#F3E6C8]/80">
+        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] dark:text-[#F7F3EA]">Practice</h1>
+        <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
           Sit a mock test built from your own uploads. Pick a course, choose how long, then start.
         </p>
 
         {/* Course selection */}
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90">
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
           Choose a course
         </h2>
         {profile.courses.length === 0 ? (
