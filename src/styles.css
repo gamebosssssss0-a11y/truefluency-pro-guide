@@ -154,10 +154,18 @@
   }
 
   html, body {
-    background-color: var(--color-background);
+    background-color: #F7F3EA;
+    background-image: linear-gradient(165deg, #1B2A4A 0%, #3D5278 18%, #F3E6C8 46%, #F7F3EA 100%);
+    background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+  }
+
+  html.dark, html.dark body {
+    background-color: #020A1A;
+    background-image: linear-gradient(165deg, #020A1A 0%, #132240 40%, #1B2A4A 100%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, .font-display {
