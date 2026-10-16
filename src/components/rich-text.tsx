@@ -49,7 +49,8 @@ function Inline({ text }: { text: string }) {
   );
 }
 
-export function RichText({ children }: { children: string | null | undefined }) {
+export function RichText({ children, tone = "default" }: { children: string | null | undefined; tone?: "default" | "canvas" }) {
+  const canvas = tone === "canvas";
   const text = (children ?? "").replace(/\r\n/g, "\n");
   const normalizedText = text.replace(/\\\[([\s\S]+?)\\\]/g, (_match, formula: string) => "\\[" + formula.replace(/\s+/g, " ").trim() + "\\]");
   const lines = normalizedText.split("\n");
@@ -83,13 +84,13 @@ export function RichText({ children }: { children: string | null | undefined }) 
     const finalDisplayFormula = line.match(/^\s*\\\[([\s\S]+?)\\\]\s*$/);
     const lastContentLine = lines.map((candidate) => candidate.trim()).lastIndexOf(lines.slice().reverse().find((candidate) => candidate.trim())?.trim() ?? "");
     if (finalDisplayFormula && line.trim() === lines[lastContentLine]?.trim()) {
-      blocks.push(<div key={idx} className="my-3 border border-[#E4DCC8] px-2 py-2 text-navy"><MathText>{line}</MathText></div>);
+      blocks.push(<div key={idx} className={canvas ? "my-3 max-w-full overflow-x-auto px-2 py-2 text-center text-[1.15em] text-[#F7F3EA]" : "my-3 border border-[#E4DCC8] px-2 py-2 text-navy"}><MathText>{line}</MathText></div>);
       return;
     }
     const finalLine = line.match(/^\s*(final answer|answer)\s*:\s*(.*)$/i);
     if (finalLine) {
       blocks.push(
-        <div key={idx} className="my-3 rounded-lg border border-border bg-background px-2 py-2 text-foreground">
+        <div key={idx} className={canvas ? "my-3 px-2 py-2 text-[#F7F3EA]" : "my-3 rounded-lg border border-border bg-background px-2 py-2 text-foreground"}>
           <span className="font-semibold">{finalLine[1]}:</span>{" "}
           <Inline text={finalLine[2] ?? ""} />
         </div>,
@@ -99,7 +100,7 @@ export function RichText({ children }: { children: string | null | undefined }) 
     const stepTitle = line.match(/^\s*((?:step\s+\d+)|therefore|hence|formula summary)\s*:?\s*$/i);
     if (stepTitle) {
       blocks.push(
-        <p key={idx} className="mt-3 text-[15px] font-semibold text-navy">
+        <p key={idx} className={canvas ? "mt-3 text-[15px] font-semibold text-[#F7F3EA]" : "mt-3 text-[15px] font-semibold text-navy"}>
           {stepTitle[1]}
         </p>,
       );

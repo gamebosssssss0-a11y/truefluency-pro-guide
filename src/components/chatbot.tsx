@@ -8,7 +8,6 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
-import { HeaderLogo } from "@/components/brand";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
 import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage } from "@/lib/chat-api";
@@ -93,6 +92,19 @@ async function cacheKey(scope: string): Promise<string | null> {
 
 function displayCode(code: string) {
   return canonicalCourseCode(code);
+}
+
+/** Hide isolated page-number artifacts immediately before a heading or bullet. */
+function cleanAssistantArtifacts(text: string) {
+  const lines = text.split(/\r?\n/);
+  const visible = lines.filter((line, index) => {
+    if (!/^\s*\d{1,4}\s*$/.test(line)) return true;
+    let next = index + 1;
+    while (next < lines.length && !lines[next].trim()) next += 1;
+    const following = lines[next]?.trim() ?? "";
+    return !/^(?:#{1,6}\s|[-*•]\s|\d+[.)]\s)/.test(following);
+  });
+  return visible.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function speechSupported() {
@@ -643,7 +655,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       return;
     }
     synth.cancel();
-    const text = plainText(m.text).trim();
+    const text = plainText(cleanAssistantArtifacts(m.text)).trim();
     const chunks: string[] = [];
     let pending = "";
     for (const sentence of text.match(/[^.!?]+[.!?]*|.+/g) ?? [text]) {
@@ -695,44 +707,27 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const capText = (() => {
     if (!access) return null;
     if (access.fullAccess) return "Full access";
-    return `${messagesUsed} of ${messageLimit} replies today`;
+    return `${messagesUsed} of ${messageLimit} today`;
   })();
 
-  const headerLabel = displayCode(selected);
   const placeholderCourse = displayCode(selected);
 
   return (
-    <div className={`study-chat-screen min-h-0 overflow-hidden bg-background text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
+    <div className={`study-chat-screen min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
-        <div className="mb-3 flex shrink-0 items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
-          <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-xl font-semibold leading-tight text-foreground">
-              Study Chat · {headerLabel}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Answers use this upload only. Not the open web.
-            </p>
-          </div>
-          {capText ? (
-            <span className="shrink-0 rounded-full bg-sand px-2.5 py-1 text-xs font-medium text-foreground">
-              {capText}
-            </span>
-          ) : null}
-        </div>
-        <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#E4DCC8]/25 pb-2">
           <button
             type="button"
             onClick={() => setCoursePickerOpen(true)}
             disabled={isSending || courseOptions.length === 0}
             aria-haspopup="dialog"
-            className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-60"
+            aria-label="Choose a course"
+            className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
           >
-            <span className="text-muted-foreground">Course</span>
-            <span className="truncate">{selected ? displayCode(selected) : "Choose a course"}</span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Course: {selected ? displayCode(selected) : "Choose a course"}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-[#F3E6C8]" />
           </button>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               disabled={isSending || isLoadingThread}
@@ -753,15 +748,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
                 }
               }}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-60"
+              className="whitespace-nowrap rounded-full border border-[#E4DCC8]/45 px-2 py-1.5 text-[10px] font-semibold text-[#F7F3EA] transition hover:bg-[#1B2A4A]/60 disabled:opacity-60"
             >
               New chat
             </button>
-            <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy">History</button>
+            <button type="button" onClick={() => setHistoryOpen(true)} className="whitespace-nowrap rounded-full border border-[#E4DCC8]/45 px-2 py-1.5 text-[10px] font-semibold text-[#F7F3EA] transition hover:bg-[#1B2A4A]/60">History</button>
+            {capText ? (
+              <span className="whitespace-nowrap rounded-full bg-[#F3E6C8] px-2 py-1.5 text-[10px] font-semibold text-[#1B2A4A]">
+                {capText}
+              </span>
+            ) : null}
           </div>
         </div>
         {isLoadingThread ? (
-          <p className="mb-2 px-1 text-xs text-muted-foreground">Loading this conversation…</p>
+          <p className="mb-2 px-1 text-xs text-[#F3E6C8]/80">Loading this conversation…</p>
         ) : null}
 
         {/* Thread */}
@@ -771,11 +771,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-2 touch-pan-y"
         >
           {!isLoadingThread && messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-4 text-center">
-              <p className="font-display text-[22px] font-semibold text-foreground">
-                {selected ? `Ask about ${placeholderCourse}` : "Add a course first."}
+            <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
+              <p className="font-display text-[22px] font-semibold text-[#F7F3EA]">
+                {selected ? `Ask about ${placeholderCourse}` : "How can I help you study today?"}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">Ask from this course’s notes. Not the open web.</p>
+              <p className="mt-1 text-sm text-[#F3E6C8]/80">
+                {selected ? "Grounded in your course notes." : "Add a course to get started."}
+              </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {(STARTERS[mode] ?? []).map((q) => (
                   <button
@@ -796,7 +798,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 m.from === "student" ? (
                   <div key={m.id} className="ml-auto w-fit max-w-[85%]">
                     {m.courseTag ? (
-                      <p className="mb-1 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="mb-1 text-right text-[10px] font-medium uppercase tracking-wide text-[#F3E6C8]/80">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
@@ -820,12 +822,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             course: m.retryCourse ?? selected,
                             mode: m.retryMode ?? mode,
                           })}
-                          className="font-semibold text-foreground underline underline-offset-2"
+                          className="font-semibold text-[#F7F3EA] underline underline-offset-2"
                         >Retry</button>
                         <button
                           type="button"
                           onClick={() => void navigator.clipboard.writeText(m.text).then(() => toast.success("Message copied."), () => toast.error("Couldn't copy this message."))}
-                          className="font-semibold text-foreground underline underline-offset-2"
+                          className="font-semibold text-[#F7F3EA] underline underline-offset-2"
                         >Copy</button>
                       </div>
                     ) : null}
@@ -833,12 +835,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 ) : m.from === "assistant" ? (
                   <div key={m.id} className="w-full">
                     {m.courseTag ? (
-                      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#F3E6C8]/80">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="text-base leading-6 text-foreground">
-                      <RichText>{m.text}</RichText>
+                    <div className="text-base leading-6 text-[#F7F3EA] dark:text-[#F7F3EA]">
+                      <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.actions && m.actions.length > 0 ? (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -849,25 +851,24 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             onClick={() => {
                               if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
                             }}
-                            className="rounded-full border border-accent/60 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent/20"
+                            className="rounded-full border border-[#E4DCC8]/45 bg-[#F3E6C8]/10 px-3 py-1.5 text-xs font-semibold text-[#F7F3EA] transition hover:bg-[#F3E6C8]/20"
                           >
                             {a.label} →
                           </button>
                         ))}
                       </div>
                     ) : null}
-                    <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
-                      <button type="button" onClick={() => void navigator.clipboard.writeText(plainText(m.text)).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex items-center gap-1 font-medium text-foreground">
-                        <Copy className="h-3.5 w-3.5" /> Copy
+                    <div className="mt-2 flex w-full items-center gap-1.5 text-[11px]">
+                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] transition hover:bg-[#1B2A4A]/50">
+                        <Copy className="h-3.5 w-3.5" />
                       </button>
                       {speechAvailable ? (
-                        <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} className="inline-flex items-center gap-1 font-medium text-foreground">
-                          {speakingId === m.id ? <><VolumeX className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Read aloud</>}
+                        <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} title={speakingId === m.id ? "Stop reading" : "Read aloud"} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] transition hover:bg-[#1B2A4A]/50">
+                          {speakingId === m.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                         </button>
                       ) : null}
-                      <span className="text-muted-foreground">Token use connects when metering is live.</span>
-                      <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1 font-medium text-foreground">
-                        <Share2 className="h-3.5 w-3.5" /> Share
+                      <button type="button" aria-label="Share reply" title="Share reply" onClick={() => setShareOpen(true)} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] transition hover:bg-[#1B2A4A]/50">
+                        <Share2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
@@ -895,11 +896,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
                   </span>
-                  <span className="thinking-shimmer font-medium text-navy">Thinking</span>
+                  <span className="thinking-shimmer font-medium text-[#F7F3EA]">Thinking</span>
                 </div>
               ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
-                <p className="text-[11px] text-muted-foreground">Read aloud isn't available in this browser.</p>
+                <p className="text-[11px] text-[#F3E6C8]/80">Read aloud isn't available in this browser.</p>
               ) : null}
             </>
           ) : null}
@@ -914,32 +915,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <button type="button" onClick={() => setAttachedPage(null)} className="shrink-0 underline underline-offset-2">Remove</button>
             </div>
           ) : null}
-          <div className="relative mb-2">
-            <button
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={modeMenuOpen}
-              onClick={() => setModeMenuOpen((open) => !open)}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-card-foreground"
-            >
-              {mode} ▾
-            </button>
-            {modeMenuOpen ? (
-              <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
-                {MODES.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setMode(item); setModeMenuOpen(false); }}
-                    className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-popover-foreground hover:bg-secondary"
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
           {photoName ? (
             <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-card-foreground">
               <span className="truncate">
@@ -962,6 +937,33 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-chat-card text-chat-foreground disabled:opacity-60">
               <Plus className="h-5 w-5" />
             </button>
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={modeMenuOpen}
+                onClick={() => setModeMenuOpen((open) => !open)}
+                className="inline-flex h-12 items-center gap-1 rounded-full border border-[#E4DCC8]/45 bg-[#F3E6C8] px-2.5 text-xs font-semibold text-[#1B2A4A]"
+              >
+                {mode}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {modeMenuOpen ? (
+                <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                  {MODES.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setMode(item); setModeMenuOpen(false); }}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-popover-foreground hover:bg-secondary"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <input
               ref={cameraInput}
               type="file"
@@ -1002,7 +1004,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               }}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
-              className="max-h-40 min-h-12 min-w-0 flex-1 resize-none overflow-y-hidden rounded-2xl border border-border bg-chat-card px-4 py-3 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
+              className="max-h-40 min-h-12 min-w-0 flex-1 resize-none overflow-y-hidden rounded-3xl border border-border bg-chat-card px-4 py-3 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
             />
             <button
               type="button"
@@ -1015,7 +1017,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </button>
           </div>
           {chatCapReached ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-[11px] text-[#F3E6C8]/80">
               You've used {messagesUsed} of {messageLimit} replies today.
             </p>
           ) : null}
@@ -1069,7 +1071,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                                   : "inline-block rounded-2xl border border-border bg-chat-card px-3 py-2 text-left text-xs text-chat-foreground"
                               }
                             >
-                              <RichText>{m.content}</RichText>
+                              <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
                             </div>
                           </div>
                         ))}

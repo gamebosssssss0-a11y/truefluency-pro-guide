@@ -103,7 +103,7 @@ export function CourseDetailScreen() {
 
   if (!course) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">Course not found.</p>
@@ -117,7 +117,7 @@ export function CourseDetailScreen() {
   const readyMaterial = items ? pickAnalyzableMaterial(items) : null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
