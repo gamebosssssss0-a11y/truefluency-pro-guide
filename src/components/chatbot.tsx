@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Loader2, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
@@ -131,7 +131,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // re-render and the effect).
   const [reloadNonce, setReloadNonce] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const [isLoadingThread, setIsLoadingThread] = useState(() => Boolean(attachedPage?.courseCode ?? defaultCourse));
   const threadCache = useRef(new Map<string, Message[]>());
   // No auto-scroll existed anywhere in this screen before — messages just
   // appeared below the fold with no way to see them without scrolling
@@ -711,6 +711,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   })();
 
   const placeholderCourse = displayCode(selected);
+  const selectedCourse = profile.courses.find(
+    (course) => canonicalCourseCode(course.code) === canonicalCourseCode(selected),
+  );
 
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
@@ -721,10 +724,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             onClick={() => setCoursePickerOpen(true)}
             disabled={isSending || courseOptions.length === 0}
             aria-haspopup="dialog"
-            aria-label="Choose a course"
+            aria-label={selected ? `Current course ${displayCode(selected)}${selectedCourse?.name ? `: ${selectedCourse.name}` : ""}; change course` : "Choose a course"}
+            title={selectedCourse?.name ? `${displayCode(selected)} · ${selectedCourse.name}` : displayCode(selected)}
             className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
           >
-            <span className="truncate">Course: {selected ? displayCode(selected) : "Choose a course"}</span>
+            <span className="truncate">{selected ? displayCode(selected) : "Choose a course"}</span>
             <ChevronDown className="h-4 w-4 shrink-0 text-[#F3E6C8]" />
           </button>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -760,22 +764,33 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             ) : null}
           </div>
         </div>
-        {isLoadingThread ? (
-          <p className="mb-2 px-1 text-xs text-[#F3E6C8]/80">Loading this conversation…</p>
-        ) : null}
-
         {/* Thread */}
         <div
           data-swipe-lock
           aria-label="Study Chat messages"
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-2 touch-pan-y"
         >
-          {!isLoadingThread && messages.length === 0 ? (
+          {isLoadingThread && messages.length === 0 ? (
+            <div role="status" aria-live="polite" className="flex min-h-full flex-col items-center justify-center px-6 text-center">
+              <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A] shadow-[0_0_24px_rgba(184,110,10,0.24)]">
+                <Loader2 aria-hidden="true" className="h-7 w-7 animate-spin" />
+              </span>
+              <p className="font-display text-base font-semibold text-[#F7F3EA] mix-blend-difference">
+                Getting your study space ready…
+              </p>
+              <p className="mt-1 max-w-xs text-sm text-[#F3E6C8]/90 mix-blend-difference">
+                This can take a little while as we open {placeholderCourse} and load your saved conversation. Please keep this screen open.
+              </p>
+              <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-[#E4DCC8]/40">
+                <div className="h-full w-2/5 animate-pulse rounded-full bg-[#B86E0A]" />
+              </div>
+            </div>
+          ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
-              <p className="font-display text-[22px] font-semibold text-[#F7F3EA]">
+              <p className="font-display text-[22px] font-semibold text-[#F7F3EA] mix-blend-difference">
                 {selected ? `Ask about ${placeholderCourse}` : "How can I help you study today?"}
               </p>
-              <p className="mt-1 text-sm text-[#F3E6C8]/80">
+              <p className="mt-1 text-sm text-[#F3E6C8]/80 mix-blend-difference">
                 {selected ? "Grounded in your course notes." : "Add a course to get started."}
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -798,7 +813,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 m.from === "student" ? (
                   <div key={m.id} className="ml-auto w-fit max-w-[85%]">
                     {m.courseTag ? (
-                      <p className="mb-1 text-right text-[10px] font-medium uppercase tracking-wide text-[#F3E6C8]/80">
+                      <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-[#1B2A4A]">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
@@ -822,12 +837,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             course: m.retryCourse ?? selected,
                             mode: m.retryMode ?? mode,
                           })}
-                          className="font-semibold text-[#F7F3EA] underline underline-offset-2"
+                          className="font-semibold text-[#F7F3EA] mix-blend-difference underline underline-offset-2"
                         >Retry</button>
                         <button
                           type="button"
                           onClick={() => void navigator.clipboard.writeText(m.text).then(() => toast.success("Message copied."), () => toast.error("Couldn't copy this message."))}
-                          className="font-semibold text-[#F7F3EA] underline underline-offset-2"
+                          className="font-semibold text-[#F7F3EA] mix-blend-difference underline underline-offset-2"
                         >Copy</button>
                       </div>
                     ) : null}
@@ -835,11 +850,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 ) : m.from === "assistant" ? (
                   <div key={m.id} className="w-full">
                     {m.courseTag ? (
-                      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#F3E6C8]/80">
+                      <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1B2A4A]">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="text-base leading-6 text-[#F7F3EA] dark:text-[#F7F3EA]">
+                    <div className="text-base leading-6 text-[#F7F3EA] dark:text-[#F7F3EA] mix-blend-difference">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.actions && m.actions.length > 0 ? (
@@ -851,7 +866,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             onClick={() => {
                               if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
                             }}
-                            className="rounded-full border border-[#E4DCC8]/45 bg-[#F3E6C8]/10 px-3 py-1.5 text-xs font-semibold text-[#F7F3EA] transition hover:bg-[#F3E6C8]/20"
+                            className="rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-3 py-1.5 text-xs font-semibold text-[#1B2A4A] transition hover:bg-[#E4DCC8]"
                           >
                             {a.label} →
                           </button>
@@ -859,15 +874,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       </div>
                     ) : null}
                     <div className="mt-2 flex w-full items-center gap-1.5 text-[11px]">
-                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] transition hover:bg-[#1B2A4A]/50">
+                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] mix-blend-difference transition hover:bg-[#1B2A4A]/50">
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                       {speechAvailable ? (
-                        <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} title={speakingId === m.id ? "Stop reading" : "Read aloud"} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] transition hover:bg-[#1B2A4A]/50">
+                        <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} title={speakingId === m.id ? "Stop reading" : "Read aloud"} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] mix-blend-difference transition hover:bg-[#1B2A4A]/50">
                           {speakingId === m.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                         </button>
                       ) : null}
-                      <button type="button" aria-label="Share reply" title="Share reply" onClick={() => setShareOpen(true)} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] transition hover:bg-[#1B2A4A]/50">
+                      <button type="button" aria-label="Share reply" title="Share reply" onClick={() => setShareOpen(true)} className="grid h-8 w-8 place-items-center rounded-full text-[#F7F3EA] mix-blend-difference transition hover:bg-[#1B2A4A]/50">
                         <Share2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -896,11 +911,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
                     <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
                   </span>
-                  <span className="thinking-shimmer font-medium text-[#F7F3EA]">Thinking</span>
+                  <span className="thinking-shimmer font-medium text-[#F7F3EA] mix-blend-difference">Thinking</span>
                 </div>
               ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
-                <p className="text-[11px] text-[#F3E6C8]/80">Read aloud isn't available in this browser.</p>
+                <p className="text-[11px] text-[#F3E6C8]/80 mix-blend-difference">Read aloud isn't available in this browser.</p>
               ) : null}
             </>
           ) : null}
@@ -933,9 +948,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               </button>
             </div>
           ) : null}
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border bg-chat-card text-chat-foreground disabled:opacity-60">
-              <Plus className="h-5 w-5" />
+          <div className="flex min-w-0 items-end gap-1 rounded-[24px] border border-[#B86E0A]/45 bg-card p-1 shadow-[0_0_0_1px_rgba(184,110,10,0.22),0_0_22px_rgba(184,110,10,0.18)]">
+            <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
+              <Plus className="h-3.5 w-3.5" />
             </button>
             <div className="relative shrink-0">
               <button
@@ -943,9 +958,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 aria-haspopup="menu"
                 aria-expanded={modeMenuOpen}
                 onClick={() => setModeMenuOpen((open) => !open)}
-                className="inline-flex h-12 items-center gap-1 rounded-full border border-[#E4DCC8]/45 bg-[#F3E6C8] px-2.5 text-xs font-semibold text-[#1B2A4A]"
+                aria-label={`Reply mode: ${mode}`}
+                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
               >
-                {mode}
+                <span className="sm:hidden">{mode === "Work a problem" ? "Work" : mode}</span>
+                <span className="hidden sm:inline">{mode}</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {modeMenuOpen ? (
@@ -1004,20 +1021,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               }}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
-              className="max-h-40 min-h-12 min-w-0 flex-1 resize-none overflow-y-hidden rounded-3xl border border-border bg-chat-card px-4 py-3 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60 disabled:opacity-60"
+              className="max-h-40 min-h-10 min-w-[96px] flex-1 resize-none overflow-y-hidden rounded-2xl border-0 bg-chat-card px-3 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => send()}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
               <Send className="h-5 w-5" />
             </button>
           </div>
           {chatCapReached ? (
-            <p className="mt-2 text-[11px] text-[#F3E6C8]/80">
+            <p className="mt-2 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
               You've used {messagesUsed} of {messageLimit} replies today.
             </p>
           ) : null}
