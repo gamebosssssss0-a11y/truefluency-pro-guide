@@ -220,7 +220,7 @@ export function TestHistoryScreen() {
   const courseCodes = Array.from(new Set(all.map((a) => a.courseCode)));
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
