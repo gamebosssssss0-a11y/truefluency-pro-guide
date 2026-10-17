@@ -8,7 +8,7 @@ import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  ArrowLeft, BookOpen, ChevronRight, History, Search, Sparkles, Zap, RotateCcw,
+  ArrowLeft, BookOpen, ChevronDown, ChevronRight, History, Search, Sparkles, Zap, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
@@ -474,7 +474,11 @@ export function ProgressPanel({
   ) ?? null;
   const courseCode = course?.code ?? null;
   const [selectedTopic, setSelectedTopic] = useState("all");
-  useEffect(() => setSelectedTopic("all"), [courseCode]);
+  const [expandedProgressTopics, setExpandedProgressTopics] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    setSelectedTopic("all");
+    setExpandedProgressTopics(new Set());
+  }, [courseCode]);
   const courseTopics = useMemo(() => {
     if (!courseCode) return [] as ProgressTopic[];
     const scores = profile.topicScores.filter(
@@ -762,34 +766,75 @@ export function ProgressPanel({
       </section>
 
       <section aria-labelledby="weakest-topics">
-        <h2 id="weakest-topics" className="mb-2 font-display text-lg font-semibold text-foreground">Topics, weakest first</h2>
+        <h2 id="weakest-topics" className="font-display text-lg font-semibold text-foreground">Topics, weakest first</h2>
+        <p className="mb-2 text-xs text-muted-foreground">Open a topic to see your exact score and practice it.</p>
         {courseTopics.length > 0 ? (
           <div className="space-y-2">
-            {visibleTopics.map((entry) => {
+            {visibleTopics.map((entry, index) => {
               const score = entry.score ?? 0;
               const masteredTopic = entry.score !== null && score >= 80;
               const learningTopic = entry.score !== null && score >= 40 && score < 80;
+              const status = masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak";
               const color = masteredTopic ? "#47835E" : learningTopic ? "#B86E0A" : "#9B9A93";
+              const expanded = expandedProgressTopics.has(entry.topic);
+              const panelId = `topic-progress-${index}`;
               return (
-                <div key={entry.topic} className="rounded-xl border border-border bg-card p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 text-sm font-semibold text-foreground">{entry.topic}</span>
-                    <span className="shrink-0 text-xs font-semibold text-foreground">
-                      {entry.score === null ? "Not attempted" : `${entry.score}%`}
+                <article key={entry.topic} className="overflow-hidden rounded-xl border border-border bg-card">
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    aria-label={`${expanded ? "Hide" : "Show"} progress details for ${entry.topic}`}
+                    onClick={() => setExpandedProgressTopics((current) => {
+                      const next = new Set(current);
+                      if (next.has(entry.topic)) next.delete(entry.topic);
+                      else next.add(entry.topic);
+                      return next;
+                    })}
+                    className="flex min-h-12 w-full items-center justify-between gap-3 p-3 text-left transition hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{entry.topic}</span>
+                    <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-secondary-foreground">{status}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent">
+                      {expanded ? "Hide" : "See progress"}
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} aria-hidden="true" />
                     </span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-muted-foreground">
-                      {masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak"}
-                    </span>
-                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => navigate("mock-config", { courseCode: course?.code })}>
-                      Practice
-                    </Button>
-                  </div>
-                </div>
+                  </button>
+                  {expanded ? (
+                    <div id={panelId} className="border-t border-border px-3 pb-3 pt-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-display text-2xl font-semibold text-foreground">
+                            {entry.score === null ? "—" : `${entry.score}%`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {entry.score === null ? "No score recorded yet" : `Your progress · ${status.toLowerCase()}`}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0 px-3 text-xs"
+                          onClick={() => course && navigate("mock-config", { courseCode: course.code })}
+                          disabled={!course}
+                        >
+                          Practice
+                        </Button>
+                      </div>
+                      <div
+                        className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+                        role="progressbar"
+                        aria-label={`${entry.topic} progress`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={score}
+                        aria-valuetext={entry.score === null ? "Not attempted" : `${entry.score}%`}
+                      >
+                        <div className="h-full rounded-full transition-[width]" style={{ width: `${score}%`, backgroundColor: color }} />
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
               );
             })}
           </div>
