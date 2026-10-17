@@ -1048,7 +1048,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="text-base leading-6 text-[#E4C46A]" style={{ textShadow: "0 1px 2px rgba(27,42,74,0.95), 0 0 1px rgba(27,42,74,0.8)" }}>
+                    <div className="text-base leading-6">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.actions && m.actions.length > 0 ? (
@@ -1067,16 +1067,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         ))}
                       </div>
                     ) : null}
-                    <div className="mt-2 flex w-full items-center gap-3 text-[11px]">
-                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8]">
+                    <div className="chat-assistant-actions mt-2 flex w-full items-center gap-3 text-xs font-semibold">
+                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition hover:opacity-80">
                         <Copy className="h-3.5 w-3.5" />
                         <span>Copy</span>
                       </button>
-                      <button type="button" onClick={() => toggleSpeak(m)} disabled={!speechAvailable} aria-label={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} title={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8] disabled:cursor-not-allowed disabled:opacity-60">
+                      <button type="button" onClick={() => toggleSpeak(m)} disabled={!speechAvailable} aria-label={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} title={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60">
                         {speakingId === m.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                         <span>{speakingId === m.id ? "Stop" : "Listen"}</span>
                       </button>
-                      <button type="button" aria-label="Share conversation" title="Share conversation" disabled={isSending} onClick={() => void handleOpenShare()} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8] disabled:cursor-not-allowed disabled:opacity-60">
+                      <button type="button" aria-label="Share conversation" title="Share conversation" disabled={isSending} onClick={() => void handleOpenShare()} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60">
                         <Share2 className="h-3.5 w-3.5" />
                         <span>Share</span>
                       </button>
