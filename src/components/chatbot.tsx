@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { BookOpen, CalendarDays, Camera, Check, ChevronDown, CircleHelp, FileText, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
+import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";

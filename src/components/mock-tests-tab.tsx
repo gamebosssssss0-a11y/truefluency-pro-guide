@@ -785,7 +785,7 @@ export function ProgressPanel({
                     <span className="text-[10px] text-muted-foreground">
                       {masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak"}
                     </span>
-                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => navigate("mock-config", { courseCode: course.code })}>
+                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => navigate("mock-config", { courseCode: course?.code })}>
                       Practice
                     </Button>
                   </div>
