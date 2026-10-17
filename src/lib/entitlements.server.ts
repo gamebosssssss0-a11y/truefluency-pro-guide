@@ -87,7 +87,7 @@ function noteGateHit(userId: string, gate: GateName) {
     .catch(() => undefined);
 }
 
-function gateForRefusal(feature: GatedFeature, reason: string): GateName | null {
+function gateForRefusal(feature: GatedFeature, reason: NonNullable<QuotaVerdict["reason"]>): GateName | null {
   if (reason === "question_cap" && feature === "mock_sets") return "mock_questions";
   if (reason === "locked" && feature === "library_uploads") return "library_uploads";
   if (reason === "daily_limit" && feature === "mock_sets") return "mock_sets";
@@ -96,8 +96,8 @@ function gateForRefusal(feature: GatedFeature, reason: string): GateName | null 
   return null;
 }
 
-function recordRefusal(userId: unknown, feature: GatedFeature, reason: string) {
-  if (typeof userId !== "string" || userId.trim().length === 0) return;
+function recordRefusal(userId: unknown, feature: GatedFeature, reason: QuotaVerdict["reason"]) {
+  if (typeof userId !== "string" || userId.trim().length === 0 || !reason) return;
   const gate = gateForRefusal(feature, reason);
   if (gate) noteGateHit(userId.trim(), gate);
 }
