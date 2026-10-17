@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { MathText } from "@/components/math-text";
+import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  ArrowLeft, BookOpen, ChevronRight, History, Search, Sparkles, Zap, TrendingUp, TrendingDown,
-  Minus, AlertTriangle, RotateCcw, Trophy,
+  ArrowLeft, BookOpen, ChevronRight, History, Search, Sparkles, Zap, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
@@ -236,7 +236,7 @@ function AttemptRow({ attempt }: { attempt: MockAttempt }) {
 type HistoryTab = "attempts" | "progress";
 
 export function TestHistoryScreen() {
-  const { profile, navigate, update } = useProfile();
+  const { profile, navigate, update, activeCourseCode } = useProfile();
   const [tab, setTab] = useState<HistoryTab>("attempts");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
@@ -282,7 +282,7 @@ export function TestHistoryScreen() {
           ))}
         </div>
 
-        {all.length === 0 ? (
+        {all.length === 0 && tab === "attempts" ? (
           <div className="mt-5 rounded-2xl border border-dashed border-border bg-card/60 p-6 text-center text-xs text-muted-foreground">
             You haven't completed a mock test yet.
           </div>
@@ -409,7 +409,7 @@ export function TestHistoryScreen() {
             </div>
           </>
         ) : (
-          <ProgressPanel attempts={all} />
+          <ProgressPanel profile={profile} activeCourseCode={activeCourseCode} navigate={navigate} update={update} />
         )}
       </div>
     </div>
@@ -435,125 +435,297 @@ function FilterChip({
   );
 }
 
-/* ---------- Progress over time ---------- */
+/* ---------- Course progress ---------- */
 
-export function ProgressPanel({ attempts }: { attempts: MockAttempt[] }) {
-  const chronological = useMemo(
-    () => [...attempts].sort((a, b) => a.submittedAt - b.submittedAt),
-    [attempts],
+type ProgressTopic = { topic: string; score: number | null };
+
+export function ProgressPanel({
+  profile,
+  activeCourseCode,
+  navigate,
+  update,
+}: {
+  profile: ReturnType<typeof useProfile>["profile"];
+  activeCourseCode: string | null;
+  navigate: ReturnType<typeof useProfile>["navigate"];
+  update: ReturnType<typeof useProfile>["update"];
+}) {
+  const course = profile.courses.find((entry) =>
+    canonicalCourseCode(entry.code) === canonicalCourseCode(activeCourseCode ?? ""),
+  ) ?? profile.courses[0] ?? null;
+  const courseCode = course?.code ?? null;
+  const courseTopics = useMemo(() => {
+    if (!courseCode) return [] as ProgressTopic[];
+    const scores = profile.topicScores.filter(
+      (entry) => canonicalCourseCode(entry.course) === canonicalCourseCode(courseCode),
+    );
+    const scoreByTopic = new Map(scores.map((entry) => [entry.topic.toLocaleLowerCase(), entry.score]));
+    const analyzedTopics = profile.courseTopicAnalysis[courseCode]?.topics.map((entry) => entry.topic) ?? [];
+    const names = new Set([...analyzedTopics, ...scores.map((entry) => entry.topic)]);
+    return [...names]
+      .map((topic) => ({
+        topic,
+        score: scoreByTopic.get(topic.toLocaleLowerCase()) ?? null,
+      }))
+      .sort((left, right) => (left.score ?? -1) - (right.score ?? -1));
+  }, [courseCode, profile.topicScores, profile.courseTopicAnalysis]);
+
+  const courseAttempts = useMemo(
+    () => courseCode
+      ? profile.attempts
+          .filter((attempt) => canonicalCourseCode(attempt.courseCode) === canonicalCourseCode(courseCode))
+          .sort((left, right) => left.submittedAt - right.submittedAt)
+      : [],
+    [courseCode, profile.attempts],
   );
+  const lowestTopic = courseTopics.find((entry) => entry.score !== null) ?? null;
+  const scoredTopics = courseTopics.filter(
+    (entry): entry is ProgressTopic & { score: number } => entry.score !== null,
+  );
+  const average = scoredTopics.length
+    ? Math.round(scoredTopics.reduce((sum, entry) => sum + entry.score, 0) / scoredTopics.length)
+    : null;
+  const mastered = courseTopics.filter((entry) => (entry.score ?? 0) >= 80).length;
+  const learning = courseTopics.filter((entry) => entry.score !== null && entry.score >= 40 && entry.score < 80).length;
+  const weak = courseTopics.length - mastered - learning;
+  const pct = (count: number) => courseTopics.length ? (count / courseTopics.length) * 100 : 0;
+  const donutBackground = `conic-gradient(#47835E 0 ${pct(mastered)}%, #B86E0A ${pct(mastered)}% ${pct(mastered + learning)}%, #C8C5BD ${pct(mastered + learning)}% 100%)`;
 
-  const trend = useMemo(() => {
-    if (chronological.length < 2) return null;
-    const half = Math.floor(chronological.length / 2);
-    const avg = (xs: MockAttempt[]) => xs.reduce((s, a) => s + a.score, 0) / xs.length;
-    const before = avg(chronological.slice(0, half));
-    const after = avg(chronological.slice(half));
-    return Math.round(after - before);
-  }, [chronological]);
-
-  /** Topics scored under 60% in at least two separate attempts. */
-  const struggles = useMemo(() => {
-    const map = new Map<string, { low: number; total: number; last: number }>();
-    const lastByTopicVariant = new Map<string, Map<string, number>>();
-    chronological.forEach((a) => {
-      a.topics.forEach((t) => {
-        const normalizedTopic = t.topic.toLowerCase();
-        const key = `${a.courseCode}||${normalizedTopic}`;
-        const cur = map.get(key) ?? { low: 0, total: 0, last: t.score };
-        cur.total += 1;
-        if (t.score < 60) cur.low += 1;
-        const variantScores = lastByTopicVariant.get(key) ?? new Map<string, number>();
-        variantScores.set(t.topic, t.score);
-        lastByTopicVariant.set(key, variantScores);
-        cur.last = Math.min(...variantScores.values());
-        map.set(key, cur);
+  const recentMisses = useMemo(() => {
+    const found: Array<{
+      id: string;
+      number: number;
+      topic: string;
+      question: string;
+      chosen: string;
+      correct: string;
+      explanation: string;
+    }> = [];
+    for (const attempt of [...courseAttempts].reverse()) {
+      if (!Array.isArray(attempt.questions) || !Array.isArray(attempt.answers)) continue;
+      attempt.questions.forEach((question, index) => {
+        const chosenIndex = attempt.answers?.[index] ?? null;
+        const correct = question.options?.[question.correct_index];
+        if (chosenIndex === question.correct_index || typeof correct !== "string" || typeof question.explanation !== "string") return;
+        const chosen = chosenIndex === null ? "Not answered" : question.options?.[chosenIndex];
+        if (typeof chosen !== "string" && chosenIndex !== null) return;
+        found.push({
+          id: attempt.id,
+          number: index + 1,
+          topic: question.topic,
+          question: question.question,
+          chosen: chosen ?? "Not answered",
+          correct,
+          explanation: question.explanation,
+        });
       });
-    });
-    return Array.from(map.entries())
-      .filter(([, v]) => v.low >= 2)
-      .map(([key, v]) => {
-        const [course, topic] = key.split("||");
-        return { course, topic, ...v };
-      })
-      .sort((a, b) => b.low - a.low);
-  }, [chronological]);
+      if (found.length >= 3) break;
+    }
+    return found.slice(0, 3);
+  }, [courseAttempts]);
 
-  const best = Math.max(...chronological.map((a) => a.score));
+  const trendPoints = courseAttempts.slice(-5);
+  const chartPoints = trendPoints.map((attempt, index) => {
+    const x = trendPoints.length === 1 ? 110 : 18 + (index * 184) / (trendPoints.length - 1);
+    const y = 100 - Math.max(0, Math.min(100, attempt.score));
+    return { x, y, attempt };
+  });
+  const polyline = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const latest = courseAttempts[courseAttempts.length - 1] ?? null;
+  const earlier = courseAttempts.length > 1 ? courseAttempts[courseAttempts.length - 2] : null;
+  const scoreChange = latest && earlier ? latest.score - earlier.score : null;
+
+  const startShortMock = () => {
+    if (!course) {
+      navigate("mock-tests");
+      return;
+    }
+    if (lowestTopic) {
+      const previous = profile.courseTestSettings[course.code];
+      update({
+        courseTestSettings: {
+          ...profile.courseTestSettings,
+          [course.code]: {
+            questionCount: FREE_MAX_QUESTIONS,
+            minutes: previous?.minutes ?? 40,
+            difficulty: previous?.difficulty ?? "balanced",
+            topicFocus: [lowestTopic.topic],
+          },
+        },
+      });
+      navigate("mock-gen", { courseCode: course.code });
+      return;
+    }
+    navigate("mock-config", { courseCode: course.code });
+  };
 
   return (
-    <div className="mt-4">
-      <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
-        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-primary-foreground/70">
-          <Trophy className="h-3.5 w-3.5" /> Across {chronological.length} attempt
-          {chronological.length === 1 ? "" : "s"}
-        </div>
-        <div className="mt-2 flex items-end gap-4">
-          <div>
-            <div className="font-display text-3xl font-semibold leading-none">{best}%</div>
-            <div className="mt-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">
-              best score
-            </div>
-          </div>
-          {trend !== null ? (
-            <div>
-              <div className="flex items-center gap-1 font-display text-3xl font-semibold leading-none">
-                {trend > 0 ? <TrendingUp className="h-5 w-5" /> : trend < 0 ? <TrendingDown className="h-5 w-5" /> : <Minus className="h-5 w-5" />}
-                {trend > 0 ? "+" : ""}{trend}
+    <div className="mt-4 space-y-5">
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">Course progress</p>
+        {course ? (
+          <>
+            <div className="mt-1 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="font-display text-2xl font-semibold text-foreground">{course.name}</h2>
+                <p className="mt-1 text-xs text-muted-foreground">{canonicalCourseCode(course.code)}</p>
               </div>
-              <div className="mt-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">
-                points, recent vs earlier
-              </div>
+              <span className="rounded-xl border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground">
+                Practice
+              </span>
             </div>
-          ) : null}
-        </div>
-      </div>
+            <div className="mt-4 rounded-xl border border-border bg-background p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">Do this next</p>
+              {lowestTopic ? (
+                <p className="mt-1 font-display text-base font-semibold text-foreground">
+                  Next: <span className="text-accent">{lowestTopic.topic}</span> · {lowestTopic.score}%
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">Not enough attempts yet</p>
+              )}
+              <Button className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={startShortMock}>
+                Start a short mock
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="mt-1 font-display text-2xl font-semibold text-foreground">Pick a course</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Not enough attempts yet</p>
+            <Button className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => navigate("mock-tests")}>
+              Choose a course
+            </Button>
+          </>
+        )}
+      </section>
 
-      <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Score over time
-      </h2>
-      <div className="space-y-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
-        {chronological.map((a) => (
-          <div key={a.id} className="flex items-center gap-3">
-            <span className="w-14 shrink-0 text-[10px] text-muted-foreground">
-              {new Date(a.submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-            </span>
-            <Progress value={a.score} className="h-3 flex-1" />
-            <span className="w-14 shrink-0 text-right text-[11px] font-semibold text-foreground">
-              {a.score}% <span className="font-normal text-muted-foreground">{a.courseCode}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Topics you keep struggling with
-      </h2>
-      {struggles.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">
-          Nothing has dropped below 60% twice yet. Sit a few more tests and repeat weak spots will
-          show up here.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {struggles.map((s) => (
-            <div
-              key={`${s.course}-${s.topic}`}
-              className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3.5"
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground">{s.topic}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {s.course} · below 60% in {s.low} of {s.total} attempts · last {s.last}%
+      <section aria-labelledby="course-standing">
+        <h2 id="course-standing" className="mb-2 font-display text-lg font-semibold text-foreground">Course standing</h2>
+        {courseTopics.length > 0 ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-3">
+            <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-border bg-card p-3">
+              <div
+                role="img"
+                aria-label={`Topic composition: ${mastered} mastered, ${learning} learning, ${weak} weak or unattempted`}
+                className="grid h-24 w-24 place-items-center rounded-full"
+                style={{ background: donutBackground }}
+              >
+                <div className="grid h-[68px] w-[68px] place-items-center rounded-full bg-card text-center">
+                  {average === null ? (
+                    <span className="px-1 text-[10px] leading-tight text-muted-foreground">Not counted yet</span>
+                  ) : (
+                    <span>
+                      <strong className="block font-display text-xl text-foreground">{average}%</strong>
+                      <small className="text-[9px] uppercase tracking-wider text-muted-foreground">overall</small>
+                    </span>
+                  )}
                 </div>
               </div>
+              <div className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
+                <span>Mastered · {Math.round(pct(mastered))}%</span>
+                <span>Learning · {Math.round(pct(learning))}%</span>
+                <span>Weak / unattempted · {Math.round(pct(weak))}%</span>
+              </div>
+              <p className="mt-1 text-center text-[9px] text-muted-foreground">Topic composition · {courseTopics.length} topics</p>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="rounded-2xl border border-border bg-card p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="font-display text-sm font-semibold text-foreground">Mock score trend</h3>
+                <span className="text-[9px] text-muted-foreground">last 5</span>
+              </div>
+              {chartPoints.length > 0 ? (
+                <>
+                  {latest ? <p className="mt-1 font-display text-lg font-semibold text-foreground">{latest.score}% <span className="text-[9px] font-normal text-muted-foreground">{scoreChange === null ? "latest score" : scoreChange > 0 ? `↑ ${scoreChange} points` : scoreChange < 0 ? `↓ ${Math.abs(scoreChange)} points` : "steady"}</span></p> : null}
+                  <svg viewBox="0 0 220 110" className="mt-2 h-24 w-full" role="img" aria-label={`Mock scores ${chartPoints.map((point) => point.attempt.score).join(", ")} percent`}>
+                    <line x1="18" y1="20" x2="202" y2="20" stroke="#A7A196" strokeDasharray="3 4" />
+                    <text x="184" y="16" fill="#817B6F" fontSize="8">80%</text>
+                    <polyline points={polyline} fill="none" stroke="#B86E0A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    {chartPoints.map((point, index) => (
+                      <circle key={point.attempt.id} cx={point.x} cy={point.y} r="3" fill="#FBF7EE" stroke="#B86E0A" strokeWidth="2">
+                        <title>Set {index + 1}: {point.attempt.score}%</title>
+                      </circle>
+                    ))}
+                  </svg>
+                  <div className="flex justify-between text-[8px] text-muted-foreground">
+                    {chartPoints.map((point, index) => <span key={point.attempt.id}>Set {index + 1}</span>)}
+                  </div>
+                </>
+              ) : <p className="mt-4 text-xs text-muted-foreground">Not enough attempts yet</p>}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-sm text-muted-foreground">
+            Not enough attempts yet
+          </div>
+        )}
+      </section>
 
-      <AiGeneratedLabel className="mt-5" />
+      <section aria-labelledby="weakest-topics">
+        <h2 id="weakest-topics" className="mb-2 font-display text-lg font-semibold text-foreground">Topics, weakest first</h2>
+        {courseTopics.length > 0 ? (
+          <div className="space-y-2">
+            {courseTopics.map((entry) => {
+              const score = entry.score ?? 0;
+              const masteredTopic = entry.score !== null && score >= 80;
+              const learningTopic = entry.score !== null && score >= 40 && score < 80;
+              const color = masteredTopic ? "#47835E" : learningTopic ? "#B86E0A" : "#9B9A93";
+              return (
+                <div key={entry.topic} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 text-sm font-semibold text-foreground">{entry.topic}</span>
+                    <span className="shrink-0 text-xs font-semibold text-foreground">
+                      {entry.score === null ? "Not attempted" : `${entry.score}%`}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
+                  </div>
+                  <div className="mt-2 text-[10px] text-muted-foreground">
+                    {masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-sm text-muted-foreground">
+            Not enough attempts yet
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="recent-misses">
+        <h2 id="recent-misses" className="mb-2 font-display text-lg font-semibold text-foreground">Recent misses</h2>
+        {recentMisses.length > 0 ? (
+          <div className="space-y-2">
+            {recentMisses.map((miss) => (
+              <article key={`${miss.id}-${miss.number}`} className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{miss.topic}</p>
+                <h3 className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
+                  <span className="mr-1 text-muted-foreground">Q{miss.number}.</span><MathText>{miss.question}</MathText>
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-destructive"><span className="font-semibold">Your pick:</span> <MathText>{miss.chosen}</MathText></p>
+                <p className="mt-1 text-xs leading-relaxed text-success"><span className="font-semibold">Correct:</span> <MathText>{miss.correct}</MathText></p>
+                <p className="mt-2 border-t border-dashed border-border pt-2 text-xs leading-relaxed text-muted-foreground">
+                  <span className="font-semibold text-foreground">Why:</span> <MathText>{miss.explanation}</MathText>
+                </p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-sm text-muted-foreground">
+            Not counted yet
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="flashcard-memory" className="rounded-2xl border border-border bg-card p-4">
+        <h2 id="flashcard-memory" className="font-display text-lg font-semibold text-foreground">Flashcard memory</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Not counted yet</p>
+        <Button variant="outline" className="mt-3 w-full" onClick={() => navigate("flashcards-review")}>
+          Review due cards
+        </Button>
+      </section>
     </div>
   );
 }
