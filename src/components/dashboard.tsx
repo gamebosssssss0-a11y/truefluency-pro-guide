@@ -142,6 +142,9 @@ function ContinueFileCard() {
 
   if (!latest) return null;
   const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
+  const processing = latest.extraction_status === "pending";
+  const processingFailed =
+    latest.extraction_status === "failed" || latest.extraction_status === "timeout";
 
   return (
     <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
@@ -157,6 +160,17 @@ function ContinueFileCard() {
           <div className="break-words text-[11px] text-muted-foreground">
             {canonicalCourseCode(latest.course_code)} · {latest.file_name}
           </div>
+          {processing ? (
+            <div role="status" className="mt-0.5 text-[11px] font-medium text-accent-foreground">
+              Reading your upload…
+            </div>
+          ) : processingFailed ? (
+            <div className="mt-0.5 text-[11px] text-destructive">
+              We couldn’t read it yet. Open it to retry.
+            </div>
+          ) : latest.extraction_status === "success" ? (
+            <div className="mt-0.5 text-[11px] text-muted-foreground">Text ready to analyze.</div>
+          ) : null}
         </div>
       </div>
       <Button

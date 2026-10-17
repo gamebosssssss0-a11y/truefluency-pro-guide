@@ -540,6 +540,8 @@ function writeAppLocation(
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile>(emptyProfile);
   const [step, setStep] = useState<OnboardingStep | "dashboard">("splash");
+  const stepRef = useRef(step);
+  stepRef.current = step;
   const [view, setView] = useState<AppView>("home");
   const [activeCourseCode, setActiveCourseCode] = useState<string | null>(null);
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
@@ -729,12 +731,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (event !== "SIGNED_IN" && event !== "INITIAL_SESSION" && event !== "USER_UPDATED") return;
 
       const userId = session.user.id;
-      holdAuthPending();
       const currentProfileMatchesSession = session.user.email
         ? profileRef.current.identity?.kind === "email" &&
           profileRef.current.identity.email?.trim().toLowerCase() === session.user.email.trim().toLowerCase()
         : profileRef.current.identity?.kind === "guest";
       const accountChanged = activeUserIdRef.current !== userId;
+      const adoptUnboundGuest =
+        accountChanged &&
+        !session.user.email &&
+        profileRef.current.identity?.kind === "guest" &&
+        storageOwnerIdRef.current === null;
+      // A same-identity auth event can arrive while the student is working
+      // (including when a guest's anonymous session is first established).
+      // Sync it in the background; don't replace the active screen with
+      // "Signing you in…" or route an in-progress upload back to Home.
+      const keepCurrentDashboard =
+        event !== "INITIAL_SESSION" &&
+        currentProfileMatchesSession &&
+        stepRef.current === "dashboard";
+      if (!keepCurrentDashboard) holdAuthPending();
       if (accountChanged || !currentProfileMatchesSession) {
         cloudReady.current = false;
         syncPromise = null;
@@ -745,7 +760,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         const cachedIdentityMatches = session.user.email
           ? cached?.identity?.email?.trim().toLowerCase() === session.user.email.trim().toLowerCase()
           : cached?.identity?.kind === "guest";
-        const base = cachedIdentityMatches && cached ? cached : emptyProfile;
+        // A first anonymous session belongs to the guest profile already in
+        // memory. Adopt that unbound profile, but never carry data across a
+        // previously-owned account boundary.
+        const base = adoptUnboundGuest
+          ? profileRef.current
+          : cachedIdentityMatches && cached
+            ? cached
+            : emptyProfile;
         const identity: Profile["identity"] = {
           kind: session.user.email ? "email" : "guest",
           name:
@@ -761,11 +783,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setProfile(ownedProfile);
       } else if (event === "SIGNED_IN") {
         // A returning user may reauthenticate into the same account after a
-        // session expiry; reload its cloud state before leaving sign-in.
+        // session expiry; reload its cloud state before resuming.
         cloudReady.current = false;
         syncPromise = null;
       } else if (cloudReady.current) {
-        releaseAuthPending();
+        if (!keepCurrentDashboard) releaseAuthPending();
         return;
       }
 
@@ -782,6 +804,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
         const routeAfterSignIn = (syncedProfile: Profile) => {
           if (cancelled || activeUserIdRef.current !== userId) return;
+          if (keepCurrentDashboard) return;
           try {
             const returnTo = sessionStorage.getItem("returnTo");
             if (returnTo && returnTo.startsWith("/s/")) {
@@ -812,7 +835,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           go(readOnboardingStep(userId, session.user.email ?? undefined) ?? "goal");
         };
 
-        releaseAuthPending();
+        if (!keepCurrentDashboard) releaseAuthPending();
         routeAfterSignIn(syncResult ?? profileRef.current);
         if (didTimeOut) {
           void syncPromiseForAccount.then((lateProfile) => {
@@ -821,7 +844,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         }
       })().catch((err) => {
         console.error("[profile-store] account restore failed; continuing with owned cache", err);
-        releaseAuthPending();
+        if (!keepCurrentDashboard) releaseAuthPending();
       });
     });
 
@@ -851,6 +874,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setProfile(next);
   };
   const go = (s: OnboardingStep | "dashboard") => {
+    stepRef.current = s;
     setStep(s);
     const ownerId = storageOwnerIdRef.current;
     const email = profileRef.current.identity?.kind === "email" ? profileRef.current.identity.email : undefined;

@@ -341,7 +341,54 @@ export async function uploadCourseMaterial(opts: {
     // can see their text is being read rather than wondering if it stalled.
     emit({ kind: "extracting" });
     void (async () => {
-      onProcessed?.(await readUploadedText(uploadedRow, fileType, file, emit));
+      let processed: CourseMaterial | null;
+      try {
+        processed = await readUploadedText(uploadedRow, fileType, file, emit);
+      } catch (error) {
+        console.error("[upload] background text processing failed", error);
+        const reason = "We couldn't read text from that file. Tap retry in a moment.";
+        let failedRow: CourseMaterial = {
+          ...uploadedRow,
+          extraction_status: "failed",
+          extraction_error: reason,
+        };
+        try {
+          const { error: updateError } = await supabase
+            .from("course_materials")
+            .update({ extraction_status: "failed", extraction_error: reason })
+            .eq("id", uploadedRow.id)
+            .neq("extraction_status", "success");
+          if (updateError) throw updateError;
+        } catch (persistError) {
+          console.error("[upload] couldn't persist background processing failure", persistError);
+        }
+        try {
+          const { data, error: fetchError } = await supabase
+            .from("course_materials")
+            .select("*")
+            .eq("id", uploadedRow.id)
+            .maybeSingle();
+          if (fetchError) throw fetchError;
+          if (data) failedRow = data as CourseMaterial;
+        } catch (fetchError) {
+          console.error("[upload] couldn't refresh failed upload row", fetchError);
+        }
+        emit({ kind: "error", message: reason });
+        processed = failedRow;
+      }
+
+      try {
+        onProcessed?.(processed);
+      } catch (callbackError) {
+        console.error("[upload] processing completion handler failed", callbackError);
+      }
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("course-materials-refresh"));
+        }
+      } catch (refreshError) {
+        console.error("[upload] processing refresh event failed", refreshError);
+      }
     })();
     return uploadedRow;
   }

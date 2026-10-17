@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
+import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -502,6 +503,7 @@ const HIDDEN_INPUT_CLASS =
   "absolute h-px w-px overflow-hidden opacity-0 -z-10 left-0 top-0 pointer-events-none";
 
 function UploadButton({ courseCode }: { courseCode: string }) {
+  const { navigate, profile } = useProfile();
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = `upload-${courseCode.replace(/[^a-zA-Z0-9-]/g, "")}`;
   const [stage, setStage] = useState<UploadStage | null>(null);
@@ -539,6 +541,14 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       }
     };
     try {
+      const session = await ensureSupabaseSession(profile);
+      if (!session.ok) {
+        throw new Error(
+          session.reason === "sign-in-required"
+            ? "Your session expired. Sign in again, then retry the upload."
+            : "We couldn't prepare your upload session. Check your connection and try again.",
+        );
+      }
       const result = await uploadCourseMaterial({
         file,
         courseCode,
@@ -562,7 +572,6 @@ function UploadButton({ courseCode }: { courseCode: string }) {
               description: "Scanned pages take a little longer. It will show as ready in your list when done.",
             });
           }
-          refreshList();
         },
       });
       console.info("[upload] runUpload success", { id: result.id, status: result.extraction_status });
@@ -573,6 +582,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         toast.success(`Added to ${courseCode}`);
       }
       refreshList();
+      navigate("home", { courseCode: null, replace: true });
     } catch (err) {
       console.error("[upload] runUpload caught error", err);
       setLastError({ file });
@@ -591,11 +601,21 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     clearWatchdog();
     setNoResponse(false);
+    let file: File | undefined;
     try {
-      const file = e.target.files?.[0];
+      file = e.target.files?.[0];
       e.target.value = "";
       if (!file) return;
       console.info("[upload] file selected", { name: file.name, size: file.size, type: file.type });
+
+      const session = await ensureSupabaseSession(profile);
+      if (!session.ok) {
+        throw new Error(
+          session.reason === "sign-in-required"
+            ? "Your session expired. Sign in again, then retry the upload."
+            : "We couldn't prepare your upload session. Check your connection and try again.",
+        );
+      }
 
       // Duplicate check (same user + course + filename).
       try {
@@ -612,7 +632,10 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       void runUpload(file);
     } catch (outer) {
       console.error("[upload] onFile outer catch", outer);
-      try { toast.error("Couldn't start the upload. Please try again."); } catch { /* ignore */ }
+      if (file) setLastError({ file });
+      try {
+        toast.error((outer as Error)?.message || "Couldn't start the upload. Please try again.");
+      } catch { /* ignore */ }
     }
   };
 
@@ -704,6 +727,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
 /* -------- Paste text as an upload alternative -------- */
 
 function PasteTextButton({ courseCode }: { courseCode: string }) {
+  const { navigate } = useProfile();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [stage, setStage] = useState<UploadStage | null>(null);
@@ -724,6 +748,7 @@ function PasteTextButton({ courseCode }: { courseCode: string }) {
       setText("");
       setOpen(false);
       try { window.dispatchEvent(new Event("course-materials-refresh")); } catch { /* ignore */ }
+      navigate("home", { courseCode: null, replace: true });
     } catch (e) {
       console.error("[paste] submit failed", e);
       setError((e as Error)?.message || "Couldn't save your text. Please try again.");

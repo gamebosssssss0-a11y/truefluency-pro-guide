@@ -34,6 +34,8 @@ export type SessionOutcome =
   | { ok: true; kind: "existing" | "anonymous" }
   | { ok: false; reason: string };
 
+let anonymousSessionInFlight: Promise<SessionOutcome> | null = null;
+
 export async function ensureSupabaseSession(profile: Profile): Promise<SessionOutcome> {
   const { data } = await supabase.auth.getSession();
   if (data.session) return { ok: true, kind: "existing" };
@@ -42,12 +44,22 @@ export async function ensureSupabaseSession(profile: Profile): Promise<SessionOu
   if (!id) return { ok: false, reason: "no-identity" };
 
   if (id.kind === "guest") {
-    const { error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      console.error("[auth] guest session failed", error);
-      return { ok: false, reason: error.message };
+    if (!anonymousSessionInFlight) {
+      anonymousSessionInFlight = (async () => {
+        const { error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          console.error("[auth] guest session failed", error);
+          return { ok: false, reason: error.message };
+        }
+        return { ok: true, kind: "anonymous" };
+      })();
     }
-    return { ok: true, kind: "anonymous" };
+    const pending = anonymousSessionInFlight;
+    try {
+      return await pending;
+    } finally {
+      if (anonymousSessionInFlight === pending) anonymousSessionInFlight = null;
+    }
   }
 
   if (id.kind === "email" && id.email) {
