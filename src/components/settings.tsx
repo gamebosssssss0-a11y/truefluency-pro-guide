@@ -125,7 +125,13 @@ export function AccountScreen() {
   const { theme, setTheme } = useTheme();
   const { access } = useEntitlement();
   const planLabel =
-    access?.tier === "paid" ? "Premium" : access?.tier === "trial" ? "Free trial" : "Free";
+    access?.tier === "exam"
+      ? "Exam"
+      : access?.tier === "core"
+        ? "Core"
+        : access?.tier === "trial"
+          ? "Core trial"
+          : "Free";
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
