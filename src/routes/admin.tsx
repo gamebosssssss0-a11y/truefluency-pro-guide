@@ -17,7 +17,7 @@ type Stats = {
   pipeline_failed: FailedRow[];
 };
 type Settings = { maintenance_mode: boolean; maintenance_message: string | null };
-const GATES = ["mock_questions", "mock_sets", "flashcard_decks", "chat_messages", "upgrade_cta"] as const;
+const GATES = ["mock_questions", "mock_sets", "flashcard_decks", "chat_messages", "upgrade_cta", "library_uploads"] as const;
 
 function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -134,10 +134,10 @@ function AdminPage() {
 
         <section className="rounded-2xl border border-border bg-card p-4">
           <h2 className="font-display text-xl font-semibold">Paywall hits · last 7 days</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {GATES.map((gate) => <div key={gate} className="rounded-xl bg-background p-3"><p className="text-[10px] leading-tight text-muted-foreground">{gate.replaceAll("_", " ")}</p><p className="mt-1 text-xl font-semibold">{gateCounts[gate] ?? 0}</p></div>)}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Uploads: Not counted — no matching gate value exists.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Upload lock counts begin with this tracking update. Upload-to-practice conversion is Not counted.</p>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-4">
