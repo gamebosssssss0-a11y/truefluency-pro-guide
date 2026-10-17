@@ -28,7 +28,7 @@ function tidyPdfText(raw: string): string {
  */
 export async function extractPdfPageTexts(
   file: Blob,
-  onProgress?: (done: number, total: number) => void,
+  onProgress?: (done: number, total: number, actualTotal: number) => void,
 ): Promise<string[]> {
   // Uses pdfjs-dist (already bundled for the in-app viewer) rather than unpdf,
   // which is a server-side module and breaks the client build.
@@ -61,7 +61,7 @@ export async function extractPdfPageTexts(
         pages.push("");
         console.warn("[extraction] browser skipped page", { page: pageNumber, error });
       }
-      onProgress?.(pageNumber, limit);
+      onProgress?.(pageNumber, limit, pageCount);
     }
   } finally {
     await pdf.cleanup().catch(() => undefined);
