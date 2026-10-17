@@ -42,6 +42,37 @@ grant all on table public.chat_conversations, public.chat_flagged_uploads,
   public.course_context, public.generated_question_log, public.material_chunks,
   public.mock_attempt_results, public.mock_jobs to service_role;
 
+-- Client uploads need insert access only to their own file metadata.
+-- Extraction fields are client-updated; identity, storage path, publish state,
+-- and peer-copy attribution remain server-controlled after insert.
+revoke insert, update on table public.course_materials from public, anon, authenticated;
+grant insert (user_id, course_code, file_path, file_name, file_type, mime_type, size_bytes)
+  on table public.course_materials to authenticated;
+grant update (extracted_content, extraction_status, extraction_error)
+  on table public.course_materials to authenticated;
+
+-- Profile sync and avatar editing do not need permission to forge streak state.
+revoke insert, update on table public.profiles from public, anon, authenticated;
+grant insert (
+  user_id, display_name, email, goal, timeline, study_preference, faculty,
+  department, level, setup_complete, disclaimer_accepted, cgpa_intro_seen,
+  tour_seen, has_completed_first_mock, mastered_courses, cgpa_inputs, cgpa_plan,
+  cgpa_actual, avatar_path
+) on table public.profiles to authenticated;
+grant update (
+  display_name, email, goal, timeline, study_preference, faculty, department,
+  level, setup_complete, disclaimer_accepted, cgpa_intro_seen, tour_seen,
+  has_completed_first_mock, mastered_courses, cgpa_inputs, cgpa_plan,
+  cgpa_actual, avatar_path
+) on table public.profiles to authenticated;
+
+-- The streak writer can update protected streak columns only after validating
+-- that a Supabase identity exists and that it writes only auth.uid()'s row.
+alter function public.record_mock_streak(integer) security definer;
+alter function public.record_mock_streak(integer) set search_path = pg_catalog, public;
+revoke all on function public.record_mock_streak(integer) from public, anon;
+grant execute on function public.record_mock_streak(integer) to authenticated, service_role;
+
 -- Keep gate-hit reads for admins, but never let a client write or truncate them.
 revoke all on table public.gate_hits from public, anon, authenticated;
 grant select on table public.gate_hits to authenticated;
