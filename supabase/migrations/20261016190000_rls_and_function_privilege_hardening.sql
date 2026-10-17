@@ -87,6 +87,14 @@ alter function public.record_mock_streak(integer) set search_path = pg_catalog, 
 revoke all on function public.record_mock_streak(integer) from public, anon;
 grant execute on function public.record_mock_streak(integer) to authenticated, service_role;
 
+-- Public site settings are intentionally readable, but only admins may update.
+revoke all on table public.site_settings from public, anon, authenticated;
+grant select on table public.site_settings to anon, authenticated;
+grant update on table public.site_settings to authenticated;
+grant all on table public.site_settings to service_role;
+alter policy "Admins can update site settings" on public.site_settings to authenticated;
+alter policy "Anyone can read site settings" on public.site_settings to anon, authenticated;
+
 -- Keep gate-hit reads for admins, but never let a client write or truncate them.
 revoke all on table public.gate_hits from public, anon, authenticated;
 grant select on table public.gate_hits to authenticated;
