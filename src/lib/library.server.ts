@@ -8,6 +8,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import * as r2 from "@/lib/storage.server";
+import { isOwnedMaterialPath } from "@/lib/storage-path";
 
 /** A file needs this much extracted text before mocks can use it. */
 export const READY_FOR_MOCKS_MIN_CHARS = 50;
@@ -193,11 +194,11 @@ export async function setPublished(opts: {
   const db = admin();
   const { data: row, error } = await db
     .from("course_materials")
-    .select("id, user_id, is_peer_copy")
+    .select("id, user_id, is_peer_copy, file_path")
     .eq("id", opts.materialId)
     .maybeSingle();
   if (error) throw error;
-  if (!row || row.user_id !== opts.ownerId) throw new Error("File not found.");
+  if (!row || row.user_id !== opts.ownerId || !isOwnedMaterialPath(row.file_path, opts.ownerId)) throw new Error("File not found.");
   if (row.is_peer_copy) throw new Error("Saved peer copies cannot be published.");
 
   const { error: upErr } = await db
@@ -243,11 +244,11 @@ export async function createShareLink(opts: {
   const db = admin();
   const { data: row, error } = await db
     .from("course_materials")
-    .select("id, user_id, file_name, is_peer_copy")
+    .select("id, user_id, file_name, is_peer_copy, file_path")
     .eq("id", opts.materialId)
     .maybeSingle();
   if (error) throw error;
-  if (!row || row.user_id !== opts.ownerId) throw new Error("File not found.");
+  if (!row || row.user_id !== opts.ownerId || !isOwnedMaterialPath(row.file_path, opts.ownerId)) throw new Error("File not found.");
   if (row.is_peer_copy) throw new Error("Saved peer copies cannot be shared.");
 
   const { data: existing } = await db
@@ -346,7 +347,7 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
     )
     .eq("id", share.material_id)
     .maybeSingle();
-  if (!material || material.user_id !== share.owner_id) return null;
+  if (!material || material.user_id !== share.owner_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
   return {
     share,
     material: {
@@ -410,10 +411,10 @@ export async function shelfPreviewUrl(materialId: string): Promise<{
   const db = admin();
   const { data: material } = await db
     .from("course_materials")
-    .select("id, file_path, file_name, file_type, course_code, published, extracted_content")
+    .select("id, user_id, file_path, file_name, file_type, course_code, published, extracted_content")
     .eq("id", materialId)
     .maybeSingle();
-  if (!material || !material.published) return null;
+  if (!material || !material.published || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
   let url: string | null = null;
   try {
     url = await r2.presignDownload({ path: material.file_path, expiresInSeconds: 60 * 30 });
@@ -459,7 +460,7 @@ export async function saveSharedFile(opts: {
       )
       .eq("id", opts.materialId)
       .maybeSingle();
-    if (!data || !data.published) return { ok: false, reason: REDEEM_MISS_MESSAGE };
+    if (!data || !data.published || !isOwnedMaterialPath(data.file_path, data.user_id)) return { ok: false, reason: REDEEM_MISS_MESSAGE };
     source = {
       ...data,
       user_id: data.user_id ?? "",
@@ -469,7 +470,7 @@ export async function saveSharedFile(opts: {
     return { ok: false, reason: REDEEM_MISS_MESSAGE };
   }
 
-  if (!source) return { ok: false, reason: REDEEM_MISS_MESSAGE };
+  if (!source || !isOwnedMaterialPath(source.file_path, source.user_id)) return { ok: false, reason: REDEEM_MISS_MESSAGE };
 
   if (source.user_id === opts.recipientId) {
     return { ok: false, reason: "This file is already in your locker." };
