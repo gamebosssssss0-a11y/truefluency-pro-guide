@@ -69,6 +69,7 @@ function writeHomeDisplayCache(update: HomeDisplayCache) {
 /** One chip only: the live trial, paid access, or the founding price line. */
 function PlanChip() {
   const { access } = useEntitlement();
+  const [reminderOpen, setReminderOpen] = useState(false);
   const cached = readHomeDisplayCache()?.access;
   const displayAccess = access ?? cached ?? null;
   useEffect(() => {

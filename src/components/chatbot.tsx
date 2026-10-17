@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Camera, ChevronDown, Image as ImageIcon, Loader2, Mic, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
+import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
