@@ -228,7 +228,7 @@ export async function uploadCourseMaterial(opts: {
   const needsExtraction = EXTRACTABLE_TYPES.includes(fileType);
   if (!isImage && file.size > MAX_DOCUMENT_BYTES) {
     const msg =
-      `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB; the upload limit is ${MAX_DOCUMENT_MB} MB. ` +
+      `This file is ${(file.size / (1024 * 1024)).toFixed(2)} MB; the upload limit is ${MAX_DOCUMENT_MB} MB. ` +
       "Choose a smaller file or split this document into parts, then try again.";
     emit({ kind: "error", message: msg });
     throw new Error(msg);
