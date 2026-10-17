@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Loader2, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Loader2, Mic, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
@@ -22,6 +22,31 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 /** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
+
+type DictationResultList = ArrayLike<ArrayLike<{ transcript: string }>>;
+type DictationEvent = { resultIndex: number; results: DictationResultList };
+type DictationRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: DictationEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+type DictationConstructor = new () => DictationRecognition;
+
+function createDictationRecognition(): DictationRecognition | null {
+  if (typeof window === "undefined") return null;
+  const host = window as unknown as {
+    SpeechRecognition?: DictationConstructor;
+    webkitSpeechRecognition?: DictationConstructor;
+  };
+  const Recognition = host.SpeechRecognition ?? host.webkitSpeechRecognition;
+  return Recognition ? new Recognition() : null;
+}
 
 export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string };
 
@@ -191,6 +216,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [speechAvailable, setSpeechAvailable] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const dictationRef = useRef<DictationRecognition | null>(null);
   const retryFiles = useRef(new Map<number, File>());
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
@@ -703,6 +730,60 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     synth.addEventListener("voiceschanged", onVoices);
   };
 
+  const toggleDictation = () => {
+    if (dictationRef.current) {
+      dictationRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = createDictationRecognition();
+    if (!recognition) {
+      toast.error("Voice input isn't supported in this browser.");
+      return;
+    }
+
+    recognition.lang = navigator.language || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.resultIndex]?.[0]?.transcript?.trim();
+      if (!transcript) return;
+      setDraft((current) => {
+        const separator = current && !/\\s$/.test(current) ? " " : "";
+        const remaining = Math.max(0, 2000 - current.length - separator.length);
+        return current + separator + transcript.slice(0, remaining);
+      });
+      requestAnimationFrame(resizeComposer);
+    };
+    recognition.onerror = (event) => {
+      if (event.error !== "no-speech" && event.error !== "aborted") {
+        toast.error("Couldn't use the microphone. Check browser permission and try again.");
+      }
+      setIsListening(false);
+      dictationRef.current = null;
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      dictationRef.current = null;
+    };
+
+    dictationRef.current = recognition;
+    setIsListening(true);
+    try {
+      recognition.start();
+    } catch {
+      dictationRef.current = null;
+      setIsListening(false);
+      toast.error("Couldn't start voice input. Try again.");
+    }
+  };
+
+  useEffect(() => () => {
+    dictationRef.current?.abort();
+    dictationRef.current = null;
+  }, []);
+
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
   const capText = (() => {
     if (!access) return null;
@@ -952,17 +1033,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : null}
           <div className="flex min-w-0 items-end gap-1 rounded-[24px] border border-[#B86E0A]/45 bg-card p-1 shadow-[0_0_0_1px_rgba(184,110,10,0.22),0_0_22px_rgba(184,110,10,0.18)]">
-            <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-            <div className="relative shrink-0">
+            <div className="flex shrink-0 flex-col items-center gap-1">
+              <div className="relative shrink-0">
               <button
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={modeMenuOpen}
                 onClick={() => setModeMenuOpen((open) => !open)}
                 aria-label={`Reply mode: ${mode}`}
-                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
+                className="inline-flex h-8 w-[72px] shrink-0 items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
               >
                 <span className="sm:hidden">{mode === "Work a problem" ? "Work" : mode}</span>
                 <span className="hidden sm:inline">{mode}</span>
@@ -983,6 +1062,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   ))}
                 </div>
               ) : null}
+            </div>
+              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
+              <Plus className="h-3.5 w-3.5" />
+            </button>
             </div>
             <input
               ref={cameraInput}
@@ -1028,7 +1111,18 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             />
             <button
               type="button"
-              onClick={() => send()}
+              onClick={toggleDictation}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
+              aria-label={isListening ? "Stop voice input" : "Start voice input"}
+              aria-pressed={isListening}
+              title={isListening ? "Stop voice input" : "Voice input"}
+              className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full transition", isListening ? "bg-accent text-[#F7F3EA]" : "text-primary hover:bg-secondary")}
+            >
+              <Mic className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => send()
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
