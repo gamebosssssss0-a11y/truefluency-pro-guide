@@ -50,7 +50,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_course_code text;
 begin
