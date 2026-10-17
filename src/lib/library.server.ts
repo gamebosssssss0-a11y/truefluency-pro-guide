@@ -478,7 +478,7 @@ export async function saveSharedFile(opts: {
       )
       .eq("id", opts.materialId)
       .maybeSingle();
-    if (!data || !data.published || !isOwnedMaterialPath(data.file_path, data.user_id)) return { ok: false, reason: REDEEM_MISS_MESSAGE };
+    if (!data || !data.published || !isOwnedMaterialPath(data.file_path, data.user_id ?? "")) return { ok: false, reason: REDEEM_MISS_MESSAGE };
     source = {
       ...data,
       user_id: data.user_id ?? "",
