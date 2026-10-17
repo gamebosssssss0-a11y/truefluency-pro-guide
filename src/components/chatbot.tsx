@@ -156,8 +156,19 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     if (!suppliedPageAttachment) return;
     setAttachedPage(suppliedPageAttachment);
     setSelected(canonicalCourseCode(suppliedPageAttachment.courseCode));
+    setMode("Explain");
     setDraft(`Explain page ${suppliedPageAttachment.page} of ${suppliedPageAttachment.fileName}.`);
   }, [suppliedPageAttachment]);
+
+  useEffect(() => {
+    if (view !== "chatbot" || suppliedPageAttachment) return;
+    const pendingPage = readPendingPageAttachment();
+    if (!pendingPage) return;
+    setAttachedPage(pendingPage);
+    setSelected(pendingPage.courseCode);
+    setMode("Explain");
+    setDraft(`Explain page ${pendingPage.page} of ${pendingPage.fileName}.`);
+  }, [view, suppliedPageAttachment]);
   // Bumped on every History-row click so the load effect below always
   // re-fetches, even for the course already on screen (setSelected alone is
   // a no-op there — same string in, same string out, React skips both the
@@ -1065,10 +1076,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 aria-expanded={modeMenuOpen}
                 onClick={() => setModeMenuOpen((open) => !open)}
                 aria-label={`Reply mode: ${mode}`}
-                className="inline-flex h-8 w-[72px] shrink-0 items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
+                className="inline-flex h-8 w-[84px] shrink-0 items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
               >
-                <span className="sm:hidden">{mode === "Work a problem" ? "Work" : mode}</span>
-                <span className="hidden sm:inline">{mode}</span>
+                <span>{mode === "Work a problem" ? "Work" : mode}</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {modeMenuOpen ? (
