@@ -95,7 +95,7 @@ export function CgpaGoalSetterScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
