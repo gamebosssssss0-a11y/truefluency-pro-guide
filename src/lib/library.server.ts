@@ -198,7 +198,13 @@ export async function setPublished(opts: {
     .eq("id", opts.materialId)
     .maybeSingle();
   if (error) throw error;
-  if (!row || row.user_id !== opts.ownerId || !isOwnedMaterialPath(row.file_path, opts.ownerId)) throw new Error("File not found.");
+  if (
+    !row ||
+    row.user_id !== opts.ownerId ||
+    !isOwnedMaterialPath(row.file_path, opts.ownerId)
+  ) {
+    throw new Error("File not found.");
+  }
   if (row.is_peer_copy) throw new Error("Saved peer copies cannot be published.");
 
   const { error: upErr } = await db
@@ -347,7 +353,13 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
     )
     .eq("id", share.material_id)
     .maybeSingle();
-  if (!material || material.user_id !== share.owner_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
+  if (
+    !material ||
+    material.user_id !== share.owner_id ||
+    !isOwnedMaterialPath(material.file_path, material.user_id ?? "")
+  ) {
+    return null;
+  }
   return {
     share,
     material: {
@@ -414,7 +426,13 @@ export async function shelfPreviewUrl(materialId: string): Promise<{
     .select("id, user_id, file_path, file_name, file_type, course_code, published, extracted_content")
     .eq("id", materialId)
     .maybeSingle();
-  if (!material || !material.published || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
+  if (
+    !material ||
+    !material.published ||
+    !isOwnedMaterialPath(material.file_path, material.user_id ?? "")
+  ) {
+    return null;
+  }
   let url: string | null = null;
   try {
     url = await r2.presignDownload({ path: material.file_path, expiresInSeconds: 60 * 30 });
@@ -470,7 +488,9 @@ export async function saveSharedFile(opts: {
     return { ok: false, reason: REDEEM_MISS_MESSAGE };
   }
 
-  if (!source || !isOwnedMaterialPath(source.file_path, source.user_id)) return { ok: false, reason: REDEEM_MISS_MESSAGE };
+  if (!source || !isOwnedMaterialPath(source.file_path, source.user_id)) {
+    return { ok: false, reason: REDEEM_MISS_MESSAGE };
+  }
 
   if (source.user_id === opts.recipientId) {
     return { ok: false, reason: "This file is already in your locker." };
