@@ -87,7 +87,8 @@ function PlanChip() {
       );
     }
   }
-  if (displayAccess.tier === "paid") return <ChipShell>Full access, this month</ChipShell>;
+  if (displayAccess.tier === "exam") return <ChipShell>Exam plan, this month</ChipShell>;
+  if (displayAccess.tier === "core") return <ChipShell>Core plan, this month</ChipShell>;
   return <ChipShell>{PRICE_LINE}</ChipShell>;
 }
 
