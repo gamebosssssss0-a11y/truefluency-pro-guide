@@ -471,7 +471,7 @@ export function PdfViewer({
           const context = thumbnail.getContext("2d");
           context?.drawImage(renderedCanvas, 0, 0, thumbnail.width, thumbnail.height);
           previewUrl = thumbnail.toDataURL("image/jpeg", 0.6);
-          if (previewUrl.length > 750_000) previewUrl = undefined;
+          if (previewUrl.length > 300_000) previewUrl = undefined;
         }
       } catch {
         // Keep the text handoff working if a browser cannot create a thumbnail.
