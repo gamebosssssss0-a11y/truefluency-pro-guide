@@ -59,7 +59,7 @@ function readPendingPageAttachment(): PageAttachment | null {
     const value = JSON.parse(raw) as Partial<PageAttachment>;
     if (typeof value.courseCode !== "string" || typeof value.fileName !== "string" ||
       typeof value.text !== "string" || typeof value.page !== "number") return null;
-    const previewUrl = typeof value.previewUrl === "string" && value.previewUrl.startsWith("data:image/") && value.previewUrl.length <= 750_000 ? value.previewUrl : undefined;
+    const previewUrl = typeof value.previewUrl === "string" && value.previewUrl.startsWith("data:image/") && value.previewUrl.length <= 300_000 ? value.previewUrl : undefined;
     return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000), previewUrl };
   } catch {
     return null;
@@ -151,6 +151,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     ? canonicalCourseCode(activeCourseCode!)
     : canonicalCourseCode(profile.courses[0]?.code ?? "");
   const [selected, setSelected] = useState<string>(() => attachedPage?.courseCode ?? defaultCourse);
+
+  useEffect(() => {
+    if (!suppliedPageAttachment) return;
+    setAttachedPage(suppliedPageAttachment);
+    setSelected(canonicalCourseCode(suppliedPageAttachment.courseCode));
+    setDraft(`Explain page ${suppliedPageAttachment.page} of ${suppliedPageAttachment.fileName}.`);
+  }, [suppliedPageAttachment]);
   // Bumped on every History-row click so the load effect below always
   // re-fetches, even for the course already on screen (setSelected alone is
   // a no-op there — same string in, same string out, React skips both the
@@ -465,7 +472,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const currentUrls = new Set(messages.flatMap((message) => message.imageUrl ? [message.imageUrl] : []));
     for (const url of imageUrls.current) {
       if (!currentUrls.has(url)) {
-        URL.revokeObjectURL(url);
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
         imageUrls.current.delete(url);
       }
     }
@@ -535,7 +542,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       return;
     }
 
-    const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : undefined;
+    const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : pageToSend?.previewUrl;
     const messageId = retry?.messageId ?? nextId.current++;
     if (retry) {
       setMessages((cur) => cur.map((message) => message.id === messageId
@@ -914,7 +921,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
-                          alt="Your attached photo"
+                          alt="Preview of attached page or photo"
                           className="mb-2 max-h-48 rounded-xl object-cover"
                         />
                       ) : null}
