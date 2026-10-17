@@ -99,7 +99,7 @@ as $$
     and upper(regexp_replace(btrim(event.course_code), '^C-', '')) =
         upper(regexp_replace(btrim(p_course_code), '^C-', ''))
   group by wanted.rating, wanted.sort_order
-  order by wanted.position;
+  order by wanted.sort_order;
 $$;
 
 revoke all on function public.record_flashcard_rating(uuid, text) from public, anon;
