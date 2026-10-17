@@ -12,7 +12,13 @@ type Tab = "signup" | "login";
 
 export function IdentityScreen() {
   const { profile, update, go } = useProfile();
-  const [tab, setTab] = useState<Tab>("signup");
+  const [tab, setTab] = useState<Tab>(() => {
+    try {
+      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ? "login" : "signup";
+    } catch {
+      return "signup";
+    }
+  });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,10 +94,9 @@ export function IdentityScreen() {
         setBusy(null);
         return;
       }
-      const known = profile.accounts.find((a) => a.email.toLowerCase() === em);
-      const displayName = known?.name || em.split("@")[0] || "Student";
+      // The profile store keeps the app behind its sign-in screen until this
+      // account's own cloud profile has been restored.
       setBusy(null);
-      finish({ kind: "email", name: displayName, email: em }, rememberAccount(displayName, em));
     } catch (err) {
       console.error("[auth] sign-in failed", err);
       setError("We couldn't sign you in. Check your connection and try again.");
@@ -126,10 +131,9 @@ export function IdentityScreen() {
         setBusy(null);
         return;
       }
-      const meta = (user.user_metadata ?? {}) as { full_name?: string; name?: string };
-      const displayName = meta.full_name || meta.name || (user.email ?? "").split("@")[0] || "Student";
-      setBusy(null);
-      finish({ kind: "email", name: displayName, email: user.email ?? undefined });
+      // Reload through the normal startup gate so the active account is
+      // restored before any profile or onboarding screen is rendered.
+      window.location.reload();
     } catch (err) {
       console.error("[auth] Google sign-in threw", err);
       setError(err instanceof Error ? err.message : "Google sign-in didn't complete.");
