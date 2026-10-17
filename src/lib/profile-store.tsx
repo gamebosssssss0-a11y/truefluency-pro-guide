@@ -390,7 +390,8 @@ type Ctx = {
 const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "truefluency-profile-v2";
 const ONBOARDING_RESUME_STEPS: OnboardingStep[] = [
-  "goal", "timeline", "study-pref", "faculty", "department", "level", "courses", "cgpa-intro", "trial-welcome",
+  "disclaimer", "disclaimer-blocked", "identity", "goal", "timeline", "study-pref",
+  "faculty", "department", "level", "courses", "cgpa-intro", "trial-welcome",
 ];
 function profileCacheKey(userId: string) { return `${KEY}:user:${userId}`; }
 function emailCacheKey(email: string) { return `${KEY}:email:${encodeURIComponent(email.trim().toLowerCase())}`; }
@@ -419,6 +420,13 @@ function readOnboardingStep(userId: string | null, email?: string): OnboardingSt
   try {
     const raw = (userId ? localStorage.getItem(`${KEY}:step:user:${userId}`) : null) ??
       (email ? localStorage.getItem(`${KEY}:step:email:${encodeURIComponent(email.trim().toLowerCase())}`) : null);
+    return raw && ONBOARDING_RESUME_STEPS.includes(raw as OnboardingStep) ? raw as OnboardingStep : null;
+  } catch { return null; }
+}
+
+function readPendingOnboardingStep(): OnboardingStep | null {
+  try {
+    const raw = localStorage.getItem(`${KEY}:onboarding-step`);
     return raw && ONBOARDING_RESUME_STEPS.includes(raw as OnboardingStep) ? raw as OnboardingStep : null;
   } catch { return null; }
 }
@@ -573,10 +581,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           setActiveAttemptId(locationState.attemptId);
           setActiveDeckId(locationState.deckId);
         } else {
-          let onboardingPending = false;
-          try { onboardingPending = localStorage.getItem(`${KEY}:onboarding-pending`) === "1"; }
-          catch { /* ignore unavailable local storage */ }
-          setStep(onboardingPending ? "identity" : "splash");
+          setStep(readPendingOnboardingStep() ?? "splash");
           setView("home");
           writeAppLocation("home", {}, true, sessionId);
         }
@@ -852,6 +857,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (ownerId) localStorage.removeItem(`${KEY}:step:user:${ownerId}`);
         if (email) localStorage.removeItem(`${KEY}:step:email:${encodeURIComponent(email.trim().toLowerCase())}`);
         localStorage.removeItem(`${KEY}:onboarding-pending`);
+        localStorage.removeItem(`${KEY}:onboarding-step`);
       } catch { /* ignore unavailable local storage */ }
       setView("home");
       writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
@@ -867,6 +873,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (ownerId) localStorage.setItem(`${KEY}:step:user:${ownerId}`, s);
         if (email) localStorage.setItem(`${KEY}:step:email:${encodeURIComponent(email.trim().toLowerCase())}`, s);
         localStorage.setItem(`${KEY}:onboarding-pending`, "1");
+        localStorage.setItem(`${KEY}:onboarding-step`, s);
       } catch { /* ignore unavailable local storage */ }
     }
   };
@@ -908,6 +915,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       const resetEmail = profileRef.current.identity?.kind === "email" ? profileRef.current.identity.email : undefined;
       if (resetEmail) localStorage.removeItem(emailCacheKey(resetEmail));
       localStorage.removeItem(`${KEY}:onboarding-pending`);
+      localStorage.removeItem(`${KEY}:onboarding-step`);
       window.history.replaceState({}, "", window.location.pathname);
     } catch {
       /* ignore */
