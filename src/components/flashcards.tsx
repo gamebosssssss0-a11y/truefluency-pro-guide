@@ -7,6 +7,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
@@ -368,6 +370,15 @@ export function FlashcardsReviewScreen() {
     setIsGrading(true);
     try {
       await reviewCard({ cardId: current.id, rating });
+      const ratingName = (["again", "hard", "good", "easy"] as const)[rating - 1];
+      const { error: trackingError } = await supabase.rpc("record_flashcard_rating", {
+        p_flashcard_id: current.id,
+        p_rating: ratingName,
+      });
+      if (trackingError) {
+        console.error("[flashcards] rating history could not be recorded", trackingError);
+        toast.error("Your rating was saved, but it couldn't be added to progress counts.");
+      }
     } catch (e) {
       console.error("[flashcards] review failed to save", e);
     } finally {
