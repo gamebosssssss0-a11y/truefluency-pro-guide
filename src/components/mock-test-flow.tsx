@@ -443,7 +443,6 @@ export function MockConfigScreen() {
   const initial = remembered ?? smart!;
 
   const { access, maxQuestionsPerSet } = useEntitlement();
-  const fullAccess = access?.fullAccess ?? false;
   const examDefaultsAppliedFor = useRef<string | null>(null);
 
   useEffect(() => {
