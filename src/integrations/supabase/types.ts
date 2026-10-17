@@ -370,6 +370,41 @@ export type Database = {
           },
         ]
       }
+      flashcard_rating_events: {
+        Row: {
+          course_code: string
+          created_at: string
+          flashcard_id: string | null
+          id: string
+          rating: string
+          user_id: string
+        }
+        Insert: {
+          course_code: string
+          created_at?: string
+          flashcard_id?: string | null
+          id?: string
+          rating: string
+          user_id: string
+        }
+        Update: {
+          course_code?: string
+          created_at?: string
+          flashcard_id?: string | null
+          id?: string
+          rating?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_rating_events_flashcard_id_fkey"
+            columns: ["flashcard_id"]
+            isOneToOne: false
+            referencedRelation: "flashcards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gate_hits: {
         Row: {
           course_code: string | null
@@ -888,6 +923,14 @@ export type Database = {
           similarity: number
           title: string
         }[]
+      }
+      flashcard_rating_counts: {
+        Args: { p_course_code: string }
+        Returns: { rating: string; total: number }[]
+      }
+      record_flashcard_rating: {
+        Args: { p_flashcard_id: string; p_rating: string }
+        Returns: boolean
       }
       record_mock_streak: {
         Args: { attempt_id: string }
