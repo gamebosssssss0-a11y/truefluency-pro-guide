@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { HeaderLogo } from "@/components/brand";
-import { NO_PAYMENT_YET, PRICE_LINE } from "@/lib/pricing-copy";
+import { NO_PAYMENT_YET } from "@/lib/pricing-copy";
 import { formatNaira, STANDARD_PRICE_NAIRA, FOUNDING_PRICE_NAIRA, FOUNDING_USER_LIMIT } from "@/lib/entitlements";
 
 type Step = "offer" | "plans" | "review" | "processing" | "success" | "failed";
@@ -61,7 +61,6 @@ export function UpgradeScreen() {
               <div className="mt-3 flex items-end gap-2"><span className="font-display text-4xl font-semibold">{formatNaira(FOUNDING_PRICE_NAIRA)}</span><span className="pb-1 text-sm text-muted-foreground">/ month</span></div>
               <p className="mt-1 text-xs text-muted-foreground">For the first {FOUNDING_USER_LIMIT} paying students · cancel any time</p>
               <div className="mt-3 flex items-baseline gap-2"><span className="font-display text-lg font-semibold text-muted-foreground line-through">{formatNaira(STANDARD_PRICE_NAIRA)}</span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">after this</span></div>
-              <p className="mt-3 text-xs font-medium text-foreground">{PRICE_LINE}</p>
             </div>
             <section className="mt-4 rounded-2xl border border-border bg-card p-5">
               <h2 className="text-sm font-semibold">Your studies, with more support</h2>
