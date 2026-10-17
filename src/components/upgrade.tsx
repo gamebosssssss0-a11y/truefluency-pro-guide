@@ -2,32 +2,60 @@
  * Upgrade preview flow. All payment steps are visual only; no charge or entitlement change occurs.
  */
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { HeaderLogo } from "@/components/brand";
 import { NO_PAYMENT_YET } from "@/lib/pricing-copy";
-import { formatNaira, STANDARD_PRICE_NAIRA, FOUNDING_PRICE_NAIRA, FOUNDING_USER_LIMIT } from "@/lib/entitlements";
+import { useEntitlement } from "@/hooks/use-entitlement";
+import {
+  CORE_DAILY_LIMITS,
+  CORE_MAX_QUESTIONS,
+  EXAM_DAILY_LIMITS,
+  EXAM_MAX_QUESTIONS,
+  EXAM_PRICE_NAIRA,
+  FREE_DAILY_LIMITS,
+  FREE_MAX_QUESTIONS,
+  formatNaira,
+  STANDARD_PRICE_NAIRA,
+  FOUNDING_PRICE_NAIRA,
+  FOUNDING_USER_LIMIT,
+} from "@/lib/entitlements";
 
 type Step = "offer" | "plans" | "review" | "processing" | "success" | "failed";
-const INCLUDED = [
-  "3 mock sets each day, with 45 questions per set",
-  "More challenging practice, matched to your goals",
-  "Clear “why” explanations for every answer",
-  "Save useful questions to revisit later",
-  "30 Study Chat messages and 4 flashcard decks daily",
-];
+type PaidPlan = "core" | "exam";
+
+const PLAN_FEATURES: Record<PaidPlan, string[]> = {
+  core: [
+    `${CORE_DAILY_LIMITS.mock_sets} mock sets daily · up to ${CORE_MAX_QUESTIONS} questions per set`,
+    "More challenging practice, matched to your goals",
+    "Clear “why” explanations and peer-save",
+    "Save useful questions to revisit later",
+    `${CORE_DAILY_LIMITS.chatbot_messages} Study Chat messages daily`,
+    `${CORE_DAILY_LIMITS.flashcard_decks} flashcard decks daily`,
+  ],
+  exam: [
+    `${EXAM_DAILY_LIMITS.mock_sets} mock sets daily · up to ${EXAM_MAX_QUESTIONS} questions per set`,
+    "Exam-level difficulty by default",
+    "Clear “why” explanations and peer-save",
+    "Save useful questions to revisit later",
+    `${EXAM_DAILY_LIMITS.chatbot_messages} Study Chat messages daily`,
+    `${EXAM_DAILY_LIMITS.flashcard_decks} flashcard decks daily`,
+  ],
+};
 
 export function UpgradeScreen() {
   const { navigate } = useProfile();
+  const { access } = useEntitlement();
   const [step, setStep] = useState<Step>("offer");
-  const [comingSoon, setComingSoon] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PaidPlan>("core");
+  const corePrice = access?.foundingPriceAvailable === false
+    ? STANDARD_PRICE_NAIRA
+    : FOUNDING_PRICE_NAIRA;
+  const currentPlan = access?.tier === "trial" ? "core" : access?.tier ?? null;
   useEffect(() => {
     if (step !== "processing") return;
     const timer = window.setTimeout(() => setStep("success"), 1400);
@@ -66,7 +94,7 @@ export function UpgradeScreen() {
               <h2 className="text-sm font-semibold">Your studies, with more support</h2>
               <ul className="mt-3 space-y-3">{INCLUDED.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
             </section>
-            <Button className="mt-5 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setComingSoon(true)}>Upgrade</Button>
+            <Button className="mt-5 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setStep("plans")}>Choose a plan</Button>
             <Button variant="outline" className="mt-3 h-12 w-full" onClick={() => navigate("support")}>Ask us about payment</Button>
             <Button variant="ghost" className="mt-2 w-full" onClick={() => setStep("plans")}>Compare plans</Button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">Payments aren’t live yet. Nothing will be charged automatically.</p>
@@ -78,9 +106,39 @@ export function UpgradeScreen() {
             <h1 className="font-display text-3xl font-bold">Choose what works for you.</h1>
             <p className="mt-2 text-sm text-muted-foreground">Start where you are. You can change your plan later. Your current plan is highlighted.</p>
             <div className="mt-5 space-y-3">
-              <article className="rounded-2xl border-2 border-accent bg-card p-4"><div className="flex items-center justify-between"><h2 className="font-display text-xl font-semibold">Free</h2><span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold uppercase">Current plan</span></div><p className="mt-1 text-sm text-muted-foreground">₦0 / always</p><ul className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground"><li>✓ 2 mock sets / day</li><li>✓ 30 questions / set</li><li>✓ Balanced difficulty</li><li>– No WHY explanations</li><li>– No peer-save</li><li>✓ 10 chat · 2 decks / day</li></ul></article>
-              <button type="button" onClick={() => setStep("review")} className="w-full rounded-2xl border border-accent bg-accent/10 p-4 text-left transition hover:bg-accent/15"><div className="flex items-center justify-between"><h2 className="font-display text-xl font-semibold">Core</h2><span className="text-sm font-semibold">{formatNaira(FOUNDING_PRICE_NAIRA)}/month <s className="ml-1 text-muted-foreground">{formatNaira(STANDARD_PRICE_NAIRA)}</s></span></div><p className="mt-1 text-xs text-muted-foreground">Founding price</p><ul className="mt-3 space-y-1 text-xs text-muted-foreground"><li>3 mock sets daily · 45 questions per set</li><li>30 Study Chat messages daily</li><li>4 flashcard decks daily</li></ul><span className="mt-3 inline-flex text-xs font-semibold text-accent">Select Core</span></button>
-              <article aria-disabled="true" className="rounded-2xl border border-border bg-muted/40 p-4 opacity-65"><div className="flex items-center justify-between"><h2 className="font-display text-xl font-semibold">Exam</h2><span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase text-muted-foreground"><LockKeyhole className="h-3 w-3" /> Coming later</span></div><p className="mt-1 text-sm text-muted-foreground">₦4,000 / month</p><p className="mt-3 text-xs text-muted-foreground">6 mock sets / day · 60 questions / set · Exam-level by default · WHY + peer-save · Expanded daily chat · 8 flashcard decks / day</p><p className="mt-2 text-xs text-muted-foreground">Not available yet</p><Button disabled className="mt-3 w-full">Coming later</Button></article>
+              <article className={`rounded-2xl border p-4 ${currentPlan === "free" ? "border-accent bg-accent/10" : "border-border bg-card"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-xl font-semibold">Free</h2>
+                  {currentPlan === "free" ? <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold uppercase">Current plan</span> : null}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">₦0 / always</p>
+                <ul className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <li>{FREE_DAILY_LIMITS.mock_sets} mock sets / day</li>
+                  <li>{FREE_MAX_QUESTIONS} questions / set</li>
+                  <li>Balanced difficulty</li>
+                  <li>No WHY explanations</li>
+                  <li>No peer-save</li>
+                  <li>{FREE_DAILY_LIMITS.chatbot_messages} chat · {FREE_DAILY_LIMITS.flashcard_decks} decks / day</li>
+                </ul>
+              </article>
+              <button type="button" aria-pressed={selectedPlan === "core"} onClick={() => { setSelectedPlan("core"); setStep("review"); }} className={`w-full rounded-2xl border p-4 text-left transition hover:bg-accent/10 ${currentPlan === "core" ? "border-accent bg-accent/10" : "border-border bg-card"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-xl font-semibold">Core</h2>
+                  <span className="text-sm font-semibold">{formatNaira(corePrice)} / month</span>
+                </div>
+                {currentPlan === "core" ? <p className="mt-1 text-xs font-semibold text-accent">Current plan</p> : <p className="mt-1 text-xs text-muted-foreground">{access?.foundingPriceAvailable === false ? "Standard price" : `Founding price for the first ${FOUNDING_USER_LIMIT} paying students`}</p>}
+                <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{PLAN_FEATURES.core.map((line) => <li key={line}>✓ {line}</li>)}</ul>
+                <span className="mt-3 inline-flex text-xs font-semibold text-accent">{currentPlan === "core" ? "Review Core" : "Select Core"}</span>
+              </button>
+              <button type="button" aria-pressed={selectedPlan === "exam"} onClick={() => { setSelectedPlan("exam"); setStep("review"); }} className={`w-full rounded-2xl border p-4 text-left transition hover:bg-accent/10 ${currentPlan === "exam" ? "border-accent bg-accent/10" : "border-border bg-card"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-xl font-semibold">Exam</h2>
+                  <span className="text-sm font-semibold">{formatNaira(EXAM_PRICE_NAIRA)} / month</span>
+                </div>
+                {currentPlan === "exam" ? <p className="mt-1 text-xs font-semibold text-accent">Current plan</p> : <p className="mt-1 text-xs text-muted-foreground">Available plan</p>}
+                <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{PLAN_FEATURES.exam.map((line) => <li key={line}>✓ {line}</li>)}</ul>
+                <span className="mt-3 inline-flex text-xs font-semibold text-accent">{currentPlan === "exam" ? "Review Exam" : "Select Exam"}</span>
+              </button>
             </div>
           </>
         ) : null}
@@ -88,26 +146,26 @@ export function UpgradeScreen() {
         {step === "review" ? (
           <section className="rounded-2xl border border-border bg-card p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">Review</p>
-            <h1 className="mt-2 font-display text-3xl font-bold">One last look.</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Check your plan details before continuing to secure payment.</p>
-            <p className="mt-2 text-sm text-muted-foreground">Founding price · {formatNaira(FOUNDING_PRICE_NAIRA)} per month</p>
-            <ul className="mt-5 space-y-3">{INCLUDED.map((line) => <li key={line} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /><span>{line}</span></li>)}</ul>
-            <p className="mt-5 rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">Preview only. No payment will be taken and your access will not change.</p>
-            <Button className="mt-4 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setStep("processing")}>Continue to payment</Button>
-            <Button variant="outline" className="mt-2 w-full" onClick={() => setStep("plans")}>Cancel</Button>
+            <h1 className="mt-2 font-display text-3xl font-bold">{selectedPlan === "core" ? "Core plan" : "Exam plan"}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Review the plan details. Checkout is a preview only.</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {selectedPlan === "core" ? formatNaira(corePrice) : formatNaira(EXAM_PRICE_NAIRA)} per month
+              {selectedPlan === "core" && access?.foundingPriceAvailable !== false ? ` · founding price for the first ${FOUNDING_USER_LIMIT} paying students` : ""}
+            </p>
+            <ul className="mt-5 space-y-3">{PLAN_FEATURES[selectedPlan].map((line) => <li key={line} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /><span>{line}</span></li>)}</ul>
+            <p className="mt-5 rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">{NO_PAYMENT_YET} This preview does not change your plan or entitlements.</p>
+            <Button className="mt-4 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setStep("processing")}>Preview checkout</Button>
+            <Button variant="outline" className="mt-2 w-full" onClick={() => setStep("plans")}>Back to plans</Button>
           </section>
         ) : null}
 
-        {step === "processing" ? <div className="py-16 text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-accent/20 border-t-accent" /><h1 className="mt-5 font-display text-2xl font-semibold">Setting things up.</h1><p className="mt-2 text-sm text-muted-foreground">This preview does not process a payment. Please don’t close this page.</p></div> : null}
+        {step === "processing" ? <div className="py-16 text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-accent/20 border-t-accent" /><h1 className="mt-5 font-display text-2xl font-semibold">Setting things up.</h1><p className="mt-2 text-sm text-muted-foreground">This preview does not process a payment. No payment is processed and no entitlement changes.</p></div> : null}
 
         {step === "success" ? <section className="py-10 text-center"><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success/15 text-success"><Check className="h-8 w-8" /></div><h1 className="mt-5 font-display text-3xl font-bold">Preview complete</h1><p className="mt-2 text-sm text-muted-foreground">No payment completed. Your plan and access are unchanged.</p><Button className="mt-6 w-full" onClick={() => navigate("home")}>Back to Home</Button></section> : null}
 
         {step === "failed" ? <section className="py-10 text-center"><h1 className="font-display text-3xl font-bold">Payment not completed</h1><p className="mt-2 text-sm text-muted-foreground">No charge was made. You can try again when checkout is available.</p><Button className="mt-6 w-full" onClick={() => setStep("review")}>Try again</Button><Button variant="outline" className="mt-2 w-full" onClick={() => navigate("support")}>Ask us about payment</Button></section> : null}
       </div>
 
-      <Dialog open={comingSoon} onOpenChange={setComingSoon}>
-        <DialogContent className="max-w-[340px]"><DialogHeader><DialogTitle>Payment status</DialogTitle><DialogDescription>{NO_PAYMENT_YET}</DialogDescription></DialogHeader><DialogFooter><Button className="w-full" onClick={() => setComingSoon(false)}>Okay</Button></DialogFooter></DialogContent>
-      </Dialog>
     </div>
   );
 }
