@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Loader2, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Loader2, Mic, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
@@ -24,7 +24,32 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
 
-export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string };
+type DictationResultList = ArrayLike<ArrayLike<{ transcript: string }>>;
+type DictationEvent = { resultIndex: number; results: DictationResultList };
+type DictationRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: DictationEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+type DictationConstructor = new () => DictationRecognition;
+
+function createDictationRecognition(): DictationRecognition | null {
+  if (typeof window === "undefined") return null;
+  const host = window as unknown as {
+    SpeechRecognition?: DictationConstructor;
+    webkitSpeechRecognition?: DictationConstructor;
+  };
+  const Recognition = host.SpeechRecognition ?? host.webkitSpeechRecognition;
+  return Recognition ? new Recognition() : null;
+}
+
+export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string; previewUrl?: string };
 
 function readPendingPageAttachment(): PageAttachment | null {
   if (typeof window === "undefined") return null;
@@ -35,7 +60,8 @@ function readPendingPageAttachment(): PageAttachment | null {
     const value = JSON.parse(raw) as Partial<PageAttachment>;
     if (typeof value.courseCode !== "string" || typeof value.fileName !== "string" ||
       typeof value.text !== "string" || typeof value.page !== "number") return null;
-    return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000) };
+    const previewUrl = typeof value.previewUrl === "string" && value.previewUrl.startsWith("data:image/") && value.previewUrl.length <= 300_000 ? value.previewUrl : undefined;
+    return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000), previewUrl };
   } catch {
     return null;
   }
@@ -194,12 +220,32 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // instead of it.
   const [streamingBubbleId, setStreamingBubbleId] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("Explain");
+
+  useEffect(() => {
+    if (suppliedPageAttachment) {
+      setAttachedPage(suppliedPageAttachment);
+      setSelected(canonicalCourseCode(suppliedPageAttachment.courseCode));
+      setMode("Explain");
+      setDraft(`Explain page ${suppliedPageAttachment.page} of ${suppliedPageAttachment.fileName}.`);
+      return;
+    }
+    if (view !== "chatbot") return;
+    const pendingPage = readPendingPageAttachment();
+    if (!pendingPage) return;
+    setAttachedPage(pendingPage);
+    setSelected(pendingPage.courseCode);
+    setMode("Explain");
+    setDraft(`Explain page ${pendingPage.page} of ${pendingPage.fileName}.`);
+  }, [view, suppliedPageAttachment]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [speechAvailable, setSpeechAvailable] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const dictationRef = useRef<DictationRecognition | null>(null);
   const retryFiles = useRef(new Map<number, File>());
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
   const nextId = useRef(1);
@@ -242,6 +288,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   useEffect(() => {
     resizeComposer();
   }, [draft]);
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreviewUrl(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(photoFile);
+    setPhotoPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [photoFile]);
 
   const courseOptions = profile.courses
     .map((course) => canonicalCourseCode(course.code))
@@ -435,7 +491,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const currentUrls = new Set(messages.flatMap((message) => message.imageUrl ? [message.imageUrl] : []));
     for (const url of imageUrls.current) {
       if (!currentUrls.has(url)) {
-        URL.revokeObjectURL(url);
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
         imageUrls.current.delete(url);
       }
     }
@@ -505,7 +561,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       return;
     }
 
-    const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : undefined;
+    const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : pageToSend?.previewUrl;
     const messageId = retry?.messageId ?? nextId.current++;
     if (retry) {
       setMessages((cur) => cur.map((message) => message.id === messageId
@@ -787,6 +843,60 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
   };
 
+  const toggleDictation = () => {
+    if (dictationRef.current) {
+      dictationRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = createDictationRecognition();
+    if (!recognition) {
+      toast.error("Voice input isn't supported in this browser.");
+      return;
+    }
+
+    recognition.lang = navigator.language || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.resultIndex]?.[0]?.transcript?.trim();
+      if (!transcript) return;
+      setDraft((current) => {
+        const separator = current && !/\s$/.test(current) ? " " : "";
+        const remaining = Math.max(0, 2000 - current.length - separator.length);
+        return current + separator + transcript.slice(0, remaining);
+      });
+      requestAnimationFrame(resizeComposer);
+    };
+    recognition.onerror = (event) => {
+      if (event.error !== "no-speech" && event.error !== "aborted") {
+        toast.error("Couldn't use the microphone. Check browser permission and try again.");
+      }
+      setIsListening(false);
+      dictationRef.current = null;
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      dictationRef.current = null;
+    };
+
+    dictationRef.current = recognition;
+    setIsListening(true);
+    try {
+      recognition.start();
+    } catch {
+      dictationRef.current = null;
+      setIsListening(false);
+      toast.error("Couldn't start voice input. Try again.");
+    }
+  };
+
+  useEffect(() => () => {
+    dictationRef.current?.abort();
+    dictationRef.current = null;
+  }, []);
+
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
   const capText = (() => {
     if (!access) return null;
@@ -905,7 +1015,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
-                          alt="Your attached photo"
+                          alt="Preview of attached page or photo"
                           className="mb-2 max-h-48 rounded-xl object-cover"
                         />
                       ) : null}
@@ -1011,13 +1121,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         <div className="mt-2 mb-2 shrink-0">
           {attachedPage ? (
             <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
+              {attachedPage.previewUrl ? (
+                <img src={attachedPage.previewUrl} alt={`Preview of page ${attachedPage.page}`} className="h-16 w-12 shrink-0 rounded-md border border-border object-cover" />
+              ) : null}
               <span className="min-w-0 flex-1 truncate">Page {attachedPage.page} · {attachedPage.fileName}</span>
               <button type="button" onClick={() => setAttachedPage(null)} className="shrink-0 underline underline-offset-2">Remove</button>
             </div>
           ) : null}
           {photoName ? (
-            <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-card-foreground">
-              <span className="truncate">
+            <div className="mb-2 flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground">
+              {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Selected photo preview" className="h-14 w-14 shrink-0 rounded-md border border-border object-cover" /> : null}
+              <span className="min-w-0 flex-1 truncate">
                 {isUploadingPhoto ? "Uploading… " : "Photo · "}
                 {photoName}
               </span>
@@ -1028,26 +1142,24 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   setPhotoName(null);
                 }}
                 aria-label="Remove photo"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ) : null}
           <div className="flex min-w-0 items-end gap-1 rounded-[24px] border border-[#B86E0A]/45 bg-card p-1 shadow-[0_0_0_1px_rgba(184,110,10,0.22),0_0_22px_rgba(184,110,10,0.18)]">
-            <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-            <div className="relative shrink-0">
+            <div className="flex shrink-0 flex-col items-center gap-1">
+              <div className="relative shrink-0">
               <button
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={modeMenuOpen}
                 onClick={() => setModeMenuOpen((open) => !open)}
                 aria-label={`Reply mode: ${mode}`}
-                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
+                className="inline-flex h-8 w-[84px] shrink-0 items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
               >
-                <span className="sm:hidden">{mode === "Work a problem" ? "Work" : mode}</span>
-                <span className="hidden sm:inline">{mode}</span>
+                <span>{mode === "Work a problem" ? "Work" : mode}</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {modeMenuOpen ? (
@@ -1065,6 +1177,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   ))}
                 </div>
               ) : null}
+            </div>
+              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
             </div>
             <input
               ref={cameraInput}
@@ -1110,6 +1226,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             />
             <button
               type="button"
+              onClick={toggleDictation}
+              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
+              aria-label={isListening ? "Stop voice input" : "Start voice input"}
+              aria-pressed={isListening}
+              title={isListening ? "Stop voice input" : "Voice input"}
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}
+            >
+              <Mic className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => send()}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
@@ -1139,6 +1266,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <div className="mt-4 space-y-2">
               {historyRows.map((row) => {
                 const isExpanded = expandedConvId === row.conversationId;
+                const previewText = plainText(row.messages[row.messages.length - 1]?.content ?? "");
                 return (
                   <div key={row.conversationId} className="rounded-xl border border-border border-l-4 border-l-accent bg-card text-card-foreground">
                     <div className="flex items-start gap-2 p-3">
@@ -1150,7 +1278,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {displayCode(row.course)} · {row.date}
                         </div>
-                        <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
+                        <div className="mt-1 line-clamp-2 text-sm font-semibold">{row.title}</div>
+                        {previewText ? <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{previewText}</div> : null}
+                        <div className="mt-1 text-[11px] text-muted-foreground">{row.messages.length} messages</div>
                       </button>
                       <button
                         type="button"
@@ -1163,16 +1293,18 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       </button>
                     </div>
                     {isExpanded ? (
-                      <div className="space-y-2 border-t border-border p-3">
+                      <div aria-label="Conversation messages" className="max-h-[52vh] space-y-3 overflow-y-auto border-t border-border p-3">
                         {row.messages.map((m, i) => (
-                          <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-                            <div
-                              className={
-                                m.role === "user"
-                                  ? "inline-block rounded-2xl bg-sand px-3 py-2 text-left text-xs text-navy"
-                                  : "inline-block rounded-2xl border border-border bg-chat-card px-3 py-2 text-left text-xs text-chat-foreground"
-                              }
-                            >
+                          <div
+                            key={i}
+                            className={m.role === "user"
+                              ? "rounded-xl border border-[#E4DCC8] bg-[#F3E6C8] p-3 text-[#1B2A4A]"
+                              : "rounded-xl border border-border bg-background p-3 text-foreground"}
+                          >
+                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {m.role === "user" ? "You" : "Study Chat"}
+                            </div>
+                            <div className="break-words text-sm leading-relaxed">
                               <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
                             </div>
                           </div>
