@@ -166,7 +166,7 @@ function SharedChatPage() {
                   <p className="whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
               ) : (
-                <article key={`${message.createdAt ?? "assistant"}-${index}`} className="text-base leading-6 text-[#E4C46A]" style={{ textShadow: "0 1px 2px rgba(27,42,74,0.95), 0 0 1px rgba(27,42,74,0.8)" }}>
+                <article key={`${message.createdAt ?? "assistant"}-${index}`} className="text-base leading-6">
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#F3E6C8]">TrueFluency</p>
                   <RichText tone="canvas">{message.content}</RichText>
                 </article>
