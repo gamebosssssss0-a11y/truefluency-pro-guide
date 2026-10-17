@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  ArrowLeft, BookOpen, ChevronRight, History, Sparkles, Zap, TrendingUp, TrendingDown,
+  ArrowLeft, BookOpen, ChevronRight, History, Search, Sparkles, Zap, TrendingUp, TrendingDown,
   Minus, AlertTriangle, RotateCcw, Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,16 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
   const [materialsLoading, setMaterialsLoading] = useState(() =>
     profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)),
   );
+  const [courseSearch, setCourseSearch] = useState("");
+  const filteredCourses = useMemo(() => {
+    const query = courseSearch.trim().toLocaleLowerCase();
+    if (!query) return profile.courses;
+    return profile.courses.filter((course) =>
+      course.code.toLocaleLowerCase().includes(query) ||
+      course.name.toLocaleLowerCase().includes(query) ||
+      canonicalCourseCode(course.code).toLocaleLowerCase().includes(query),
+    );
+  }, [courseSearch, profile.courses]);
 
   useEffect(() => {
     if (!active) return;
@@ -82,8 +92,25 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
             No courses on your profile yet. Add one from the Account tab.
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {profile.courses.map((c) => {
+          <>
+            <label className="relative mt-3 block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Search courses</span>
+              <input
+                type="search"
+                value={courseSearch}
+                onChange={(event) => setCourseSearch(event.target.value)}
+                placeholder="Search by course code or name"
+                className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
+            {filteredCourses.length === 0 ? (
+              <div className="mt-3 rounded-2xl border border-dashed border-border bg-card/60 p-5 text-center text-sm text-muted-foreground">
+                No courses match “{courseSearch.trim()}”.
+              </div>
+            ) : (
+              <div className="mt-3 space-y-2.5">
+            {filteredCourses.map((c) => {
               const analysis = profile.courseTopicAnalysis[c.code];
               const readyMaterialId = readyMaterialIds[c.code] ?? null;
               const canCustomize = Boolean(
@@ -140,7 +167,9 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                 </div>
               );
             })}
-          </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Results + history */}
