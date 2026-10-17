@@ -1140,7 +1140,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               aria-label={isListening ? "Stop voice input" : "Start voice input"}
               aria-pressed={isListening}
               title={isListening ? "Stop voice input" : "Voice input"}
-              className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full transition", isListening ? "bg-accent text-[#F7F3EA]" : "text-primary hover:bg-secondary")}
+              className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full transition", isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary")}
             >
               <Mic className="h-4 w-4" />
             </button>
