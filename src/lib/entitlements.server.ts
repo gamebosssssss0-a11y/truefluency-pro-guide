@@ -290,19 +290,19 @@ export async function consumeQuota(opts: {
 
   if (limit === 0) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "locked" };
-    recordRefusal(callerId, opts.feature, verdict.reason);
+    recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
   if (opts.feature === "mock_sets" && opts.requestedQuestions && requested > FREE_MAX_QUESTIONS) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "question_cap" };
-    recordRefusal(callerId, opts.feature, verdict.reason);
+    recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
   if (used >= limit) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
-    recordRefusal(callerId, opts.feature, verdict.reason);
+    recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
     return {
       ...verdict,
       ...base,
@@ -316,7 +316,7 @@ export async function consumeQuota(opts: {
     const recorded = await bump(callerId, opts.feature, usageDay, limit);
     if (!recorded.allowed) {
       const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
-      recordRefusal(callerId, opts.feature, verdict.reason);
+      recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
       return {
         ...verdict,
         ...base,
