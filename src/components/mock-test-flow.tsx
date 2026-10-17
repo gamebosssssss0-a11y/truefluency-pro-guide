@@ -12,7 +12,7 @@ import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-mat
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { findResumableMockJob, generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
-import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
+import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, EXAM_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
 import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE } from "@/lib/pricing-copy";
@@ -24,7 +24,7 @@ import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
 
 // The analysis service accepts at most 60 questions per request.
-const MAX_GENERATED_QUESTIONS = PAID_MAX_QUESTIONS;
+const MAX_GENERATED_QUESTIONS = EXAM_MAX_QUESTIONS;
 
 /* ---------- types ---------- */
 
@@ -360,17 +360,17 @@ function GenStat({ label, value }: { label: string; value: string }) {
 /** Question-count range. Anything above the free limit is a future paid tier. */
 export const MIN_QUESTIONS = 20;
 /** Caps live in @/lib/entitlements so the UI and the server gate can't drift. */
-export const MAX_QUESTIONS = PAID_MAX_QUESTIONS;
+export const MAX_QUESTIONS = EXAM_MAX_QUESTIONS;
 
 export const QUESTION_OPTIONS = [
   { count: FREE_MAX_QUESTIONS, label: "Standard set", minutes: 40 },
-  { count: 45, label: "Middle set", minutes: 55 },
-  { count: PAID_MAX_QUESTIONS, label: "Long set", minutes: 75 },
+  { count: PAID_MAX_QUESTIONS, label: "Core set", minutes: 55 },
+  { count: EXAM_MAX_QUESTIONS, label: "Exam set", minutes: 75 },
 ] as const;
 
 export function defaultMinutesForCount(n: number): number {
   if (n <= FREE_MAX_QUESTIONS) return 40;
-  if (n <= 45) return 55;
+  if (n <= PAID_MAX_QUESTIONS) return 55;
   return 75;
 }
 
@@ -444,6 +444,19 @@ export function MockConfigScreen() {
 
   const { access, maxQuestionsPerSet } = useEntitlement();
   const fullAccess = access?.fullAccess ?? false;
+  const examDefaultsAppliedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!course || !access || remembered || examDefaultsAppliedFor.current === course.code) return;
+    const isExam = access.tier === "exam";
+    const isCoreAccess = access.tier === "core" || access.tier === "trial";
+    if (!isExam && !isCoreAccess) return;
+    examDefaultsAppliedFor.current = course.code;
+    const defaultCount = isExam ? EXAM_MAX_QUESTIONS : PAID_MAX_QUESTIONS;
+    setCount(defaultCount);
+    setMinutes(defaultMinutesForCount(defaultCount));
+    setDifficulty(isExam ? "exam" : "challenging");
+  }, [access?.tier, course?.code, remembered]);
   const initialCount = QUESTION_OPTIONS.some((o) => o.count === (initial?.questionCount ?? FREE_MAX_QUESTIONS))
     ? (initial?.questionCount ?? FREE_MAX_QUESTIONS)
     : FREE_MAX_QUESTIONS;
@@ -486,11 +499,13 @@ export function MockConfigScreen() {
   }, [maxQuestionsPerSet]);
 
   useEffect(() => {
-    if (!fullAccess) {
-      setCount((c) => Math.min(c, FREE_MAX_QUESTIONS));
-      setMinutes((m) => Math.min(m, defaultMinutesForCount(FREE_MAX_QUESTIONS)));
+    setCount((c) => Math.min(c, maxQuestionsPerSet));
+    if (access?.tier === "free") {
+      setDifficulty("balanced");
+    } else if ((access?.tier === "core" || access?.tier === "trial") && difficulty === "exam") {
+      setDifficulty("challenging");
     }
-  }, [fullAccess]);
+  }, [maxQuestionsPerSet, access?.tier]);
 
   useEffect(() => {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
@@ -499,9 +514,12 @@ export function MockConfigScreen() {
   if (!course || !smart || readiness !== "ready") return null;
 
   const resetToDefaults = () => {
-    setCount(smart.questionCount);
-    setMinutes(smart.minutes);
-    setDifficulty(smart.difficulty);
+    const isExam = access?.tier === "exam";
+    const isCoreAccess = access?.tier === "core" || access?.tier === "trial";
+    const defaultCount = isExam ? EXAM_MAX_QUESTIONS : isCoreAccess ? PAID_MAX_QUESTIONS : smart.questionCount;
+    setCount(defaultCount);
+    setMinutes(defaultMinutesForCount(defaultCount));
+    setDifficulty(isExam ? "exam" : isCoreAccess ? "challenging" : smart.difficulty);
     setExcluded([]);
   };
 
@@ -518,11 +536,17 @@ export function MockConfigScreen() {
 
 
   const generate = () => {
-    const effectiveCount = fullAccess ? count : Math.min(count, FREE_MAX_QUESTIONS);
+    const effectiveCount = Math.min(count, maxQuestionsPerSet);
+    const effectiveDifficulty: Difficulty =
+      access?.tier === "exam"
+        ? difficulty
+        : access?.tier === "core" || access?.tier === "trial"
+          ? difficulty === "exam" ? "challenging" : difficulty
+          : "balanced";
     const nextSettings: CourseTestSettings = {
       questionCount: effectiveCount,
       minutes,
-      difficulty,
+      difficulty: effectiveDifficulty,
       topicFocus,
     };
     update({
@@ -557,7 +581,7 @@ export function MockConfigScreen() {
             </label>
             <div className="grid grid-cols-3 gap-2">
               {QUESTION_OPTIONS.map(({ count: n, label }) => {
-                const locked = !fullAccess && n > FREE_MAX_QUESTIONS;
+                const locked = n > maxQuestionsPerSet;
                 const on = count === n;
                 return (
                   <button
@@ -581,7 +605,7 @@ export function MockConfigScreen() {
                     ) : null}
                     <div className="font-display text-xl font-semibold text-foreground">{n}</div>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      {locked ? "Trial / paid" : label}
+                      {locked ? (n === EXAM_MAX_QUESTIONS ? "Exam plan" : "Core plan") : label}
                     </div>
                   </button>
                 );
@@ -603,11 +627,16 @@ export function MockConfigScreen() {
             <div className="grid grid-cols-2 gap-2">
               {DIFFICULTY_OPTIONS.map((d) => {
                 const on = difficulty === d.key;
+                const locked =
+                  access?.tier === "free"
+                    ? d.key !== "balanced"
+                    : access?.tier !== "exam" && d.key === "exam";
                 return (
-                  <button key={d.key} type="button" onClick={() => setDifficulty(d.key)}
-                    className={cn("rounded-xl border p-2.5 text-left transition", on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50")}>
-                    <div className="text-sm font-semibold text-foreground">{d.label}</div>
-                    <div className="text-[11px] text-muted-foreground">{d.blurb}</div>
+                  <button key={d.key} type="button" disabled={locked}
+                    onClick={() => locked ? navigate("upgrade") : setDifficulty(d.key)}
+                    className={cn("rounded-xl border p-2.5 text-left transition", on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50", locked && "opacity-60")}>
+                    <div className="flex items-center gap-1 text-sm font-semibold text-foreground">{d.label}{locked ? <Lock className="h-3 w-3" aria-hidden="true" /> : null}</div>
+                    <div className="text-[11px] text-muted-foreground">{locked ? "Included with a higher plan" : d.blurb}</div>
                   </button>
                 );
               })}
