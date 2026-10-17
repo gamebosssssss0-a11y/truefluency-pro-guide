@@ -69,7 +69,6 @@ function writeHomeDisplayCache(update: HomeDisplayCache) {
 /** One chip only: the live trial, paid access, or the founding price line. */
 function PlanChip() {
   const { access } = useEntitlement();
-  const [reminderOpen, setReminderOpen] = useState(false);
   const cached = readHomeDisplayCache()?.access;
   const displayAccess = access ?? cached ?? null;
   useEffect(() => {
@@ -295,6 +294,7 @@ function StrengthsCard() {
 export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   const { profile, navigate, hydrated } = useProfile();
   const { access } = useEntitlement();
+  const [reminderOpen, setReminderOpen] = useState(false);
   /** First name only, in title case: never the full legal name, never ALL-CAPS. */
   const name = (() => {
     const raw = (profile.identity?.name ?? "").trim();

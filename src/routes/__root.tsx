@@ -170,13 +170,12 @@ function MaintenanceBanner() {
       .then(({ data }) => { if (active && data) setSettings(data); });
     return () => { active = false; };
   }, [location]);
+  if (!settings?.maintenance_mode) return null;
   return (
-    <div className="min-h-[56px]" aria-live="polite">
-      {settings?.maintenance_mode ? (
-        <div role="status" className="flex min-h-[56px] items-center justify-center bg-[#B86E0A] px-4 py-3 text-center text-sm font-medium text-[#1B2A4A]">
-          {settings.maintenance_message?.trim() || "We’re doing some maintenance. You can keep using the app."}
-        </div>
-      ) : null}
+    <div aria-live="polite">
+      <div role="status" className="flex min-h-[56px] items-center justify-center bg-[#B86E0A] px-4 py-3 text-center text-sm font-medium text-[#1B2A4A]">
+        {settings.maintenance_message?.trim() || "We’re doing some maintenance. You can keep using the app."}
+      </div>
     </div>
   );
 }
