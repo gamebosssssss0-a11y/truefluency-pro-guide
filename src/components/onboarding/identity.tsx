@@ -88,10 +88,9 @@ export function IdentityScreen() {
         setBusy(null);
         return;
       }
-      const known = profile.accounts.find((a) => a.email.toLowerCase() === em);
-      const displayName = known?.name || em.split("@")[0] || "Student";
+      // The profile store keeps the app behind its sign-in screen until this
+      // account's own cloud profile has been restored.
       setBusy(null);
-      finish({ kind: "email", name: displayName, email: em }, rememberAccount(displayName, em));
     } catch (err) {
       console.error("[auth] sign-in failed", err);
       setError("We couldn't sign you in. Check your connection and try again.");
@@ -126,10 +125,8 @@ export function IdentityScreen() {
         setBusy(null);
         return;
       }
-      const meta = (user.user_metadata ?? {}) as { full_name?: string; name?: string };
-      const displayName = meta.full_name || meta.name || (user.email ?? "").split("@")[0] || "Student";
+      // The auth listener completes the same account-scoped restore as email login.
       setBusy(null);
-      finish({ kind: "email", name: displayName, email: user.email ?? undefined });
     } catch (err) {
       console.error("[auth] Google sign-in threw", err);
       setError(err instanceof Error ? err.message : "Google sign-in didn't complete.");
