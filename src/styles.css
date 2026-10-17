@@ -620,3 +620,36 @@
     height: calc(100dvh - 3rem);
   }
 }
+
+/* Scoped accessibility and solid page treatment for utility screens. */
+.study-utility-page {
+  background-color: #F7F3EA;
+  background-image: none;
+  color: #1B2A4A;
+}
+
+.study-utility-page .text-muted-foreground,
+.study-utility-page [class~="text-muted-foreground/80"] {
+  color: #46536C;
+}
+
+.study-utility-page .text-accent,
+.study-utility-page .text-warning {
+  color: #8A4F00;
+}
+
+.study-utility-page .bg-accent {
+  background-color: #8A4F00;
+}
+
+.study-utility-page .bg-accent.text-accent-foreground,
+.study-utility-page .bg-accent .text-accent-foreground {
+  color: #F7F3EA;
+}
+
+.study-utility-page [class~="text-[9px]"],
+.study-utility-page [class~="text-[10px]"],
+.study-utility-page [class~="text-[11px]"] {
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
