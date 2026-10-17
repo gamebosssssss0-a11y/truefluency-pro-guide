@@ -12,7 +12,13 @@ type Tab = "signup" | "login";
 
 export function IdentityScreen() {
   const { profile, update, go } = useProfile();
-  const [tab, setTab] = useState<Tab>("signup");
+  const [tab, setTab] = useState<Tab>(() => {
+    try {
+      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ? "login" : "signup";
+    } catch {
+      return "signup";
+    }
+  });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -125,8 +131,9 @@ export function IdentityScreen() {
         setBusy(null);
         return;
       }
-      // The auth listener completes the same account-scoped restore as email login.
-      setBusy(null);
+      // Reload through the normal startup gate so the active account is
+      // restored before any profile or onboarding screen is rendered.
+      window.location.reload();
     } catch (err) {
       console.error("[auth] Google sign-in threw", err);
       setError(err instanceof Error ? err.message : "Google sign-in didn't complete.");
