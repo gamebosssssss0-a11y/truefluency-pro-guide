@@ -332,7 +332,7 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
   const db = admin();
   const { data: share } = await db
     .from("library_shares")
-    .select("id, material_id, use_count, max_uses, is_revoked, expires_at")
+    .select("id, material_id, owner_id, use_count, max_uses, is_revoked, expires_at")
     .eq("token", token)
     .maybeSingle();
   if (!share || share.is_revoked) return null;
@@ -346,7 +346,7 @@ async function resolveShare(token: string): Promise<ResolvedShare | null> {
     )
     .eq("id", share.material_id)
     .maybeSingle();
-  if (!material) return null;
+  if (!material || material.user_id !== share.owner_id) return null;
   return {
     share,
     material: {
