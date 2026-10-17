@@ -452,9 +452,14 @@ export function ProgressPanel({
   navigate: ReturnType<typeof useProfile>["navigate"];
   update: ReturnType<typeof useProfile>["update"];
 }) {
-  const course = profile.courses.find((entry) =>
+  const defaultCourseCode = profile.courses.find((entry) =>
     canonicalCourseCode(entry.code) === canonicalCourseCode(activeCourseCode ?? ""),
-  ) ?? profile.courses[0] ?? null;
+  )?.code ?? profile.courses[0]?.code ?? "";
+  const [selectedCourseCode, setSelectedCourseCode] = useState(defaultCourseCode);
+  useEffect(() => setSelectedCourseCode(defaultCourseCode), [defaultCourseCode]);
+  const course = profile.courses.find((entry) =>
+    canonicalCourseCode(entry.code) === canonicalCourseCode(selectedCourseCode),
+  ) ?? null;
   const courseCode = course?.code ?? null;
   const [selectedTopic, setSelectedTopic] = useState("all");
   useEffect(() => setSelectedTopic("all"), [courseCode]);
@@ -649,20 +654,41 @@ export function ProgressPanel({
       </section>
 
       <section aria-labelledby="course-standing">
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-          <h2 id="course-standing" className="font-display text-lg font-semibold text-foreground">Course standing</h2>
-          <label className="flex min-w-44 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Progress topic
-            <select
-              aria-label="Choose a topic for your progress"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground"
-              value={selectedTopic}
-              onChange={(event) => setSelectedTopic(event.target.value)}
-            >
-              <option value="all">All topics</option>
-              {courseTopics.map((entry) => <option key={entry.topic} value={entry.topic}>{entry.topic}</option>)}
-            </select>
-          </label>
+        <div className="mb-2">
+          <h2 id="course-standing" className="mb-2 font-display text-lg font-semibold text-foreground">Progress</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="flex min-w-0 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Course
+              <select
+                aria-label="Choose a course for your progress"
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground"
+                value={selectedCourseCode}
+                onChange={(event) => setSelectedCourseCode(event.target.value)}
+                disabled={profile.courses.length === 0}
+              >
+                {profile.courses.length === 0
+                  ? <option value="">No courses</option>
+                  : profile.courses.map((entry) => (
+                    <option key={entry.code} value={entry.code}>
+                      {canonicalCourseCode(entry.code)} · {entry.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Topic
+              <select
+                aria-label="Choose a topic for your progress"
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground"
+                value={selectedTopic}
+                onChange={(event) => setSelectedTopic(event.target.value)}
+                disabled={courseTopics.length === 0}
+              >
+                <option value="all">All topics</option>
+                {courseTopics.map((entry) => <option key={entry.topic} value={entry.topic}>{entry.topic}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
         {courseTopics.length > 0 ? (
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-3">
