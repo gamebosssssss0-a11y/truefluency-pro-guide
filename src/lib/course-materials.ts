@@ -582,10 +582,31 @@ export async function listAllUserMaterials() {
 }
 
 
-export async function deleteMaterial(m: Pick<CourseMaterial, "id" | "file_path">) {
-  await deleteMaterialFiles({ data: { paths: [m.file_path] } });
-  const { error } = await supabase.from("course_materials").delete().eq("id", m.id);
-  if (error) throw error;
+export async function deleteMaterial(m: Pick<CourseMaterial, "id">) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("Sign in to remove this file.");
+
+  const { data: material, error: lookupError } = await supabase
+    .from("course_materials")
+    .select("id, file_path")
+    .eq("id", m.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!material) throw new Error("File not found or no longer available.");
+
+  await deleteMaterialFiles({ data: { paths: [material.file_path] } });
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from("course_materials")
+    .delete()
+    .eq("id", material.id)
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
+  if (deleteError) throw deleteError;
+  if (!deleted) throw new Error("The file is still in your locker. Refresh and try again.");
 }
 
 /** Wipe every uploaded file (storage + DB) for the signed-in user. */
