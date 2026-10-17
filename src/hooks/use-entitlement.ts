@@ -28,6 +28,21 @@ export function useEntitlement() {
   useEffect(() => {
     let live = true;
 
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      void supabase.auth.getSession()
+        .then(({ data }) => {
+          if (!live || !data.session?.access_token) return;
+          return getMyAccess().then((current) => {
+            if (live) setAccess(current);
+          });
+        })
+        .catch((e) => console.warn("[entitlement] couldn't refresh access on return", e));
+    };
+
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
     (async () => {
       try {
         const { data } = await supabase.auth.getSession();
@@ -50,6 +65,8 @@ export function useEntitlement() {
 
     return () => {
       live = false;
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
     };
   }, []);
 
