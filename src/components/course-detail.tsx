@@ -785,7 +785,7 @@ function PasteTextButton({ courseCode }: { courseCode: string }) {
 
 
 /** Shown from the moment the file is stored until its text has been read. */
-function ExtractingBanner({ page, total, where }: { page?: number; total?: number; where?: "device" | "server" }) {
+function ExtractingBanner({ page, total, actualTotal, where }: { page?: number; total?: number; actualTotal?: number; where?: "device" | "server" }) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -815,7 +815,9 @@ function ExtractingBanner({ page, total, where }: { page?: number; total?: numbe
       )}
       <p className="mt-1 text-muted-foreground">
         {paging
-          ? "Reading every page on your device. Keep this tab open until it finishes."
+          ? actualTotal != null && total != null && actualTotal > total
+            ? `This PDF has ${actualTotal.toLocaleString()} pages. We can read the first ${total.toLocaleString()}; the remaining ${(actualTotal - total).toLocaleString()} pages will not be included.`
+            : "Reading every page on your device. Keep this tab open until it finishes."
           : seconds < 20
             ? "Reading every page so mock tests and chat can use it."
             : "Still going. Scanned files take longer, and the first upload after a quiet spell waits for the server to wake up. You can keep using the app."}
@@ -857,7 +859,7 @@ function StageBanner({ stage }: { stage: UploadStage }) {
           </p>
         </div>
       )}
-      {stage.kind === "extracting" && <ExtractingBanner page={stage.page} total={stage.total} where={stage.where} />}
+      {stage.kind === "extracting" && <ExtractingBanner page={stage.page} total={stage.total} actualTotal={stage.actualTotal} where={stage.where} />}
       {stage.kind === "done" && (
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <CheckCircle2 className="h-4 w-4 text-primary" /> Uploaded
