@@ -3,6 +3,7 @@ import { canonicalCourseCode } from "@/lib/course-code";
 import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { MathText } from "@/components/math-text";
+import { supabase } from "@/integrations/supabase/client";
 import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
@@ -438,6 +439,7 @@ function FilterChip({
 /* ---------- Course progress ---------- */
 
 type ProgressTopic = { topic: string; score: number | null };
+type FlashcardRatingCounts = Record<"again" | "hard" | "good" | "easy", number>;
 
 export function ProgressPanel({
   profile,
@@ -478,6 +480,37 @@ export function ProgressPanel({
       : [],
     [courseCode, profile.attempts],
   );
+  const [ratingCounts, setRatingCounts] = useState<FlashcardRatingCounts | null>(null);
+  const [ratingCountsLoading, setRatingCountsLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!courseCode) {
+      setRatingCounts(null);
+      setRatingCountsLoading(false);
+      return () => { active = false; };
+    }
+    setRatingCounts(null);
+    setRatingCountsLoading(true);
+    void supabase.rpc("flashcard_rating_counts", { p_course_code: courseCode })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setRatingCounts(null);
+          return;
+        }
+        const counts: FlashcardRatingCounts = { again: 0, hard: 0, good: 0, easy: 0 };
+        for (const row of data ?? []) {
+          if (row.rating === "again" || row.rating === "hard" || row.rating === "good" || row.rating === "easy") {
+            counts[row.rating] = Number(row.total) || 0;
+          }
+        }
+        setRatingCounts(counts);
+      })
+      .finally(() => { if (active) setRatingCountsLoading(false); });
+    return () => { active = false; };
+  }, [courseCode]);
+
   const lowestTopic = courseTopics.find((entry) => entry.score !== null) ?? null;
   const scoredTopics = courseTopics.filter(
     (entry): entry is ProgressTopic & { score: number } => entry.score !== null,
@@ -725,9 +758,24 @@ export function ProgressPanel({
       </section>
 
       <section aria-labelledby="flashcard-memory" className="rounded-2xl border border-border bg-card p-4">
-        <h2 id="flashcard-memory" className="font-display text-lg font-semibold text-foreground">Flashcard memory</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Rating counts: <span className="font-semibold text-foreground">Not counted</span></p>
-        <p className="mt-1 text-xs text-muted-foreground">Review ratings are not stored yet.</p>
+        <h2 id="flashcard-memory" className="font-display text-lg font-semibold text-foreground">Flashcard rating counts</h2>
+        {ratingCountsLoading ? (
+          <p className="mt-2 text-sm text-muted-foreground">Loading rating counts…</p>
+        ) : ratingCounts ? (
+          <>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {(["again", "hard", "good", "easy"] as const).map((rating) => (
+                <div key={rating} className="rounded-xl border border-border bg-background p-2 text-center">
+                  <p className="text-[10px] capitalize text-muted-foreground">{rating}</p>
+                  <p className="mt-1 font-display text-xl font-semibold text-foreground">{ratingCounts[rating]}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Counts start with ratings recorded from this update. Earlier ratings were not stored.</p>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">Not counted</p>
+        )}
         <Button variant="outline" className="mt-3 w-full" onClick={() => navigate("flashcards-review")}>
           Review due cards
         </Button>
