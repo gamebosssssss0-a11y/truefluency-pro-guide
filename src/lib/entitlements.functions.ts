@@ -47,9 +47,10 @@ export const consumeFeatureQuota = createServerFn({ method: "POST" })
       requestedQuestions: data.requestedQuestions,
       dryRun: data.dryRun,
     });
-    // Never destructure a possibly-missing result: an empty answer must read as
-    // "allowed", not crash the submit handler.
-    if (!result || typeof result !== "object") return { allowed: true } as QuotaVerdict;
+    // A missing verdict is an error: quota checks must fail closed.
+    if (!result || typeof result !== "object") {
+      throw new Error("Couldn't verify feature access.");
+    }
     const { access: _access, ...verdict } = result as Record<string, unknown> & QuotaVerdict;
     return verdict as QuotaVerdict & { allowedQuestions?: number };
   });

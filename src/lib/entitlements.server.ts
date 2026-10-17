@@ -132,13 +132,18 @@ async function countPaidUsers(): Promise<number> {
   return count ?? 0;
 }
 
-async function usageToday(userId: string): Promise<Record<GatedFeature, number>> {
+async function usageToday(
+  userId: string,
+  day: string,
+): Promise<Record<GatedFeature, number>> {
   const db = await admin();
-  const { data } = await db
+  const { data, error } = await db
     .from("usage_counters")
     .select("feature, count")
     .eq("user_id", userId)
-    .eq("day", today());
+    .eq("day", day);
+
+  if (error) throw new Error("Couldn't check daily usage.");
 
   const out: Record<GatedFeature, number> = {
     mock_sets: 0,
@@ -153,7 +158,7 @@ async function usageToday(userId: string): Promise<Record<GatedFeature, number>>
   return out;
 }
 
-export async function resolveAccess(userId: string): Promise<AccessSummary> {
+export async function resolveAccess(userId: string, usageDay = today()): Promise<AccessSummary> {
   const row = await settleTier(await ensureRow(userId));
   const tier = row.tier as Tier;
   const fullAccess =
@@ -173,7 +178,7 @@ export async function resolveAccess(userId: string): Promise<AccessSummary> {
     maxQuestionsPerSet: fullAccess ? PAID_MAX_QUESTIONS : FREE_MAX_QUESTIONS,
     explanationsUnlocked: fullAccess,
     libraryUploadsUnlocked: fullAccess,
-    usageToday: await usageToday(userId),
+    usageToday: await usageToday(userId, usageDay),
     dailyLimits: {
       mock_sets: fullAccess ? CORE_DAILY_LIMITS.mock_sets : FREE_DAILY_LIMITS.mock_sets,
       chatbot_messages:
@@ -187,14 +192,30 @@ export async function resolveAccess(userId: string): Promise<AccessSummary> {
   };
 }
 
-async function bump(userId: string, feature: GatedFeature, current: number): Promise<void> {
+async function bump(
+  userId: string,
+  feature: GatedFeature,
+  day: string,
+  dailyLimit: number,
+): Promise<{ allowed: boolean; used: number }> {
   const db = await admin();
-  await db
-    .from("usage_counters")
-    .upsert(
-      { user_id: userId, feature, day: today(), count: current + 1 },
-      { onConflict: "user_id,feature,day" },
-    );
+  const rpc = db.rpc as unknown as (
+    name: string,
+    args: { p_user_id: string; p_feature: string; p_day: string; p_daily_limit: number },
+  ) => Promise<{
+    data: Array<{ allowed: boolean; used: number }> | null;
+    error: { message: string } | null;
+  }>;
+  const { data, error } = await rpc("consume_usage_quota", {
+    p_user_id: userId,
+    p_feature: feature,
+    p_day: day,
+    p_daily_limit: dailyLimit,
+  });
+  if (error) throw new Error("Couldn't record daily usage.");
+  const result = data?.[0];
+  if (!result) throw new Error("Couldn't record daily usage.");
+  return result;
 }
 
 /**
@@ -211,7 +232,8 @@ export async function consumeQuota(opts: {
   requestedQuestions?: number;
   dryRun?: boolean;
 }): Promise<QuotaVerdict & { access: AccessSummary; allowedQuestions?: number }> {
-  const access = await resolveAccess(opts.userId);
+  const usageDay = today();
+  const access = await resolveAccess(opts.userId, usageDay);
   const base = {
     priceNaira: access.priceNaira,
     maxQuestionsPerSet: access.maxQuestionsPerSet,
@@ -254,11 +276,24 @@ export async function consumeQuota(opts: {
     };
   }
 
-  if (!opts.dryRun) await bump(opts.userId, opts.feature, used);
+  let effectiveUsed = used;
+  if (!opts.dryRun) {
+    const recorded = await bump(opts.userId, opts.feature, usageDay, limit);
+    if (!recorded.allowed) {
+      const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
+      return {
+        ...verdict,
+        ...base,
+        remainingToday: 0,
+        message: paywallCopy(opts.feature, verdict).body,
+      };
+    }
+    effectiveUsed = recorded.used;
+  }
   return {
     ...base,
     allowed: true,
-    remainingToday: Math.max(0, limit - used - 1),
+    remainingToday: Math.max(0, limit - effectiveUsed),
     ...(opts.feature === "mock_sets"
       ? { allowedQuestions: Math.min(requested || FREE_MAX_QUESTIONS, FREE_MAX_QUESTIONS) }
       : {}),
