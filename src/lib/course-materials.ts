@@ -563,9 +563,15 @@ async function resolveStuckPending(items: CourseMaterial[]): Promise<CourseMater
 }
 
 export async function listMaterialsForCourse(courseCode: string) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const userId = sessionData.session?.user.id;
+  if (!userId) return [];
+
   const { data, error } = await supabase
     .from("course_materials")
     .select("*")
+    .eq("user_id", userId)
     .eq("course_code", courseCode)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -574,34 +580,22 @@ export async function listMaterialsForCourse(courseCode: string) {
 
 /** All materials the signed-in user has ever uploaded, across every course. */
 export async function listAllUserMaterials() {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const userId = sessionData.session?.user.id;
+  if (!userId) return [];
+
   const { data, error } = await supabase
     .from("course_materials")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return resolveStuckPending((data ?? []) as CourseMaterial[]);
 }
 
-
 export async function deleteMaterial(m: Pick<CourseMaterial, "id">) {
   await removeOwnedMaterial({ data: { materialId: m.id } });
-}
-
-/** Wipe every uploaded file (storage + DB) for the signed-in user. */
-export async function deleteAllUserMaterials() {
-  const all = await listAllUserMaterials();
-  if (all.length === 0) return;
-  const paths = all.map((m) => m.file_path);
-  for (let i = 0; i < paths.length; i += 100) {
-    await deleteMaterialFiles({ data: { paths: paths.slice(i, i + 100) } });
-  }
-  await supabase
-    .from("course_materials")
-    .delete()
-    .in(
-      "id",
-      all.map((m) => m.id),
-    );
 }
 
 /**
