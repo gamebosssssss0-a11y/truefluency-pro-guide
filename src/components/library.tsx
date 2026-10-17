@@ -281,7 +281,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const doRemove = async (file: LockerFile) => {
     setBusy(true);
     try {
-      await deleteMaterial({ id: file.id, file_path: file.file_path });
+      await deleteMaterial({ id: file.id });
     } catch (error) {
       setBusy(false);
       toast.error("We couldn't remove that file.");
