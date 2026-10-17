@@ -69,7 +69,7 @@ export function UpgradeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-transparent text-foreground">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-5 flex items-center gap-2">
           <button type="button" onClick={back} aria-label="Go back" className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground">
