@@ -150,13 +150,13 @@ export function RichText({ children, tone = "default" }: { children: string | nu
     const finalDisplayFormula = line.match(/^\s*\\\[([\s\S]+?)\\\]\s*$/);
     const lastContentLine = lines.map((candidate) => candidate.trim()).lastIndexOf(lines.slice().reverse().find((candidate) => candidate.trim())?.trim() ?? "");
     if (finalDisplayFormula && line.trim() === lines[lastContentLine]?.trim()) {
-      blocks.push(<div key={idx} className={canvas ? "my-3 max-w-full overflow-x-auto px-2 py-2 text-center text-[1.15em] text-[#E4C46A]" : "my-3 border border-[#E4DCC8] px-2 py-2 text-navy"}><MathText>{line}</MathText></div>);
+      blocks.push(<div key={idx} className={canvas ? "my-3 max-w-full overflow-x-auto px-2 py-2 text-center text-[1.15em]" : "my-3 border border-[#E4DCC8] px-2 py-2 text-center text-[1.15em] text-navy"}><MathText>{line}</MathText></div>);
       return;
     }
     const finalLine = line.match(/^\s*(final answer|answer)\s*:\s*(.*)$/i);
     if (finalLine) {
       blocks.push(
-        <div key={idx} className={canvas ? "my-3 px-2 py-2 text-[#E4C46A]" : "my-3 rounded-lg border border-border bg-background px-2 py-2 text-foreground"}>
+        <div key={idx} className={canvas ? "my-3 px-2 py-2" : "my-3 rounded-lg border border-border bg-background px-2 py-2 text-foreground"}>
           <span className="font-semibold">{finalLine[1]}:</span>{" "}
           <Inline text={finalLine[2] ?? ""} />
         </div>,
@@ -166,7 +166,7 @@ export function RichText({ children, tone = "default" }: { children: string | nu
     const stepTitle = line.match(/^\s*((?:step\s+\d+)|therefore|hence|formula summary)\s*:?\s*$/i);
     if (stepTitle) {
       blocks.push(
-        <p key={idx} className={canvas ? "mt-3 text-[15px] font-semibold text-[#E4C46A]" : "mt-3 text-[15px] font-semibold text-navy"}>
+        <p key={idx} className={canvas ? "mt-3 text-[15px] font-semibold" : "mt-3 text-[15px] font-semibold text-navy"}>
           {stepTitle[1]}
         </p>,
       );
@@ -189,5 +189,5 @@ export function RichText({ children, tone = "default" }: { children: string | nu
   });
   flushList();
 
-  return <div className="leading-relaxed">{blocks}</div>;
+  return <div className={canvas ? "chat-assistant-ink leading-relaxed" : "leading-relaxed"}>{blocks}</div>;
 }
