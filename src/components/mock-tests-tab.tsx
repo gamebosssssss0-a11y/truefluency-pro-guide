@@ -439,6 +439,7 @@ function FilterChip({
 /* ---------- Course progress ---------- */
 
 type ProgressTopic = { topic: string; score: number | null };
+type FlashcardRatingCounts = Record<"again" | "hard" | "good" | "easy", number>;
 
 export function ProgressPanel({
   profile,
@@ -491,7 +492,7 @@ export function ProgressPanel({
     }
     setRatingCounts(null);
     setRatingCountsLoading(true);
-    void supabase.rpc("flashcard_rating_counts", { p_course_code: courseCode })
+    void Promise.resolve(supabase.rpc("flashcard_rating_counts", { p_course_code: courseCode }))
       .then(({ data, error }) => {
         if (!active) return;
         if (error) {
