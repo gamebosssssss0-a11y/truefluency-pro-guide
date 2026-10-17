@@ -680,8 +680,13 @@ export function ProgressPanel({
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
                   </div>
-                  <div className="mt-2 text-[10px] text-muted-foreground">
-                    {masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak"}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-muted-foreground">
+                      {masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak"}
+                    </span>
+                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => navigate("mock-config", { courseCode: course.code })}>
+                      Practice
+                    </Button>
                   </div>
                 </div>
               );
