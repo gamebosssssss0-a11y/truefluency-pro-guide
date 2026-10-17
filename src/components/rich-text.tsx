@@ -22,7 +22,9 @@ export function plainText(input: string): string {
 
 function parseTableCells(line: string): string[] | null {
   if (!line.includes("|")) return null;
-  const trimmed = line.trim().replace(/^\\|/, "").replace(/\\|$/, "");
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) trimmed = trimmed.slice(1);
+  if (trimmed.endsWith("|")) trimmed = trimmed.slice(0, -1);
   return trimmed.split("|").map((cell) => cell.trim());
 }
 
