@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Loader2, Mic, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, Image as ImageIcon, Loader2, Mic, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
@@ -1021,25 +1021,38 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       ) : null}
                       {m.text}
                     </div>
-                    {m.sendError ? (
-                      <div className="mt-1 flex items-center justify-end gap-3 text-xs">
-                        <span className="font-medium text-destructive">{m.sendErrorText || "Couldn't send."}</span>
-                        <button
-                          type="button"
-                          onClick={() => void send(m.text, {
-                            messageId: m.id,
-                            course: m.retryCourse ?? selected,
-                            mode: m.retryMode ?? mode,
-                          })}
-                          className="font-semibold text-[#F7F3EA] mix-blend-difference underline underline-offset-2"
-                        >Retry</button>
-                        <button
-                          type="button"
-                          onClick={() => void navigator.clipboard.writeText(m.text).then(() => toast.success("Message copied."), () => toast.error("Couldn't copy this message."))}
-                          className="font-semibold text-[#F7F3EA] mix-blend-difference underline underline-offset-2"
-                        >Copy</button>
-                      </div>
-                    ) : null}
+                    <div className="mt-1 flex items-center justify-end gap-3 text-xs">
+                      {m.sendError ? (
+                        <span role="status" className="mr-auto min-w-0 break-words font-medium text-destructive">
+                          {m.sendErrorText || "Couldn't send."}
+                        </span>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={isSending || isUploadingPhoto}
+                        onClick={() => void send(m.text, {
+                          messageId: m.id,
+                          course: m.retryCourse ?? selected,
+                          mode: m.retryMode ?? mode,
+                        })}
+                        className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 font-semibold text-navy transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Retry message"
+                        title="Retry message"
+                      >
+                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                        <span>Retry</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void navigator.clipboard.writeText(m.text).then(() => toast.success("Message copied."), () => toast.error("Couldn't copy this message."))}
+                        className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 font-semibold text-navy transition hover:bg-sand"
+                        aria-label="Copy message"
+                        title="Copy message"
+                      >
+                        <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+                        <span>Copy</span>
+                      </button>
+                    </div>
                   </div>
                 ) : m.from === "assistant" ? (
                   <div key={m.id} className="w-full">
@@ -1060,7 +1073,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             onClick={() => {
                               if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
                             }}
-                            className="rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-3 py-1.5 text-xs font-semibold text-[#1B2A4A] transition hover:bg-[#E4DCC8]"
+                            className={cn(
+                              "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                              a.label.toLowerCase().includes("mock test") || a.view === "mock-gen"
+                                ? "border border-amber bg-amber text-white hover:bg-amber/90"
+                                : "border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] hover:bg-[#E4DCC8]",
+                            )}
                           >
                             {a.label} →
                           </button>
