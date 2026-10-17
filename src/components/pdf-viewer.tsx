@@ -207,7 +207,7 @@ export function PdfViewer({
   fileKey?: string;
   onClose?: () => void;
   onCancel?: () => void;
-  onExplain?: (data: { page: number; fileName: string; text: string }) => void;
+  onExplain?: (data: { page: number; fileName: string; text: string; previewUrl?: string }) => void;
   onRetry?: () => void | Promise<void>;
   explainPanelOpen?: boolean;
 }) {
@@ -460,7 +460,23 @@ export function PdfViewer({
         toast.error("This page has too little selectable text.");
         return;
       }
-      onExplain({ page: currentPageNumber, fileName, text: text.slice(0, 4000) });
+      let previewUrl: string | undefined;
+      try {
+        const renderedCanvas = canvasRef.current ?? pageNodes.current.get(currentPageNumber)?.querySelector("canvas") ?? null;
+        if (renderedCanvas && renderedCanvas.width > 0 && renderedCanvas.height > 0) {
+          const thumbnail = document.createElement("canvas");
+          const scale = Math.min(1, 420 / renderedCanvas.width);
+          thumbnail.width = Math.max(1, Math.round(renderedCanvas.width * scale));
+          thumbnail.height = Math.max(1, Math.round(renderedCanvas.height * scale));
+          const context = thumbnail.getContext("2d");
+          context?.drawImage(renderedCanvas, 0, 0, thumbnail.width, thumbnail.height);
+          previewUrl = thumbnail.toDataURL("image/jpeg", 0.6);
+          if (previewUrl.length > 750_000) previewUrl = undefined;
+        }
+      } catch {
+        // Keep the text handoff working if a browser cannot create a thumbnail.
+      }
+      onExplain({ page: currentPageNumber, fileName, text: text.slice(0, 4000), previewUrl });
     } catch {
       toast.error("Couldn't read selectable text from this page.");
     }
