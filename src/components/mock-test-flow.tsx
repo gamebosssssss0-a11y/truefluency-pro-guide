@@ -835,7 +835,7 @@ export function MockRunScreen() {
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
     if (answeredCount >= 5) {
       try {
-        const streak = await recordMockStreak({ data: { attemptId: attempt.id } });
+        const streak = await recordMockStreak({ data: { answeredCount } });
         if (streak) {
           update({
             streakDays: streak.streakDays,
