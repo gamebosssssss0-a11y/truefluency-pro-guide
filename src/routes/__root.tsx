@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
   useRouterState,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,10 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/index")) {
+    window.location.replace("/" + window.location.search);
+    return null;
+  }
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -77,6 +82,15 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    if (location.pathname === "/index" || location.pathname === "/index/") {
+      throw redirect({
+        to: "/",
+        search: location.search,
+        replace: true,
+      });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
