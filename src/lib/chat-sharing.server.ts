@@ -19,6 +19,11 @@ type ShareState = {
   updatedAt: string;
 };
 
+function parseVisibility(value: unknown): ChatShareVisibility {
+  if (value === "public" || value === "private") return value;
+  throw new Error("Invalid chat share visibility.");
+}
+
 function serviceFetch(key: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(init?.headers);
@@ -135,7 +140,7 @@ export async function getOwnedChatShare(opts: {
   if (!data) return null;
   return {
     token: data.is_revoked ? null : data.token,
-    visibility: data.visibility,
+    visibility: parseVisibility(data.visibility),
     isRevoked: data.is_revoked,
     updatedAt: data.updated_at,
   };
@@ -182,7 +187,7 @@ export async function createOrUpdateOwnedChatShare(opts: {
   if (result.error) throw result.error;
   return {
     token: result.data.token,
-    visibility: result.data.visibility,
+    visibility: parseVisibility(result.data.visibility),
     isRevoked: result.data.is_revoked,
     updatedAt: result.data.updated_at,
   };
@@ -222,5 +227,5 @@ export async function readChatShareForViewer(opts: {
   if (!conversation) return null;
   const snapshot = parseSnapshot(data.snapshot);
   if (!snapshot) return null;
-  return { ...snapshot, visibility: data.visibility };
+  return { ...snapshot, visibility: parseVisibility(data.visibility) };
 }
