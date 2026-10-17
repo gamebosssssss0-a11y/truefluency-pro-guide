@@ -1075,7 +1075,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             }}
                             className={cn(
                               "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                              /mock\\s*test/i.test(a.label) || a.view === "mock-gen"
+                              a.label.toLowerCase().includes("mock test") || a.view === "mock-gen"
                                 ? "border border-amber bg-amber text-white hover:bg-amber/90"
                                 : "border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] hover:bg-[#E4DCC8]",
                             )}
