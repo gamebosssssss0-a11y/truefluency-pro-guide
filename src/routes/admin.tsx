@@ -26,14 +26,20 @@ function AdminPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [settingsError, setSettingsError] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(null);
     void (async () => {
       const result = await supabase.rpc("admin_dashboard_stats");
       if (cancelled) return;
       if (result.error || !result.data) {
-        window.location.replace("/");
+        const notAuthorized = /not authorized|permission denied/i.test(result.error?.message ?? "");
+        setLoadError(notAuthorized
+          ? "This signed-in account does not have confirmed admin access. Refresh your session and try again."
+          : "The admin dashboard data could not load. Check your connection and retry.");
         return;
       }
       const data = result.data as unknown as Stats;
@@ -59,7 +65,7 @@ function AdminPage() {
       if (!cancelled) setGateCounts(Object.fromEntries(counts));
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   async function saveSettings(nextMode = settings?.maintenance_mode) {
     if (!settings || nextMode === undefined) return;
@@ -78,7 +84,22 @@ function AdminPage() {
   }
 
   if (!stats) {
-    return <main className="min-h-screen bg-background px-5 py-10 text-center text-sm text-muted-foreground">Checking access…</main>;
+    return (
+      <main className="min-h-screen bg-background px-5 py-10 text-center text-foreground">
+        <div className="mx-auto max-w-md">
+          <h1 className="font-display text-2xl font-semibold">
+            {loadError ? "Admin dashboard unavailable" : "Checking admin access…"}
+          </h1>
+          {loadError ? (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+              <Button className="mt-5" onClick={() => setReloadKey((key) => key + 1)}>Try again</Button>
+              <Button variant="outline" className="ml-2 mt-5" onClick={() => window.location.assign("/")}>Back to app</Button>
+            </>
+          ) : null}
+        </div>
+      </main>
+    );
   }
 
   const cards = [
