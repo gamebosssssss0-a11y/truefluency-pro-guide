@@ -708,6 +708,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           syncPromise = null;
           profileRef.current = emptyProfile;
           setProfile(emptyProfile);
+          if (hadAccount) {
+            try { localStorage.setItem(`${KEY}:onboarding-pending`, "1"); }
+            catch { /* ignore unavailable local storage */ }
+          }
           setStep(hadAccount ? "identity" : "landing");
           setView("home");
           writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
