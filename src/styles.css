@@ -623,6 +623,26 @@
 
 /* Scoped accessibility and solid page treatment for utility screens. */
 .study-utility-page {
+  --background: #F7F3EA;
+  --foreground: #1B2A4A;
+  --surface: #FBF7EE;
+  --card: #FBF7EE;
+  --card-foreground: #1B2A4A;
+  --popover: #FBF7EE;
+  --popover-foreground: #1B2A4A;
+  --primary: #1B2A4A;
+  --primary-foreground: #F7F3EA;
+  --secondary: #EFE8D9;
+  --secondary-foreground: #1B2A4A;
+  --muted: #EFE8D9;
+  --muted-foreground: #46536C;
+  --accent: #B86E0A;
+  --accent-foreground: #1B2A4A;
+  --success: #2F6B4F;
+  --warning: #B86E0A;
+  --destructive: #8B2E2E;
+  --border: #E4DCC8;
+  --input: #E4DCC8;
   background-color: #F7F3EA;
   background-image: none;
   color: #1B2A4A;
