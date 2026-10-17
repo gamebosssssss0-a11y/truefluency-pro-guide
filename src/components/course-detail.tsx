@@ -503,7 +503,7 @@ const HIDDEN_INPUT_CLASS =
   "absolute h-px w-px overflow-hidden opacity-0 -z-10 left-0 top-0 pointer-events-none";
 
 function UploadButton({ courseCode }: { courseCode: string }) {
-  const { navigate, profile } = useProfile();
+  const { profile } = useProfile();
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = `upload-${courseCode.replace(/[^a-zA-Z0-9-]/g, "")}`;
   const [stage, setStage] = useState<UploadStage | null>(null);
@@ -582,7 +582,6 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         toast.success(`Added to ${courseCode}`);
       }
       refreshList();
-      navigate("home", { courseCode: null, replace: true });
     } catch (err) {
       console.error("[upload] runUpload caught error", err);
       setLastError({ file });
@@ -727,7 +726,6 @@ function UploadButton({ courseCode }: { courseCode: string }) {
 /* -------- Paste text as an upload alternative -------- */
 
 function PasteTextButton({ courseCode }: { courseCode: string }) {
-  const { navigate } = useProfile();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [stage, setStage] = useState<UploadStage | null>(null);
@@ -748,7 +746,6 @@ function PasteTextButton({ courseCode }: { courseCode: string }) {
       setText("");
       setOpen(false);
       try { window.dispatchEvent(new Event("course-materials-refresh")); } catch { /* ignore */ }
-      navigate("home", { courseCode: null, replace: true });
     } catch (e) {
       console.error("[paste] submit failed", e);
       setError((e as Error)?.message || "Couldn't save your text. Please try again.");
