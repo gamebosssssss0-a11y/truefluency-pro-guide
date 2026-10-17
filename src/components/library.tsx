@@ -130,7 +130,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const [preview, setPreview] = useState<
     { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; failed?: boolean; reason?: string } | null
   >(null);
-  const [pageExplanation, setPageExplanation] = useState<{ courseCode: string; page: number; fileName: string; text: string } | null>(null);
+  const [pageExplanation, setPageExplanation] = useState<{ courseCode: string; page: number; fileName: string; text: string; previewUrl?: string } | null>(null);
 
   const [busy, setBusy] = useState(false);
   // Attribution choices for the publish confirmation. Both start off every time.
@@ -351,13 +351,14 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   };
 
 
-  const explainPageInChat = (data: { page: number; fileName: string; text: string }) => {
+  const explainPageInChat = (data: { page: number; fileName: string; text: string; previewUrl?: string }) => {
     if (!preview) return;
     const attachment = {
       courseCode: canonicalCourseCode(preview.course_code),
       page: data.page,
       fileName: data.fileName,
       text: data.text.slice(0, 4000),
+      previewUrl: data.previewUrl,
     };
     if (window.matchMedia("(min-width: 768px)").matches) {
       setPageExplanation(attachment);
