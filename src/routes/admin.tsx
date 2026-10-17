@@ -61,12 +61,12 @@ function AdminPage() {
     return () => { cancelled = true; };
   }, []);
 
-  async function saveSettings() {
-    if (!settings) return;
+  async function saveSettings(nextMode = settings?.maintenance_mode) {
+    if (!settings || nextMode === undefined) return;
     setBusy(true);
     setSettingsError("");
     const result = await supabase.from("site_settings").update({
-      maintenance_mode: !settings.maintenance_mode,
+      maintenance_mode: nextMode,
       maintenance_message: message,
     }).eq("id", true);
     setBusy(false);
@@ -74,7 +74,7 @@ function AdminPage() {
       setSettingsError("Could not save maintenance settings.");
       return;
     }
-    setSettings({ ...settings, maintenance_mode: !settings.maintenance_mode, maintenance_message: message });
+    setSettings({ ...settings, maintenance_mode: nextMode, maintenance_message: message });
   }
 
   if (!stats) {
@@ -146,8 +146,7 @@ function AdminPage() {
           {settings ? <>
             <label className="mt-3 block text-sm font-medium" htmlFor="maintenance-message">Banner message</label>
             <textarea id="maintenance-message" value={message} onChange={(event) => setMessage(event.target.value)} rows={3} maxLength={240} className="mt-1 w-full rounded-xl border border-border bg-background p-3 text-sm" />
-            <Button disabled={busy} className="mt-3" onClick={saveSettings}>{busy ? "Saving…" : settings.maintenance_mode ? "Turn notice off" : "Turn notice on"}</Button>
-            <span className="ml-3 text-xs text-muted-foreground">Currently {settings.maintenance_mode ? "on" : "off"}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-2"><Button disabled={busy} variant="outline" onClick={() => saveSettings(settings.maintenance_mode)}>{busy ? "Saving…" : "Save message"}</Button><Button disabled={busy} onClick={() => saveSettings(!settings.maintenance_mode)}>{settings.maintenance_mode ? "Turn notice off" : "Turn notice on"}</Button><span className="text-xs text-muted-foreground">Currently {settings.maintenance_mode ? "on" : "off"}</span></div>
           </> : <p className="mt-2 text-sm text-muted-foreground">Settings unavailable.</p>}
         </section>
       </div>
