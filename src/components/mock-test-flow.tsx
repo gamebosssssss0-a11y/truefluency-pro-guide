@@ -961,7 +961,7 @@ export function MockRunScreen() {
         {q ? (
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="font-display text-[17px] font-semibold leading-snug text-foreground"><MathText>{q.question}</MathText></div>
+            <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -974,7 +974,7 @@ export function MockRunScreen() {
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="min-w-0 break-words text-sm text-foreground"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 break-words whitespace-pre-wrap text-base leading-6 text-foreground"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
@@ -1419,7 +1419,7 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="font-display text-[17px] font-semibold leading-snug text-foreground"><MathText>{q.question}</MathText></div>
+                  <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText>{q.question}</MathText></div>
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
@@ -1448,7 +1448,7 @@ export function AttemptReviewScreen() {
                           </span>
                           <span
                             className={cn(
-                              "min-w-0 flex-1 break-words",
+                              "min-w-0 flex-1 break-words whitespace-pre-wrap text-[15px] leading-6",
                               isAnswer || wrongPick ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
@@ -1595,7 +1595,7 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
           <div className="text-[11px] font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
-          <div className="mt-1 break-words text-sm leading-[1.45] text-foreground">
+          <div className="mt-1 break-words whitespace-pre-wrap text-[15px] leading-6 text-foreground">
             <MathText>{row.body}</MathText>
           </div>
         </div>
