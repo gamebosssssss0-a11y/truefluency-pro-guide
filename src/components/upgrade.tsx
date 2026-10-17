@@ -92,7 +92,7 @@ export function UpgradeScreen() {
             </div>
             <section className="mt-4 rounded-2xl border border-border bg-card p-5">
               <h2 className="text-sm font-semibold">Your studies, with more support</h2>
-              <ul className="mt-3 space-y-3">{INCLUDED.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
+              <ul className="mt-3 space-y-3">{PLAN_FEATURES.core.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
             </section>
             <Button className="mt-5 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setStep("plans")}>Choose a plan</Button>
             <Button variant="outline" className="mt-3 h-12 w-full" onClick={() => navigate("support")}>Ask us about payment</Button>
