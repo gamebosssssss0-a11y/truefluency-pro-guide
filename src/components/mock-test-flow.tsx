@@ -3,7 +3,7 @@ import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type Co
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
@@ -1244,7 +1244,7 @@ export function MockResultScreen() {
           </div>
           {streak.state !== "none" ? (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
-              {streak.state === "fire" ? "🔥" : "🥶"} {streak.days}-day streak{streak.state === "frozen" ? " frozen" : ""}
+              {streak.state === "frozen" ? <Snowflake aria-hidden="true" className="h-3 w-3" /> : <Flame aria-hidden="true" className="h-3 w-3" />} {streak.days}-day streak{streak.state === "frozen" ? " frozen" : ""}
             </div>
           ) : null}
         </div>
