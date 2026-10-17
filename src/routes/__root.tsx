@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -147,13 +148,14 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function MaintenanceBanner() {
+  const location = useRouterState({ select: (state) => state.location.href });
   const [settings, setSettings] = useState<{ maintenance_mode: boolean; maintenance_message: string | null } | null>(null);
   useEffect(() => {
     let active = true;
     void supabase.from("site_settings").select("maintenance_mode, maintenance_message").eq("id", true).maybeSingle()
       .then(({ data }) => { if (active && data) setSettings(data); });
     return () => { active = false; };
-  }, []);
+  }, [location]);
   return (
     <div className="min-h-[56px]" aria-live="polite">
       {settings?.maintenance_mode ? (
