@@ -243,7 +243,7 @@ export function MockGenerationScreen() {
 
   if (refused) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="study-utility-page min-h-screen">
         <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
           <PaywallNotice
             feature="mock_sets"
@@ -258,7 +258,7 @@ export function MockGenerationScreen() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="study-utility-page min-h-screen">
         <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
           <ErrorCard
             onAction={() => {
@@ -279,7 +279,7 @@ export function MockGenerationScreen() {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
         <div className="absolute left-5 top-6">
           <HeaderLogo />
@@ -532,7 +532,7 @@ export function MockConfigScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -873,7 +873,7 @@ export function MockRunScreen() {
 
   if (!t) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="study-utility-page min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
@@ -917,7 +917,7 @@ export function MockRunScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-24 pt-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1198,7 +1198,7 @@ export function MockResultScreen() {
 
   if (!attempt) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="study-utility-page min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No result to show.</p>
@@ -1220,7 +1220,7 @@ export function MockResultScreen() {
   ].filter((g) => g.topics.length > 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -1307,7 +1307,7 @@ export function AttemptReviewScreen() {
 
   if (!attempt) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="study-utility-page min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">That attempt is no longer available.</p>
@@ -1320,7 +1320,7 @@ export function AttemptReviewScreen() {
   const answers = attempt.answers ?? [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
