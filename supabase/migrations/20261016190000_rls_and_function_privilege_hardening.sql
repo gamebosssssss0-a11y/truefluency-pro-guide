@@ -45,14 +45,17 @@ grant all on table public.chat_conversations, public.chat_flagged_uploads,
 -- Client uploads need insert access only to their own file metadata.
 -- Extraction fields are client-updated; identity, storage path, publish state,
 -- and peer-copy attribution remain server-controlled after insert.
-revoke insert, update on table public.course_materials from public, anon, authenticated;
+revoke all on table public.course_materials from public, anon, authenticated;
+grant select, delete on table public.course_materials to authenticated;
 grant insert (user_id, course_code, file_path, file_name, file_type, mime_type, size_bytes)
   on table public.course_materials to authenticated;
 grant update (extracted_content, extraction_status, extraction_error)
   on table public.course_materials to authenticated;
+grant all on table public.course_materials to service_role;
 
 -- Profile sync and avatar editing do not need permission to forge streak state.
-revoke insert, update on table public.profiles from public, anon, authenticated;
+revoke all on table public.profiles from public, anon, authenticated;
+grant select on table public.profiles to authenticated;
 grant insert (
   user_id, display_name, email, goal, timeline, study_preference, faculty,
   department, level, setup_complete, disclaimer_accepted, cgpa_intro_seen,
@@ -65,6 +68,17 @@ grant update (
   has_completed_first_mock, mastered_courses, cgpa_inputs, cgpa_plan,
   cgpa_actual, avatar_path
 ) on table public.profiles to authenticated;
+grant all on table public.profiles to service_role;
+
+-- User-owned sync tables retain CRUD only for authenticated callers; RLS
+-- policies below continue to isolate each row by auth.uid().
+revoke all on table public.ai_question_sets, public.course_topic_analysis,
+  public.mock_attempts, public.user_courses from public, anon, authenticated;
+grant select, insert, update, delete on table public.ai_question_sets,
+  public.course_topic_analysis, public.mock_attempts, public.user_courses
+  to authenticated;
+grant all on table public.ai_question_sets, public.course_topic_analysis,
+  public.mock_attempts, public.user_courses to service_role;
 
 -- The streak writer can update protected streak columns only after validating
 -- that a Supabase identity exists and that it writes only auth.uid()'s row.
