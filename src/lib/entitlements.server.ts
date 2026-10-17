@@ -74,6 +74,13 @@ async function admin() {
 
 type GateName = "mock_questions" | "mock_sets" | "flashcard_decks" | "chat_messages" | "upgrade_cta" | "library_uploads";
 
+function requireUserId(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("Authentication required.");
+  }
+  return value.trim();
+}
+
 function noteGateHit(userId: string, gate: GateName) {
   void admin()
     .then((db) => db.from("gate_hits").insert({ user_id: userId, gate }))
@@ -89,9 +96,10 @@ function gateForRefusal(feature: GatedFeature, reason: string): GateName | null 
   return null;
 }
 
-function recordRefusal(userId: string, feature: GatedFeature, reason: string) {
+function recordRefusal(userId: unknown, feature: GatedFeature, reason: string) {
+  if (typeof userId !== "string" || userId.trim().length === 0) return;
   const gate = gateForRefusal(feature, reason);
-  if (gate) noteGateHit(userId, gate);
+  if (gate) noteGateHit(userId.trim(), gate);
 }
 
 /** Fetch the caller's subscription, creating a fresh 7-day trial on first use. */
@@ -181,7 +189,8 @@ async function usageToday(
 }
 
 export async function resolveAccess(userId: string, usageDay = today()): Promise<AccessSummary> {
-  const row = await settleTier(await ensureRow(userId));
+  const callerId = requireUserId(userId);
+  const row = await settleTier(await ensureRow(callerId));
   const tier = row.tier as Tier;
   const fullAccess =
     (tier === "trial" && new Date(row.trial_ends_at).getTime() > Date.now()) ||
@@ -200,7 +209,7 @@ export async function resolveAccess(userId: string, usageDay = today()): Promise
     maxQuestionsPerSet: fullAccess ? PAID_MAX_QUESTIONS : FREE_MAX_QUESTIONS,
     explanationsUnlocked: fullAccess,
     libraryUploadsUnlocked: fullAccess,
-    usageToday: await usageToday(userId, usageDay),
+    usageToday: await usageToday(callerId, usageDay),
     dailyLimits: {
       mock_sets: fullAccess ? CORE_DAILY_LIMITS.mock_sets : FREE_DAILY_LIMITS.mock_sets,
       chatbot_messages:
@@ -254,8 +263,9 @@ export async function consumeQuota(opts: {
   requestedQuestions?: number;
   dryRun?: boolean;
 }): Promise<QuotaVerdict & { access: AccessSummary; allowedQuestions?: number }> {
+  const callerId = requireUserId(opts.userId);
   const usageDay = today();
-  const access = await resolveAccess(opts.userId, usageDay);
+  const access = await resolveAccess(callerId, usageDay);
   const base = {
     priceNaira: access.priceNaira,
     maxQuestionsPerSet: access.maxQuestionsPerSet,
@@ -280,19 +290,19 @@ export async function consumeQuota(opts: {
 
   if (limit === 0) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "locked" };
-    recordRefusal(opts.userId, opts.feature, verdict.reason);
+    recordRefusal(callerId, opts.feature, verdict.reason);
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
   if (opts.feature === "mock_sets" && opts.requestedQuestions && requested > FREE_MAX_QUESTIONS) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "question_cap" };
-    recordRefusal(opts.userId, opts.feature, verdict.reason);
+    recordRefusal(callerId, opts.feature, verdict.reason);
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
   if (used >= limit) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
-    recordRefusal(opts.userId, opts.feature, verdict.reason);
+    recordRefusal(callerId, opts.feature, verdict.reason);
     return {
       ...verdict,
       ...base,
@@ -303,10 +313,10 @@ export async function consumeQuota(opts: {
 
   let effectiveUsed = used;
   if (!opts.dryRun) {
-    const recorded = await bump(opts.userId, opts.feature, usageDay, limit);
+    const recorded = await bump(callerId, opts.feature, usageDay, limit);
     if (!recorded.allowed) {
       const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
-      recordRefusal(opts.userId, opts.feature, verdict.reason);
+      recordRefusal(callerId, opts.feature, verdict.reason);
       return {
         ...verdict,
         ...base,
