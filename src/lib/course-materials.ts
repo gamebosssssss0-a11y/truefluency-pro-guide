@@ -21,7 +21,7 @@ export type UploadStage =
   /** File is stored; its text is being read in the background. */
   | { kind: "uploaded" }
   /** Text is being read; page/total when the browser is reading a PDF page by page. */
-  | { kind: "extracting"; page?: number; total?: number; where?: "device" | "server" }
+  | { kind: "extracting"; page?: number; total?: number; actualTotal?: number; where?: "device" | "server" }
   | { kind: "done" }
   | { kind: "error"; message: string };
 
@@ -228,8 +228,8 @@ export async function uploadCourseMaterial(opts: {
   const needsExtraction = EXTRACTABLE_TYPES.includes(fileType);
   if (!isImage && file.size > MAX_DOCUMENT_BYTES) {
     const msg =
-      `That file is ${(file.size / (1024 * 1024)).toFixed(0)} MB — the limit is ${MAX_DOCUMENT_MB} MB. ` +
-      "Split it into parts or export a smaller copy, then try again.";
+      `This file is ${(file.size / (1024 * 1024)).toFixed(2)} MB; the upload limit is ${MAX_DOCUMENT_MB} MB. ` +
+      "Choose a smaller file or split this document into parts, then try again.";
     emit({ kind: "error", message: msg });
     throw new Error(msg);
   }
@@ -373,8 +373,8 @@ async function readUploadedText(
   if (fileType === "pdf") {
     let pageTexts: string[] | null = null;
     try {
-      pageTexts = await extractPdfPageTexts(file, (page, total) =>
-        emit({ kind: "extracting", page, total, where: "device" }),
+      pageTexts = await extractPdfPageTexts(file, (page, total, actualTotal) =>
+        emit({ kind: "extracting", page, total, actualTotal, where: "device" }),
       );
     } catch (e) {
       console.warn("[upload] in-browser PDF reading failed, using the server", e);
