@@ -854,7 +854,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="text-base leading-6 text-[#F7F3EA] dark:text-[#F7F3EA] mix-blend-difference">
+                    <div className="rounded-2xl border border-[#B86E0A]/45 bg-[#1B2A4A] p-3.5 text-base leading-6 text-[#E4C46A] shadow-[0_0_18px_rgba(184,110,10,0.12)]">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.actions && m.actions.length > 0 ? (
