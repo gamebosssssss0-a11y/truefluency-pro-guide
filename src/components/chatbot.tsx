@@ -1146,7 +1146,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </button>
             <button
               type="button"
-              onClick={() => send()
+              onClick={() => send()}
               disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
               aria-label="Send"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
@@ -1175,6 +1175,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <div className="mt-4 space-y-2">
               {historyRows.map((row) => {
                 const isExpanded = expandedConvId === row.conversationId;
+                const previewText = plainText(row.messages[row.messages.length - 1]?.content ?? "");
                 return (
                   <div key={row.conversationId} className="rounded-xl border border-border border-l-4 border-l-accent bg-card text-card-foreground">
                     <div className="flex items-start gap-2 p-3">
@@ -1186,7 +1187,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {displayCode(row.course)} · {row.date}
                         </div>
-                        <div className="mt-1 truncate text-sm font-semibold">{row.title}</div>
+                        <div className="mt-1 line-clamp-2 text-sm font-semibold">{row.title}</div>
+                        {previewText ? <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{previewText}</div> : null}
+                        <div className="mt-1 text-[11px] text-muted-foreground">{row.messages.length} messages</div>
                       </button>
                       <button
                         type="button"
@@ -1199,16 +1202,18 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       </button>
                     </div>
                     {isExpanded ? (
-                      <div className="space-y-2 border-t border-border p-3">
+                      <div aria-label="Conversation messages" className="max-h-[52vh] space-y-3 overflow-y-auto border-t border-border p-3">
                         {row.messages.map((m, i) => (
-                          <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-                            <div
-                              className={
-                                m.role === "user"
-                                  ? "inline-block rounded-2xl bg-sand px-3 py-2 text-left text-xs text-navy"
-                                  : "inline-block rounded-2xl border border-border bg-chat-card px-3 py-2 text-left text-xs text-chat-foreground"
-                              }
-                            >
+                          <div
+                            key={i}
+                            className={m.role === "user"
+                              ? "rounded-xl border border-[#E4DCC8] bg-[#F3E6C8] p-3 text-[#1B2A4A]"
+                              : "rounded-xl border border-border bg-background p-3 text-foreground"}
+                          >
+                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {m.role === "user" ? "You" : "Study Chat"}
+                            </div>
+                            <div className="break-words text-sm leading-relaxed">
                               <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
                             </div>
                           </div>
