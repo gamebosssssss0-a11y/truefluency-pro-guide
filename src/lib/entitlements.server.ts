@@ -12,9 +12,13 @@ import {
   FOUNDING_PRICE_NAIRA,
   FOUNDING_USER_LIMIT,
   CORE_DAILY_LIMITS,
+  EXAM_DAILY_LIMITS,
+  EXAM_MAX_QUESTIONS,
+  EXAM_PRICE_NAIRA,
   FREE_DAILY_LIMITS,
   FREE_MAX_QUESTIONS,
   PAID_MAX_QUESTIONS,
+  TRIAL_DAILY_LIMITS,
   STANDARD_PRICE_NAIRA,
   TRIAL_DAYS,
   paywallCopy,
@@ -143,7 +147,8 @@ async function ensureRow(userId: string): Promise<Row> {
 async function settleTier(row: Row): Promise<Row> {
   const trialOver = new Date(row.trial_ends_at).getTime() <= Date.now();
   const paidOver =
-    row.tier === "paid" && (!row.paid_until || new Date(row.paid_until).getTime() <= Date.now());
+    ["paid", "core", "exam"].includes(row.tier) &&
+    (!row.paid_until || new Date(row.paid_until).getTime() <= Date.now());
 
   if ((row.tier === "trial" && trialOver) || paidOver) {
     const db = await admin();
@@ -191,34 +196,43 @@ async function usageToday(
 export async function resolveAccess(userId: string, usageDay = today()): Promise<AccessSummary> {
   const callerId = requireUserId(userId);
   const row = await settleTier(await ensureRow(callerId));
-  const tier = row.tier as Tier;
-  const fullAccess =
-    (tier === "trial" && new Date(row.trial_ends_at).getTime() > Date.now()) ||
-    (tier === "paid" && !!row.paid_until && new Date(row.paid_until).getTime() > Date.now());
+  // Convert legacy paid rows to the named Core plan during the rollout.
+  const tier: Tier = row.tier === "paid" ? "core" : row.tier as Tier;
+  const trialActive = tier === "trial" && new Date(row.trial_ends_at).getTime() > Date.now();
+  const paidActive =
+    (tier === "core" || tier === "exam") &&
+    !!row.paid_until &&
+    new Date(row.paid_until).getTime() > Date.now();
+  const fullAccess = trialActive || paidActive;
 
   const paidSoFar = await countPaidUsers();
   const foundingPriceAvailable = paidSoFar < FOUNDING_USER_LIMIT;
+  const corePrice = foundingPriceAvailable ? FOUNDING_PRICE_NAIRA : STANDARD_PRICE_NAIRA;
+  const dailyLimits = trialActive
+    ? TRIAL_DAILY_LIMITS
+    : tier === "exam"
+      ? EXAM_DAILY_LIMITS
+      : tier === "core"
+        ? CORE_DAILY_LIMITS
+        : FREE_DAILY_LIMITS;
 
   return {
     tier,
     fullAccess,
     trialEndsAt: row.trial_ends_at,
     paidUntil: row.paid_until,
-    priceNaira: foundingPriceAvailable ? FOUNDING_PRICE_NAIRA : STANDARD_PRICE_NAIRA,
+    priceNaira: tier === "exam" ? EXAM_PRICE_NAIRA : corePrice,
     foundingPriceAvailable,
-    maxQuestionsPerSet: fullAccess ? PAID_MAX_QUESTIONS : FREE_MAX_QUESTIONS,
+    maxQuestionsPerSet:
+      tier === "exam"
+        ? EXAM_MAX_QUESTIONS
+        : tier === "core" || trialActive
+          ? PAID_MAX_QUESTIONS
+          : FREE_MAX_QUESTIONS,
     explanationsUnlocked: fullAccess,
     libraryUploadsUnlocked: fullAccess,
     usageToday: await usageToday(callerId, usageDay),
-    dailyLimits: {
-      mock_sets: fullAccess ? CORE_DAILY_LIMITS.mock_sets : FREE_DAILY_LIMITS.mock_sets,
-      chatbot_messages:
-        fullAccess ? CORE_DAILY_LIMITS.chatbot_messages : FREE_DAILY_LIMITS.chatbot_messages,
-      flashcard_decks:
-        fullAccess ? CORE_DAILY_LIMITS.flashcard_decks : FREE_DAILY_LIMITS.flashcard_decks,
-      library_uploads:
-        fullAccess ? CORE_DAILY_LIMITS.library_uploads : FREE_DAILY_LIMITS.library_uploads,
-    },
+    dailyLimits,
     watToday: todayInLagos(),
   };
 }
@@ -269,24 +283,31 @@ export async function consumeQuota(opts: {
   const base = {
     priceNaira: access.priceNaira,
     maxQuestionsPerSet: access.maxQuestionsPerSet,
+    tier: access.tier,
     access,
   };
 
   const requested = Math.max(1, Math.round(Number(opts.requestedQuestions) || 0));
 
-  if (access.fullAccess) {
-    if (opts.feature === "mock_sets") {
-      return {
-        ...base,
-        allowed: true,
-        allowedQuestions: Math.min(requested || PAID_MAX_QUESTIONS, PAID_MAX_QUESTIONS),
-      };
-    }
-    return { ...base, allowed: true };
+  // The seven-day trial remains uncapped. Paid plans use their exact catalog limits below.
+  if (access.tier === "trial" && access.fullAccess) {
+    return {
+      ...base,
+      allowed: true,
+      ...(opts.feature === "mock_sets"
+        ? { allowedQuestions: Math.min(requested, access.maxQuestionsPerSet) }
+        : {}),
+    };
   }
 
-  const limit = FREE_DAILY_LIMITS[opts.feature];
+  const limit = access.dailyLimits[opts.feature];
   const used = access.usageToday[opts.feature];
+
+  if (opts.feature === "mock_sets" && requested > access.maxQuestionsPerSet) {
+    const verdict: QuotaVerdict = { ...base, allowed: false, reason: "question_cap" };
+    recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
+    return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
+  }
 
   if (limit === 0) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "locked" };
@@ -294,13 +315,7 @@ export async function consumeQuota(opts: {
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
-  if (opts.feature === "mock_sets" && opts.requestedQuestions && requested > FREE_MAX_QUESTIONS) {
-    const verdict: QuotaVerdict = { ...base, allowed: false, reason: "question_cap" };
-    recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
-    return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
-  }
-
-  if (used >= limit) {
+  if (limit !== null && used >= limit) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
     recordRefusal(callerId, opts.feature, verdict.reason ?? "locked");
     return {
@@ -312,7 +327,7 @@ export async function consumeQuota(opts: {
   }
 
   let effectiveUsed = used;
-  if (!opts.dryRun) {
+  if (!opts.dryRun && limit !== null) {
     const recorded = await bump(callerId, opts.feature, usageDay, limit);
     if (!recorded.allowed) {
       const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
@@ -329,9 +344,9 @@ export async function consumeQuota(opts: {
   return {
     ...base,
     allowed: true,
-    remainingToday: Math.max(0, limit - effectiveUsed),
+    ...(limit === null ? {} : { remainingToday: Math.max(0, limit - effectiveUsed) }),
     ...(opts.feature === "mock_sets"
-      ? { allowedQuestions: Math.min(requested || FREE_MAX_QUESTIONS, FREE_MAX_QUESTIONS) }
+      ? { allowedQuestions: Math.min(requested, access.maxQuestionsPerSet) }
       : {}),
   };
 }
