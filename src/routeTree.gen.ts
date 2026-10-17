@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResetRouteImport } from './routes/reset'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ChatShareTokenRouteImport } from './routes/chat-share.$token'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
@@ -30,6 +31,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatShareTokenRoute = ChatShareTokenRouteImport.update({
+  id: '/chat-share/$token',
+  path: '/chat-share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const STokenRoute = STokenRouteImport.update({
   id: '/s/$token',
   path: '/s/$token',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/chat-share/$token': typeof ChatShareTokenRoute
   '/s/$token': typeof STokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/chat-share/$token': typeof ChatShareTokenRoute
   '/s/$token': typeof STokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/chat-share/$token': typeof ChatShareTokenRoute
   '/s/$token': typeof STokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
@@ -70,6 +79,7 @@ export interface FileRouteTypes {
     | '/'
     | '/reset'
     | '/sitemap.xml'
+    | '/chat-share/$token'
     | '/s/$token'
     | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
@@ -77,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/reset'
     | '/sitemap.xml'
+    | '/chat-share/$token'
     | '/s/$token'
     | '/lovable/email/transactional/preview'
   id:
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
     | '/'
     | '/reset'
     | '/sitemap.xml'
+    | '/chat-share/$token'
     | '/s/$token'
     | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
@@ -92,6 +104,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ResetRoute: typeof ResetRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ChatShareTokenRoute: typeof ChatShareTokenRoute
   STokenRoute: typeof STokenRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
 }
@@ -119,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat-share/$token': {
+      id: '/chat-share/$token'
+      path: '/chat-share/$token'
+      fullPath: '/chat-share/$token'
+      preLoaderRoute: typeof ChatShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$token': {
       id: '/s/$token'
       path: '/s/$token'
@@ -140,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ResetRoute: ResetRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ChatShareTokenRoute: ChatShareTokenRoute,
   STokenRoute: STokenRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
 }

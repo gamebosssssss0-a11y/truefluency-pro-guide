@@ -11,6 +11,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
 import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { createOrUpdateChatShare, getChatShareState, revokeChatShare, type ChatShareVisibility } from "@/lib/chat-sharing.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
 import { uploadChatImage } from "@/lib/chat-image";
@@ -170,6 +171,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [historyOpen, setHistoryOpen] = useState(false);
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareGenerating, setShareGenerating] = useState(false);
+  const [shareRevoking, setShareRevoking] = useState(false);
+  const [shareConversationId, setShareConversationId] = useState<string | null>(null);
+  const [shareVisibility, setShareVisibility] = useState<ChatShareVisibility>("private");
+  const [savedShareVisibility, setSavedShareVisibility] = useState<ChatShareVisibility | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const imageUrls = useRef(new Set<string>());
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; conversationId: string; messages: ChatMessage[] }[]>([]);
@@ -703,6 +712,81 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     synth.addEventListener("voiceschanged", onVoices);
   };
 
+  const handleOpenShare = async () => {
+    setShareOpen(true);
+    setShareLoading(true);
+    setShareError(null);
+    setShareConversationId(null);
+    setShareUrl(null);
+    setSavedShareVisibility(null);
+    setShareVisibility("private");
+    try {
+      const thread = await getCourseThread(selected);
+      if (!thread.messages.length) throw new Error("Add a saved message before sharing.");
+      setShareConversationId(thread.conversationId);
+      const current = await getChatShareState({ data: { conversationId: thread.conversationId } });
+      if (!current.ok) throw new Error(current.reason);
+      if (current.share && !current.share.isRevoked && current.share.token) {
+        setShareVisibility(current.share.visibility);
+        setSavedShareVisibility(current.share.visibility);
+        setShareUrl(new URL(`/chat-share/${current.share.token}`, window.location.origin).toString());
+      }
+    } catch (error) {
+      setShareError(error instanceof Error ? error.message : "Couldn't load share settings.");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleGenerateShare = async () => {
+    if (!shareConversationId) return;
+    setShareGenerating(true);
+    setShareError(null);
+    try {
+      const result = await createOrUpdateChatShare({
+        data: { conversationId: shareConversationId, visibility: shareVisibility },
+      });
+      if (!result.ok) throw new Error(result.reason);
+      if (!result.share.token) throw new Error("Couldn't create this share link. Try again.");
+      setShareUrl(new URL(`/chat-share/${result.share.token}`, window.location.origin).toString());
+      setShareVisibility(result.share.visibility);
+      setSavedShareVisibility(result.share.visibility);
+      toast.success(result.share.visibility === "public" ? "Public link is ready." : "Private link is ready.");
+    } catch (error) {
+      setShareError(error instanceof Error ? error.message : "Couldn't create this share link.");
+    } finally {
+      setShareGenerating(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Conversation link copied.");
+    } catch {
+      toast.error("Couldn't copy this link.");
+    }
+  };
+
+  const handleRevokeShare = async () => {
+    if (!shareConversationId) return;
+    setShareRevoking(true);
+    setShareError(null);
+    try {
+      const result = await revokeChatShare({ data: { conversationId: shareConversationId } });
+      if (!result.ok) throw new Error(result.reason);
+      setShareUrl(null);
+      setSavedShareVisibility(null);
+      setShareVisibility("private");
+      toast.success("Conversation link revoked.");
+    } catch (error) {
+      setShareError(error instanceof Error ? error.message : "Couldn't revoke this link.");
+    } finally {
+      setShareRevoking(false);
+    }
+  };
+
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
   const capText = (() => {
     if (!access) return null;
@@ -878,13 +962,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         <Copy className="h-3.5 w-3.5" />
                         <span>Copy</span>
                       </button>
-                      {speechAvailable ? (
-                        <button type="button" onClick={() => toggleSpeak(m)} aria-label={speakingId === m.id ? "Stop reading" : "Read aloud"} title={speakingId === m.id ? "Stop reading" : "Read aloud"} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8]">
-                          {speakingId === m.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                          <span>{speakingId === m.id ? "Stop" : "Listen"}</span>
-                        </button>
-                      ) : null}
-                      <button type="button" aria-label="Share reply" title="Share reply" onClick={() => setShareOpen(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8]">
+                      <button type="button" onClick={() => toggleSpeak(m)} disabled={!speechAvailable} aria-label={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} title={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8] disabled:cursor-not-allowed disabled:opacity-60">
+                        {speakingId === m.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        <span>{speakingId === m.id ? "Stop" : "Listen"}</span>
+                      </button>
+                      <button type="button" aria-label="Share conversation" title="Share conversation" disabled={isSending} onClick={() => void handleOpenShare()} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)] transition hover:text-[#F3E6C8] disabled:cursor-not-allowed disabled:opacity-60">
                         <Share2 className="h-3.5 w-3.5" />
                         <span>Share</span>
                       </button>
@@ -1141,23 +1223,42 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       <Sheet open={shareOpen} onOpenChange={setShareOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl bg-chat-card text-chat-foreground">
           <SheetHeader className="text-left">
-            <SheetTitle className="text-chat-foreground">Share reply</SheetTitle>
-            <SheetDescription>Share this reply as a link. The rest of the chat stays private.</SheetDescription>
+            <SheetTitle className="text-chat-foreground">Share this conversation</SheetTitle>
+            <SheetDescription>Create a snapshot of the full conversation. Future messages are not included unless you update the link.</SheetDescription>
           </SheetHeader>
-          <fieldset disabled className="mt-4 space-y-3 text-sm">
-            <label className="flex items-center gap-2">
-              <input type="radio" name="reply-visibility" value="public" disabled />
-              Public
+          <fieldset disabled={shareLoading || shareGenerating || shareRevoking} className="mt-4 space-y-2 text-sm">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
+              <input type="radio" name="chat-visibility" value="public" checked={shareVisibility === "public"} onChange={() => setShareVisibility("public")} className="mt-0.5 accent-[#B86E0A]" />
+              <span><span className="block font-semibold">Public</span><span className="mt-0.5 block text-xs text-muted-foreground">Anyone with the link can view it. It is unlisted, but recipients can forward the URL.</span></span>
             </label>
-            <label className="flex items-center gap-2">
-              <input type="radio" name="reply-visibility" value="private" disabled />
-              Only me
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
+              <input type="radio" name="chat-visibility" value="private" checked={shareVisibility === "private"} onChange={() => setShareVisibility("private")} className="mt-0.5 accent-[#B86E0A]" />
+              <span><span className="block font-semibold">Private</span><span className="mt-0.5 block text-xs text-muted-foreground">Only the signed-in account that created this conversation can view it. New links start private.</span></span>
             </label>
           </fieldset>
-          <button type="button" disabled className="mt-4 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-cream opacity-50">
-            Copy link
+          {shareError ? <p role="alert" className="mt-3 text-sm text-destructive">{shareError}</p> : null}
+          {shareLoading ? <p role="status" className="mt-3 text-sm text-muted-foreground">Loading your conversation link…</p> : null}
+          {shareUrl ? (
+            <div className="mt-4 space-y-2">
+              <label htmlFor="chat-share-url" className="text-xs font-semibold text-muted-foreground">Active {savedShareVisibility === "public" ? "public" : "private"} link</label>
+              <input id="chat-share-url" readOnly value={shareUrl} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground" />
+              <button type="button" onClick={() => void handleCopyShareLink()} className="w-full rounded-xl border border-accent/60 bg-accent/10 py-2.5 text-sm font-semibold text-accent transition hover:bg-accent/20">
+                Copy link
+              </button>
+              {savedShareVisibility !== shareVisibility ? <p className="text-xs text-muted-foreground">Access changes only after you update the link below.</p> : null}
+            </div>
+          ) : null}
+          <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">
+            {shareVisibility === "public" ? "Anyone who receives a public link can view the shared snapshot." : "Private links work only for you while signed in to the account that created the conversation."}
+          </p>
+          <button type="button" disabled={shareLoading || shareGenerating || shareRevoking || !shareConversationId} onClick={() => void handleGenerateShare()} className="mt-4 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-cream transition hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50">
+            {shareGenerating ? "Preparing link…" : shareUrl ? (savedShareVisibility !== shareVisibility ? "Update access and snapshot" : "Update shared snapshot") : "Generate link"}
           </button>
-          <p className="mt-3 text-center text-xs text-muted-foreground">Reply links connect when sharing is live.</p>
+          {shareUrl ? (
+            <button type="button" disabled={shareLoading || shareGenerating || shareRevoking} onClick={() => void handleRevokeShare()} className="mt-2 w-full rounded-xl border border-destructive/40 py-2.5 text-sm font-semibold text-destructive transition hover:bg-destructive/10 disabled:opacity-50">
+              {shareRevoking ? "Revoking…" : "Revoke link"}
+            </button>
+          ) : null}
           <button type="button" onClick={() => setShareOpen(false)} className="mt-3 w-full rounded-xl border border-border py-3 text-sm font-semibold">
             Cancel
           </button>

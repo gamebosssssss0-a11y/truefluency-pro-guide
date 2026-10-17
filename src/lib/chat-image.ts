@@ -48,7 +48,7 @@ export async function uploadChatImage(file: File): Promise<string> {
   // server builds the key as {uid}/chat-images/{timestamp}-{name}, which is
   // exactly the owner-prefixed shape the backend's ownership check expects.
   const { path, uploadUrl } = await presignMaterialUpload({
-    data: { courseCode: "chat-images", fileName: file.name || "photo.jpg", contentType: file.type },
+    data: { courseCode: "chat-images", fileName: file.name || "photo.jpg", contentType: file.type, sizeBytes: file.size },
   });
   let putOk = false;
   try {

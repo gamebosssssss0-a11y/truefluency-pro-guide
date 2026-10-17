@@ -119,6 +119,42 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_shares: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          is_revoked: boolean
+          owner_id: string
+          snapshot: Json
+          token: string
+          updated_at: string
+          visibility: "public" | "private"
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_revoked?: boolean
+          owner_id: string
+          snapshot: Json
+          token: string
+          updated_at?: string
+          visibility?: "public" | "private"
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_revoked?: boolean
+          owner_id?: string
+          snapshot?: Json
+          token?: string
+          updated_at?: string
+          visibility?: "public" | "private"
+        }
+        Relationships: []
+      }
       course_context: {
         Row: {
           content: string
