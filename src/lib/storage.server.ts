@@ -25,6 +25,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const COURSE_MATERIALS_BUCKET = "course-materials";
+export const MAX_UPLOAD_BYTES = 35 * 1024 * 1024;
 
 function env(name: string): string {
   const v = process.env[name]?.trim();
@@ -79,12 +80,21 @@ function keyFor(path: string, bucket: string = COURSE_MATERIALS_BUCKET): string 
 export async function presignUpload(opts: {
   path: string;
   contentType: string;
+  contentLength: number;
   bucket?: string;
 }): Promise<string> {
+  if (
+    !Number.isSafeInteger(opts.contentLength) ||
+    opts.contentLength < 1 ||
+    opts.contentLength > MAX_UPLOAD_BYTES
+  ) {
+    throw new Error("This file exceeds the 35 MB upload limit.");
+  }
   const cmd = new PutObjectCommand({
     Bucket: bucketName(),
     Key: keyFor(opts.path, opts.bucket),
     ContentType: opts.contentType,
+    ContentLength: opts.contentLength,
   });
   return getSignedUrl(r2(), cmd, { expiresIn: 300 }); // 5 minutes to actually do the PUT
 }

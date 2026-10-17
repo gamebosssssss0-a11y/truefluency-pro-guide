@@ -22,17 +22,18 @@ type StreakRow = {
 
 export const recordMockStreak = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { answeredCount: number }) => ({
-    answeredCount: Math.max(0, Math.round(Number(input?.answeredCount) || 0)),
-  }))
+  .inputValidator((input: { attemptId: string }) => {
+    const attemptId = String(input?.attemptId ?? "").trim();
+    if (!attemptId || attemptId.length > 64) throw new Error("A completed mock is required.");
+    return { attemptId };
+  })
   .handler(async ({ data, context }): Promise<StreakUpdate | null> => {
-    if (data.answeredCount < 5) return null;
     const rpc = context.supabase.rpc as unknown as (
       name: string,
-      args: { answered_count: number },
+      args: { attempt_id: string },
     ) => Promise<{ data: StreakRow[] | null; error: { message: string } | null }>;
     const { data: rows, error } = await rpc("record_mock_streak", {
-      answered_count: data.answeredCount,
+      attempt_id: data.attemptId,
     });
     if (error) throw new Error(error.message);
     const row = rows?.[0];

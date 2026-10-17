@@ -185,4 +185,135 @@ create policy "Users manage own courses"
   using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
   with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 
+
+-- Quota enforcement is a single database operation: concurrent requests cannot
+-- both observe the same count and overwrite each other's increments. Only the
+-- service-role server client may call this RPC.
+create or replace function public.consume_usage_quota(
+  p_user_id uuid,
+  p_feature text,
+  p_day date,
+  p_daily_limit integer
+)
+returns table (allowed boolean, used integer)
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $function$
+declare
+  v_count integer;
+begin
+  if p_user_id is null
+     or p_feature not in ('mock_sets', 'chatbot_messages', 'flashcard_decks', 'library_uploads')
+     or p_day is null
+     or p_daily_limit < 1 then
+    raise exception 'Invalid quota request';
+  end if;
+
+  insert into public.usage_counters as current_counter (user_id, feature, day, count)
+  values (p_user_id, p_feature, p_day, 1)
+  on conflict (user_id, feature, day)
+  do update
+    set count = current_counter.count + 1
+    where current_counter.count < p_daily_limit
+  returning current_counter.count into v_count;
+
+  if found then
+    return query select true, v_count;
+  else
+    select uc.count into v_count
+      from public.usage_counters as uc
+      where uc.user_id = p_user_id
+        and uc.feature = p_feature
+        and uc.day = p_day;
+    return query select false, coalesce(v_count, 0);
+  end if;
+end;
+$function$;
+revoke all on function public.consume_usage_quota(uuid, text, date, integer) from public, anon, authenticated;
+grant execute on function public.consume_usage_quota(uuid, text, date, integer) to service_role;
+
+-- Never accept a caller-asserted answer count for streak credit. Resolve the
+-- count from the authenticated user's persisted attempt for today's Lagos day.
+drop function if exists public.record_mock_streak(integer);
+create function public.record_mock_streak(attempt_id text)
+returns table (
+  streak_days integer,
+  last_active_date text,
+  freezes_available integer,
+  freeze_used_on text,
+  event text,
+  today_wat text
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_today date := (now() at time zone 'Africa/Lagos')::date;
+  v_answered integer;
+  v_streak integer;
+  v_last date;
+  v_freezes integer;
+  v_freeze_used date;
+  v_event text := 'none';
+begin
+  if v_user_id is null then raise exception 'Authentication required'; end if;
+  if attempt_id is null or length(attempt_id) > 64 then
+    raise exception 'A completed mock is required';
+  end if;
+
+  select count(*)::integer into v_answered
+    from public.mock_attempts as a
+    cross join lateral jsonb_array_elements(
+      case when jsonb_typeof(a.answers) = 'array' then a.answers else '[]'::jsonb end
+    ) as answer(value)
+    where a.user_id = v_user_id
+      and a.id::text = attempt_id
+      and a.total >= 5
+      and (a.submitted_at at time zone 'Africa/Lagos')::date = v_today
+      and answer.value <> 'null'::jsonb;
+
+  if coalesce(v_answered, 0) < 5 then
+    raise exception 'At least five saved answers are required';
+  end if;
+
+  insert into public.profiles (user_id, freezes_available)
+    values (v_user_id, 1)
+    on conflict (user_id) do nothing;
+
+  select p.streak_days, p.last_active_date, p.freezes_available, p.freeze_used_on
+    into v_streak, v_last, v_freezes, v_freeze_used
+    from public.profiles as p
+    where p.user_id = v_user_id
+    for update;
+
+  if v_last = v_today then
+    v_event := 'none';
+  elsif v_last is null or v_streak = 0 then
+    v_streak := 1; v_last := v_today; v_event := 'incremented';
+  elsif v_today = v_last + 1 then
+    v_streak := v_streak + 1; v_last := v_today; v_event := 'incremented';
+    if v_streak = 7 then v_freezes := least(2, v_freezes + 1); end if;
+  elsif v_today = v_last + 2 and v_freezes > 0 then
+    v_freezes := v_freezes - 1; v_freeze_used := v_today; v_last := v_today; v_event := 'protected';
+  else
+    v_streak := 1; v_last := v_today; v_event := 'reset';
+  end if;
+
+  update public.profiles as p
+    set streak_days = v_streak,
+        last_active_date = v_last,
+        freezes_available = v_freezes,
+        freeze_used_on = v_freeze_used
+    where p.user_id = v_user_id;
+
+  return query select v_streak, v_last::text, v_freezes, v_freeze_used::text, v_event, v_today::text;
+end;
+$function$;
+revoke all on function public.record_mock_streak(text) from public, anon;
+grant execute on function public.record_mock_streak(text) to authenticated, service_role;
+
+
 commit;

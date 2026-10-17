@@ -854,7 +854,7 @@ export type Database = {
         }[]
       }
       record_mock_streak: {
-        Args: { answered_count: number }
+        Args: { attempt_id: string }
         Returns: {
           event: string
           freeze_used_on: string

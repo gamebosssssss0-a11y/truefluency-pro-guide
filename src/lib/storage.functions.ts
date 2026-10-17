@@ -29,19 +29,27 @@ const ALLOWED_UPLOAD_TYPES = new Set([
  * can't be crafted to write into another student's folder. */
 export const presignMaterialUpload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { courseCode: string; fileName: string; contentType: string }) => {
+  .inputValidator((input: { courseCode: string; fileName: string; contentType: string; sizeBytes: number }) => {
     const courseCode = String(input?.courseCode ?? "").trim();
     const fileName = String(input?.fileName ?? "").trim();
     const contentType = String(input?.contentType ?? "application/octet-stream").trim();
+    const sizeBytes = Number(input?.sizeBytes);
+    if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > storage.MAX_UPLOAD_BYTES) {
+      throw new Error("This file exceeds the 35 MB upload limit.");
+    }
     if (courseCode.length > 32 || !isPathSegment(courseCode)) throw new Error("A course is required.");
     if (fileName.length > 200 || !isPathSegment(fileName)) throw new Error("A file name is required.");
     if (!ALLOWED_UPLOAD_TYPES.has(contentType)) throw new Error("This file type isn't supported.");
-    return { courseCode, fileName, contentType };
+    return { courseCode, fileName, contentType, sizeBytes };
   })
   .handler(async ({ data, context }): Promise<{ path: string; uploadUrl: string }> => {
     const { userId } = context;
     const path = `${userId}/${data.courseCode}/${Date.now()}-${safeName(data.fileName)}`;
-    const uploadUrl = await storage.presignUpload({ path, contentType: data.contentType });
+    const uploadUrl = await storage.presignUpload({
+      path,
+      contentType: data.contentType,
+      contentLength: data.sizeBytes,
+    });
     return { path, uploadUrl };
   });
 

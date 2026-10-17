@@ -122,7 +122,7 @@ async function uploadViaPresignedPut(
   onProgress?: (fraction: number) => void,
 ): Promise<string> {
   const { path, uploadUrl } = await presignMaterialUpload({
-    data: { courseCode, fileName, contentType },
+    data: { courseCode, fileName, contentType, sizeBytes: payload.size },
   });
   // XMLHttpRequest rather than fetch: fetch can't report upload progress,
   // which left the bar frozen for the whole upload on a slow connection.
