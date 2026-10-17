@@ -389,6 +389,41 @@ type Ctx = {
 
 const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "truefluency-profile-v2";
+const ONBOARDING_RESUME_STEPS: OnboardingStep[] = [
+  "goal", "timeline", "study-pref", "faculty", "department", "level", "courses", "cgpa-intro", "trial-welcome",
+];
+function profileCacheKey(userId: string) { return `${KEY}:user:${userId}`; }
+function emailCacheKey(email: string) { return `${KEY}:email:${encodeURIComponent(email.trim().toLowerCase())}`; }
+
+function readAccountProfile(userId: string, email: string | undefined): Profile | null {
+  const normalizedEmail = email?.trim().toLowerCase();
+  const parseOwned = (raw: string | null): Profile | null => {
+    if (!raw) return null;
+    try {
+      const profile = sanitizeProfile(JSON.parse(raw));
+      const matchesEmail = !!normalizedEmail && profile.identity?.kind === "email" &&
+        profile.identity.email?.trim().toLowerCase() === normalizedEmail;
+      const matchesGuest = !normalizedEmail && profile.identity?.kind === "guest";
+      if (!matchesEmail && !matchesGuest) return null;
+      return { ...profile, accounts: normalizedEmail
+        ? profile.accounts.filter((account) => account.email.trim().toLowerCase() === normalizedEmail)
+        : [] };
+    } catch { return null; }
+  };
+  try {
+    return parseOwned(localStorage.getItem(profileCacheKey(userId))) ??
+      (normalizedEmail
+        ? parseOwned(localStorage.getItem(emailCacheKey(normalizedEmail))) ?? parseOwned(localStorage.getItem(KEY))
+        : null);
+  } catch { return null; }
+}
+function readOnboardingStep(userId: string | null, email?: string): OnboardingStep | null {
+  try {
+    const raw = (userId ? localStorage.getItem(`${KEY}:step:user:${userId}`) : null) ??
+      (email ? localStorage.getItem(`${KEY}:step:email:${encodeURIComponent(email.trim().toLowerCase())}`) : null);
+    return raw && ONBOARDING_RESUME_STEPS.includes(raw as OnboardingStep) ? raw as OnboardingStep : null;
+  } catch { return null; }
+}
 const APP_VIEWS: AppView[] = [
   "dashboard", "home", "mock-tests", "test-history", "library", "chatbot", "account", "cgpa-goal",
   "course-detail", "mock-gen", "mock-config", "mock-run", "mock-result", "settings", "flashcards",
@@ -502,39 +537,64 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [authPending, setAuthPending] = useState(false);
+  const [authPending, setAuthPending] = useState(true);
+  const storageOwnerIdRef = useRef<string | null>(null);
+  const activeUserIdRef = useRef<string | null>(null);
+  const initialLocationRef = useRef<AppView | null>(null);
   const historySessionId = useRef<string | null>(null);
   const viewRef = useRef(view);
   viewRef.current = view;
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        setProfile(sanitizeProfile(JSON.parse(raw)));
-        // Step stays "splash": the entrance animation plays on every app open,
-        // then the splash routes returning users straight to the dashboard.
+    let cancelled = false;
+    const hydrate = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        const session = data.session;
+        if (session) {
+          storageOwnerIdRef.current = session.user.id;
+          activeUserIdRef.current = session.user.id;
+          const cached = readAccountProfile(session.user.id, session.user.email ?? undefined);
+          if (cached) setProfile(cached);
+        } else {
+          // Never paint the legacy shared cache before the account is known.
+          setProfile(emptyProfile);
+        }
+        const sessionId = getHistorySessionId();
+        historySessionId.current = sessionId;
+        const locationState = readAppLocation();
+        const appHistoryState = window.history.state && typeof window.history.state === "object"
+          ? window.history.state as Record<string, unknown> : {};
+        const valid = !!session && isCurrentSessionEntry(locationState, appHistoryState, sessionId);
+        if (valid && locationState.view) {
+          initialLocationRef.current = locationState.view;
+          setStep("dashboard");
+          setView(locationState.view);
+          setActiveCourseCode(locationState.courseCode);
+          setActiveAttemptId(locationState.attemptId);
+          setActiveDeckId(locationState.deckId);
+        } else {
+          let onboardingPending = false;
+          try { onboardingPending = localStorage.getItem(`${KEY}:onboarding-pending`) === "1"; }
+          catch { /* ignore unavailable local storage */ }
+          setStep(onboardingPending ? "identity" : "splash");
+          setView("home");
+          writeAppLocation("home", {}, true, sessionId);
+        }
+        setHydrated(true);
+        if (!session) setAuthPending(false);
+      } catch (err) {
+        console.error("[profile-store] local profile restore failed", err);
+        if (cancelled) return;
+        setProfile(emptyProfile);
+        setStep("splash");
+        setAuthPending(false);
+        setHydrated(true);
       }
-    } catch (err) {
-      console.error("[profile-store] stored profile unreadable, starting fresh", err);
-    }
-    const sessionId = getHistorySessionId();
-    historySessionId.current = sessionId;
-    const locationState = readAppLocation();
-    const appHistoryState = window.history.state && typeof window.history.state === "object"
-      ? window.history.state as Record<string, unknown>
-      : {};
-    const sessionEntryIsValid = isCurrentSessionEntry(locationState, appHistoryState, sessionId);
-    if (sessionEntryIsValid && locationState.view) {
-      setStep("dashboard");
-      setView(locationState.view);
-      setActiveCourseCode(locationState.courseCode);
-      setActiveAttemptId(locationState.attemptId);
-      setActiveDeckId(locationState.deckId);
-    } else {
-      writeAppLocation("home", {}, true, sessionId);
-    }
-    setHydrated(true);
+    };
+    void hydrate();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -566,22 +626,18 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [hydrated]);
 
   useEffect(() => {
-    if (hydrated) {
-      // Accounts carry display fields only; sanitizeProfile already dropped any
-      // legacy credential fields, so nothing usable for sign-in is written here.
-      try {
-        localStorage.setItem(KEY, JSON.stringify(profile));
-      } catch {
-        /* ignore */
-      }
-    }
+    if (!hydrated) return;
+    const ownerId = storageOwnerIdRef.current;
+    const email = profile.identity?.kind === "email" ? profile.identity.email : undefined;
+    if (!ownerId && !email) return;
+    try {
+      localStorage.setItem(ownerId ? profileCacheKey(ownerId) : emailCacheKey(email!), JSON.stringify(profile));
+    } catch { /* ignore unavailable local storage */ }
   }, [profile, hydrated]);
 
   /* ---------- Cloud sync ----------
-   * The database is the source of truth for signed-in users; localStorage is
-   * an offline cache. On session start we load the cloud snapshot, or migrate
-   * the existing local profile up when no cloud record exists yet. After that,
-   * profile changes are written through (debounced).
+   * Account caches are loaded only after Supabase identifies their owner.
+   * Cloud data is reconciled before the signed-in route is shown.
    */
   const cloudReady = useRef(false);
   const profileRef = useRef(profile);
@@ -591,6 +647,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     let cancelled = false;
     let authPendingWatchdog: ReturnType<typeof setTimeout> | null = null;
+    let syncPromise: Promise<Profile | null> | null = null;
 
     const releaseAuthPending = () => {
       if (authPendingWatchdog) {
@@ -602,25 +659,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const holdAuthPending = () => {
       setAuthPending(true);
       if (authPendingWatchdog) return;
-      // Never let a stale auth event strand the app on "Signing in".
-      // After local hydration, continue with the cache while sync finishes.
       authPendingWatchdog = setTimeout(() => {
         authPendingWatchdog = null;
-        console.warn("[profile-store] auth restore timed out; continuing with local profile");
+        console.warn("[profile-store] account restore timed out; using this account's local cache");
         setAuthPending(false);
       }, 8_000);
     };
 
-    let syncPromise: Promise<Profile | null> | null = null;
     const sync = (): Promise<Profile | null> => {
       if (syncPromise) return syncPromise;
+      const expectedUserId = activeUserIdRef.current;
       syncPromise = (async () => {
         try {
-          const { loadCloudProfile, pushCloudProfile } = await import("@/lib/cloud-sync");
-          // Cloud updates run behind the locally hydrated profile.
+          const { loadCloudProfile } = await import("@/lib/cloud-sync");
           const local = profileRef.current;
           const snapshot = await loadCloudProfile(local);
-          if (cancelled) return null;
+          if (cancelled || activeUserIdRef.current !== expectedUserId) return null;
           let syncedProfile = local;
           if (snapshot) {
             syncedProfile = {
@@ -633,128 +687,133 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             };
             profileRef.current = syncedProfile;
             setProfile(syncedProfile);
-          } else {
-            // First cloud session: migrate whatever is already on this device.
-            await pushCloudProfile(local);
           }
           cloudReady.current = true;
           return syncedProfile;
         } catch (err) {
-          console.error("[profile-store] cloud sync failed, staying on local cache", err);
+          console.error("[profile-store] cloud sync failed; using this account's local cache", err);
+          if (activeUserIdRef.current !== expectedUserId) return null;
+          cloudReady.current = true;
           return profileRef.current;
         }
       })();
       return syncPromise;
     };
 
-    // The hydrated device profile paints first. Reconcile it once in the
-    // background after getSession, outside the INITIAL_SESSION event handler.
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session && hydrated && profileRef.current.identity) void sync();
-    });
-
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
+        if (event === "SIGNED_OUT") {
+          const hadAccount = !!profileRef.current.identity;
+          activeUserIdRef.current = null;
+          storageOwnerIdRef.current = null;
+          cloudReady.current = false;
+          syncPromise = null;
+          profileRef.current = emptyProfile;
+          setProfile(emptyProfile);
+          setStep(hadAccount ? "identity" : "landing");
+          setView("home");
+          writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
+        }
         releaseAuthPending();
         return;
       }
-      // A warm reload already has a usable local identity. Paint from cache
-      // and let later explicit sign-in events perform the background sync.
-      if (event === "INITIAL_SESSION" && profileRef.current.identity) {
+      if (event !== "SIGNED_IN" && event !== "INITIAL_SESSION" && event !== "USER_UPDATED") return;
+
+      const userId = session.user.id;
+      holdAuthPending();
+      const currentProfileMatchesSession = session.user.email
+        ? profileRef.current.identity?.kind === "email" &&
+          profileRef.current.identity.email?.trim().toLowerCase() === session.user.email.trim().toLowerCase()
+        : profileRef.current.identity?.kind === "guest";
+      const accountChanged = activeUserIdRef.current !== userId;
+      if (accountChanged || !currentProfileMatchesSession) {
+        cloudReady.current = false;
+        syncPromise = null;
+        activeUserIdRef.current = userId;
+        storageOwnerIdRef.current = userId;
+
+        const cached = readAccountProfile(userId, session.user.email ?? undefined);
+        const cachedIdentityMatches = session.user.email
+          ? cached?.identity?.email?.trim().toLowerCase() === session.user.email.trim().toLowerCase()
+          : cached?.identity?.kind === "guest";
+        const base = cachedIdentityMatches && cached ? cached : emptyProfile;
+        const identity: Profile["identity"] = {
+          kind: session.user.email ? "email" : "guest",
+          name:
+            (cachedIdentityMatches ? cached?.identity?.name : null) ||
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split("@")[0] ||
+            "Student",
+          email: session.user.email ?? undefined,
+        };
+        const ownedProfile = { ...base, identity };
+        profileRef.current = ownedProfile;
+        setProfile(ownedProfile);
+      } else if (event === "SIGNED_IN") {
+        // A returning user may reauthenticate into the same account after a
+        // session expiry; reload its cloud state before leaving sign-in.
+        cloudReady.current = false;
+        syncPromise = null;
+      } else if (cloudReady.current) {
         releaseAuthPending();
         return;
       }
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
-        if (!cloudReady.current) {
-          // SIGNED_IN marks an active login flow. INITIAL_SESSION is also
-          // emitted on every normal page load, so do not block returning
-          // students when their local profile is already hydrated.
-          if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && !profileRef.current.identity)) {
-            holdAuthPending();
-          } else if (event === "INITIAL_SESSION") {
-            releaseAuthPending();
+
+      void (async () => {
+        const syncPromiseForAccount = sync();
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<null>((resolve) => {
+          timeoutHandle = setTimeout(() => resolve(null), 8_000);
+        });
+        const syncResult = await Promise.race([syncPromiseForAccount, timeoutPromise]);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        const didTimeOut = syncResult === null;
+        if (cancelled || activeUserIdRef.current !== userId) return;
+
+        const routeAfterSignIn = (syncedProfile: Profile) => {
+          if (cancelled || activeUserIdRef.current !== userId) return;
+          try {
+            const returnTo = sessionStorage.getItem("returnTo");
+            if (returnTo && returnTo.startsWith("/s/")) {
+              sessionStorage.removeItem("returnTo");
+              window.location.assign(returnTo);
+              return;
+            }
+          } catch {
+            /* private mode: fall through to normal routing */
           }
-          void (async () => {
-            const identityWasMissing = !profileRef.current.identity;
-            if (identityWasMissing) {
-              const identity: Profile["identity"] = {
-                kind: "email",
-                name:
-                  session.user.user_metadata?.full_name ||
-                  session.user.user_metadata?.name ||
-                  session.user.email?.split("@")[0] ||
-                  "Student",
-                email: session.user.email,
-              };
-              const profileWithIdentity = { ...profileRef.current, identity };
-              profileRef.current = profileWithIdentity;
-              setProfile(profileWithIdentity);
+
+          const provider =
+            (session.user.app_metadata as { provider?: string } | undefined)?.provider ?? "";
+          if (provider === "google" && !syncedProfile.profileCompleted) {
+            go("google-profile");
+            return;
+          }
+          if (syncedProfile.setupComplete) {
+            const restoredView = event === "INITIAL_SESSION" ? initialLocationRef.current : null;
+            if (restoredView) {
+              setStep("dashboard");
+              setView(restoredView);
+            } else {
+              go("dashboard");
             }
+            return;
+          }
+          go(readOnboardingStep(userId, session.user.email ?? undefined) ?? "goal");
+        };
 
-            // A successful sign-in needs only a confirmed local identity to
-            // leave the blocking screen. Cloud profile sync continues below.
-            const identityReadyForRoute =
-              event === "SIGNED_IN" || (event === "INITIAL_SESSION" && identityWasMissing);
-            if (identityReadyForRoute && profileRef.current.identity) {
-              releaseAuthPending();
-              go(profileRef.current.setupComplete ? "dashboard" : "goal");
-            }
-
-            // Cloud sync can hang when the network is unavailable. Never keep
-            // the whole app behind the signing-in screen while waiting for it.
-            const syncPromise = sync();
-            let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-            const timeoutPromise = new Promise<null>((resolve) => {
-              timeoutHandle = setTimeout(() => resolve(null), 8_000);
-            });
-            const syncResult = await Promise.race([syncPromise, timeoutPromise]);
-            if (timeoutHandle) clearTimeout(timeoutHandle);
-            const didTimeOut = syncResult === null;
-            releaseAuthPending();
-            if (cancelled) return;
-
-            const routeAfterSignIn = (syncedProfile: Profile) => {
-              // A shared one-file link the student opened before signing in wins
-              // over onboarding: send them straight back to that file.
-              try {
-                const returnTo = sessionStorage.getItem("returnTo");
-                if (returnTo && returnTo.startsWith("/s/")) {
-                  sessionStorage.removeItem("returnTo");
-                  window.location.assign(returnTo);
-                  return;
-                }
-              } catch {
-                /* private mode: fall through to normal routing */
-              }
-
-              // Google's account often carries no usable name, which used to
-              // leave the greeting empty. Ask once per account: the saved cloud
-              // display name is what marks it done, so a second device or a
-              // re-install never asks again.
-              const provider =
-                (session.user.app_metadata as { provider?: string } | undefined)?.provider ?? "";
-              if (provider === "google" && !syncedProfile.profileCompleted) {
-                go("google-profile");
-                return;
-              }
-              go(syncedProfile.setupComplete ? "dashboard" : "goal");
-            };
-
-            routeAfterSignIn(syncResult ?? profileRef.current);
-            // If cloud data arrives after the fallback route, honor the restored
-            // profile once it becomes available without blocking app startup.
-            if (didTimeOut) {
-              void syncPromise.then((lateProfile) => {
-                if (!cancelled && lateProfile) routeAfterSignIn(lateProfile);
-              });
-            }
-
-          })().catch((err) => {
-            console.error("[profile-store] auth restore failed; continuing with local profile", err);
-            releaseAuthPending();
+        releaseAuthPending();
+        routeAfterSignIn(syncResult ?? profileRef.current);
+        if (didTimeOut) {
+          void syncPromiseForAccount.then((lateProfile) => {
+            if (lateProfile) routeAfterSignIn(lateProfile);
           });
         }
-      }
+      })().catch((err) => {
+        console.error("[profile-store] account restore failed; continuing with owned cache", err);
+        releaseAuthPending();
+      });
     });
 
     return () => {
@@ -764,19 +823,34 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     };
   }, [hydrated]);
 
-  // Debounced write-through of every profile change.
+  // Debounced writes are tied to the account id captured when scheduled.
   useEffect(() => {
-    if (!hydrated || !cloudReady.current) return;
+    const ownerId = storageOwnerIdRef.current;
+    if (!hydrated || !cloudReady.current || !ownerId) return;
     const t = setTimeout(() => {
-      void import("@/lib/cloud-sync").then(({ pushCloudProfile }) => pushCloudProfile(profile));
+      void supabase.auth.getSession().then(({ data }) => {
+        if (data.session?.user.id !== ownerId) return;
+        return import("@/lib/cloud-sync").then(({ pushCloudProfile }) => pushCloudProfile(profile));
+      });
     }, 800);
     return () => clearTimeout(t);
   }, [profile, hydrated]);
 
-  const update = (p: Partial<Profile>) => setProfile((cur) => ({ ...cur, ...p }));
+  const update = (p: Partial<Profile>) => {
+    const next = { ...profileRef.current, ...p };
+    profileRef.current = next;
+    setProfile(next);
+  };
   const go = (s: OnboardingStep | "dashboard") => {
     setStep(s);
+    const ownerId = storageOwnerIdRef.current;
+    const email = profileRef.current.identity?.kind === "email" ? profileRef.current.identity.email : undefined;
     if (s === "dashboard") {
+      try {
+        if (ownerId) localStorage.removeItem(`${KEY}:step:user:${ownerId}`);
+        if (email) localStorage.removeItem(`${KEY}:step:email:${encodeURIComponent(email.trim().toLowerCase())}`);
+        localStorage.removeItem(`${KEY}:onboarding-pending`);
+      } catch { /* ignore unavailable local storage */ }
       setView("home");
       writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
       try {
@@ -786,6 +860,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           window.history.pushState({ ...state, __trueFluencyHomeFloor: true }, "", window.location.href);
         }
       } catch { /* a missing floor marker must not block sign-in */ }
+    } else if (ONBOARDING_RESUME_STEPS.includes(s)) {
+      try {
+        if (ownerId) localStorage.setItem(`${KEY}:step:user:${ownerId}`, s);
+        if (email) localStorage.setItem(`${KEY}:step:email:${encodeURIComponent(email.trim().toLowerCase())}`, s);
+        localStorage.setItem(`${KEY}:onboarding-pending`, "1");
+      } catch { /* ignore unavailable local storage */ }
     }
   };
   const navigate = (
@@ -819,7 +899,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveAttemptId(null);
     setActiveDeckId(null);
     try {
-      localStorage.removeItem(KEY);
+      if (storageOwnerIdRef.current) {
+        localStorage.removeItem(profileCacheKey(storageOwnerIdRef.current));
+        localStorage.removeItem(`${KEY}:step:user:${storageOwnerIdRef.current}`);
+      }
+      const resetEmail = profileRef.current.identity?.kind === "email" ? profileRef.current.identity.email : undefined;
+      if (resetEmail) localStorage.removeItem(emailCacheKey(resetEmail));
+      localStorage.removeItem(`${KEY}:onboarding-pending`);
       window.history.replaceState({}, "", window.location.pathname);
     } catch {
       /* ignore */
