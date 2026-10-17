@@ -347,18 +347,18 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         <div className="mb-5">
           <div className="mb-4 flex items-center gap-2">
             <HeaderLogo />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#F7F3EA] mix-blend-difference">
               Home
             </span>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold leading-tight text-[#F7F3EA] dark:text-[#F7F3EA]">
+              <h1 className="font-display text-2xl font-bold leading-tight text-[#F7F3EA] mix-blend-difference">
                 Welcome back, {name}
               </h1>
-              {meta ? <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">{meta}</p> : null}
+              {meta ? <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">{meta}</p> : null}
               {subline ? (
-                <p className="mt-1 text-[12px] text-[#F3E6C8]/80 dark:text-[#C4B8A0]">{subline}</p>
+                <p className="mt-1 text-[12px] text-[#F7F3EA] mix-blend-difference">{subline}</p>
               ) : null}
               <p className="mt-1 text-[12px] text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
                 Your study home: upload a file, practise on it, revise it.

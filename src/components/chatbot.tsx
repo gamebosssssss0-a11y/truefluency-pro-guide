@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, ChevronDown, Image as ImageIcon, Loader2, Mic, Plus, Send, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
+import { BookOpen, CalendarDays, Camera, Check, ChevronDown, CircleHelp, FileText, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -86,22 +86,22 @@ type Message = {
   retryMode?: Mode;
 };
 
-/** Starter prompts per mode — what each tab actually does when you tap it. */
-const STARTERS: Record<string, string[]> = {
+/** Starter prompts per mode — titles are display copy; values remain the submitted drafts. */
+const STARTERS: Record<Mode, { title: string; subtitle: string; value: string; icon: typeof BookOpen }[]> = {
   Explain: [
-    "Explain the main ideas in my notes",
-    "What should I focus on this week?",
-    "Explain my weakest topic simply",
+    { title: "Make my notes make sense", subtitle: "Explain the main ideas in my notes", value: "Explain the main ideas in my notes", icon: BookOpen },
+    { title: "Plan my next study session", subtitle: "Find a useful focus for this week", value: "What should I focus on this week?", icon: CalendarDays },
+    { title: "Untangle a tricky topic", subtitle: "Get a simpler explanation of what feels hard", value: "Explain my weakest topic simply", icon: Lightbulb },
   ],
   "Quiz me": [
-    "Quiz me on my weakest topic",
-    "Test me on the most likely exam topics",
-    "Ask me 1 question from my notes",
+    { title: "Targeted quiz", subtitle: "Test me on my weakest topic", value: "Quiz me on my weakest topic", icon: Target },
+    { title: "Exam prediction", subtitle: "Test me on the most likely exam topics", value: "Test me on the most likely exam topics", icon: Sparkles },
+    { title: "Quick check", subtitle: "Ask me 1 question from my notes", value: "Ask me 1 question from my notes", icon: CircleHelp },
   ],
   "Work a problem": [
-    "Give me a practice problem and guide me through it",
-    "Walk me through a worked example from my notes",
-    "Help me solve this step by step",
+    { title: "Practice problem", subtitle: "Guide me through a practice problem", value: "Give me a practice problem and guide me through it", icon: Calculator },
+    { title: "Worked example", subtitle: "Walk through an example from my notes", value: "Walk me through a worked example from my notes", icon: FileText },
+    { title: "Step-by-step help", subtitle: "Help me solve a problem step by step", value: "Help me solve this step by step", icon: ListChecks },
   ],
 };
 
@@ -923,7 +923,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             title={selectedCourse?.name ? `${displayCode(selected)} · ${selectedCourse.name}` : displayCode(selected)}
             className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
           >
-            <span className="truncate">{selected ? displayCode(selected) : "Choose a course"}</span>
+            <span className="truncate">{selected ? `${displayCode(selected)}${selectedCourse?.name?.trim() ? ` · ${selectedCourse.name.trim()}` : ""}` : "Choose a course"}</span>
             <ChevronDown className="h-4 w-4 shrink-0 text-[#F3E6C8]" />
           </button>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -947,8 +947,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
                 }
               }}
-              className="whitespace-nowrap rounded-full border border-[#E4DCC8]/45 px-2 py-1.5 text-[10px] font-semibold text-[#F7F3EA] transition hover:bg-[#1B2A4A]/60 disabled:opacity-60"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#ead6ae] bg-[#F3E6C8] px-2.5 py-1.5 text-[10px] font-semibold text-[#784c12] transition hover:bg-[#ead6ae] disabled:opacity-60"
             >
+              <Plus aria-hidden="true" className="h-3 w-3" />
               New chat
             </button>
             <button type="button" onClick={() => setHistoryOpen(true)} className="whitespace-nowrap rounded-full border border-[#E4DCC8]/45 px-2 py-1.5 text-[10px] font-semibold text-[#F7F3EA] transition hover:bg-[#1B2A4A]/60">History</button>
@@ -982,24 +983,44 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
+              <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[#F3E6C8] mix-blend-difference">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#F3E6C8]" />
+                Your course, made clearer
+              </div>
               <p className="font-display text-[22px] font-semibold text-[#F7F3EA] mix-blend-difference">
                 {selected ? `Ask about ${placeholderCourse}` : "How can I help you study today?"}
               </p>
-              <p className="mt-1 text-sm text-[#F3E6C8]/80 mix-blend-difference">
+              <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">
                 {selected ? "Grounded in your course notes." : "Add a course to get started."}
               </p>
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
-                {(STARTERS[mode] ?? []).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setDraft(q)}
-                    disabled={isSending || isLoadingThread}
-                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-card-foreground transition hover:border-accent/60 disabled:opacity-60"
-                  >
-                    {q}
-                  </button>
-                ))}
+              {selected ? (
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E4DCC8]/40 bg-[#F3E6C8]/15 px-2.5 py-1 text-xs text-[#FFF8E9]">
+                  <Check aria-hidden="true" className="h-3 w-3 text-[#F3E6C8]" />
+                  Course notes connected
+                </span>
+              ) : null}
+              <div className="mt-4 grid w-full gap-2">
+                {(STARTERS[mode] ?? []).map((card) => {
+                  const StarterIcon = card.icon;
+                  return (
+                    <button
+                      key={card.title}
+                      type="button"
+                      onClick={() => setDraft(card.value)}
+                      disabled={isSending || isLoadingThread}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-[#E7DECC] bg-[#FBF7EE]/95 p-3 text-left text-[#1B2A4A] shadow-sm transition hover:border-[#d3be98] hover:shadow-md disabled:opacity-60"
+                    >
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#F3E6C8] text-[#8A5B18]">
+                        <StarterIcon aria-hidden="true" className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold">{card.title}</span>
+                        <span className="mt-0.5 block truncate text-[10px] text-[#777469]">{card.subtitle}</span>
+                      </span>
+                      <span aria-hidden="true" className="px-0.5 text-lg leading-none text-[#A08A64]">›</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : messages.length > 0 ? (
@@ -1167,102 +1188,70 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               </button>
             </div>
           ) : null}
-          <div className="flex min-w-0 items-end gap-1 rounded-[24px] border border-[#B86E0A]/45 bg-card p-1 shadow-[0_0_0_1px_rgba(184,110,10,0.22),0_0_22px_rgba(184,110,10,0.18)]">
-            <div className="flex shrink-0 flex-col items-center gap-1">
+          <div className="rounded-[20px] border border-[#dfd1b8] bg-card p-2 shadow-[0_7px_17px_rgba(27,42,74,0.08),inset_0_0_0_1px_rgba(255,255,255,0.55)]">
+            <div className="mb-2 flex min-w-0 items-center justify-between gap-2 px-1">
               <div className="relative shrink-0">
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={modeMenuOpen}
-                onClick={() => setModeMenuOpen((open) => !open)}
-                aria-label={`Reply mode: ${mode}`}
-                className="inline-flex h-8 w-[84px] shrink-0 items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
-              >
-                <span>{mode === "Work a problem" ? "Work" : mode}</span>
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-              {modeMenuOpen ? (
-                <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
-                  {MODES.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => { setMode(item); setModeMenuOpen(false); }}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-popover-foreground hover:bg-secondary"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={modeMenuOpen}
+                  onClick={() => setModeMenuOpen((open) => !open)}
+                  aria-label={`Reply mode: ${mode}`}
+                  className="inline-flex h-8 min-w-[84px] items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
+                >
+                  <span>{mode === "Work a problem" ? "Work" : mode}</span>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+                {modeMenuOpen ? (
+                  <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                    {MODES.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setMode(item); setModeMenuOpen(false); }}
+                        className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-popover-foreground hover:bg-secondary"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <span className="flex min-w-0 items-center gap-1 text-[11px] text-[#878170]">
+                <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#477A5B]" />
+                <span className="truncate">{selected ? `Using ${placeholderCourse} notes` : "Add a course to connect notes"}</span>
+              </span>
             </div>
+            <div className="flex min-w-0 items-end gap-1">
               <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
                 <Plus className="h-3.5 w-3.5" />
               </button>
+              <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhotoFile(f); setPhotoName(f?.name ?? null); }} />
+              <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhotoFile(f); setPhotoName(f?.name ?? null); }} />
+              <textarea
+                ref={composerRef}
+                rows={1}
+                value={draft}
+                onChange={(e) => { setDraft(e.target.value); resizeComposer(); }}
+                maxLength={2000}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
+                placeholder={selected ? `Ask a question about ${placeholderCourse}…` : "Add a course first."}
+                className="max-h-40 min-h-10 min-w-[96px] flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
+              />
+              <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
+                <Mic className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => send()} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label="Send" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                <Send className="h-5 w-5" />
+              </button>
             </div>
-            <input
-              ref={cameraInput}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                setPhotoFile(f);
-                setPhotoName(f?.name ?? null);
-              }}
-            />
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                setPhotoFile(f);
-                setPhotoName(f?.name ?? null);
-              }}
-            />
-            <textarea
-              ref={composerRef}
-              rows={1}
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                resizeComposer();
-              }}
-              maxLength={2000}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
-              placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
-              className="max-h-40 min-h-10 min-w-[96px] flex-1 resize-none overflow-y-hidden rounded-2xl border-0 bg-chat-card px-3 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
-            />
-            <button
-              type="button"
-              onClick={toggleDictation}
-              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
-              aria-label={isListening ? "Stop voice input" : "Start voice input"}
-              aria-pressed={isListening}
-              title={isListening ? "Stop voice input" : "Voice input"}
-              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}
-            >
-              <Mic className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => send()}
-              disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
-              aria-label="Send"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
-            >
-              <Send className="h-5 w-5" />
-            </button>
           </div>
           {chatCapReached ? (
             <p className="mt-2 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
