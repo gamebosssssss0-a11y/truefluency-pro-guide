@@ -48,7 +48,7 @@ function createDictationRecognition(): DictationRecognition | null {
   return Recognition ? new Recognition() : null;
 }
 
-export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string };
+export type PageAttachment = { courseCode: string; page: number; fileName: string; text: string; previewUrl?: string };
 
 function readPendingPageAttachment(): PageAttachment | null {
   if (typeof window === "undefined") return null;
@@ -59,7 +59,8 @@ function readPendingPageAttachment(): PageAttachment | null {
     const value = JSON.parse(raw) as Partial<PageAttachment>;
     if (typeof value.courseCode !== "string" || typeof value.fileName !== "string" ||
       typeof value.text !== "string" || typeof value.page !== "number") return null;
-    return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000) };
+    const previewUrl = typeof value.previewUrl === "string" && value.previewUrl.startsWith("data:image/") && value.previewUrl.length <= 750_000 ? value.previewUrl : undefined;
+    return { courseCode: canonicalCourseCode(value.courseCode), page: value.page, fileName: value.fileName, text: value.text.slice(0, 4000), previewUrl };
   } catch {
     return null;
   }
@@ -212,6 +213,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [mode, setMode] = useState<Mode>("Explain");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
@@ -260,6 +262,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   useEffect(() => {
     resizeComposer();
   }, [draft]);
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreviewUrl(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(photoFile);
+    setPhotoPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [photoFile]);
 
   const courseOptions = profile.courses
     .map((course) => canonicalCourseCode(course.code))
@@ -750,7 +762,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       const transcript = event.results[event.resultIndex]?.[0]?.transcript?.trim();
       if (!transcript) return;
       setDraft((current) => {
-        const separator = current && !/\\s$/.test(current) ? " " : "";
+        const separator = current && !/\s$/.test(current) ? " " : "";
         const remaining = Math.max(0, 2000 - current.length - separator.length);
         return current + separator + transcript.slice(0, remaining);
       });
@@ -1010,13 +1022,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         <div className="mt-2 mb-2 shrink-0">
           {attachedPage ? (
             <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
+              {attachedPage.previewUrl ? (
+                <img src={attachedPage.previewUrl} alt={`Preview of page ${attachedPage.page}`} className="h-16 w-12 shrink-0 rounded-md border border-border object-cover" />
+              ) : null}
               <span className="min-w-0 flex-1 truncate">Page {attachedPage.page} · {attachedPage.fileName}</span>
               <button type="button" onClick={() => setAttachedPage(null)} className="shrink-0 underline underline-offset-2">Remove</button>
             </div>
           ) : null}
           {photoName ? (
-            <div className="mb-2 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-card-foreground">
-              <span className="truncate">
+            <div className="mb-2 flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground">
+              {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Selected photo preview" className="h-14 w-14 shrink-0 rounded-md border border-border object-cover" /> : null}
+              <span className="min-w-0 flex-1 truncate">
                 {isUploadingPhoto ? "Uploading… " : "Photo · "}
                 {photoName}
               </span>
@@ -1027,6 +1043,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   setPhotoName(null);
                 }}
                 aria-label="Remove photo"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
