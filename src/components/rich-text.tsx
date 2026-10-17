@@ -2,7 +2,7 @@
  * Small markdown renderer for assistant replies. Deliberately tiny — no new
  * markdown dependency — and it hands every text run to the existing
  * math-text.tsx so \( ... \) and \[ ... \] still render with KaTeX.
- * Handles: headings, bullet/numbered lists, **bold**, *italic*, `code`.
+ * Handles: headings, lists, Markdown tables, **bold**, *italic*, and `code`.
  */
 import { MathText } from "@/components/math-text";
 
