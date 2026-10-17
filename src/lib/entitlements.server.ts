@@ -72,7 +72,7 @@ async function admin() {
   });
 }
 
-type GateName = "mock_questions" | "mock_sets" | "flashcard_decks" | "chat_messages" | "upgrade_cta";
+type GateName = "mock_questions" | "mock_sets" | "flashcard_decks" | "chat_messages" | "upgrade_cta" | "library_uploads";
 
 function noteGateHit(userId: string, gate: GateName) {
   void admin()
@@ -82,6 +82,7 @@ function noteGateHit(userId: string, gate: GateName) {
 
 function gateForRefusal(feature: GatedFeature, reason: string): GateName | null {
   if (reason === "question_cap" && feature === "mock_sets") return "mock_questions";
+  if (reason === "locked" && feature === "library_uploads") return "library_uploads";
   if (reason === "daily_limit" && feature === "mock_sets") return "mock_sets";
   if (reason === "daily_limit" && feature === "flashcard_decks") return "flashcard_decks";
   if (reason === "daily_limit" && feature === "chatbot_messages") return "chat_messages";
