@@ -961,7 +961,7 @@ export function MaterialRow({
       setConfirmDelete(false);
     } catch (error) {
       console.error("[materials] delete failed", error);
-      toast.error("We couldn't remove that file. Please try again.");
+      toast.error(error instanceof Error ? error.message : "We couldn't remove that file. Please try again.");
     } finally {
       setDeleting(false);
     }

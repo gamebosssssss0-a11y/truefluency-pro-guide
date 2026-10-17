@@ -284,7 +284,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       await deleteMaterial({ id: file.id });
     } catch (error) {
       setBusy(false);
-      toast.error("We couldn't remove that file.");
+      toast.error(error instanceof Error ? error.message : "We couldn't remove that file.");
       console.error("[library] remove failed", error);
       return;
     }

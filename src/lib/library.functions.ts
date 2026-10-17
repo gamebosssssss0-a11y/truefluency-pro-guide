@@ -50,6 +50,18 @@ export const listShelfItems = createServerFn({ method: "GET" })
     return { ...shelf, offline: false as const };
   });
 
+/** Authenticated, owner-checked removal of one of the caller's files. */
+export const removeOwnedMaterial = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { materialId: string }) => ({
+    materialId: cleanId(input?.materialId),
+  }))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { removeOwnedMaterial: remove } = await import("@/lib/library.server");
+    await remove({ materialId: data.materialId, ownerId: context.userId });
+    return { ok: true };
+  });
+
 export const setMaterialPublished = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(

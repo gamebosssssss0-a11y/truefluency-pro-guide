@@ -77,6 +77,43 @@ function ready(text: string | null): boolean {
   return (text ?? "").trim().length >= READY_FOR_MOCKS_MIN_CHARS;
 }
 
+/** Remove one material only after verifying that it belongs to the caller. */
+export async function removeOwnedMaterial(opts: {
+  materialId: string;
+  ownerId: string;
+}): Promise<void> {
+  const db = admin();
+  const { data: material, error: lookupError } = await db
+    .from("course_materials")
+    .select("id, user_id, file_path")
+    .eq("id", opts.materialId)
+    .eq("user_id", opts.ownerId)
+    .maybeSingle();
+
+  if (lookupError) throw new Error("Couldn't verify file ownership. Please try again.");
+  if (!material || !isOwnedMaterialPath(material.file_path, opts.ownerId)) {
+    throw new Error("File not found or no longer available.");
+  }
+
+  // DeleteObject is idempotent, so a retry also repairs a failed row deletion.
+  try {
+    await r2.deleteObject(material.file_path);
+  } catch {
+    throw new Error("The stored file couldn't be removed. Please try again.");
+  }
+
+  const { data: deleted, error: deleteError } = await db
+    .from("course_materials")
+    .delete()
+    .eq("id", material.id)
+    .eq("user_id", opts.ownerId)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) throw new Error("The file couldn't be removed from your account. Please try again.");
+  if (!deleted) throw new Error("The file couldn't be removed from your account. Refresh and try again.");
+}
+
 type Attribution = { peer_alias: string; avatar_url: string | null };
 
 /**
