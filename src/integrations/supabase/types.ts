@@ -129,7 +129,7 @@ export type Database = {
           snapshot: Json
           token: string
           updated_at: string
-          visibility: "public" | "private"
+          visibility: string
         }
         Insert: {
           conversation_id: string
@@ -140,7 +140,7 @@ export type Database = {
           snapshot: Json
           token: string
           updated_at?: string
-          visibility?: "public" | "private"
+          visibility?: string
         }
         Update: {
           conversation_id?: string
@@ -151,7 +151,7 @@ export type Database = {
           snapshot?: Json
           token?: string
           updated_at?: string
-          visibility?: "public" | "private"
+          visibility?: string
         }
         Relationships: []
       }
@@ -890,7 +890,7 @@ export type Database = {
         }[]
       }
       record_mock_streak: {
-        Args: { attempt_id: string }
+        Args: { answered_count: number }
         Returns: {
           event: string
           freeze_used_on: string
