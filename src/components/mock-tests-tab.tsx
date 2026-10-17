@@ -726,7 +726,8 @@ export function ProgressPanel({
 
       <section aria-labelledby="flashcard-memory" className="rounded-2xl border border-border bg-card p-4">
         <h2 id="flashcard-memory" className="font-display text-lg font-semibold text-foreground">Flashcard memory</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Not counted yet</p>
+        <p className="mt-2 text-sm text-muted-foreground">Rating counts: <span className="font-semibold text-foreground">Not counted</span></p>
+        <p className="mt-1 text-xs text-muted-foreground">Review ratings are not stored yet.</p>
         <Button variant="outline" className="mt-3 w-full" onClick={() => navigate("flashcards-review")}>
           Review due cards
         </Button>
