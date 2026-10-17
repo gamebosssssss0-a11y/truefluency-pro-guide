@@ -6,8 +6,10 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -145,11 +147,32 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function MaintenanceBanner() {
+  const location = useRouterState({ select: (state) => state.location.href });
+  const [settings, setSettings] = useState<{ maintenance_mode: boolean; maintenance_message: string | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    void supabase.from("site_settings").select("maintenance_mode, maintenance_message").eq("id", true).maybeSingle()
+      .then(({ data }) => { if (active && data) setSettings(data); });
+    return () => { active = false; };
+  }, [location]);
+  return (
+    <div className="min-h-[56px]" aria-live="polite">
+      {settings?.maintenance_mode ? (
+        <div role="status" className="flex min-h-[56px] items-center justify-center bg-[#B86E0A] px-4 py-3 text-center text-sm font-medium text-[#1B2A4A]">
+          {settings.maintenance_message?.trim() || "We’re doing some maintenance. You can keep using the app."}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
+      <MaintenanceBanner />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       {/* Mounted once: without it every toast() call in the app is silent. */}

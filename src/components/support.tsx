@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LifeBuoy } from "lucide-react";
+import { ArrowLeft, ChevronRight, LifeBuoy } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { SUPPORT_ISSUES } from "@/lib/support-issues";
 
@@ -41,23 +41,56 @@ const FAQS = [
   },
 ];
 
+
 function getIssueHref(issue: (typeof SUPPORT_ISSUES)[number]) {
   const message = `TrueFluency Pro support — #${issue.id} · ${issue.area}: ${issue.text}`;
   return `https://wa.me/${issue.phone}?text=${encodeURIComponent(message)}`;
 }
 
+const FAQ_GROUPS = [
+  {
+    label: "Account and payment",
+    matches: (question: string) => ["pay", "plan", "upgrade", "price", "₦"].some((word) => question.toLowerCase().includes(word)),
+  },
+  {
+    label: "Study tools",
+    matches: (question: string) => ["mock", "flash", "chat", "file", "pdf", "upload"].some((word) => question.toLowerCase().includes(word)),
+  },
+  {
+    label: "Everything else",
+    matches: (question: string) =>
+      !FAQ_GROUPS.slice(0, 2).some((group) => group.matches(question)),
+  },
+] as const;
+
 export function SupportScreen() {
   const { navigate } = useProfile();
   const [search, setSearch] = useState("");
-  const normalizedSearch = search.trim().toLowerCase();
-  const filteredIssues = normalizedSearch
-    ? SUPPORT_ISSUES.filter((issue) =>
-        issue.text.toLowerCase().includes(normalizedSearch) ||
-        issue.area.toLowerCase().includes(normalizedSearch),
-      )
-    : SUPPORT_ISSUES;
-  const areas = [...new Set(filteredIssues.map((issue) => issue.area))];
-  const somethingElseIssue = SUPPORT_ISSUES.find((issue) => issue.id === 100)!;
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filteredFaqs = useMemo(
+    () => normalizedSearch
+      ? FAQS.filter((faq) =>
+          faq.q.toLocaleLowerCase().includes(normalizedSearch) ||
+          faq.a.toLocaleLowerCase().includes(normalizedSearch),
+        )
+      : FAQS,
+    [normalizedSearch],
+  );
+  const filteredIssues = useMemo(
+    () => normalizedSearch
+      ? SUPPORT_ISSUES.filter((issue) =>
+          issue.text.toLocaleLowerCase().includes(normalizedSearch) ||
+          issue.area.toLocaleLowerCase().includes(normalizedSearch),
+        )
+      : SUPPORT_ISSUES,
+    [normalizedSearch],
+  );
+  const faqSections = FAQ_GROUPS.map((group) => ({
+    label: group.label,
+    faqs: filteredFaqs.filter((faq) => group.matches(faq.q)),
+  })).filter((group) => group.faqs.length > 0);
+  const issueAreas = [...new Set(filteredIssues.map((issue) => issue.area))];
+  const noMatches = normalizedSearch.length > 0 && filteredFaqs.length === 0 && filteredIssues.length === 0;
 
   return (
     <div className="study-utility-page min-h-screen">
@@ -65,6 +98,7 @@ export function SupportScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
+            type="button"
             onClick={() => navigate("account")}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
@@ -75,80 +109,86 @@ export function SupportScreen() {
         <div className="surface-icon-well grid h-12 w-12 place-items-center rounded-2xl">
           <LifeBuoy className="h-5 w-5" />
         </div>
-        <h1 className="mt-3 font-display text-3xl font-semibold text-foreground">Support</h1>
+        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">HELP</p>
+        <h1 className="font-display text-3xl font-semibold text-foreground">How can we help?</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Answers to the usual questions, and a direct line to us if they don't cover it.
+          Search answers or choose an issue to message us on WhatsApp.
         </p>
 
-        <h2 className="mb-2 mt-7 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Frequently asked
-        </h2>
-        <div className="surface-key-card px-4">
-          <Accordion type="single" collapsible>
-            {FAQS.map((f, i) => (
-              <AccordionItem key={f.q} value={`faq-${i}`} className={i === FAQS.length - 1 ? "border-b-0" : ""}>
-                <AccordionTrigger className="text-left text-sm font-semibold text-foreground">
-                  {f.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-xs leading-relaxed text-muted-foreground">
-                  {f.a}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-
-        <h2 className="mb-2 mt-7 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Report an issue
-        </h2>
         <Input
+          className="mt-5"
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search for your issue"
-          aria-label="Search for your issue"
+          placeholder="Search questions or issues"
+          aria-label="Search questions or issues"
         />
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          Tap the issue closest to yours — it opens WhatsApp with your issue already filled in. Just hit send.
-        </p>
 
-        {normalizedSearch && filteredIssues.length === 0 ? (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm text-muted-foreground">No matching issue. Try different words.</p>
-            <a
-              href={getIssueHref(somethingElseIssue)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="surface-list-row flex items-center p-4 text-sm text-foreground transition hover:border-accent/50"
-            >
-              Something else
-            </a>
-          </div>
+        {noMatches ? (
+          <p className="mt-5 text-sm text-muted-foreground">
+            No matches. Try a different word or report an issue.
+          </p>
         ) : (
-          <div className="mt-4">
-            {areas.map((area) => (
-              <section key={area} className="mb-5">
-                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {area}
-                </h3>
-                <div className="space-y-2">
-                  {filteredIssues.filter((issue) => issue.area === area).map((issue) => (
-                    <a
-                      key={issue.id}
-                      href={getIssueHref(issue)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="surface-list-row flex items-center p-4 text-sm text-foreground transition hover:border-accent/50"
-                    >
-                      {issue.text}
-                    </a>
-                  ))}
+          <>
+            {faqSections.map((group) => (
+              <section key={group.label} className="mt-6">
+                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </h2>
+                <div className="surface-key-card px-4">
+                  <Accordion type="single" collapsible>
+                    {group.faqs.map((faq) => {
+                      const index = FAQS.indexOf(faq);
+                      return (
+                        <AccordionItem
+                          key={faq.q}
+                          value={`faq-${index}`}
+                          className={faq === group.faqs[group.faqs.length - 1] ? "border-b-0" : ""}
+                        >
+                          <AccordionTrigger className="text-left text-sm font-semibold text-foreground">
+                            {faq.q}
+                          </AccordionTrigger>
+                          <AccordionContent className="text-xs leading-relaxed text-muted-foreground">
+                            {faq.a}
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
                 </div>
               </section>
             ))}
-          </div>
-        )}
 
+            {filteredIssues.length > 0 ? (
+              <section className="mt-7">
+                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Report an issue
+                </h2>
+                {issueAreas.map((area) => (
+                  <div key={area} className="mb-5">
+                    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {area}
+                    </h3>
+                    <div className="space-y-2">
+                      {filteredIssues.filter((issue) => issue.area === area).map((issue) => (
+                        <a
+                          key={issue.id}
+                          href={getIssueHref(issue)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="surface-list-row flex items-center gap-3 p-4 text-sm text-foreground transition hover:border-accent/50"
+                        >
+                          <span className="min-w-0 flex-1">{issue.text}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

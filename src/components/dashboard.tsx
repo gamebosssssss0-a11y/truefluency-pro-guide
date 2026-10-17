@@ -18,6 +18,7 @@ import { getMyAvatar } from "@/lib/avatar";
 import { FirstRunTourHost } from "@/components/first-run-tour";
 import { lagosDay } from "@/lib/wat-day";
 import { getStreakState, type StreakState } from "@/lib/streak-state";
+import { UpgradeReminderSheet } from "@/components/upgrade";
 
 /* ================= Tab 1: Home ================= */
 
@@ -376,6 +377,10 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         </div>
 
         <PlanChip />
+        <button type="button" onClick={() => setReminderOpen(true)} className="mb-5 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
+          See plan options
+        </button>
+        <UpgradeReminderSheet open={reminderOpen} onOpenChange={setReminderOpen} />
 
         {/* Streak: cloud-backed qualifying mock activity only. */}
         <div className="mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
