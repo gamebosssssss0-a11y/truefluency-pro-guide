@@ -502,7 +502,9 @@ function writeAppLocation(
   if (opts?.courseCode) params.set("courseCode", opts.courseCode);
   if (opts?.attemptId) params.set("attemptId", opts.attemptId);
   if (opts?.deckId) params.set("deckId", opts.deckId);
-  const url = window.location.pathname + "?" + params.toString();
+  const rawPathname = window.location.pathname;
+  const pathname = rawPathname === "/index" || rawPathname === "/index/" ? "/" : rawPathname;
+  const url = pathname + "?" + params.toString();
   const openedParams = {
     ...(opts?.courseCode ? { courseCode: opts.courseCode } : {}),
     ...(opts?.attemptId ? { attemptId: opts.attemptId } : {}),
