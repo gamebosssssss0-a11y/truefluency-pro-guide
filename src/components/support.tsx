@@ -47,21 +47,33 @@ function getIssueHref(issue: (typeof SUPPORT_ISSUES)[number]) {
   return `https://wa.me/${issue.phone}?text=${encodeURIComponent(message)}`;
 }
 
-const FAQ_GROUPS = [
+type FaqGroup = { label: string; matches: (question: string) => boolean };
+
+const ACCOUNT_TERMS = ["pay", "plan", "upgrade", "price", "₦"];
+const STUDY_TERMS = ["mock", "flash", "chat", "file", "pdf", "upload"];
+
+const matches = (question: string): boolean => {
+  const normalized = question.toLocaleLowerCase();
+  return !ACCOUNT_TERMS.some((word) => normalized.includes(word)) &&
+    !STUDY_TERMS.some((word) => normalized.includes(word));
+};
+
+const FAQ_GROUPS: FaqGroup[] = [
   {
     label: "Account and payment",
-    matches: (question: string) => ["pay", "plan", "upgrade", "price", "₦"].some((word) => question.toLowerCase().includes(word)),
+    matches: (question: string): boolean =>
+      ACCOUNT_TERMS.some((word) => question.toLocaleLowerCase().includes(word)),
   },
   {
     label: "Study tools",
-    matches: (question: string) => ["mock", "flash", "chat", "file", "pdf", "upload"].some((word) => question.toLowerCase().includes(word)),
+    matches: (question: string): boolean =>
+      STUDY_TERMS.some((word) => question.toLocaleLowerCase().includes(word)),
   },
   {
     label: "Everything else",
-    matches: (question: string) =>
-      !FAQ_GROUPS.slice(0, 2).some((group) => group.matches(question)),
+    matches,
   },
-] as const;
+];
 
 export function SupportScreen() {
   const { navigate } = useProfile();
