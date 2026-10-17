@@ -648,6 +648,12 @@
   color: #1B2A4A;
 }
 
+/* Let selected utility screens share the app shell background. */
+.study-page-blend {
+  background-color: transparent;
+  background-image: none;
+}
+
 .study-utility-page .text-muted-foreground,
 .study-utility-page [class~="text-muted-foreground/80"] {
   color: #46536C;
