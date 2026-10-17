@@ -250,7 +250,7 @@ export function TestHistoryScreen() {
   const courseCodes = Array.from(new Set(all.map((a) => a.courseCode)));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="study-utility-page study-page-blend min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -456,6 +456,8 @@ export function ProgressPanel({
     canonicalCourseCode(entry.code) === canonicalCourseCode(activeCourseCode ?? ""),
   ) ?? profile.courses[0] ?? null;
   const courseCode = course?.code ?? null;
+  const [selectedTopic, setSelectedTopic] = useState("all");
+  useEffect(() => setSelectedTopic("all"), [courseCode]);
   const courseTopics = useMemo(() => {
     if (!courseCode) return [] as ProgressTopic[];
     const scores = profile.topicScores.filter(
@@ -511,17 +513,23 @@ export function ProgressPanel({
     return () => { active = false; };
   }, [courseCode]);
 
-  const lowestTopic = courseTopics.find((entry) => entry.score !== null) ?? null;
-  const scoredTopics = courseTopics.filter(
+  const selectedTopicEntry = courseTopics.find((entry) => entry.topic === selectedTopic) ?? null;
+  const lowestTopic = selectedTopic === "all"
+    ? courseTopics.find((entry) => entry.score !== null) ?? null
+    : selectedTopicEntry?.score !== null ? selectedTopicEntry : null;
+  const visibleTopics = selectedTopic === "all"
+    ? courseTopics
+    : courseTopics.filter((entry) => entry.topic === selectedTopic);
+  const scoredTopics = visibleTopics.filter(
     (entry): entry is ProgressTopic & { score: number } => entry.score !== null,
   );
   const average = scoredTopics.length
     ? Math.round(scoredTopics.reduce((sum, entry) => sum + entry.score, 0) / scoredTopics.length)
     : null;
-  const mastered = courseTopics.filter((entry) => (entry.score ?? 0) >= 80).length;
-  const learning = courseTopics.filter((entry) => entry.score !== null && entry.score >= 40 && entry.score < 80).length;
-  const weak = courseTopics.length - mastered - learning;
-  const pct = (count: number) => courseTopics.length ? (count / courseTopics.length) * 100 : 0;
+  const mastered = visibleTopics.filter((entry) => entry.score !== null && entry.score >= 80).length;
+  const learning = visibleTopics.filter((entry) => entry.score !== null && entry.score >= 40 && entry.score < 80).length;
+  const weak = visibleTopics.length - mastered - learning;
+  const pct = (count: number) => visibleTopics.length ? (count / visibleTopics.length) * 100 : 0;
   const donutBackground = `conic-gradient(#47835E 0 ${pct(mastered)}%, #B86E0A ${pct(mastered)}% ${pct(mastered + learning)}%, #C8C5BD ${pct(mastered + learning)}% 100%)`;
 
   const recentMisses = useMemo(() => {
@@ -537,6 +545,7 @@ export function ProgressPanel({
     for (const attempt of [...courseAttempts].reverse()) {
       if (!Array.isArray(attempt.questions) || !Array.isArray(attempt.answers)) continue;
       attempt.questions.forEach((question, index) => {
+        if (selectedTopic !== "all" && question.topic.toLocaleLowerCase() !== selectedTopic.toLocaleLowerCase()) return;
         const chosenIndex = attempt.answers?.[index] ?? null;
         const correct = question.options?.[question.correct_index];
         if (chosenIndex === question.correct_index || typeof correct !== "string" || typeof question.explanation !== "string") return;
@@ -555,17 +564,23 @@ export function ProgressPanel({
       if (found.length >= 3) break;
     }
     return found.slice(0, 3);
-  }, [courseAttempts]);
+  }, [courseAttempts, selectedTopic]);
 
-  const trendPoints = courseAttempts.slice(-5);
+  const progressAttempts = selectedTopic === "all"
+    ? courseAttempts
+    : courseAttempts.flatMap((attempt) => {
+        const topicScore = attempt.topics.find((entry) => entry.topic.toLocaleLowerCase() === selectedTopic.toLocaleLowerCase());
+        return topicScore ? [{ ...attempt, score: topicScore.score }] : [];
+      });
+  const trendPoints = progressAttempts.slice(-5);
   const chartPoints = trendPoints.map((attempt, index) => {
     const x = trendPoints.length === 1 ? 110 : 18 + (index * 184) / (trendPoints.length - 1);
     const y = 100 - Math.max(0, Math.min(100, attempt.score));
     return { x, y, attempt };
   });
   const polyline = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
-  const latest = courseAttempts[courseAttempts.length - 1] ?? null;
-  const earlier = courseAttempts.length > 1 ? courseAttempts[courseAttempts.length - 2] : null;
+  const latest = progressAttempts[progressAttempts.length - 1] ?? null;
+  const earlier = progressAttempts.length > 1 ? progressAttempts[progressAttempts.length - 2] : null;
   const scoreChange = latest && earlier ? latest.score - earlier.score : null;
 
   const startShortMock = () => {
@@ -573,7 +588,8 @@ export function ProgressPanel({
       navigate("mock-tests");
       return;
     }
-    if (lowestTopic) {
+    const focusTopic = selectedTopic !== "all" ? selectedTopic : lowestTopic?.topic;
+    if (focusTopic) {
       const previous = profile.courseTestSettings[course.code];
       update({
         courseTestSettings: {
@@ -582,7 +598,7 @@ export function ProgressPanel({
             questionCount: FREE_MAX_QUESTIONS,
             minutes: previous?.minutes ?? 40,
             difficulty: previous?.difficulty ?? "balanced",
-            topicFocus: [lowestTopic.topic],
+            topicFocus: [focusTopic],
           },
         },
       });
@@ -633,7 +649,21 @@ export function ProgressPanel({
       </section>
 
       <section aria-labelledby="course-standing">
-        <h2 id="course-standing" className="mb-2 font-display text-lg font-semibold text-foreground">Course standing</h2>
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+          <h2 id="course-standing" className="font-display text-lg font-semibold text-foreground">Course standing</h2>
+          <label className="flex min-w-44 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Progress topic
+            <select
+              aria-label="Choose a topic for your progress"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground"
+              value={selectedTopic}
+              onChange={(event) => setSelectedTopic(event.target.value)}
+            >
+              <option value="all">All topics</option>
+              {courseTopics.map((entry) => <option key={entry.topic} value={entry.topic}>{entry.topic}</option>)}
+            </select>
+          </label>
+        </div>
         {courseTopics.length > 0 ? (
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-3">
             <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-border bg-card p-3">
@@ -697,7 +727,7 @@ export function ProgressPanel({
         <h2 id="weakest-topics" className="mb-2 font-display text-lg font-semibold text-foreground">Topics, weakest first</h2>
         {courseTopics.length > 0 ? (
           <div className="space-y-2">
-            {courseTopics.map((entry) => {
+            {visibleTopics.map((entry) => {
               const score = entry.score ?? 0;
               const masteredTopic = entry.score !== null && score >= 80;
               const learningTopic = entry.score !== null && score >= 40 && score < 80;
@@ -739,14 +769,22 @@ export function ProgressPanel({
             {recentMisses.map((miss) => (
               <article key={`${miss.id}-${miss.number}`} className="rounded-2xl border border-border bg-card p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{miss.topic}</p>
-                <h3 className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
-                  <span className="mr-1 text-muted-foreground">Q{miss.number}.</span><MathText>{miss.question}</MathText>
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-destructive"><span className="font-semibold">Your pick:</span> <MathText>{miss.chosen}</MathText></p>
-                <p className="mt-1 text-xs leading-relaxed text-success"><span className="font-semibold">Correct:</span> <MathText>{miss.correct}</MathText></p>
-                <p className="mt-2 border-t border-dashed border-border pt-2 text-xs leading-relaxed text-muted-foreground">
-                  <span className="font-semibold text-foreground">Why:</span> <MathText>{miss.explanation}</MathText>
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question {miss.number}</p>
+                <div className="mt-2 break-words whitespace-pre-wrap text-base font-semibold leading-7 text-foreground"><MathText>{miss.question}</MathText></div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-destructive/5 p-3 text-sm leading-6 text-destructive">
+                    <span className="block text-xs font-semibold">Your answer</span>
+                    <div className="mt-1 break-words whitespace-pre-wrap"><MathText>{miss.chosen}</MathText></div>
+                  </div>
+                  <div className="rounded-xl bg-success/5 p-3 text-sm leading-6 text-success">
+                    <span className="block text-xs font-semibold">Correct answer</span>
+                    <div className="mt-1 break-words whitespace-pre-wrap"><MathText>{miss.correct}</MathText></div>
+                  </div>
+                </div>
+                <div className="mt-3 border-t border-dashed border-border pt-3 text-sm leading-7 text-muted-foreground">
+                  <span className="font-semibold text-foreground">Explanation</span>
+                  <div className="mt-1 break-words whitespace-pre-wrap"><MathText>{miss.explanation}</MathText></div>
+                </div>
               </article>
             ))}
           </div>

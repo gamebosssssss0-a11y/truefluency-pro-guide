@@ -252,7 +252,7 @@ export function CgpaCalculatorScreen() {
   const allYears = weighted(semesters);
 
   return (
-    <div className="study-utility-page min-h-screen">
+    <div className="study-utility-page study-page-blend min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
