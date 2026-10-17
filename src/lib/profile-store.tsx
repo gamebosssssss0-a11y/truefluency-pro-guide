@@ -412,9 +412,7 @@ function readAccountProfile(userId: string, email: string | undefined): Profile 
   };
   try {
     return parseOwned(localStorage.getItem(profileCacheKey(userId))) ??
-      (normalizedEmail
-        ? parseOwned(localStorage.getItem(emailCacheKey(normalizedEmail))) ?? parseOwned(localStorage.getItem(KEY))
-        : null);
+      (normalizedEmail ? parseOwned(localStorage.getItem(emailCacheKey(normalizedEmail))) : null);
   } catch { return null; }
 }
 function readOnboardingStep(userId: string | null, email?: string): OnboardingStep | null {
