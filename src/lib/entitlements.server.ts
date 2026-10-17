@@ -72,6 +72,27 @@ async function admin() {
   });
 }
 
+type GateName = "mock_questions" | "mock_sets" | "flashcard_decks" | "chat_messages" | "upgrade_cta";
+
+function noteGateHit(userId: string, gate: GateName) {
+  void admin()
+    .then((db) => db.from("gate_hits").insert({ user_id: userId, gate }))
+    .catch(() => undefined);
+}
+
+function gateForRefusal(feature: GatedFeature, reason: string): GateName | null {
+  if (reason === "question_cap" && feature === "mock_sets") return "mock_questions";
+  if (reason === "daily_limit" && feature === "mock_sets") return "mock_sets";
+  if (reason === "daily_limit" && feature === "flashcard_decks") return "flashcard_decks";
+  if (reason === "daily_limit" && feature === "chatbot_messages") return "chat_messages";
+  return null;
+}
+
+function recordRefusal(userId: string, feature: GatedFeature, reason: string) {
+  const gate = gateForRefusal(feature, reason);
+  if (gate) noteGateHit(userId, gate);
+}
+
 /** Fetch the caller's subscription, creating a fresh 7-day trial on first use. */
 async function ensureRow(userId: string): Promise<Row> {
   const db = await admin();
@@ -258,16 +279,19 @@ export async function consumeQuota(opts: {
 
   if (limit === 0) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "locked" };
+    recordRefusal(opts.userId, opts.feature, verdict.reason);
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
   if (opts.feature === "mock_sets" && opts.requestedQuestions && requested > FREE_MAX_QUESTIONS) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "question_cap" };
+    recordRefusal(opts.userId, opts.feature, verdict.reason);
     return { ...verdict, ...base, message: paywallCopy(opts.feature, verdict).body };
   }
 
   if (used >= limit) {
     const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
+    recordRefusal(opts.userId, opts.feature, verdict.reason);
     return {
       ...verdict,
       ...base,
@@ -281,6 +305,7 @@ export async function consumeQuota(opts: {
     const recorded = await bump(opts.userId, opts.feature, usageDay, limit);
     if (!recorded.allowed) {
       const verdict: QuotaVerdict = { ...base, allowed: false, reason: "daily_limit" };
+      recordRefusal(opts.userId, opts.feature, verdict.reason);
       return {
         ...verdict,
         ...base,
