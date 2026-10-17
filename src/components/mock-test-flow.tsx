@@ -15,7 +15,7 @@ import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, EXAM_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
 import { ErrorCard } from "@/components/error-card";
-import { PRICE_LINE } from "@/lib/pricing-copy";
+import { PRICE_LINE, EXAM_PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { recordMockStreak } from "@/lib/streak.functions";
@@ -505,7 +505,7 @@ export function MockConfigScreen() {
     } else if ((access?.tier === "core" || access?.tier === "trial") && difficulty === "exam") {
       setDifficulty("challenging");
     }
-  }, [maxQuestionsPerSet, access?.tier]);
+  }, [maxQuestionsPerSet, access?.tier, difficulty]);
 
   useEffect(() => {
     setMinutes((m) => Math.max(15, Math.min(75, m)));
@@ -611,10 +611,10 @@ export function MockConfigScreen() {
                 );
               })}
             </div>
-            {!fullAccess ? (
+            {maxQuestionsPerSet < EXAM_MAX_QUESTIONS ? (
               <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
                 <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                <span>{PRICE_LINE}</span>
+                <span>{access?.tier === "core" || access?.tier === "trial" ? EXAM_PRICE_LINE : PRICE_LINE}</span>
               </p>
             ) : null}
           </div>
