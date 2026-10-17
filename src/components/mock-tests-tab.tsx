@@ -769,10 +769,8 @@ export function ProgressPanel({
             {recentMisses.map((miss) => (
               <article key={`${miss.id}-${miss.number}`} className="rounded-2xl border border-border bg-card p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{miss.topic}</p>
-                <h3 className="text-sm font-semibold leading-relaxed text-foreground">
-                  <span className="text-muted-foreground">Question {miss.number}</span>
-                  <div className="mt-2 break-words whitespace-pre-wrap text-base font-medium leading-7"><MathText>{miss.question}</MathText></div>
-                </h3>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question {miss.number}</p>
+                <div className="mt-2 break-words whitespace-pre-wrap text-base font-semibold leading-7 text-foreground"><MathText>{miss.question}</MathText></div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-destructive/5 p-3 text-sm leading-6 text-destructive">
                     <span className="block text-xs font-semibold">Your answer</span>
