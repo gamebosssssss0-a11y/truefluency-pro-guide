@@ -23,58 +23,20 @@ import { getStreakState, type StreakState } from "@/lib/streak-state";
 
 const ROTATE_MS = 6000;
 
-const STREAK_EMOJI: Record<StreakState, string> = {
-  fire: "🔥",
-  frozen: "🥶",
-  none: "🥲",
-};
 const STREAK_LABEL: Record<StreakState, string> = {
   fire: "Streak active",
   frozen: "Streak frozen",
   none: "No streak",
 };
-let streakEmojiGlyphCache: Record<StreakState, boolean> | null = null;
-
-function getStreakEmojiGlyphSupport(): Record<StreakState, boolean> | null {
-  if (streakEmojiGlyphCache) return streakEmojiGlyphCache;
-  if (typeof document === "undefined") return null;
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-  context.font = "24px sans-serif";
-  const missing = context.measureText("\u0378");
-  const supports = (glyph: string) => {
-    const measured = context.measureText(glyph);
-    return Math.abs(measured.width - missing.width) > 0.5 ||
-      Math.abs(measured.actualBoundingBoxAscent - missing.actualBoundingBoxAscent) > 0.5 ||
-      Math.abs(measured.actualBoundingBoxDescent - missing.actualBoundingBoxDescent) > 0.5;
-  };
-  streakEmojiGlyphCache = {
-    fire: supports(STREAK_EMOJI.fire),
-    frozen: supports(STREAK_EMOJI.frozen),
-    none: supports(STREAK_EMOJI.none),
-  };
-  return streakEmojiGlyphCache;
-}
 
 function StreakGlyph({ state }: { state: StreakState }) {
-  const [glyphSupport, setGlyphSupport] = useState<boolean | null>(() => {
-    const support = getStreakEmojiGlyphSupport();
-    return support ? support[state] : null;
-  });
-  useEffect(() => {
-    const support = getStreakEmojiGlyphSupport();
-    setGlyphSupport(support ? support[state] : null);
-  }, [state]);
-
   const Icon = state === "frozen" ? Snowflake : Flame;
   return (
     <span role="img" aria-label={STREAK_LABEL[state]} className="grid h-10 w-10 shrink-0 place-items-center">
-      {glyphSupport ? (
-        <span aria-hidden="true" className="text-[22px] leading-none">{STREAK_EMOJI[state]}</span>
-      ) : (
-        <Icon aria-hidden="true" className={state === "none" ? "h-5 w-5 opacity-40" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 text-accent"} />
-      )}
+      <Icon
+        aria-hidden="true"
+        className={state === "none" ? "h-5 w-5 text-muted-foreground/60" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 fill-accent/15 text-accent"}
+      />
     </span>
   );
 }
