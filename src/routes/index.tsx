@@ -39,6 +39,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs";
+import { readPaymentReturn } from "@/lib/billing-api";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -185,6 +186,12 @@ function Router() {
       if (window.history.state?.__trueFluencyMockBackGuard) window.history.back();
     };
   }, [view]);
+  // Squad sends the student back to /?payment_ref=...: show the payment check instead of the home screen.
+  useEffect(() => {
+    if (authPending || step !== "dashboard") return;
+    if (readPaymentReturn()) navigateRef.current("upgrade");
+  }, [authPending, step]);
+
   useEffect(() => {
     if (!profile.identity) return;
     void ensureSupabaseSession(profile).then((result) => {
