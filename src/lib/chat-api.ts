@@ -23,6 +23,28 @@ function base(): string {
 /** A "jump to a feature" chip the assistant suggested (validated server-side). */
 export type ChatAction = { key: string; label: string; view: string };
 
+/** How much of today's Study Chat allowance is used. Drawn as a small ring; contains no token counts the student must read. */
+export type ChatUsage = {
+  plan: "free" | "trial" | "core" | "exam";
+  used_tokens: number;
+  budget_tokens: number;
+  remaining_tokens: number;
+  percent: number;
+  approx_replies_left: number;
+  /** When the allowance refreshes (midnight, Lagos). */
+  resets_at: string;
+};
+
+/** Today's usage, for the ring when the chat opens. Returns null if it can't be read (the ring just stays hidden). */
+export async function getChatUsage(): Promise<ChatUsage | null> {
+  try {
+    const res = await fetch(`${base()}/chat/usage`, { headers: await authHeader() });
+    return res.ok ? ((await res.json()) as ChatUsage) : null;
+  } catch {
+    return null;
+  }
+}
+
 function readErrorDetail(text: string, status: number): string {
   try {
     const parsed = JSON.parse(text) as { detail?: unknown };
@@ -210,6 +232,7 @@ export async function streamChatMessage(
   moderated?: boolean;
   actions: ChatAction[];
   saved: boolean;
+  usage?: ChatUsage;
 }> {
   const url = `${base()}/chat`;
   const auth = await authHeader();
@@ -283,6 +306,7 @@ export async function streamChatMessage(
   let fullReply = "";
   let actions: ChatAction[] = [];
   let saved = true;
+  let usage: ChatUsage | undefined;
   let streamError: string | null = null;
 
   while (true) {
@@ -297,7 +321,7 @@ export async function streamChatMessage(
       buffer = buffer.slice(boundary + 2);
       const line = rawEvent.split("\n").find((l) => l.startsWith("data: "));
       if (!line) continue;
-      let parsed: { delta?: string; done?: boolean; actions?: ChatAction[]; saved?: boolean; error?: string };
+      let parsed: { delta?: string; done?: boolean; actions?: ChatAction[]; saved?: boolean; error?: string; usage?: ChatUsage };
       try {
         parsed = JSON.parse(line.slice("data: ".length));
       } catch {
@@ -311,6 +335,7 @@ export async function streamChatMessage(
       } else if (parsed.done) {
         actions = Array.isArray(parsed.actions) ? parsed.actions : [];
         saved = parsed.saved !== false;
+        if (parsed.usage && typeof parsed.usage.percent === "number") usage = parsed.usage;
       }
     }
   }
@@ -318,7 +343,7 @@ export async function streamChatMessage(
   if (streamError) throw new Error(streamError);
   if (!fullReply.trim()) throw new Error("The study chat had a problem. Please try again.");
 
-  return { reply: fullReply, moderated: false, actions, saved };
+  return { reply: fullReply, moderated: false, actions, saved, usage };
 }
 
 /**

@@ -37,8 +37,9 @@ type Row = {
   paying_user_number: number | null;
 };
 
+/** The student's day: midnight in Lagos (the brief says "wait until Lagos midnight"), not midnight UTC, which was 1 a.m. there. */
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInLagos();
 }
 
 function todayInLagos(): string {
@@ -167,6 +168,25 @@ async function countPaidUsers(): Promise<number> {
   return count ?? 0;
 }
 
+/**
+ * How many of the 25 founding places are still free. The truth is the append-only seat ledger in the database
+ * (founding_seats_left), which a deleted account cannot give back; until that migration has been run it falls back to
+ * counting paying subscriptions, as before.
+ */
+async function foundingSeatsLeft(): Promise<number> {
+  try {
+    const db = await admin();
+    const caller = db as unknown as {
+      rpc: (name: string) => Promise<{ data: number | null; error: { message: string } | null }>;
+    };
+    const { data, error } = await caller.rpc("founding_seats_left");
+    if (!error && typeof data === "number") return Math.max(0, data);
+  } catch {
+    /* fall through to the older count */
+  }
+  return Math.max(0, FOUNDING_USER_LIMIT - (await countPaidUsers()));
+}
+
 async function usageToday(
   userId: string,
   day: string,
@@ -205,8 +225,8 @@ export async function resolveAccess(userId: string, usageDay = today()): Promise
     new Date(row.paid_until).getTime() > Date.now();
   const fullAccess = trialActive || paidActive;
 
-  const paidSoFar = await countPaidUsers();
-  const foundingPriceAvailable = paidSoFar < FOUNDING_USER_LIMIT;
+  const seatsLeft = await foundingSeatsLeft();
+  const foundingPriceAvailable = seatsLeft > 0;
   const corePrice = foundingPriceAvailable ? FOUNDING_PRICE_NAIRA : STANDARD_PRICE_NAIRA;
   const dailyLimits = trialActive
     ? TRIAL_DAILY_LIMITS
@@ -223,6 +243,7 @@ export async function resolveAccess(userId: string, usageDay = today()): Promise
     paidUntil: row.paid_until,
     priceNaira: tier === "exam" ? EXAM_PRICE_NAIRA : corePrice,
     foundingPriceAvailable,
+    foundingSeatsLeft: seatsLeft,
     maxQuestionsPerSet:
       tier === "exam"
         ? EXAM_MAX_QUESTIONS
@@ -289,17 +310,7 @@ export async function consumeQuota(opts: {
 
   const requested = Math.max(1, Math.round(Number(opts.requestedQuestions) || 0));
 
-  // The seven-day trial remains uncapped. Paid plans use their exact catalog limits below.
-  if (access.tier === "trial" && access.fullAccess) {
-    return {
-      ...base,
-      allowed: true,
-      ...(opts.feature === "mock_sets"
-        ? { allowedQuestions: Math.min(requested, access.maxQuestionsPerSet) }
-        : {}),
-    };
-  }
-
+  // Every plan, the 7-day trial included, uses its exact catalog limits below. The trial used to skip them.
   const limit = access.dailyLimits[opts.feature];
   const used = access.usageToday[opts.feature];
 
