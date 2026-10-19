@@ -13,7 +13,9 @@ export function isBackendConfigured(): boolean {
   return typeof BACKEND_URL === "string" && BACKEND_URL.trim().length > 0;
 }
 
-export type PredictedTopic = { topic: string; confidence: number };
+/** A part of the student's document, as the topic analysis found it (sent back when a topic is left out of a mock). */
+export type TopicSection = { id?: number | undefined; title: string; start: number; end: number };
+export type PredictedTopic = { topic: string; confidence: number; sections?: TopicSection[]; anchored?: boolean };
 
 function base(): string {
   if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
@@ -192,12 +194,20 @@ export async function predictTopics(input: {
   if (raw.length === 0) throw new Error("The analysis came back empty.");
 
   const topics: PredictedTopic[] = raw
-    .map((t) => {
-      const o = t as { topic?: unknown; confidence?: unknown };
+    .map((t): PredictedTopic | null => {
+      const o = t as { topic?: unknown; confidence?: unknown; sections?: unknown; anchored?: unknown };
       const topic = typeof o.topic === "string" ? o.topic.trim() : "";
       const confidence = typeof o.confidence === "number" ? o.confidence : Number(o.confidence);
       if (!topic || !Number.isFinite(confidence)) return null;
-      return { topic, confidence: Math.max(0, Math.min(1, confidence)) };
+      const sections: TopicSection[] = Array.isArray(o.sections)
+        ? (o.sections as unknown[]).flatMap((s) => {
+            const x = s as { id?: unknown; title?: unknown; start?: unknown; end?: unknown };
+            return typeof x.title === "string" && Number.isFinite(Number(x.start)) && Number.isFinite(Number(x.end))
+              ? [{ id: Number.isFinite(Number(x.id)) ? Number(x.id) : undefined, title: x.title.slice(0, 200), start: Number(x.start), end: Number(x.end) }]
+              : [];
+          }).slice(0, 8)
+        : [];
+      return { topic, confidence: Math.max(0, Math.min(1, confidence)), sections, anchored: o.anchored === true };
     })
     .filter((t): t is PredictedTopic => t !== null);
 
@@ -225,6 +235,10 @@ export async function generateMock(
     questionCount: number;
     difficulty: Difficulty;
     topicFocus: string[];
+    /** Topics the student left out; the backend keeps them out of the mock. */
+    excludeTopics?: string[];
+    /** Where the analysis found each kept / left-out topic in the document (label -> sections). */
+    topicSections?: Record<string, Array<{ title: string; start: number; end: number }>>;
     profile: Pick<Profile, "goal" | "timeline" | "level" | "department">;
   },
   options?: {
@@ -243,6 +257,8 @@ export async function generateMock(
      * regenerates nor costs another mock set.
      */
     resumeJobId?: string;
+    /** Things the student should be told, e.g. a topic they left out could not be found in their notes. */
+    onNotes?: (notes: { topicWarnings: string[] }) => void;
   }
 ): Promise<AIQuestion[]> {
   if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
@@ -254,6 +270,8 @@ export async function generateMock(
     question_count: input.questionCount,
     difficulty: input.difficulty,
     topic_focus: input.topicFocus,
+    exclude_topics: input.excludeTopics ?? [],
+    topic_sections: input.topicSections ?? {},
     user_goal: input.profile.goal,
     user_timeline: input.profile.timeline,
     user_level: input.profile.level ? String(input.profile.level) : null,
@@ -287,7 +305,7 @@ export async function generateMock(
 
   let data: {
     status: string;
-    result?: { questions: unknown };
+    result?: { questions: unknown; notes?: { topic_warnings?: unknown } };
     error?: string;
     ready?: unknown;
     questions_ready?: unknown;
@@ -328,6 +346,10 @@ export async function generateMock(
     throw new Error("This is taking longer than expected. Your mock test may still finish in the background — try checking back in a minute.");
   }
 
+  const warnings = data.result?.notes?.topic_warnings;
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    options?.onNotes?.({ topicWarnings: warnings.filter((w): w is string => typeof w === "string").slice(0, 6) });
+  }
   const raw = Array.isArray(data.result?.questions) ? (data.result!.questions as unknown[]) : [];
   if (raw.length === 0) throw new Error("No questions came back from the generator.");
 

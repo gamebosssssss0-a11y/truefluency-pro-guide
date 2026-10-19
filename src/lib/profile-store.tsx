@@ -69,7 +69,7 @@ export type AIQuestion = {
 export type CourseTopicAnalysis = {
   materialId: string;
   analyzedAt: number;
-  topics: { topic: string; confidence: number }[];
+  topics: { topic: string; confidence: number; sections?: { id?: number | undefined; title: string; start: number; end: number }[]; anchored?: boolean }[];
 };
 
 /* ---------- View router ---------- */
