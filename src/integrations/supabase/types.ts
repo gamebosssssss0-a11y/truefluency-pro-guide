@@ -456,6 +456,30 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_plan_history: {
+        Row: {
+          exam_date: string | null
+          id: string
+          plan: Json
+          superseded_at: string
+          user_id: string
+        }
+        Insert: {
+          exam_date?: string | null
+          id?: string
+          plan: Json
+          superseded_at?: string
+          user_id: string
+        }
+        Update: {
+          exam_date?: string | null
+          id?: string
+          plan?: Json
+          superseded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       library_shares: {
         Row: {
           created_at: string
