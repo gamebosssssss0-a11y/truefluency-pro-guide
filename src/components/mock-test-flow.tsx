@@ -165,6 +165,20 @@ export function MockGenerationScreen() {
           }
         }
 
+        // Topics the student left out: the topics analysed for THIS upload that are not in the kept list. The
+        // backend keeps them out of the slices it reads and drops any question that is really about them.
+        const analysis = profile.courseTopicAnalysis[course.code];
+        const analysedTopics = analysis && analysis.materialId === ready.id
+          ? Array.from(new Set(analysis.topics.map((tp) => tp.topic)))
+          : [];
+        const excludeTopics = topicFocus.length > 0 ? analysedTopics.filter((tp) => !topicFocus.includes(tp)) : [];
+        const topicSections: Record<string, Array<{ title: string; start: number; end: number }>> = {};
+        for (const tp of analysis?.topics ?? []) {
+          if (tp.sections?.length && (topicFocus.includes(tp.topic) || excludeTopics.includes(tp.topic))) {
+            topicSections[tp.topic] = tp.sections.map(({ title, start, end }) => ({ title, start, end }));
+          }
+        }
+
         // Shared client: attaches the signed-in bearer token, normalises the
         // profile fields the service expects, and surfaces real error text.
         const questions = await generateMock(
@@ -175,6 +189,8 @@ export function MockGenerationScreen() {
             questionCount: allowedCount,
             difficulty,
             topicFocus,
+            excludeTopics,
+            topicSections,
             profile: {
               goal: profile.goal,
               timeline: profile.timeline,
@@ -188,6 +204,9 @@ export function MockGenerationScreen() {
               setReadyLine(`${done} of ${total ?? allowedCount} ready`);
             },
             resumeJobId: resumeJobId ?? undefined,
+            onNotes: ({ topicWarnings }) => {
+              try { toast.message("About the topics you chose", { description: topicWarnings.join(" ") }); } catch { /* ignore */ }
+            },
           },
         );
 
@@ -793,9 +812,13 @@ export function MockRunScreen() {
     let correct = 0;
     const topicMap = new Map<string, { correct: number; total: number }>();
     questions.forEach((q, i) => {
+      if (t.answers[i] === q.correct_index) correct += 1;
+      // A question the student never answered says nothing about the topic: it still counts against the
+      // score above, but not as a "weak topic" (a blank submission used to mark every topic as failed).
+      if (t.answers[i] === null || t.answers[i] === undefined) return;
       const bucket = topicMap.get(q.topic) ?? { correct: 0, total: 0 };
       bucket.total += 1;
-      if (t.answers[i] === q.correct_index) { correct += 1; bucket.correct += 1; }
+      if (t.answers[i] === q.correct_index) bucket.correct += 1;
       topicMap.set(q.topic, bucket);
     });
     const score = Math.round((correct / Math.max(1, questions.length)) * 100);
@@ -881,15 +904,18 @@ export function MockRunScreen() {
 
     // Fire-and-forget: send results to backend feedback loop
     // Never blocks or throws — student always sees their results regardless
-    submitResults({
-      courseCode: t.courseCode,
-      results: questions.map((q, i) => ({
-        topic: q.topic,
-        item_type: (q as { item_type?: string }).item_type,
-        difficulty: profile.courseTestSettings[t.courseCode]?.difficulty,
-        was_correct: t.answers[i] === q.correct_index,
-      })),
-    });
+    // Only questions the student actually answered: unanswered ones are not "wrong answers" for the feedback loop.
+    const answeredResults = questions.flatMap((q, i) =>
+      t.answers[i] === null || t.answers[i] === undefined
+        ? []
+        : [{
+            topic: q.topic,
+            item_type: (q as { item_type?: string }).item_type,
+            difficulty: profile.courseTestSettings[t.courseCode]?.difficulty,
+            was_correct: t.answers[i] === q.correct_index,
+          }],
+    );
+    if (answeredResults.length > 0) submitResults({ courseCode: t.courseCode, results: answeredResults });
 
     navigate("mock-result", { courseCode: t.courseCode });
   };

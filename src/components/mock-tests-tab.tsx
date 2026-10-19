@@ -587,9 +587,14 @@ export function ProgressPanel({
     return found.slice(0, 3);
   }, [courseAttempts, selectedTopic]);
 
+  // A test the student barely started (fewer than 5 answers) is kept in History but is not a measure of progress.
+  const meaningfulAttempts = courseAttempts.filter((attempt) => {
+    const answered = attempt.answers ? attempt.answers.filter((a) => a !== null && a !== undefined).length : attempt.total;
+    return answered >= Math.min(5, attempt.total);
+  });
   const progressAttempts = selectedTopic === "all"
-    ? courseAttempts
-    : courseAttempts.flatMap((attempt) => {
+    ? meaningfulAttempts
+    : meaningfulAttempts.flatMap((attempt) => {
         const topicScore = attempt.topics.find((entry) => entry.topic.toLocaleLowerCase() === selectedTopic.toLocaleLowerCase());
         return topicScore ? [{ ...attempt, score: topicScore.score }] : [];
       });
