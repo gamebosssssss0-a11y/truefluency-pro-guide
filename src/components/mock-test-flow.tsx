@@ -18,6 +18,7 @@ import { ErrorCard } from "@/components/error-card";
 import { PRICE_LINE, EXAM_PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
+import { ReportQuestionButton } from "@/components/report-question";
 import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -1527,6 +1528,13 @@ export function AttemptReviewScreen() {
                       You left this question unanswered.
                     </p>
                   ) : null}
+
+                  <ReportQuestionButton
+                    courseCode={attempt.courseCode}
+                    question={q.question}
+                    options={q.options}
+                    markedIndex={q.correct_index}
+                  />
 
                   {explanationsUnlocked && q.explanation?.trim() ? (
                     <WhyPanel explanation={q.explanation} wasWrong={!isCorrect} />

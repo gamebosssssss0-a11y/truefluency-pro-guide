@@ -312,7 +312,14 @@ export function AccountScreen() {
 
         <div className="surface-list-row mt-4 p-4">
           <h2 className="text-sm font-semibold text-foreground">Payment history</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{NO_PAYMENT_YET}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Receipts appear here after a payment is confirmed. Manage renewal on the Premium page.</p>
+          <button
+            type="button"
+            onClick={() => navigate("upgrade")}
+            className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:text-accent/80"
+          >
+            Receipts and renewal <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
 
         <AccountPhotoCard />
@@ -535,7 +542,7 @@ export function AccountScreen() {
           <Trash2 className="mr-2 h-4 w-4" /> Delete all my data
         </Button>
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          Permanently deletes your uploaded past papers, slides, pasted notes, and profile.
+          Permanently deletes your uploaded past papers, slides, pasted notes, and profile. If you have a paid plan it is cancelled and your saved card is removed, so you are never charged again.
         </p>
 
         <AlertDialog open={signOutOpen} onOpenChange={(o) => { if (!o && !signingOut) setSignOutOpen(false); }}>
@@ -573,7 +580,7 @@ export function AccountScreen() {
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteStep === 1
-                  ? "This permanently deletes your uploaded past papers, slides, pasted notes, mock test history, and profile. It cannot be undone."
+                  ? "This permanently deletes your uploaded past papers, slides, pasted notes, mock test history, and profile. It cannot be undone. If you have a paid plan, it is cancelled and your saved card is removed first, so you will not be charged again."
                   : "Tap Delete everything to confirm. Your files are removed from storage first, then your profile is cleared on this device."}
               </AlertDialogDescription>
             </AlertDialogHeader>

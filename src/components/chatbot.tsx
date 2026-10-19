@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, getChatUsage, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage, type ChatUsage } from "@/lib/chat-api";
+import { ChatUsageRing } from "@/components/chat-usage-ring";
 import { createOrUpdateChatShare, getChatShareState, revokeChatShare, type ChatShareVisibility } from "@/lib/chat-sharing.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
@@ -530,9 +531,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
   }, [active]);
 
-  const messagesUsed = access?.usageToday.chatbot_messages ?? 0;
-  const messageLimit = access?.dailyLimits.chatbot_messages ?? 10;
-  const chatCapReached = !!access && !access.fullAccess && messagesUsed >= messageLimit;
+  // Study Chat is a usage plan: a daily token allowance, shown as a small ring under the box (see chat-usage-ring.tsx).
+  const [usage, setUsage] = useState<ChatUsage | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let live = true;
+    void getChatUsage().then((u) => { if (live && u) setUsage(u); });
+    return () => { live = false; };
+  }, [active]);
+  const chatCapReached = !!usage && usage.remaining_tokens <= 0;
 
   const notice = (text: string) =>
     setMessages((cur) => [...cur, { id: nextId.current++, from: "notice", text }]);
@@ -558,7 +565,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
     // Free students out of replies: no POST, no quota spend.
     if (chatCapReached) {
-      notice(`Out of replies today|You've used ${messagesUsed} of ${messageLimit} replies today.`);
+      notice("Study Chat allowance used up|You've used all of today's Study Chat allowance. It refreshes at midnight (Lagos time).");
       return;
     }
 
@@ -622,7 +629,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // chunk then grew a bubble that didn't exist, so the reply streamed in
       // successfully from the backend and never appeared on screen.
       let streamId: number | null = null;
-      const { reply, moderated, actions, saved } = await streamChatMessage(
+      const { reply, moderated, actions, saved, usage: usageAfter } = await streamChatMessage(
         text,
         course,
         sendMode,
@@ -683,8 +690,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // The backend counts the reply itself (it is the authoritative gate). This
       // used to call the website's own counter as well, so every reply cost a
       // free student TWO of their daily replies. Just re-read the count.
+      if (usageAfter) setUsage(usageAfter);
       if (!moderated) {
-        void refreshAccess().catch((e) => console.warn("[chat] couldn't refresh the reply count", e));
+        void refreshAccess().catch((e) => console.warn("[chat] couldn't refresh access", e));
       }
     } catch (error) {
       // Logged so a failed send is visible in DevTools → Console with the real
@@ -899,11 +907,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }, []);
 
   // Cap chip: lives in the header. Hidden when access is null to avoid a wrong count.
-  const capText = (() => {
-    if (!access) return null;
-    if (access.fullAccess) return "Full access";
-    return `${messagesUsed} of ${messageLimit} today`;
-  })();
+  // (The old "x of 10 today" chip is gone: the allowance is shown as the ring under the message box.)
+  const capText: string | null = null;
 
   const placeholderCourse = displayCode(selected);
   const selectedCourse = profile.courses.find(
@@ -1253,11 +1258,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               </button>
             </div>
           </div>
-          {chatCapReached ? (
-            <p className="mt-2 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
-              You've used {messagesUsed} of {messageLimit} replies today.
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
+              {chatCapReached ? "Today's Study Chat allowance is used up. It refreshes at midnight." : ""}
             </p>
-          ) : null}
+            <ChatUsageRing usage={usage} />
+          </div>
         </div>
       </div>
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>

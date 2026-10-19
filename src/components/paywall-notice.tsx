@@ -5,7 +5,7 @@
 import { Lock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatNaira, paywallCopy, type GatedFeature, type QuotaVerdict } from "@/lib/entitlements";
-import { NO_PAYMENT_YET, PRICE_LINE } from "@/lib/pricing-copy";
+import { PRICE_LINE } from "@/lib/pricing-copy";
 
 
 export function PaywallNotice({
@@ -31,7 +31,7 @@ export function PaywallNotice({
             <div className="font-display text-base font-semibold text-foreground">{copy.title}</div>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{copy.body}</p>
             <p className="mt-2 break-words text-[11px] leading-relaxed text-muted-foreground">
-              {NO_PAYMENT_YET} {PRICE_LINE} No auto-renewal.
+              {PRICE_LINE} A plan renews only if you choose automatic renewal, and you can stop it any time.
             </p>
 
           </div>
