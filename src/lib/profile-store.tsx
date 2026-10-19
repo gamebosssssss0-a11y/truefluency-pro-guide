@@ -142,6 +142,7 @@ export type CgpaInputs = {
   currentUnits: string;
   targetCgpa: string;
   daysRemaining: string;
+  examDate?: string;
   /** course code -> credit units for this semester */
   units: Record<string, number>;
 };
@@ -156,10 +157,13 @@ export type CgpaPlanCourse = {
   highImpact: boolean;
   dailyReadingMinutes: number;
   dailyMockQuestions: number;
+  leverageIndex?: number;
 };
 
 export type CgpaPlan = {
   createdAt: number;
+  examDate?: string;
+  lockedAt?: number;
   currentCgpa: number;
   currentUnits: number;
   targetCgpa: number;

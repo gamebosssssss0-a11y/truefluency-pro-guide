@@ -20,15 +20,58 @@ export const GRADE_SCALE: GradeBand[] = [
 ];
 
 export const MAX_POINTS = 5;
-export const PROBATION_THRESHOLD = 1.0;
+
+/**
+ * UI 5.0 bands as reported by UI-specific sources (Second Class Lower from 2.50).
+ * Not confirmed against an official UI circular; the generic NUC table uses 2.40. Check before relying on or changing.
+ */
+export const CLASSIFICATION_BANDS = [
+  { label: "Academic probation risk", min: 0, max: 1 },
+  { label: "Pass", min: 1, max: 1.5 },
+  { label: "Third Class", min: 1.5, max: 2.5 },
+  { label: "Second Class Lower", min: 2.5, max: 3.5 },
+  { label: "Second Class Upper", min: 3.5, max: 4.5 },
+  { label: "First Class", min: 4.5, max: MAX_POINTS },
+] as const;
+
+export const PROBATION_THRESHOLD = CLASSIFICATION_BANDS.find((band) => band.label === "Pass")!.min;
 
 export function classify(cgpa: number): string {
-  if (cgpa >= 4.5) return "First Class";
-  if (cgpa >= 3.5) return "Second Class Upper";
-  if (cgpa >= 2.4) return "Second Class Lower";
-  if (cgpa >= 1.5) return "Third Class";
-  if (cgpa >= 1.0) return "Pass";
-  return "Academic probation risk";
+  return (
+    [...CLASSIFICATION_BANDS].reverse().find((band) => cgpa >= band.min)?.label ??
+    CLASSIFICATION_BANDS[0].label
+  );
+}
+
+export function maxAchievableCgpa(
+  currentCgpa: number,
+  currentUnits: number,
+  semesterUnits: number,
+): number {
+  const totalUnits = currentUnits + semesterUnits;
+  if (totalUnits <= 0) return currentCgpa;
+  return (currentCgpa * currentUnits + MAX_POINTS * semesterUnits) / totalUnits;
+}
+
+export function leverageIndex(units: number, accuracyPercentOrNull: number | null): number {
+  return units * (1 - (accuracyPercentOrNull ?? 0) / 100);
+}
+
+export function daysUntil(examDateISO: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(examDateISO)) return 0;
+  const [year, month, day] = examDateISO.split("-").map(Number);
+  const target = Date.UTC(year, month - 1, day);
+  const parsed = new Date(target);
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return 0;
+  }
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.floor((target - today) / 86_400_000));
 }
 
 /** Smallest whole grade point that is at least `needed`. */
@@ -87,10 +130,7 @@ export function buildCgpaPlan(opts: {
     const share = weights[i] / totalWeight;
     const band = bandForRequirement(effectiveNeed);
     const minutes = Math.max(15, Math.round((dailyBudgetMinutes * share) / 5) * 5);
-    const questions = Math.min(
-      40,
-      Math.max(5, Math.round((dailyQuestionBudget * share) / 5) * 5),
-    );
+    const questions = Math.min(40, Math.max(5, Math.round((dailyQuestionBudget * share) / 5) * 5));
     return {
       code: c.code,
       name: c.name,

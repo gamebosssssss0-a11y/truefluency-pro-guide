@@ -1,10 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { useProfile, type CgpaActual, type CgpaSemester } from "@/lib/profile-store";
-import { GRADE_SCALE, classify, PROBATION_THRESHOLD } from "@/lib/cgpa";
+import { CLASSIFICATION_BANDS, GRADE_SCALE, classify, PROBATION_THRESHOLD } from "@/lib/cgpa";
 import { HeaderLogo } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calculator, AlertCircle, Target, Info } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { ArrowLeft, Calculator, AlertCircle, Target, Info, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -36,13 +42,43 @@ function pointsForLetter(letter: string): number {
 /** Mid-band percentage used when the student only knows their letter grade. */
 function percentForLetter(letter: string): number {
   switch (letter) {
-    case "A": return 85;
-    case "B": return 65;
-    case "C": return 55;
-    case "D": return 47;
-    case "E": return 42;
-    default: return 30;
+    case "A":
+      return 85;
+    case "B":
+      return 65;
+    case "C":
+      return 55;
+    case "D":
+      return 47;
+    case "E":
+      return 42;
+    default:
+      return 30;
   }
+}
+
+type LiveCgpaResult = {
+  semesterGpa: number;
+  cumulativeCgpa: number;
+  semesterUnits: number;
+  totalUnits: number;
+  validCourseCount: number;
+  selectedCourseCount: number;
+};
+
+function moveToNextNumericField(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const form = event.currentTarget.closest("[data-cgpa-form]");
+  const fields = Array.from(
+    form?.querySelectorAll<HTMLInputElement>('input[data-cgpa-numeric="true"]') ?? [],
+  ).filter((field) => !field.disabled);
+  const index = fields.indexOf(event.currentTarget);
+  if (index < 0 || index === fields.length - 1) {
+    event.currentTarget.blur();
+    return;
+  }
+  fields[index + 1].focus();
 }
 
 export function CgpaCalculatorScreen() {
@@ -74,7 +110,12 @@ export function CgpaCalculatorScreen() {
     const base: Record<string, number> = {};
     profile.courses.forEach((c) => {
       const code = canonicalCourseCode(c.code);
-      base[code] = saved?.units?.[code] ?? saved?.units?.[c.code] ?? profile.cgpaInputs?.units?.[code] ?? profile.cgpaInputs?.units?.[c.code] ?? 3;
+      base[code] =
+        saved?.units?.[code] ??
+        saved?.units?.[c.code] ??
+        profile.cgpaInputs?.units?.[code] ??
+        profile.cgpaInputs?.units?.[c.code] ??
+        3;
     });
     return base;
   });
@@ -107,6 +148,58 @@ export function CgpaCalculatorScreen() {
     });
   }, [rows, units, percents, letters, mode]);
 
+  const semesters = useMemo(
+    () => profile.cgpaActual?.semesters ?? [],
+    [profile.cgpaActual?.semesters],
+  );
+
+  const liveResult = useMemo<LiveCgpaResult | null>(() => {
+    const prior = priorCgpa === "" ? 0 : Number(priorCgpa);
+    const priorU = priorUnits === "" ? 0 : Number(priorUnits);
+    if (
+      !Number.isFinite(prior) ||
+      prior < 0 ||
+      prior > 5 ||
+      !Number.isFinite(priorU) ||
+      priorU < 0
+    ) {
+      return null;
+    }
+    const validRows = perCourse.filter(
+      (row) =>
+        row.points !== null &&
+        row.percent !== null &&
+        Number.isFinite(row.percent) &&
+        row.percent >= 0 &&
+        row.percent <= 100 &&
+        row.units >= 1 &&
+        row.units <= 6,
+    );
+    if (validRows.length === 0) return null;
+    const semesterUnits = validRows.reduce((sum, row) => sum + row.units, 0);
+    const semesterQualityPoints = validRows.reduce(
+      (sum, row) => sum + (row.points ?? 0) * row.units,
+      0,
+    );
+    const totalUnits = priorU + semesterUnits;
+    return {
+      semesterGpa: semesterQualityPoints / semesterUnits,
+      cumulativeCgpa: totalUnits > 0 ? (prior * priorU + semesterQualityPoints) / totalUnits : 0,
+      semesterUnits,
+      totalUnits,
+      validCourseCount: validRows.length,
+      selectedCourseCount: rows.length,
+    };
+  }, [perCourse, priorCgpa, priorUnits, rows.length]);
+
+  const savedPreviewMatches = Boolean(
+    result &&
+    liveResult &&
+    Math.abs(result.semesterGpa - liveResult.semesterGpa) < 0.000001 &&
+    Math.abs(result.cumulativeCgpa - liveResult.cumulativeCgpa) < 0.000001 &&
+    result.totalUnits === liveResult.totalUnits,
+  );
+
   const calculate = () => {
     if (rows.length === 0) {
       setError("Add at least one course to your profile first.");
@@ -114,16 +207,18 @@ export function CgpaCalculatorScreen() {
     }
     const prior = priorCgpa === "" ? 0 : Number(priorCgpa);
     const priorU = priorUnits === "" ? 0 : Number(priorUnits);
-    if (Number.isNaN(prior) || prior < 0 || prior > 5) {
-      setError("Previous CGPA must be between 0.00 and 5.00. Leave it blank if this is your first semester.");
+    if (!Number.isFinite(prior) || prior < 0 || prior > 5) {
+      setError(
+        "Previous CGPA must be between 0.00 and 5.00. Leave it blank if this is your first semester.",
+      );
       return;
     }
-    if (Number.isNaN(priorU) || priorU < 0) {
+    if (!Number.isFinite(priorU) || priorU < 0) {
       setError("Previous credit units cannot be negative.");
       return;
     }
     for (const row of perCourse) {
-      if (!row.units || row.units < 1 || row.units > 6) {
+      if (!Number.isFinite(row.units) || row.units < 1 || row.units > 6) {
         setError(`Set a credit unit between 1 and 6 for ${row.course.code}.`);
         return;
       }
@@ -135,7 +230,10 @@ export function CgpaCalculatorScreen() {
         );
         return;
       }
-      if (mode === "percent" && (Number.isNaN(row.percent) || row.percent < 0 || row.percent > 100)) {
+      if (
+        mode === "percent" &&
+        (!Number.isFinite(row.percent) || row.percent < 0 || row.percent > 100)
+      ) {
         setError(`${row.course.code} percentage must be between 0 and 100.`);
         return;
       }
@@ -174,8 +272,6 @@ export function CgpaCalculatorScreen() {
 
   /* ---------- Saved semesters (inside the existing cgpa_actual field) ---------- */
 
-  const semesters = profile.cgpaActual?.semesters ?? [];
-
   const writeSemesters = (list: CgpaSemester[]) => {
     const base = result ?? profile.cgpaActual;
     if (!base) return;
@@ -205,26 +301,36 @@ export function CgpaCalculatorScreen() {
   const openSemester = (s: CgpaSemester) => {
     const savedCodes = s.courses.map((course) => course.code);
     const currentCodes = profile.cgpaCalcCourses ?? profile.courses.map((course) => course.code);
-    const mergedCodes = [...new Map([...currentCodes, ...savedCodes].map((code) => {
-      const canonical = canonicalCourseCode(code);
-      return [canonical, canonical] as const;
-    })).values()];
+    const mergedCodes = [
+      ...new Map(
+        [...currentCodes, ...savedCodes].map((code) => {
+          const canonical = canonicalCourseCode(code);
+          return [canonical, canonical] as const;
+        }),
+      ).values(),
+    ];
     update({ cgpaCalcCourses: mergedCodes });
     setSession(s.session);
     setTerm(s.term);
     setUnits((u) => {
       const next = { ...u };
-      s.courses.forEach((c) => { next[canonicalCourseCode(c.code)] = c.units; });
+      s.courses.forEach((c) => {
+        next[canonicalCourseCode(c.code)] = c.units;
+      });
       return next;
     });
     setPercents((p) => {
       const next = { ...p };
-      s.courses.forEach((c) => { next[canonicalCourseCode(c.code)] = String(c.percent); });
+      s.courses.forEach((c) => {
+        next[canonicalCourseCode(c.code)] = String(c.percent);
+      });
       return next;
     });
     setLetters((l) => {
       const next = { ...l };
-      s.courses.forEach((c) => { next[canonicalCourseCode(c.code)] = gradeForPercent(c.percent); });
+      s.courses.forEach((c) => {
+        next[canonicalCourseCode(c.code)] = gradeForPercent(c.percent);
+      });
       return next;
     });
   };
@@ -242,7 +348,9 @@ export function CgpaCalculatorScreen() {
       bySession.set(s.session, [...(bySession.get(s.session) ?? []), s]);
     });
     return [...bySession.entries()]
-      .filter(([, list]) => list.some((s) => s.term === "1st") && list.some((s) => s.term === "2nd"))
+      .filter(
+        ([, list]) => list.some((s) => s.term === "1st") && list.some((s) => s.term === "2nd"),
+      )
       .map(([sessionName, list]) => {
         const w = weighted(list)!;
         return { session: sessionName, gpa: w.gpa, units: w.units };
@@ -252,7 +360,7 @@ export function CgpaCalculatorScreen() {
   const allYears = weighted(semesters);
 
   return (
-    <div className="study-utility-page study-page-blend min-h-screen">
+    <div data-cgpa-form="calculator" className="study-utility-page study-page-blend min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -262,7 +370,16 @@ export function CgpaCalculatorScreen() {
           >
             <ArrowLeft className="h-4 w-4" /> Account
           </button>
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-[10px] font-medium text-navy">
+            <ShieldCheck className="h-3 w-3" /> Built for the UI 5.0 scale
+          </span>
         </div>
+
+        <ResultBlock
+          result={liveResult}
+          hasSavedResult={Boolean(result)}
+          savedPreviewMatches={savedPreviewMatches}
+        />
 
         <h1 className="font-display text-3xl font-semibold text-foreground">CGPA calculator</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -278,7 +395,9 @@ export function CgpaCalculatorScreen() {
               onClick={() => setMode(m)}
               className={cn(
                 "rounded-lg px-3 py-2 text-xs font-semibold transition",
-                mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                mode === m
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {m === "percent" ? "Percentage scores" : "Letter grades"}
@@ -295,13 +414,29 @@ export function CgpaCalculatorScreen() {
             <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Previous CGPA
             </span>
-            <Input inputMode="decimal" placeholder="e.g. 3.42" value={priorCgpa} onChange={(e) => setPriorCgpa(e.target.value)} />
+            <Input
+              inputMode="decimal"
+              enterKeyHint="next"
+              data-cgpa-numeric="true"
+              onKeyDown={moveToNextNumericField}
+              placeholder="e.g. 3.42"
+              value={priorCgpa}
+              onChange={(e) => setPriorCgpa(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Units completed
             </span>
-            <Input inputMode="numeric" placeholder="e.g. 48" value={priorUnits} onChange={(e) => setPriorUnits(e.target.value)} />
+            <Input
+              inputMode="numeric"
+              enterKeyHint={mode === "percent" && rows.length > 0 ? "next" : "done"}
+              data-cgpa-numeric="true"
+              onKeyDown={moveToNextNumericField}
+              placeholder="e.g. 48"
+              value={priorUnits}
+              onChange={(e) => setPriorUnits(e.target.value)}
+            />
           </label>
         </div>
         <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -323,24 +458,52 @@ export function CgpaCalculatorScreen() {
           </div>
         ) : (
           <div className="space-y-2">
-            {rows.map((c) => {
-              const row = perCourse.find((r) => canonicalCourseCode(r.course.code) === canonicalCourseCode(c.code));
+            {rows.map((c, rowIndex) => {
+              const row = perCourse.find(
+                (r) => canonicalCourseCode(r.course.code) === canonicalCourseCode(c.code),
+              );
               return (
-                <div key={c.code} className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
+                <div
+                  key={c.code}
+                  className="rounded-2xl border border-border bg-card p-3.5 shadow-sm"
+                >
                   <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {canonicalCourseCode(c.code)}
+                      </div>
                       <div className="truncate text-[11px] text-muted-foreground">{c.name}</div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        className="h-9 w-14 text-center"
-                        inputMode="numeric"
-                        value={units[canonicalCourseCode(c.code)] ?? 3}
-                        onChange={(e) => setUnits((u) => ({ ...u, [canonicalCourseCode(c.code)]: Number(e.target.value) || 0 }))}
-                        aria-label={`Credit units for ${c.code}`}
-                      />
-                      <span className="text-[11px] text-muted-foreground">units</span>
+                    <div
+                      className="grid grid-cols-6 gap-0.5 rounded-xl bg-sand p-1"
+                      role="group"
+                      aria-label={`Credit units for ${c.code}`}
+                    >
+                      {[1, 2, 3, 4, 5, 6].map((unit) => {
+                        const selected = (units[canonicalCourseCode(c.code)] ?? 3) === unit;
+                        return (
+                          <button
+                            key={unit}
+                            type="button"
+                            onClick={() =>
+                              setUnits((current) => ({
+                                ...current,
+                                [canonicalCourseCode(c.code)]: unit,
+                              }))
+                            }
+                            className={cn(
+                              "h-8 w-7 rounded-lg text-xs font-semibold transition-colors",
+                              selected
+                                ? "bg-navy text-white shadow-sm"
+                                : "text-navy/65 hover:bg-card hover:text-navy",
+                            )}
+                            aria-label={`${unit} credit units`}
+                            aria-pressed={selected}
+                          >
+                            {unit}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -350,13 +513,23 @@ export function CgpaCalculatorScreen() {
                         <Input
                           className="h-9 w-20 text-center"
                           inputMode="decimal"
+                          enterKeyHint={rowIndex === rows.length - 1 ? "done" : "next"}
+                          data-cgpa-numeric="true"
+                          onKeyDown={moveToNextNumericField}
                           placeholder="score %"
                           value={percents[canonicalCourseCode(c.code)] ?? ""}
-                          onChange={(e) => setPercents((p) => ({ ...p, [canonicalCourseCode(c.code)]: e.target.value }))}
+                          onChange={(e) =>
+                            setPercents((p) => ({
+                              ...p,
+                              [canonicalCourseCode(c.code)]: e.target.value,
+                            }))
+                          }
                           aria-label={`Percentage score for ${c.code}`}
                         />
                         <span className="text-[11px] text-muted-foreground">
-                          {row?.percent !== null && row?.percent !== undefined && !Number.isNaN(row.percent)
+                          {row?.percent !== null &&
+                          row?.percent !== undefined &&
+                          !Number.isNaN(row.percent)
                             ? `${gradeForPercent(row.percent)} · ${pointsForPercent(row.percent).toFixed(2)} points`
                             : "0 to 100"}
                         </span>
@@ -369,7 +542,9 @@ export function CgpaCalculatorScreen() {
                             <button
                               key={l}
                               type="button"
-                              onClick={() => setLetters((s) => ({ ...s, [canonicalCourseCode(c.code)]: l }))}
+                              onClick={() =>
+                                setLetters((s) => ({ ...s, [canonicalCourseCode(c.code)]: l }))
+                              }
                               className={cn(
                                 "h-8 w-8 rounded-lg border text-xs font-semibold transition",
                                 on
@@ -386,6 +561,18 @@ export function CgpaCalculatorScreen() {
                       </div>
                     )}
                   </div>
+                  {row &&
+                  row.points !== null &&
+                  row.percent !== null &&
+                  Number.isFinite(row.percent) &&
+                  row.percent >= 0 &&
+                  row.percent <= 100 ? (
+                    <p className="mt-2 text-[10px] font-medium text-navy/70">
+                      {mode === "percent"
+                        ? `Entering ${row.percent}% → Grade ${gradeForPercent(row.percent)} (${row.points.toFixed(1)} GP)`
+                        : `Grade ${letters[canonicalCourseCode(c.code)]} (${row.points.toFixed(1)} GP)`}
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
@@ -400,8 +587,36 @@ export function CgpaCalculatorScreen() {
         ) : null}
 
         <Button size="lg" className="mt-4 w-full" onClick={calculate}>
-          <Calculator className="mr-1.5 h-4 w-4" /> {result ? "Recalculate" : "Calculate my CGPA"}
+          <Calculator className="mr-1.5 h-4 w-4" /> Save result
         </Button>
+
+        <Accordion
+          type="single"
+          collapsible
+          className="mt-3 rounded-2xl border border-border bg-card px-4 shadow-sm"
+        >
+          <AccordionItem value="calculation" className="border-0">
+            <AccordionTrigger className="py-3 text-xs font-semibold text-navy hover:no-underline">
+              How UI CGPA is calculated
+            </AccordionTrigger>
+            <AccordionContent className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                Semester GPA = total quality points for the semester divided by semester credit
+                units. Each course contributes its grade points multiplied by its credit units.
+              </p>
+              <p>
+                Updated cumulative CGPA = (previous CGPA × previous units + this semester’s quality
+                points) ÷ (previous units + this semester’s units).
+              </p>
+              <p>
+                Combined session GPA = (1st semester GPA × its units + 2nd semester GPA × its units)
+                ÷ the total units across both semesters. Each semester is weighted by its credit
+                load, not averaged evenly.
+              </p>
+              <p>Results are shown to two decimal places.</p>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         {mode === "letter" ? (
           <div className="mt-3 flex items-start gap-2 rounded-2xl border border-accent/40 bg-accent/10 p-3 text-xs text-foreground">
@@ -412,8 +627,6 @@ export function CgpaCalculatorScreen() {
             </p>
           </div>
         ) : null}
-
-        {result ? <ResultBlock result={result} /> : null}
 
         {/* Save this semester + saved history */}
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -463,7 +676,7 @@ export function CgpaCalculatorScreen() {
           </Button>
           {!result ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Calculate first, then save this semester to your history.
+              Save a result first, then save this semester to your history.
             </p>
           ) : null}
         </div>
@@ -488,7 +701,9 @@ export function CgpaCalculatorScreen() {
                       GPA {s.gpa.toFixed(2)} · {s.units} credits
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => openSemester(s)}>Open</Button>
+                  <Button size="sm" variant="outline" onClick={() => openSemester(s)}>
+                    Open
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -524,7 +739,8 @@ export function CgpaCalculatorScreen() {
             ) : null}
             {sessionMerges.length === 0 ? (
               <p className="text-[11px] text-muted-foreground">
-                A combined session GPA appears once both 1st and 2nd semester are saved for that session.
+                A combined session GPA appears once both 1st and 2nd semester are saved for that
+                session.
               </p>
             ) : null}
           </div>
@@ -551,77 +767,146 @@ export function CgpaCalculatorScreen() {
   );
 }
 
-function ResultBlock({ result }: { result: CgpaActual }) {
+function ResultBlock({
+  result,
+  hasSavedResult,
+  savedPreviewMatches,
+}: {
+  result: LiveCgpaResult | null;
+  hasSavedResult: boolean;
+  savedPreviewMatches: boolean;
+}) {
   const { navigate } = useProfile();
-  const bands: { label: string; min: number }[] = [
-    { label: "First Class", min: 4.5 },
-    { label: "Second Class Upper", min: 3.5 },
-    { label: "Second Class Lower", min: 2.4 },
-    { label: "Third Class", min: 1.5 },
-    { label: "Pass", min: 1.0 },
-    { label: "Academic probation risk", min: 0 },
-  ];
+  const maxScale = CLASSIFICATION_BANDS[CLASSIFICATION_BANDS.length - 1].max;
+  const position = result
+    ? Math.max(0, Math.min(100, (result.cumulativeCgpa / maxScale) * 100))
+    : 0;
+  const nextBand = result
+    ? CLASSIFICATION_BANDS.find((band) => band.min > result.cumulativeCgpa)
+    : undefined;
 
   return (
-    <div className="mt-6">
-      <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
-        <div className="text-[11px] uppercase tracking-wider text-primary-foreground/70">Your result</div>
-        <div className="mt-3 grid grid-cols-2 gap-4 border-t border-primary-foreground/15 pt-4">
+    <>
+      <section
+        aria-live="polite"
+        className="sticky top-0 z-20 -mx-2 rounded-2xl bg-primary p-4 text-primary-foreground shadow-lg"
+      >
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="font-display text-3xl font-semibold leading-none">
-              {result.semesterGpa.toFixed(2)}
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-foreground/70">
+              Estimated semester GPA
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">
-              semester GPA · {result.semesterUnits} units
+            <div className="mt-1 font-display text-3xl font-semibold leading-none">
+              <span
+                key={result?.semesterGpa.toFixed(2) ?? "semester-empty"}
+                className="inline-block animate-in fade-in slide-in-from-bottom-1 duration-200"
+              >
+                {result ? result.semesterGpa.toFixed(2) : "—"}
+              </span>
+            </div>
+            <div className="mt-1 text-[10px] text-primary-foreground/60">
+              {result ? `${result.semesterUnits} units included` : "Add valid course results"}
             </div>
           </div>
           <div>
-            <div className="font-display text-3xl font-semibold leading-none">
-              {result.cumulativeCgpa.toFixed(2)}
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-foreground/70">
+              Updated cumulative CGPA
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">
-              cumulative CGPA · {result.totalUnits} units
+            <div className="mt-1 font-display text-3xl font-semibold leading-none">
+              <span
+                key={result?.cumulativeCgpa.toFixed(2) ?? "cumulative-empty"}
+                className="inline-block animate-in fade-in slide-in-from-bottom-1 duration-200"
+              >
+                {result ? result.cumulativeCgpa.toFixed(2) : "—"}
+              </span>
+            </div>
+            <div className="mt-1 text-[10px] text-primary-foreground/60">
+              {result ? `${result.totalUnits} total units` : "Live preview"}
             </div>
           </div>
         </div>
-        <div className="mt-3 text-sm font-semibold">{result.classification}</div>
-      </div>
 
-      {result.cumulativeCgpa > 0 && result.cumulativeCgpa < PROBATION_THRESHOLD ? (
+        {result ? (
+          <div className="mt-3 border-t border-primary-foreground/15 pt-3">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-semibold">{classify(result.cumulativeCgpa)}</span>
+              {nextBand ? (
+                <span className="text-right text-primary-foreground/75">
+                  {(nextBand.min - result.cumulativeCgpa).toFixed(2)} points to {nextBand.label} (
+                  {nextBand.min.toFixed(2)})
+                </span>
+              ) : (
+                <span className="text-right text-primary-foreground/75">
+                  Within First Class ({CLASSIFICATION_BANDS.at(-1)?.min.toFixed(2)}–
+                  {maxScale.toFixed(2)})
+                </span>
+              )}
+            </div>
+            <div
+              role="meter"
+              aria-label="Classification progress"
+              aria-valuemin={0}
+              aria-valuemax={maxScale}
+              aria-valuenow={result.cumulativeCgpa}
+              className="relative mt-2 h-2.5 overflow-hidden rounded-full"
+            >
+              <div className="absolute inset-0 flex">
+                {CLASSIFICATION_BANDS.map((band, index) => (
+                  <span
+                    key={band.label}
+                    className={
+                      [
+                        "h-full border-r border-primary-foreground/35 last:border-r-0",
+                        "bg-primary-foreground/15",
+                        "bg-primary-foreground/25",
+                        "bg-primary-foreground/35",
+                        "bg-accent/55",
+                        "bg-accent/75",
+                        "bg-accent",
+                      ][index]
+                    }
+                    style={{ width: `${((band.max - band.min) / maxScale) * 100}%` }}
+                  />
+                ))}
+              </div>
+              <span
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-white shadow"
+                style={{ left: `${position}%` }}
+              />
+            </div>
+            {result.validCourseCount < result.selectedCourseCount ? (
+              <p className="mt-2 text-[10px] text-primary-foreground/65">
+                Preview uses {result.validCourseCount} of {result.selectedCourseCount} selected
+                courses with complete values.
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-3 border-t border-primary-foreground/15 pt-3 text-xs text-primary-foreground/70">
+            Enter a valid result to see your classification and live preview.
+          </p>
+        )}
+      </section>
+
+      {result && result.cumulativeCgpa > 0 && result.cumulativeCgpa < PROBATION_THRESHOLD ? (
         <div className="mt-3 rounded-2xl border border-border bg-secondary/60 p-3.5 text-xs text-foreground">
-          A CGPA below 1.00 sits under the academic probation threshold at UI. It is recoverable,
-          and the goal setter can build a plan to lift it.
+          A CGPA below {PROBATION_THRESHOLD.toFixed(2)} sits under the academic probation threshold
+          at UI. It is recoverable, and the goal setter can build a plan to lift it.
         </div>
       ) : null}
 
-      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Classification bands
-      </h3>
-      <div className="space-y-1 rounded-2xl border border-border bg-card p-4 shadow-sm">
-        {bands.map((b) => {
-          const on = result.classification === b.label;
-          return (
-            <div
-              key={b.label}
-              className={cn(
-                "flex items-center justify-between rounded-lg px-2 py-1.5 text-xs",
-                on ? "bg-accent/15 font-semibold text-foreground" : "text-muted-foreground",
-              )}
-            >
-              <span>{b.label}</span>
-              <span>{b.label === "Academic probation risk" ? "Below 1.00" : `${b.min.toFixed(2)} and above`}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      <Button className="mt-4 w-full" size="lg" onClick={() => navigate("cgpa-goal")}>
-        <Target className="mr-1.5 h-4 w-4" /> Set a target from this
-      </Button>
-      <p className="mt-2 text-center text-[11px] text-muted-foreground">
-        Your {result.cumulativeCgpa.toFixed(2)} and {result.totalUnits} units carry straight into the
-        goal setter.
-      </p>
-    </div>
+      {hasSavedResult ? (
+        <>
+          <Button className="mt-3 w-full" size="lg" onClick={() => navigate("cgpa-goal")}>
+            <Target className="mr-1.5 h-4 w-4" /> Set a target from this
+          </Button>
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            {savedPreviewMatches
+              ? "Your CGPA and units carry into the goal setter."
+              : "The goal setter uses your last saved result. Save this preview first to carry updated numbers across."}
+          </p>
+        </>
+      ) : null}
+    </>
   );
 }

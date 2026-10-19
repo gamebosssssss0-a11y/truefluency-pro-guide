@@ -27,7 +27,6 @@ import type {
   CgpaActual,
 } from "@/lib/profile-store";
 
-
 export type CloudSnapshot = Partial<Profile> | null;
 
 async function currentUserId(): Promise<string | null> {
@@ -51,8 +50,16 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
   const [profileRes, coursesRes, attemptsRes, questionsRes, analysisRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
     supabase.from("user_courses").select("*").eq("user_id", userId),
-    supabase.from("mock_attempts").select("*").eq("user_id", userId).order("submitted_at", { ascending: false }),
-    supabase.from("ai_question_sets").select("*").eq("user_id", userId).order("generated_at", { ascending: false }),
+    supabase
+      .from("mock_attempts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("submitted_at", { ascending: false }),
+    supabase
+      .from("ai_question_sets")
+      .select("*")
+      .eq("user_id", userId)
+      .order("generated_at", { ascending: false }),
     supabase.from("course_topic_analysis").select("*").eq("user_id", userId),
   ]);
 
@@ -64,8 +71,8 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
   if (!row) return null;
 
   const rowLastActiveDate = row.last_active_date ?? row.last_qualifying_day ?? null;
-  const localHasLaterStreak = !!local?.lastActiveDate &&
-    (!rowLastActiveDate || local.lastActiveDate > rowLastActiveDate);
+  const localHasLaterStreak =
+    !!local?.lastActiveDate && (!rowLastActiveDate || local.lastActiveDate > rowLastActiveDate);
   const streakDatesMatch = !!local?.lastActiveDate && local.lastActiveDate === rowLastActiveDate;
 
   const snapshot: Partial<Profile> = {
@@ -82,15 +89,19 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
     // has already been completed, so it is never asked for twice.
     profileCompleted: !!(row.display_name ?? "").trim(),
     streakDays: localHasLaterStreak
-      ? local?.streakDays ?? 0
+      ? (local?.streakDays ?? 0)
       : streakDatesMatch
         ? Math.max(row.streak_days ?? 0, local?.streakDays ?? 0)
-        : row.streak_days ?? 0,
+        : (row.streak_days ?? 0),
     // Prefer the new last_active_date column; fall back to the legacy
     // last_qualifying_day for existing rows that haven't been migrated yet.
-    lastActiveDate: localHasLaterStreak ? local?.lastActiveDate ?? null : rowLastActiveDate,
-    freezesAvailable: localHasLaterStreak ? local?.freezesAvailable ?? 1 : row.freezes_available ?? 1,
-    freezeUsedOn: localHasLaterStreak ? local?.freezeUsedOn ?? null : row.freeze_used_on ?? null,
+    lastActiveDate: localHasLaterStreak ? (local?.lastActiveDate ?? null) : rowLastActiveDate,
+    freezesAvailable: localHasLaterStreak
+      ? (local?.freezesAvailable ?? 1)
+      : (row.freezes_available ?? 1),
+    freezeUsedOn: localHasLaterStreak
+      ? (local?.freezeUsedOn ?? null)
+      : (row.freeze_used_on ?? null),
     tourSeen: row.tour_seen ?? false,
     hasCompletedFirstMock: !!row.has_completed_first_mock,
     masteredCourses: (row.mastered_courses as unknown as string[]) ?? [],
@@ -100,7 +111,10 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
   };
 
   if (coursesRes.error) {
-    console.error("[cloud-sync] user_courses load failed, keeping local courses", coursesRes.error.message);
+    console.error(
+      "[cloud-sync] user_courses load failed, keeping local courses",
+      coursesRes.error.message,
+    );
   } else {
     const courses: UserCourse[] = (coursesRes.data ?? []).map((c) => ({
       code: c.course_code ?? "",
@@ -129,7 +143,10 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
   }
 
   if (attemptsRes.error) {
-    console.error("[cloud-sync] mock_attempts load failed, keeping local history", attemptsRes.error.message);
+    console.error(
+      "[cloud-sync] mock_attempts load failed, keeping local history",
+      attemptsRes.error.message,
+    );
   } else {
     const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => ({
       id: a.id,
@@ -163,7 +180,10 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
   }
 
   if (questionsRes.error) {
-    console.error("[cloud-sync] ai_question_sets load failed, keeping local sets", questionsRes.error.message);
+    console.error(
+      "[cloud-sync] ai_question_sets load failed, keeping local sets",
+      questionsRes.error.message,
+    );
   } else {
     // Keyed by course code so each course only ever sees its own question set.
     const aiQuestionsByCourse: Record<string, AIQuestion[]> = {};
@@ -217,9 +237,7 @@ export function lastPushFailures(): PushFailure[] {
 
 /** One readable line: "mock_attempts: permission denied (42501)". */
 export function describePushFailures(failures: PushFailure[] = LAST_PUSH_FAILURES): string {
-  return failures
-    .map((f) => `${f.table}: ${f.message}${f.code ? ` (${f.code})` : ""}`)
-    .join("; ");
+  return failures.map((f) => `${f.table}: ${f.message}${f.code ? ` (${f.code})` : ""}`).join("; ");
 }
 
 function toFailure(table: string, err: unknown): PushFailure {
@@ -379,7 +397,11 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
 export async function hasCloudProfile(): Promise<boolean> {
   const userId = await currentUserId();
   if (!userId) return false;
-  const { data } = await supabase.from("profiles").select("user_id").eq("user_id", userId).maybeSingle();
+  const { data } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
   return !!data;
 }
 
@@ -412,6 +434,36 @@ export async function pushMockAttempt(attempt: MockAttempt): Promise<void> {
   );
   if (error) {
     console.error("[cloud-sync] mock_attempts write failed", error.message, error);
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Save a superseded CGPA plan as append-only history. The generated Supabase
+ * table types do not include goal_plan_history yet, so this narrow cast mirrors
+ * the known table's insert shape without weakening the shared client type.
+ */
+export async function pushPlanHistory(plan: CgpaPlan): Promise<void> {
+  const userId = await currentUserId();
+  if (!userId) throw new Error("You're signed out, so this plan wasn't saved to history.");
+
+  type GoalPlanHistoryWriter = {
+    from(table: "goal_plan_history"): {
+      insert(values: {
+        user_id: string;
+        plan: CgpaPlan;
+        exam_date: string | null;
+      }): PromiseLike<{ error: { message: string } | null }>;
+    };
+  };
+  const historyClient = supabase as unknown as GoalPlanHistoryWriter;
+  const { error } = await historyClient.from("goal_plan_history").insert({
+    user_id: userId,
+    plan,
+    exam_date: plan.examDate ?? null,
+  });
+  if (error) {
+    console.error("[cloud-sync] goal_plan_history write failed", error.message, error);
     throw new Error(error.message);
   }
 }
