@@ -699,6 +699,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // reason (backend error text, network failure) instead of only the
       // generic "Couldn't send." under the message.
       console.error("[chat] send failed", error);
+      // e.g. "allowance used up": re-read the ring so it shows the truth instead of its last value
+      void getChatUsage().then((u) => { if (u) setUsage(u); });
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
@@ -1223,10 +1225,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   </div>
                 ) : null}
               </div>
-              <span className="flex min-w-0 items-center gap-1 text-[11px] text-[#878170]">
+              <span className="flex min-w-0 flex-1 items-center justify-end gap-1 text-[11px] text-[#878170]">
                 <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#477A5B]" />
                 <span className="truncate">{selected ? `Using ${placeholderCourse} notes` : "Add a course to connect notes"}</span>
               </span>
+              {/* The usage ring lives inside the message box, in this row, so it never takes space from the text area. */}
+              <ChatUsageRing usage={usage} className="shrink-0" />
             </div>
             <div className="flex min-w-0 items-end gap-1">
               <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
@@ -1258,12 +1262,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               </button>
             </div>
           </div>
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <p className="text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
-              {chatCapReached ? "Today's Study Chat allowance is used up. It refreshes at midnight." : ""}
+          {chatCapReached ? (
+            <p className="mt-1.5 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
+              Today's Study Chat allowance is used up. It refreshes at midnight (Lagos time).
             </p>
-            <ChatUsageRing usage={usage} />
-          </div>
+          ) : null}
         </div>
       </div>
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
