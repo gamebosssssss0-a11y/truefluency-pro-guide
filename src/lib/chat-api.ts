@@ -31,8 +31,12 @@ export type ChatUsage = {
   remaining_tokens: number;
   percent: number;
   approx_replies_left: number;
+  /** Replies so far today (the "about N left" figure uses this student's own average). */
+  replies_today?: number;
   /** When the allowance refreshes (midnight, Lagos). */
   resets_at: string;
+  /** false when the backend couldn't record usage just now: the ring hides rather than show a wrong number. */
+  metering?: boolean;
 };
 
 /** Today's usage, for the ring when the chat opens. Returns null if it can't be read (the ring just stays hidden). */
