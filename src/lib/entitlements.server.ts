@@ -28,6 +28,10 @@ import {
   type Tier,
 } from "@/lib/entitlements";
 
+// ADMIN (1/6): admin accounts get no question cap beyond this ceiling.
+const ADMIN_MAX_QUESTIONS = 500;
+
+// ADMIN (2/6): `is_admin` added to the row shape.
 type Row = {
   user_id: string;
   tier: string;
@@ -35,7 +39,11 @@ type Row = {
   trial_ends_at: string;
   paid_until: string | null;
   paying_user_number: number | null;
+  is_admin?: boolean | null;
 };
+
+// ADMIN (3/6): resolveAccess now also reports isAdmin. AccessSummary itself is unchanged.
+export type AdminAwareAccess = AccessSummary & { isAdmin: boolean };
 
 /** The student's day: midnight in Lagos (the brief says "wait until Lagos midnight"), not midnight UTC, which was 1 a.m. there. */
 function today(): string {
@@ -110,13 +118,15 @@ function recordRefusal(userId: unknown, feature: GatedFeature, reason: string) {
 /** Fetch the caller's subscription, creating a fresh 7-day trial on first use. */
 async function ensureRow(userId: string): Promise<Row> {
   const db = await admin();
+  // ADMIN (4/6): is_admin added to every select; casts go through unknown because the
+  // generated Supabase types don't know about the new column yet.
   const existing = await db
     .from("subscriptions")
-    .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number")
+    .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number, is_admin")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (existing.data) return existing.data as Row;
+  if (existing.data) return existing.data as unknown as Row;
 
   const now = new Date();
   const ends = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
@@ -128,24 +138,27 @@ async function ensureRow(userId: string): Promise<Row> {
       trial_started_at: now.toISOString(),
       trial_ends_at: ends.toISOString(),
     })
-    .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number")
+    .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number, is_admin")
     .single();
 
   if (inserted.error || !inserted.data) {
     // A concurrent request may have created it first.
     const retry = await db
       .from("subscriptions")
-      .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number")
+      .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number, is_admin")
       .eq("user_id", userId)
       .maybeSingle();
-    if (retry.data) return retry.data as Row;
+    if (retry.data) return retry.data as unknown as Row;
     throw new Error("Couldn't read your subscription.");
   }
-  return inserted.data as Row;
+  return inserted.data as unknown as Row;
 }
 
 /** Trial rows whose window has closed settle into the free tier. */
 async function settleTier(row: Row): Promise<Row> {
+  // ADMIN: an admin row is never downgraded by settling.
+  if (row.is_admin === true) return row;
+
   const trialOver = new Date(row.trial_ends_at).getTime() <= Date.now();
   const paidOver =
     ["paid", "core", "exam"].includes(row.tier) &&
@@ -213,9 +226,11 @@ async function usageToday(
   return out;
 }
 
-export async function resolveAccess(userId: string, usageDay = today()): Promise<AccessSummary> {
+export async function resolveAccess(userId: string, usageDay = today()): Promise<AdminAwareAccess> {
   const callerId = requireUserId(userId);
   const row = await settleTier(await ensureRow(callerId));
+  // ADMIN (5/6): flag read from the server-side row only; the browser can never set it.
+  const isAdmin = row.is_admin === true;
   // Convert legacy paid rows to the named Core plan during the rollout.
   const tier: Tier = row.tier === "paid" ? "core" : row.tier as Tier;
   const trialActive = tier === "trial" && new Date(row.trial_ends_at).getTime() > Date.now();
@@ -223,29 +238,40 @@ export async function resolveAccess(userId: string, usageDay = today()): Promise
     (tier === "core" || tier === "exam") &&
     !!row.paid_until &&
     new Date(row.paid_until).getTime() > Date.now();
-  const fullAccess = trialActive || paidActive;
+  const fullAccess = isAdmin || trialActive || paidActive;
 
   const seatsLeft = await foundingSeatsLeft();
   const foundingPriceAvailable = seatsLeft > 0;
   const corePrice = foundingPriceAvailable ? FOUNDING_PRICE_NAIRA : STANDARD_PRICE_NAIRA;
-  const dailyLimits = trialActive
-    ? TRIAL_DAILY_LIMITS
-    : tier === "exam"
-      ? EXAM_DAILY_LIMITS
-      : tier === "core"
-        ? CORE_DAILY_LIMITS
-        : FREE_DAILY_LIMITS;
+  // ADMIN: null means "no daily limit" everywhere consumeQuota checks limits.
+  const unlimitedLimits = {
+    mock_sets: null,
+    chatbot_messages: null,
+    flashcard_decks: null,
+    library_uploads: null,
+  } as unknown as AccessSummary["dailyLimits"];
+  const dailyLimits = isAdmin
+    ? unlimitedLimits
+    : trialActive
+      ? TRIAL_DAILY_LIMITS
+      : tier === "exam"
+        ? EXAM_DAILY_LIMITS
+        : tier === "core"
+          ? CORE_DAILY_LIMITS
+          : FREE_DAILY_LIMITS;
 
   return {
     tier,
     fullAccess,
+    isAdmin,
     trialEndsAt: row.trial_ends_at,
     paidUntil: row.paid_until,
     priceNaira: tier === "exam" ? EXAM_PRICE_NAIRA : corePrice,
     foundingPriceAvailable,
     foundingSeatsLeft: seatsLeft,
-    maxQuestionsPerSet:
-      tier === "exam"
+    maxQuestionsPerSet: isAdmin
+      ? ADMIN_MAX_QUESTIONS
+      : tier === "exam"
         ? EXAM_MAX_QUESTIONS
         : tier === "core" || trialActive
           ? PAID_MAX_QUESTIONS
@@ -297,7 +323,7 @@ export async function consumeQuota(opts: {
   feature: GatedFeature;
   requestedQuestions?: number;
   dryRun?: boolean;
-}): Promise<QuotaVerdict & { access: AccessSummary; allowedQuestions?: number }> {
+}): Promise<QuotaVerdict & { access: AdminAwareAccess; allowedQuestions?: number }> {
   const callerId = requireUserId(opts.userId);
   const usageDay = today();
   const access = await resolveAccess(callerId, usageDay);
@@ -311,6 +337,7 @@ export async function consumeQuota(opts: {
   const requested = Math.max(1, Math.round(Number(opts.requestedQuestions) || 0));
 
   // Every plan, the 7-day trial included, uses its exact catalog limits below. The trial used to skip them.
+  // ADMIN (6/6): admin limits are all null, so the `limit !== null` checks below skip caps and never call bump().
   const limit = access.dailyLimits[opts.feature];
   const used = access.usageToday[opts.feature];
 
@@ -360,4 +387,4 @@ export async function consumeQuota(opts: {
       ? { allowedQuestions: Math.min(requested, access.maxQuestionsPerSet) }
       : {}),
   };
-}
+    }
