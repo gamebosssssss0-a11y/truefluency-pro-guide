@@ -68,13 +68,16 @@ function writeHomeDisplayCache(update: HomeDisplayCache) {
 
 /** One chip only: the live trial, paid access, or the founding price line. */
 function PlanChip() {
-  const { access } = useEntitlement();
+  const { access, isAdmin } = useEntitlement(); // ADMIN (1/2): isAdmin comes from the server-resolved access
   const cached = readHomeDisplayCache()?.access;
   const displayAccess = access ?? cached ?? null;
   useEffect(() => {
     if (access) writeHomeDisplayCache({ access: { tier: access.tier, trialEndsAt: access.trialEndsAt ?? null } });
   }, [access]);
   if (!displayAccess) return null;
+
+  // ADMIN (2/2): shown only when the server says this account is an admin.
+  if (isAdmin) return <ChipShell>Admin mode · unrestricted access</ChipShell>;
 
   if (displayAccess.tier === "trial" && displayAccess.trialEndsAt) {
     const msLeft = new Date(displayAccess.trialEndsAt).getTime() - Date.now();
@@ -472,174 +475,4 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
             {/* Flashcards: link only, no generator. */}
             <button
               onClick={() => {
-                sessionStorage.setItem("truefluency-flashcards-origin", "home");
-                navigate("flashcards");
-              }}
-              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
-            >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                <Layers className="h-4.5 w-4.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground">Flashcards</div>
-                <div className="text-[11px] text-muted-foreground">
-                  15-card decks from your upload
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
-
-          <RotatingWisdomCard active={active} />
-          </div>
-        </div>
-
-        <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
-          Predictions are statistical estimates. Always cross-check against your official material.
-        </p>
-      </div>
-      <FirstRunTourHost />
-    </div>
-  );
-}
-
-/** Single full-width row: white card, cream hairline, navy label, amber chevron. */
-function HomeRowLink({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-left"
-    >
-      <span className="min-w-0 flex-1 text-sm font-medium text-card-foreground">{label}</span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-accent" />
-    </button>
-  );
-}
-
-function QuickLink({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-left"
-    >
-      <span className="shrink-0 text-primary">{icon}</span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-    </button>
-  );
-}
-
-function CgpaStatusCard() {
-  const { profile, navigate } = useProfile();
-  const actual = profile.cgpaActual;
-  const plan = profile.cgpaPlan;
-
-  return (
-    <button
-      onClick={() => navigate("cgpa")}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left"
-    >
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-        <GraduationCap className="h-4.5 w-4.5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-foreground">Your CGPA</div>
-        {actual ? (
-          <div className="font-display text-2xl font-semibold leading-tight text-foreground">
-            {actual.cumulativeCgpa.toFixed(2)}
-            {plan ? (
-              <span className="ml-1 text-sm font-medium text-muted-foreground">
-                / {plan.targetCgpa.toFixed(2)}
-              </span>
-            ) : null}
-          </div>
-        ) : (
-          <div className="text-[11px] text-muted-foreground">
-            Work out where you stand, then set a target.
-          </div>
-        )}
-      </div>
-      {actual && plan ? (
-        <span
-          className={cn(
-            "shrink-0 text-[11px] font-semibold",
-            actual.cumulativeCgpa >= plan.targetCgpa ? "text-success" : "text-destructive",
-          )}
-        >
-          {actual.cumulativeCgpa >= plan.targetCgpa ? "On target" : "Behind target"}
-        </span>
-      ) : (
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-      )}
-    </button>
-  );
-}
-
-function RotatingWisdomCard({ active }: { active: boolean }) {
-  const [deck] = useState<Rotating[]>(() => buildRotatingDeck());
-  const [i, setI] = useState(0);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncPreference = () => setReduceMotion(media.matches);
-    syncPreference();
-    media.addEventListener("change", syncPreference);
-    return () => media.removeEventListener("change", syncPreference);
-  }, []);
-
-  useEffect(() => {
-    if (reduceMotion || !active) return;
-    const id = window.setInterval(() => setI((c) => (c + 1) % deck.length), ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [active, deck.length, reduceMotion]);
-
-  const item = deck[i];
-  if (!item) return null;
-
-  return (
-    <figure
-      key={reduceMotion ? "static-wisdom" : i}
-      className={cn(
-        "quote-card relative mt-5 min-h-32 overflow-hidden rounded-2xl px-6 py-5 text-center",
-        !reduceMotion && "quote-card-cycle",
-      )}
-    >
-      {item.kind === "quote" ? (
-        <div className="relative">
-          <QuoteIcon
-            className="pointer-events-none absolute -left-5 -top-4 h-16 w-16 text-accent/25"
-            aria-hidden="true"
-          />
-          <blockquote className="quote-text relative font-display text-base font-semibold leading-relaxed">
-            “{item.quote.quote}”
-          </blockquote>
-          <figcaption className="relative mt-2 text-xs font-normal text-muted-foreground">
-            {item.quote.author}
-          </figcaption>
-        </div>
-      ) : (
-        <div className="relative flex min-h-20 flex-col items-center justify-center">
-          <Lightbulb
-            className="pointer-events-none absolute -left-4 -top-3 h-14 w-14 text-accent/25"
-            aria-hidden="true"
-          />
-          <div className="relative text-[10px] font-semibold uppercase tracking-wider text-accent">
-            Study tip
-          </div>
-          <p className="quote-text relative mt-1 font-display text-base font-semibold leading-relaxed">
-            {item.tip}
-          </p>
-        </div>
-      )}
-    </figure>
-  );
-
-}
+                sessionStorage.setItem("truefl
