@@ -15,12 +15,16 @@ import {
   type AccessSummary,
 } from "@/lib/entitlements";
 
+// ADMIN (1/4): the server now adds isAdmin to the access object. Display only: the server enforces everything.
+type AccessWithAdmin = AccessSummary & { isAdmin?: boolean };
+
 export function useEntitlement() {
-  const [access, setAccess] = useState<AccessSummary | null>(null);
+  const [access, setAccess] = useState<AccessWithAdmin | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    const current = await getMyAccess();
+    // ADMIN (2/4): cast so the extra field is visible to TypeScript.
+    const current = (await getMyAccess()) as AccessWithAdmin;
     setAccess(current);
     return current;
   };
@@ -34,7 +38,7 @@ export function useEntitlement() {
         .then(({ data }) => {
           if (!live || !data.session?.access_token) return;
           return getMyAccess().then((current) => {
-            if (live) setAccess(current);
+            if (live) setAccess(current as AccessWithAdmin);
           });
         })
         .catch((e) => console.warn("[entitlement] couldn't refresh access on return", e));
@@ -54,7 +58,7 @@ export function useEntitlement() {
           return;
         }
         const a = await getMyAccess();
-        if (live) setAccess(a);
+        if (live) setAccess(a as AccessWithAdmin);
       } catch (e) {
         // Safety net only; the real fix is not calling too early.
         console.warn("[entitlement] couldn't read access, assuming free tier", e);
@@ -77,5 +81,7 @@ export function useEntitlement() {
     /** Until the real answer arrives, assume the stricter free ceiling. */
     maxQuestionsPerSet: access?.maxQuestionsPerSet ?? FREE_MAX_QUESTIONS,
     explanationsUnlocked: access?.explanationsUnlocked ?? false,
+    // ADMIN (3/4): true only when the server says this account is an admin. Use it to show the "Admin mode" chip.
+    isAdmin: access?.isAdmin === true,
   };
 }
