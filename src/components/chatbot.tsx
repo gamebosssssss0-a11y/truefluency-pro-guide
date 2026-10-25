@@ -16,7 +16,7 @@ import { ChatUsageRing } from "@/components/chat-usage-ring";
 import { createOrUpdateChatShare, getChatShareState, revokeChatShare, type ChatShareVisibility } from "@/lib/chat-sharing.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
-import { uploadChatImage } from "@/lib/chat-image";
+import { preparePhoto, uploadChatImage } from "@/lib/chat-image";
 import { warmBackend } from "@/lib/backend-api";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { toast } from "sonner";
@@ -243,6 +243,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isPreparingPhoto, setIsPreparingPhoto] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [speechAvailable, setSpeechAvailable] = useState(false);
@@ -544,6 +545,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const notice = (text: string) =>
     setMessages((cur) => [...cur, { id: nextId.current++, from: "notice", text }]);
 
+  // A picked photo is checked and shrunk right away (not when Send is pressed): a file that cannot be used is explained at
+  // once, and the upload that follows is a few hundred KB instead of a 10 MB camera original.
+  const pickPhoto = async (picked: File | null) => {
+    if (!picked) return;
+    setIsPreparingPhoto(true);
+    try {
+      const ready = await preparePhoto(picked);
+      setPhotoFile(ready);
+      setPhotoName(ready.name);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't use that photo. Try another one.");
+    } finally {
+      setIsPreparingPhoto(false);
+    }
+  };
+
   const send = async (
     override?: string,
     retry?: { messageId: number; course: string; mode: Mode },
@@ -554,14 +571,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const fileToSend = retry ? retryFiles.current.get(retry.messageId) ?? null : photoFile;
     const pageToSend = retry ? retryPageAttachments.current.get(retry.messageId) ?? null : attachedPage;
     if (!course || (!text && !fileToSend)) return;
-    if (isSending || isUploadingPhoto) return;
+    if (isSending || isUploadingPhoto || isPreparingPhoto) return;
 
-    if (!text && fileToSend) {
-      setPhotoFile(null);
-      setPhotoName(null);
-      notice("Photo questions are coming later|Add a text question for now. Your photo was not uploaded.");
-      return;
-    }
+    // A photo on its own is a complete message: the AI reads it and helps with what is on it.
 
     // Free students out of replies: no POST, no quota spend.
     if (chatCapReached) {
@@ -1175,6 +1187,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <button type="button" onClick={() => setAttachedPage(null)} className="shrink-0 underline underline-offset-2">Remove</button>
             </div>
           ) : null}
+          {isPreparingPhoto && !photoName ? (
+            <div role="status" className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Preparing your photo…
+            </div>
+          ) : null}
           {photoName ? (
             <div className="mb-2 flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground">
               {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Selected photo preview" className="h-14 w-14 shrink-0 rounded-md border border-border object-cover" /> : null}
@@ -1233,11 +1250,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <ChatUsageRing usage={usage} className="shrink-0" />
             </div>
             <div className="flex min-w-0 items-end gap-1">
-              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
+              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
                 <Plus className="h-3.5 w-3.5" />
               </button>
-              <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhotoFile(f); setPhotoName(f?.name ?? null); }} />
-              <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhotoFile(f); setPhotoName(f?.name ?? null); }} />
+              <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void pickPhoto(f); }} />
+              <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void pickPhoto(f); }} />
               <textarea
                 ref={composerRef}
                 rows={1}
@@ -1257,7 +1274,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
                 <Mic className="h-4 w-4" />
               </button>
-              <button type="button" onClick={() => send()} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label="Send" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+              <button type="button" onClick={() => send()} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
                 <Send className="h-5 w-5" />
               </button>
             </div>

@@ -17,7 +17,7 @@ import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/commo
 import { HeaderLogo } from "@/components/brand";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
-  findDuplicateMaterial, pickAnalyzableMaterial, ACCEPTED_UPLOAD_MIME,
+  findDuplicateMaterial, ACCEPTED_UPLOAD_MIME,
   isRetryableMaterial, retryExtraction,
   savePastedText, MIN_PASTED_CHARS, PASTED_TOO_SHORT_MESSAGE,
   type CourseMaterial, type UploadStage,
@@ -27,6 +27,8 @@ import {
 } from "@/lib/material-metadata";
 import { extractionSummary, extractionToastMessage } from "@/lib/extraction-status";
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
+import { SourcePicker } from "@/components/source-picker";
+import { pickSource, useSourceChoice } from "@/lib/material-pick";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { groupTopicsByCategory } from "@/lib/topic-labels";
@@ -101,6 +103,7 @@ export function CourseDetailScreen() {
   const { profile, navigate, activeCourseCode } = useProfile();
   const course = profile.courses.find((c) => c.code === activeCourseCode);
   const { items, loading } = useCourseMaterials(course?.code ?? "__none__");
+  const [sourceChoice] = useSourceChoice(course?.code ?? "__none__");
 
   if (!course) {
     return (
@@ -115,7 +118,8 @@ export function CourseDetailScreen() {
 
   const avg = averageForCourse(profile, course.code);
   const relevantAttempts = profile.attempts.filter((a) => a.courseCode === course.code).slice(-3).reverse();
-  const readyMaterial = items ? pickAnalyzableMaterial(items) : null;
+  // "Study from": the file the student chose, or the stand-in for all of their files (default: the newest readable file)
+  const readyMaterial = items ? pickSource(items, sourceChoice) : null;
 
   return (
     <div className="min-h-screen">
@@ -292,6 +296,7 @@ function CoursePrimaryActions({
 
   return (
     <>
+      <SourcePicker courseCode={courseCode} files={materials} className="mt-5" />
       {readingFirst ? (
         <>
           <MaterialsList courseCode={courseCode} items={materials} loading={materialsLoading} />

@@ -8,7 +8,9 @@ import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
-import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
+import { listMaterialsForCourse, type CourseMaterial } from "@/lib/course-materials";
+import { SourcePicker } from "@/components/source-picker";
+import { pickSource, readSourceChoice, useSourceChoice } from "@/lib/material-pick";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { findResumableMockJob, generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
@@ -128,7 +130,8 @@ export function MockGenerationScreen() {
     const run = async () => {
       try {
         const materials = await listMaterialsForCourse(course.code);
-        const ready = materials.find((m) => m.extraction_status === "success");
+        // "Study from": the file the student chose, or the stand-in for all of their files (default: the newest readable file)
+        const ready = pickSource(materials, readSourceChoice(course.code));
 
         if (!ready) {
           clearInterval(animId);
@@ -423,7 +426,10 @@ export function MockConfigScreen() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [readiness, setReadiness] = useState<"checking" | "ready" | "blocked">("checking");
-  const [readyMaterialId, setReadyMaterialId] = useState<string | null>(null);
+  const [materials, setMaterials] = useState<CourseMaterial[] | null>(null);
+  const [sourceChoice] = useSourceChoice(course?.code ?? "__none__");
+  // The file (or all files) the mock will be made from; topics only apply when the analysis belongs to the same choice.
+  const readyMaterialId = materials ? pickSource(materials, sourceChoice)?.id ?? null : null;
   const analysisForCourse = course ? profile.courseTopicAnalysis[course.code] : undefined;
   const defaults = useMemo(() => timelineDefaults(profile.timeline), [profile.timeline]);
 
@@ -435,14 +441,13 @@ export function MockConfigScreen() {
     let cancelled = false;
     setReadiness("checking");
     void listMaterialsForCourse(course.code)
-      .then((materials) => {
+      .then((list) => {
         // A mock only needs an upload whose text has been read: generation
         // samples the whole document itself. Topic analysis (predict) is
         // optional — it only adds topic chips to leave topics out with.
-        const readyMaterial = pickAnalyzableMaterial(materials);
-        const allowed = Boolean(readyMaterial);
+        const allowed = Boolean(pickSource(list, null));
         if (cancelled) return;
-        setReadyMaterialId(readyMaterial?.id ?? null);
+        setMaterials(list);
         setReadiness(allowed ? "ready" : "blocked");
         if (!allowed) navigateRef.current("course-detail", { courseCode: course.code });
       })
@@ -594,6 +599,9 @@ export function MockConfigScreen() {
         ) : null}
 
         <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-4">
+          {/* One of your files, or all of them: the questions come from what you pick here. */}
+          <SourcePicker courseCode={course.code} files={materials} showSingle />
+
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Questions
@@ -696,6 +704,13 @@ export function MockConfigScreen() {
               ) : null}
             </div>
           )}
+
+          {ALL_TOPICS.length === 0 && analysisForCourse && readyMaterialId && analysisForCourse.materialId !== readyMaterialId ? (
+            <p className="rounded-xl border border-dashed border-border bg-background p-3 text-[11px] text-muted-foreground">
+              Your predicted topics were made for a different choice of files. To pick topics for this choice, open the course page and tap Analyze.
+              You can still generate a test from it now.
+            </p>
+          ) : null}
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question type</label>
@@ -1034,7 +1049,11 @@ export function MockRunScreen() {
                 );
               })}
             </div>
-            <AiGeneratedLabel className="mt-4" />
+            <div className="mt-4 flex items-start justify-between gap-3">
+              <AiGeneratedLabel />
+              {/* Optional: a question that is cut off, has two right answers, a wrong key ... can be reported right here. */}
+              <ReportQuestionButton compact courseCode={t.courseCode} question={q.question} options={q.options} markedIndex={q.correct_index} />
+            </div>
           </div>
         ) : null}
 

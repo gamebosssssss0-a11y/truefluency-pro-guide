@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
-import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
+import { listMaterialsForCourse } from "@/lib/course-materials";
+import { SOURCE_CHANGE_EVENT, pickSource, readSourceChoice } from "@/lib/material-pick";
 
 /* ================= Tab 2: Mock Tests ================= */
 
@@ -45,7 +46,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
       setMaterialsLoading(profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)));
       const results = await Promise.allSettled(profile.courses.map(async (course) => {
           const materials = await listMaterialsForCourse(course.code);
-          return [course.code, pickAnalyzableMaterial(materials)?.id ?? null] as const;
+          return [course.code, pickSource(materials, readSourceChoice(course.code))?.id ?? null] as const;
       }));
       const next = { ...practiceMaterialCache };
       for (const result of results) {
@@ -60,9 +61,11 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
     };
     void loadMaterials();
     window.addEventListener("course-materials-refresh", loadMaterials);
+    window.addEventListener(SOURCE_CHANGE_EVENT, loadMaterials);
     return () => {
       cancelled = true;
       window.removeEventListener("course-materials-refresh", loadMaterials);
+      window.removeEventListener(SOURCE_CHANGE_EVENT, loadMaterials);
     };
   }, [active, profile.courses]);
 

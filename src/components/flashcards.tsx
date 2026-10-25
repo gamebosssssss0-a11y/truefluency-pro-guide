@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
-import { listMaterialsForCourse, pickAnalyzableMaterial } from "@/lib/course-materials";
+import { SourcePicker } from "@/components/source-picker";
+import { listCourseFiles, pickSource, readSourceChoice, readyFiles, whyNothingReady, type CourseFile } from "@/lib/material-pick";
 import { getMyAccess } from "@/lib/entitlements.functions";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -43,7 +44,7 @@ function dedupeDecks(list: FlashcardDeck[]): FlashcardDeck[] {
   const seenBurst = new Set<string>();
   const out: FlashcardDeck[] = [];
   for (const d of byId.values()) {
-    const burst = `${d.course_code}|${d.card_count}|${(d.created_at ?? "").slice(0, 16)}`;
+    const burst = `${d.course_code}|${d.title}|${d.card_count}|${(d.created_at ?? "").slice(0, 16)}`;
     if (seenBurst.has(burst)) continue;
     seenBurst.add(burst);
     out.push(d);
@@ -69,6 +70,19 @@ export function FlashcardsScreen() {
   const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const loadDeckRequest = useRef(0);
+  // The course's files, for the "Study from" picker (the choice itself is remembered per course).
+  const [courseFiles, setCourseFiles] = useState<CourseFile[] | null>(null);
+  useEffect(() => {
+    if (selected === ALL_SCOPE) {
+      setCourseFiles(null);
+      return;
+    }
+    let cancelled = false;
+    listCourseFiles(selected)
+      .then((rows) => { if (!cancelled) setCourseFiles(rows); })
+      .catch(() => { if (!cancelled) setCourseFiles(null); });
+    return () => { cancelled = true; };
+  }, [selected]);
 
   const returnToOrigin = () => {
     const stored = sessionStorage.getItem(FLASHCARDS_ORIGIN_KEY);
@@ -165,18 +179,34 @@ export function FlashcardsScreen() {
           return;
         }
       }
-      const materials = await listMaterialsForCourse(selected);
-      const ready = pickAnalyzableMaterial(materials);
-      if (!ready) {
-        setError("No extracted material found for this course. Please upload a PDF or DOCX first.");
+      const files = await listCourseFiles(selected);
+      const ready = readyFiles(files);
+      if (ready.length === 0) {
+        setError(whyNothingReady(files, displayCode(selected)));
         return;
       }
+      // "Study from": the chosen file, or all of the student's files for this course (the newest readable file by default)
+      const chosen = pickSource(ready, readSourceChoice(selected));
+      const queue = chosen ? [chosen, ...ready.filter((f) => f.id !== chosen.id)] : ready;
       const course = profile.courses.find((c) => canonicalCourseCode(c.code) === canonicalCourseCode(selected));
-      await generateFlashcards({
-        materialId: ready.id,
-        courseCode: selected,
-        courseName: course?.name,
-      });
+      // The newest readable file first. If it has too little text (a one-line pasted note, a cover page), the next one is
+      // tried instead of giving up: nothing is charged for an attempt that fails.
+      let failure: Error | null = null;
+      for (const file of queue.slice(0, 3)) {
+        try {
+          await generateFlashcards({
+            materialId: file.id,
+            courseCode: selected,
+            courseName: course?.name,
+          });
+          failure = null;
+          break;
+        } catch (attempt) {
+          failure = attempt as Error;
+          if (!/insufficient readable text/i.test(failure.message)) break;
+        }
+      }
+      if (failure) throw failure;
       await refresh();
       await loadDecks();
     } catch (e) {
@@ -230,6 +260,7 @@ export function FlashcardsScreen() {
               </option>
             ))}
           </select>
+          {selected !== ALL_SCOPE ? <SourcePicker courseCode={selected} files={courseFiles} showSingle tone="dark" className="mt-3" /> : null}
         </div>
 
         {isLoadingDecks ? (
