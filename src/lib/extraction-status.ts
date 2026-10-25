@@ -39,6 +39,24 @@ const FAILED_STEPS = [
   "If it stays unreadable, paste the text straight into the Paste text box.",
 ];
 
+const LIMIT_STEPS = [
+  "Split the file into smaller parts and upload each part.",
+  "Or paste the text straight into the Paste text box.",
+];
+
+const ALLOWANCE_STEPS = [
+  "Try again after midnight (Lagos time), or upload fewer pages.",
+  "Or paste the text straight into the Paste text box.",
+];
+
+/** Tapping retry cannot fix a file that is too big or too long, or a used-up daily allowance, so those say what will. */
+function stepsFor(reason: string | null | undefined): string[] {
+  const r = (reason ?? "").toLowerCase();
+  if (/pages a day|allowance/.test(r)) return ALLOWANCE_STEPS;
+  if (/too large|too long|the limit is|more than \d+ pages|split/.test(r)) return LIMIT_STEPS;
+  return FAILED_STEPS;
+}
+
 export function isStuckPending(m: CourseMaterial): boolean {
   if (m.extraction_status !== "pending") return false;
   return Date.now() - new Date(m.created_at).getTime() > STUCK_PENDING_MS;
@@ -73,15 +91,16 @@ export function extractionSummary(m: CourseMaterial): ExtractionSummary | null {
   }
 
   if (status === "failed" || status === "timeout") {
+    const reason =
+      m.extraction_error ??
+      (status === "timeout"
+        ? "Reading this file took too long to finish."
+        : "We couldn't read any text from this file.");
     return {
       label: "Couldn't read content",
       tone: "error",
-      reason:
-        m.extraction_error ??
-        (status === "timeout"
-          ? "Reading this file took too long to finish."
-          : "We couldn't read any text from this file."),
-      nextSteps: FAILED_STEPS,
+      reason,
+      nextSteps: stepsFor(reason),
     };
   }
 

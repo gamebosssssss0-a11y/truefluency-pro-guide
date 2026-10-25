@@ -177,6 +177,23 @@ export async function findDuplicateMaterial(opts: {
   return (data?.[0] as CourseMaterial) ?? null;
 }
 
+/** What the background reading learned about the file, beyond its new status. */
+export type ProcessedNotes = {
+  /** A PDF longer than the page limit: only the first usedPages of totalPages pages were read. */
+  usedPages?: number;
+  totalPages?: number;
+};
+
+/**
+ * Uploads whose text is still being read by THIS tab. The list of files marks them "pending", and the automatic repair for
+ * pending files must leave them alone: starting a second, server-side read of a file the browser is about to hand over is how
+ * one of three uploads in a row used to end up "couldn't be read".
+ */
+const readingNow = new Set<string>();
+export function isBeingRead(materialId: string): boolean {
+  return readingNow.has(materialId);
+}
+
 export async function uploadCourseMaterial(opts: {
   file: File;
   courseCode: string;
@@ -187,7 +204,7 @@ export async function uploadCourseMaterial(opts: {
    * file is stored, so the student isn't held on "Extracting…" while a
    * sleeping server wakes up or a scan is being read.
    */
-  onProcessed?: (row: CourseMaterial | null) => void;
+  onProcessed?: (row: CourseMaterial | null, notes?: ProcessedNotes) => void;
 }): Promise<CourseMaterial> {
   const { file, courseCode, onStage, onProcessed } = opts;
   // Wake a sleeping (free-plan) backend now, so its ~1 min cold start
@@ -340,10 +357,12 @@ export async function uploadCourseMaterial(opts: {
     // "extracting" stays on screen until onProcessed fires, so the student
     // can see their text is being read rather than wondering if it stalled.
     emit({ kind: "extracting" });
+    readingNow.add(uploadedRow.id);
+    const notes: ProcessedNotes = {};
     void (async () => {
       let processed: CourseMaterial | null;
       try {
-        processed = await readUploadedText(uploadedRow, fileType, file, emit);
+        processed = await readUploadedText(uploadedRow, fileType, file, emit, notes);
       } catch (error) {
         console.error("[upload] background text processing failed", error);
         const reason = "We couldn't read text from that file. Tap retry in a moment.";
@@ -377,8 +396,9 @@ export async function uploadCourseMaterial(opts: {
         processed = failedRow;
       }
 
+      readingNow.delete(uploadedRow.id);
       try {
-        onProcessed?.(processed);
+        onProcessed?.(processed, notes);
       } catch (callbackError) {
         console.error("[upload] processing completion handler failed", callbackError);
       }
@@ -403,6 +423,7 @@ async function readUploadedText(
   fileType: CourseMaterial["file_type"],
   file: File,
   emit: (s: UploadStage) => void,
+  notes: ProcessedNotes,
 ): Promise<CourseMaterial | null> {
   const refetch = async (): Promise<CourseMaterial | null> => {
     try {
@@ -421,9 +442,11 @@ async function readUploadedText(
   if (fileType === "pdf") {
     let pageTexts: string[] | null = null;
     try {
-      pageTexts = await extractPdfPageTexts(file, (page, total, actualTotal) =>
-        emit({ kind: "extracting", page, total, actualTotal, where: "device" }),
-      );
+      pageTexts = await extractPdfPageTexts(file, (page, total, actualTotal) => {
+        notes.usedPages = total;
+        notes.totalPages = actualTotal;
+        emit({ kind: "extracting", page, total, actualTotal, where: "device" });
+      });
     } catch (e) {
       console.warn("[upload] in-browser PDF reading failed, using the server", e);
     }
