@@ -4,7 +4,6 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { AIQuestion, Difficulty, Profile } from "@/lib/profile-store";
-import { toApiMaterialId } from "@/lib/material-pick";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
@@ -176,6 +175,8 @@ async function getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
  */
 export async function predictTopics(input: {
   materialId: string;
+  /** The files ticked under "Study from" when there are several (materialId is then the stand-in id). */
+  materialIds?: string[];
   courseCode: string;
   courseName: string;
   level?: string | null;
@@ -184,7 +185,8 @@ export async function predictTopics(input: {
   if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
 
   const data = await postJson<{ topics: unknown }>("/predict-topics", {
-    material_id: toApiMaterialId(input.materialId),   // "all my files" is sent as the plain word "all"
+    material_id: input.materialId,
+    material_ids: input.materialIds ?? [],
     course_code: input.courseCode,
     course_name: input.courseName,
     user_level: input.level ? String(input.level) : null,
@@ -231,6 +233,8 @@ export async function predictTopics(input: {
 export async function generateMock(
   input: {
     materialId: string;
+    /** The files ticked under "Study from" when there are several (materialId is then the stand-in id). */
+    materialIds?: string[];
     courseCode: string;
     courseName: string;
     questionCount: number;
@@ -265,7 +269,8 @@ export async function generateMock(
   if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
 
   const body = {
-    material_id: toApiMaterialId(input.materialId),
+    material_id: input.materialId,
+    material_ids: input.materialIds ?? [],
     course_code: input.courseCode,
     course_name: input.courseName,
     question_count: input.questionCount,
@@ -388,7 +393,7 @@ export async function generateMock(
 export async function findResumableMockJob(courseCode: string, materialId: string): Promise<string | null> {
   if (!isBackendConfigured()) return null;
   try {
-    const q = `course_code=${encodeURIComponent(courseCode)}&material_id=${encodeURIComponent(toApiMaterialId(materialId))}`;
+    const q = `course_code=${encodeURIComponent(courseCode)}&material_id=${encodeURIComponent(materialId)}`;
     const data = await getJson<{ job_id: string | null }>(`/generate-mock/resumable?${q}`, 20_000);
     return typeof data?.job_id === "string" ? data.job_id : null;
   } catch {

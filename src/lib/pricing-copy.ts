@@ -11,7 +11,7 @@ export const EXAM_PRICE_LINE = "Exam is ₦4,000 / month.";
 export const TOPUP_LATER_LINE =
   "Chat top-up is later. It adds tokens for 30 days. It does not unlock WHY, Challenging, 45 questions, or peer-save.";
 
-export const TRIAL_LINE = "7-day full-access trial";
+export const TRIAL_LINE = "7-day Core trial";
 
 export const NOT_SECOND_PRODUCT = "This is not a second product.";
 

@@ -6,7 +6,6 @@
  * never called any of it.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { toApiMaterialId } from "@/lib/material-pick";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
@@ -124,13 +123,16 @@ async function getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
  */
 export async function generateFlashcards(input: {
   materialId: string;
+  /** The files ticked under "Study from" when there are several (materialId is then the stand-in id). */
+  materialIds?: string[];
   courseCode: string;
   courseName?: string | null;
 }): Promise<{ decks: FlashcardDeck[]; deckCount: number }> {
   const data = await postJson<{ decks: FlashcardDeck[]; deck_count: number }>(
     "/flashcards/generate",
     {
-      material_id: toApiMaterialId(input.materialId),   // "all my files" is sent as the plain word "all"
+      material_id: input.materialId,
+      material_ids: input.materialIds ?? [],
       course_code: input.courseCode,
       course_name: input.courseName ?? null,
     },

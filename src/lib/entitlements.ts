@@ -47,20 +47,50 @@ export const EXAM_DAILY_LIMITS: Record<GatedFeature, number | null> = {
 export const TRIAL_DAILY_LIMITS: Record<GatedFeature, number | null> = { ...CORE_DAILY_LIMITS };
 
 /**
- * Study Chat allowance per day, in tokens (what the AI provider counts: your question, the notes and instructions sent
- * with it, and the reply). Free is small on purpose; every paid plan doubles the one below it. Refreshes at midnight
- * Lagos time. Mirrors usage_meter.py on the backend, which enforces it.
+ * Study Chat usage per day, in tokens (what the AI provider counts: your question, the notes and instructions sent
+ * with it, and the reply). Core and the trial give 2x the free usage, Exam 4x. Refreshes at midnight Lagos time.
+ * Mirrors usage_meter.py on the backend, which enforces it.
  */
 export const CHAT_DAILY_TOKENS: Record<"free" | "trial" | "core" | "exam", number> = {
-  free: 24_000,
-  trial: 48_000,
-  core: 48_000,
-  exam: 96_000,
+  free: 36_000,
+  trial: 72_000,
+  core: 72_000,
+  exam: 144_000,
 };
 /** What a normal reply costs on average (measured), only used to say "about N replies". */
-export const CHAT_AVG_REPLY_TOKENS = 3_800;
+export const CHAT_AVG_REPLY_TOKENS = 4_200;
 export function approxChatReplies(tokens: number): number {
   return Math.round(tokens / CHAT_AVG_REPLY_TOKENS);
+}
+
+/**
+ * How many of a student's files may be used TOGETHER for one mock test, one topic prediction or one flashcard deck.
+ * Uploading is not limited; this is only about combining files. The trial is Core. Mirrors PLAN_MAX_SOURCES in main.py,
+ * which enforces it (the files together must also stay within 500 pages of readable text).
+ */
+export const MOCK_SOURCE_LIMITS: Record<"free" | "trial" | "core" | "exam", number> = {
+  free: 1,
+  trial: 3,
+  core: 3,
+  exam: 6,
+};
+export const MOST_FILES_TOGETHER = 6;
+export function maxSourceFiles(tier?: string | null): number {
+  return tier && tier in MOCK_SOURCE_LIMITS ? MOCK_SOURCE_LIMITS[tier as keyof typeof MOCK_SOURCE_LIMITS] : MOST_FILES_TOGETHER;
+}
+
+/** "Tuesday, 12:00 am": the weekday and clock time of a moment, in the student's own time zone. */
+export function formatResetTime(when: Date): string {
+  if (Number.isNaN(when.getTime())) return "midnight (Lagos time)";
+  const day = when.toLocaleDateString("en-US", { weekday: "long" });
+  const time = when.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s?(AM|PM)$/i, (m) => ` ${m.trim().toLowerCase()}`);
+  return `${day}, ${time}`;
+}
+
+/** The next time the chat allowance refreshes: midnight in Lagos (a fixed UTC+1, no daylight saving). */
+export function nextChatReset(now: Date = new Date()): Date {
+  const lagos = new Date(now.getTime() + 60 * 60 * 1000);
+  return new Date(Date.UTC(lagos.getUTCFullYear(), lagos.getUTCMonth(), lagos.getUTCDate() + 1) - 60 * 60 * 1000);
 }
 
 export const FREE_MAX_QUESTIONS = 30;
@@ -110,8 +140,8 @@ export function paywallCopy(
 ): { title: string; body: string } {
   const tier = verdict.tier ?? "free";
   const nextPlan = tier === "core" || tier === "trial"
-    ? "Exam adds 6 mock sets a day, 60 questions per set, four times the free Study Chat allowance, and 8 flashcard decks."
-    : "Core adds 3 mock sets a day, 45 questions per set, answer explanations, peer-save, twice the free Study Chat allowance, and 4 flashcard decks.";
+    ? "Exam adds 6 mock sets a day, 60 questions per set, up to 6 files together, 4x the free chat usage, and 8 flashcard decks."
+    : "Core adds 3 mock sets a day, 45 questions per set, up to 3 files together, answer explanations, peer-save, 2x the free chat usage, and 4 flashcard decks.";
 
   if (verdict.reason === "question_cap") {
     return {
@@ -134,8 +164,8 @@ export function paywallCopy(
   if (feature === "chatbot_messages") {
     const more = tier === "exam" ? "" : ` ${nextPlan}`;
     return {
-      title: "That's your Study Chat allowance for today",
-      body: `Study Chat is a daily allowance that refreshes at midnight (Lagos time).${more}`,
+      title: "That's your chat usage for today",
+      body: `It resets ${formatResetTime(nextChatReset())}.${more}`,
     };
   }
 
