@@ -7,16 +7,27 @@ import { supabase } from "@/integrations/supabase/client";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
-export type ReportReason = "wrong_answer" | "unclear" | "off_topic" | "duplicate" | "too_easy" | "too_hard" | "other";
+export type ReportReason =
+  | "wrong_answer"
+  | "incomplete"
+  | "multiple_correct"
+  | "unclear"
+  | "off_topic"
+  | "duplicate"
+  | "too_easy"
+  | "too_hard"
+  | "other";
 
 export const REPORT_REASONS: { value: ReportReason; label: string; hint: string }[] = [
   { value: "wrong_answer", label: "The marked answer is wrong", hint: "Another option is right, or none is." },
+  { value: "incomplete", label: "It's incomplete or cut off", hint: "Something it needs is missing: part of the question, an option, a number, or a figure or table it mentions." },
+  { value: "multiple_correct", label: "More than one answer could be right", hint: "Two or more of the options are correct." },
   { value: "unclear", label: "It's unclear or badly worded", hint: "I can't tell what it's asking." },
   { value: "off_topic", label: "It isn't from my notes", hint: "The topic isn't in what I uploaded." },
   { value: "duplicate", label: "It repeats another question", hint: "Same question, different words." },
-  { value: "too_easy", label: "Too easy for this level", hint: "" },
-  { value: "too_hard", label: "Too hard for this level", hint: "" },
-  { value: "other", label: "Something else", hint: "" },
+  { value: "too_easy", label: "Too easy for this level", hint: "It can be answered without studying." },
+  { value: "too_hard", label: "Too hard for this level", hint: "It goes beyond what my notes teach." },
+  { value: "other", label: "Something else", hint: "Tell us in the box below." },
 ];
 
 export async function reportQuestion(input: {

@@ -6,6 +6,7 @@
  * never called any of it.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { toApiMaterialId } from "@/lib/material-pick";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
@@ -129,7 +130,7 @@ export async function generateFlashcards(input: {
   const data = await postJson<{ decks: FlashcardDeck[]; deck_count: number }>(
     "/flashcards/generate",
     {
-      material_id: input.materialId,
+      material_id: toApiMaterialId(input.materialId),   // "all my files" is sent as the plain word "all"
       course_code: input.courseCode,
       course_name: input.courseName ?? null,
     },
