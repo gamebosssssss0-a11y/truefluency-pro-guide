@@ -28,7 +28,9 @@ import {
 import { extractionSummary, extractionToastMessage } from "@/lib/extraction-status";
 import { predictTopics, isBackendConfigured, NOT_CONFIGURED_MESSAGE } from "@/lib/backend-api";
 import { SourcePicker } from "@/components/source-picker";
-import { pickSource, useSourceChoice } from "@/lib/material-pick";
+import { apiSource, pickSource, useSourceChoice, type Picked } from "@/lib/material-pick";
+import { useEntitlement } from "@/hooks/use-entitlement";
+import { maxSourceFiles } from "@/lib/entitlements";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { groupTopicsByCategory } from "@/lib/topic-labels";
@@ -104,6 +106,7 @@ export function CourseDetailScreen() {
   const course = profile.courses.find((c) => c.code === activeCourseCode);
   const { items, loading } = useCourseMaterials(course?.code ?? "__none__");
   const [sourceChoice] = useSourceChoice(course?.code ?? "__none__");
+  const { access: planAccess } = useEntitlement();
 
   if (!course) {
     return (
@@ -119,7 +122,7 @@ export function CourseDetailScreen() {
   const avg = averageForCourse(profile, course.code);
   const relevantAttempts = profile.attempts.filter((a) => a.courseCode === course.code).slice(-3).reverse();
   // "Study from": the file the student chose, or the stand-in for all of their files (default: the newest readable file)
-  const readyMaterial = items ? pickSource(items, sourceChoice) : null;
+  const readyMaterial = items ? pickSource(items, sourceChoice, maxSourceFiles(planAccess?.tier)) : null;
 
   return (
     <div className="min-h-screen">
@@ -204,7 +207,7 @@ function CoursePrimaryActions({
   courseName: string;
   materials: CourseMaterial[] | null;
   materialsLoading: boolean;
-  readyMaterial: CourseMaterial | null;
+  readyMaterial: Picked<CourseMaterial> | null;
 }) {
   const { navigate, profile } = useProfile();
   const { order, showFlashcardsLink } = courseFeatureOrder(profile.studyPreference);
@@ -347,7 +350,7 @@ const ANALYZE_STEPS = [
 function useAnalyzeTopics(
   courseCode: string,
   courseName: string,
-  material: CourseMaterial | null,
+  material: Picked<CourseMaterial> | null,
   fallback: CourseMaterial | null = null,
 ) {
   const { profile, update } = useProfile();
@@ -371,7 +374,7 @@ function useAnalyzeTopics(
     setBusy(true);
     setError(null);
     try {
-      let target = material;
+      let target: Picked<CourseMaterial> | null = material;
 
       /* An upload whose text was never read (stuck or failed) gets read first,
        * so Analyze does the obvious thing instead of being unavailable. */
@@ -391,7 +394,7 @@ function useAnalyzeTopics(
 
       if (!isBackendConfigured()) throw new Error(NOT_CONFIGURED_MESSAGE);
       const topics = await predictTopics({
-        materialId: target.id,
+        ...apiSource(target),                       // one file, or the stand-in id plus the files ticked under "Study from"
         courseCode,
         courseName,
         level: profile.level,
@@ -426,7 +429,7 @@ function useAnalyzeTopics(
 type AnalysisState = ReturnType<typeof useAnalyzeTopics>;
 
 function PredictedTopicsSection({ courseCode, material, analysis }: {
-  courseCode: string; material: CourseMaterial | null; analysis: AnalysisState;
+  courseCode: string; material: Picked<CourseMaterial> | null; analysis: AnalysisState;
 }) {
   const { profile } = useProfile();
   const { analyze, busy, error, stored, stale, statusText } = analysis;

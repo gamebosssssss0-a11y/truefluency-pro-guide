@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { HeaderLogo } from "@/components/brand";
 import { SourcePicker } from "@/components/source-picker";
-import { listCourseFiles, pickSource, readSourceChoice, readyFiles, whyNothingReady, type CourseFile } from "@/lib/material-pick";
+import { apiSource, listCourseFiles, pickSource, pickedIds, readSourceChoice, readyFiles, whyNothingReady, type CourseFile, type Picked } from "@/lib/material-pick";
+import { maxSourceFiles } from "@/lib/entitlements";
 import { getMyAccess } from "@/lib/entitlements.functions";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -185,9 +186,10 @@ export function FlashcardsScreen() {
         setError(whyNothingReady(files, displayCode(selected)));
         return;
       }
-      // "Study from": the chosen file, or all of the student's files for this course (the newest readable file by default)
-      const chosen = pickSource(ready, readSourceChoice(selected));
-      const queue = chosen ? [chosen, ...ready.filter((f) => f.id !== chosen.id)] : ready;
+      // "Study from": the files the student ticked (the newest readable file by default), within what their plan allows
+      const chosen = pickSource(ready, readSourceChoice(selected), maxSourceFiles(access?.tier));
+      const chosenIds = pickedIds(chosen);
+      const queue: Array<Picked<CourseFile>> = chosen ? [chosen, ...ready.filter((f) => !chosenIds.includes(f.id))] : ready;
       const course = profile.courses.find((c) => canonicalCourseCode(c.code) === canonicalCourseCode(selected));
       // The newest readable file first. If it has too little text (a one-line pasted note, a cover page), the next one is
       // tried instead of giving up: nothing is charged for an attempt that fails.
@@ -195,7 +197,7 @@ export function FlashcardsScreen() {
       for (const file of queue.slice(0, 3)) {
         try {
           await generateFlashcards({
-            materialId: file.id,
+            ...apiSource(file),                       // one file, or the stand-in id plus the files ticked under "Study from"
             courseCode: selected,
             courseName: course?.name,
           });

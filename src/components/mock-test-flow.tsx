@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse, type CourseMaterial } from "@/lib/course-materials";
 import { SourcePicker } from "@/components/source-picker";
-import { pickSource, readSourceChoice, useSourceChoice } from "@/lib/material-pick";
+import { apiSource, pickSource, readSourceChoice, useSourceChoice } from "@/lib/material-pick";
+import { maxSourceFiles } from "@/lib/entitlements";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
 import { findResumableMockJob, generateMock, submitResults } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
@@ -84,6 +85,10 @@ export function MockGenerationScreen() {
   /** Bumped by "Try again" so the generation effect runs the same request again. */
   const [retryKey, setRetryKey] = useState(0);
   const fetchedRef = useRef(false);
+  // How many files this plan may combine (the server enforces it too); read at the moment generation starts.
+  const { access: genAccess } = useEntitlement();
+  const maxSourceFilesRef = useRef(maxSourceFiles(genAccess?.tier));
+  maxSourceFilesRef.current = maxSourceFiles(genAccess?.tier);
   const quoteCycleStartedRef = useRef(Date.now());
 
 
@@ -131,7 +136,7 @@ export function MockGenerationScreen() {
       try {
         const materials = await listMaterialsForCourse(course.code);
         // "Study from": the file the student chose, or the stand-in for all of their files (default: the newest readable file)
-        const ready = pickSource(materials, readSourceChoice(course.code));
+        const ready = pickSource(materials, readSourceChoice(course.code), maxSourceFilesRef.current);
 
         if (!ready) {
           clearInterval(animId);
@@ -144,7 +149,7 @@ export function MockGenerationScreen() {
         // the backend FIRST and carry on with that job: the plan check below
         // would otherwise refuse a student who had already used their last set
         // on this very mock, and a second start would generate (and charge) twice.
-        const resumeJobId = await findResumableMockJob(course.code, ready.id);
+        const resumeJobId = await findResumableMockJob(course.code, apiSource(ready).materialId);
 
         // Daily set limit and question cap are decided on the server; a refusal
         // is a friendly upsell, not an error.
@@ -187,7 +192,7 @@ export function MockGenerationScreen() {
         // profile fields the service expects, and surfaces real error text.
         const questions = await generateMock(
           {
-            materialId: ready.id,
+            ...apiSource(ready),                       // one file, or the stand-in id plus the files ticked under "Study from"
             courseCode: course.code,
             courseName: course.name,
             questionCount: allowedCount,
@@ -428,8 +433,9 @@ export function MockConfigScreen() {
   const [readiness, setReadiness] = useState<"checking" | "ready" | "blocked">("checking");
   const [materials, setMaterials] = useState<CourseMaterial[] | null>(null);
   const [sourceChoice] = useSourceChoice(course?.code ?? "__none__");
-  // The file (or all files) the mock will be made from; topics only apply when the analysis belongs to the same choice.
-  const readyMaterialId = materials ? pickSource(materials, sourceChoice)?.id ?? null : null;
+  const { access: planAccess } = useEntitlement();
+  // The file (or files) the mock will be made from; topics only apply when the analysis belongs to the same choice.
+  const readyMaterialId = materials ? pickSource(materials, sourceChoice, maxSourceFiles(planAccess?.tier))?.id ?? null : null;
   const analysisForCourse = course ? profile.courseTopicAnalysis[course.code] : undefined;
   const defaults = useMemo(() => timelineDefaults(profile.timeline), [profile.timeline]);
 

@@ -37,7 +37,7 @@ const FAQS = [
   {
     q: "What does it cost?",
     // Price and trial wording come from pricing-copy.ts so they can never drift.
-    a: `Every account starts with a ${TRIAL_LINE}. After that: ${PRICE_LINE} Full access covers unlimited analysis, longer mock sets and the WHY behind every answer.`,
+    a: `Every account starts with a ${TRIAL_LINE}. After that: ${PRICE_LINE} Paid plans add longer mock sets, more files used together (3 on Core, 6 on Exam), more chat usage and the WHY behind every answer.`,
   },
 ];
 

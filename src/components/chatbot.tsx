@@ -19,12 +19,19 @@ import { isAppView } from "@/lib/profile-store";
 import { preparePhoto, uploadChatImage } from "@/lib/chat-image";
 import { warmBackend } from "@/lib/backend-api";
 import { canonicalCourseCode } from "@/lib/course-code";
+import { formatResetTime, nextChatReset } from "@/lib/entitlements";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
 type Mode = (typeof MODES)[number];
+/** One plain line under each mode in the menu, so students know what each choice changes. */
+const MODE_HINTS: Record<Mode, string> = {
+  Explain: "Teach me this topic",
+  "Quiz me": "Ask me one question at a time",
+  "Work a problem": "Solve one together, step by step",
+};
 
 type DictationResultList = ArrayLike<ArrayLike<{ transcript: string }>>;
 type DictationEvent = { resultIndex: number; results: DictationResultList };
@@ -577,7 +584,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
     // Free students out of replies: no POST, no quota spend.
     if (chatCapReached) {
-      notice("Study Chat allowance used up|You've used all of today's Study Chat allowance. It refreshes at midnight (Lagos time).");
+      notice(`Chat usage used up|It resets ${formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.`);
       return;
     }
 
@@ -1227,16 +1234,18 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
                 {modeMenuOpen ? (
-                  <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                  <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 w-60 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
                     {MODES.map((item) => (
                       <button
                         key={item}
                         type="button"
-                        role="menuitem"
+                        role="menuitemradio"
+                        aria-checked={item === mode}
                         onClick={() => { setMode(item); setModeMenuOpen(false); }}
-                        className="block w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-popover-foreground hover:bg-secondary"
+                        className={`block w-full rounded-lg px-3 py-2 text-left text-popover-foreground hover:bg-secondary ${item === mode ? "bg-secondary" : ""}`}
                       >
-                        {item}
+                        <span className="block text-xs font-semibold">{item}</span>
+                        <span className="block text-[11px] font-normal text-muted-foreground">{MODE_HINTS[item]}</span>
                       </button>
                     ))}
                   </div>
@@ -1281,7 +1290,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           </div>
           {chatCapReached ? (
             <p className="mt-1.5 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
-              Today's Study Chat allowance is used up. It refreshes at midnight (Lagos time).
+              Today's chat usage is used up. It resets {formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.
             </p>
           ) : null}
         </div>

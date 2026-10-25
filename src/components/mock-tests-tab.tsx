@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
 import { listMaterialsForCourse } from "@/lib/course-materials";
 import { SOURCE_CHANGE_EVENT, pickSource, readSourceChoice } from "@/lib/material-pick";
+import { useEntitlement } from "@/hooks/use-entitlement";
+import { maxSourceFiles } from "@/lib/entitlements";
 
 /* ================= Tab 2: Mock Tests ================= */
 
@@ -24,6 +26,8 @@ let practiceMaterialCache: Record<string, string | null> = {};
 
 export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
   const { profile, navigate } = useProfile();
+  const { access: planAccess } = useEntitlement();
+  const sourceLimit = maxSourceFiles(planAccess?.tier);
   const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>(() => ({ ...practiceMaterialCache }));
   const [materialsLoading, setMaterialsLoading] = useState(() =>
     profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)),
@@ -46,7 +50,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
       setMaterialsLoading(profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)));
       const results = await Promise.allSettled(profile.courses.map(async (course) => {
           const materials = await listMaterialsForCourse(course.code);
-          return [course.code, pickSource(materials, readSourceChoice(course.code))?.id ?? null] as const;
+          return [course.code, pickSource(materials, readSourceChoice(course.code), sourceLimit)?.id ?? null] as const;
       }));
       const next = { ...practiceMaterialCache };
       for (const result of results) {
@@ -67,7 +71,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
       window.removeEventListener("course-materials-refresh", loadMaterials);
       window.removeEventListener(SOURCE_CHANGE_EVENT, loadMaterials);
     };
-  }, [active, profile.courses]);
+  }, [active, profile.courses, sourceLimit]);
 
   const attempts = [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt);
   const recent = attempts.slice(0, 3);

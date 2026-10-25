@@ -17,8 +17,6 @@ import {
 import { HeaderLogo } from "@/components/brand";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import {
-  approxChatReplies,
-  CHAT_DAILY_TOKENS,
   CORE_DAILY_LIMITS,
   CORE_MAX_QUESTIONS,
   EXAM_DAILY_LIMITS,
@@ -26,6 +24,7 @@ import {
   EXAM_PRICE_NAIRA,
   FREE_DAILY_LIMITS,
   FREE_MAX_QUESTIONS,
+  MOCK_SOURCE_LIMITS,
   formatNaira,
   STANDARD_PRICE_NAIRA,
   FOUNDING_PRICE_NAIRA,
@@ -38,26 +37,40 @@ import {
 
 type Step = "offer" | "plans" | "review" | "redirecting" | "verifying" | "success" | "pending" | "failed";
 
-const chatLine = (tokens: number) => `Study Chat allowance: about ${approxChatReplies(tokens)} replies a day`;
+// Study Chat is sold by usage, not by a number of replies: Free has a daily usage, Core 2x that, Exam 4x.
+const CHAT_USAGE_LINE: Record<"free" | BillingPlan, string> = {
+  free: "Study Chat: daily usage",
+  core: "Study Chat: 2x the free daily usage",
+  exam: "Study Chat: 4x the free daily usage",
+};
+
+const filesLine = (plan: "free" | BillingPlan) => {
+  const n = MOCK_SOURCE_LIMITS[plan];
+  return n === 1 ? "1 file at a time for mock tests, topics and flashcards" : `Use up to ${n} files together for mock tests, topics and flashcards`;
+};
 
 const PLAN_FEATURES: Record<BillingPlan, string[]> = {
   core: [
     `${CORE_DAILY_LIMITS.mock_sets} mock sets daily · up to ${CORE_MAX_QUESTIONS} questions per set`,
+    filesLine("core"),
     "More challenging practice, matched to your goals",
     "Clear “why” explanations and peer-save",
     "Save useful questions to revisit later",
-    `${chatLine(CHAT_DAILY_TOKENS.core)} (twice the free allowance)`,
+    CHAT_USAGE_LINE.core,
     `${CORE_DAILY_LIMITS.flashcard_decks} flashcard decks daily`,
   ],
   exam: [
     `${EXAM_DAILY_LIMITS.mock_sets} mock sets daily · up to ${EXAM_MAX_QUESTIONS} questions per set`,
+    filesLine("exam"),
     "Exam-level difficulty by default",
     "Clear “why” explanations and peer-save",
     "Save useful questions to revisit later",
-    `${chatLine(CHAT_DAILY_TOKENS.exam)} (four times the free allowance)`,
+    CHAT_USAGE_LINE.exam,
     `${EXAM_DAILY_LIMITS.flashcard_decks} flashcard decks daily`,
   ],
 };
+
+const EVERY_PLAN_LINE = "Every plan: unlimited uploads, ask the chat about any page (scanned pages too), send photos, and report any question.";
 
 function formatDate(iso?: string | null): string {
   if (!iso) return "";
@@ -258,7 +271,9 @@ export function UpgradeScreen() {
                   <li>Balanced difficulty</li>
                   <li>No WHY explanations</li>
                   <li>No peer-save</li>
-                  <li>{chatLine(CHAT_DAILY_TOKENS.free)} · {FREE_DAILY_LIMITS.flashcard_decks} decks / day</li>
+                  <li>{filesLine("free")}</li>
+                  <li>{CHAT_USAGE_LINE.free}</li>
+                  <li>{FREE_DAILY_LIMITS.flashcard_decks} flashcard decks / day</li>
                 </ul>
               </article>
               {(["core", "exam"] as BillingPlan[]).map((plan) => (
@@ -277,6 +292,7 @@ export function UpgradeScreen() {
                 </button>
               ))}
             </div>
+            <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">{EVERY_PLAN_LINE}</p>
           </>
         ) : null}
 
