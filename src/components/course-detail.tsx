@@ -18,7 +18,7 @@ import { HeaderLogo } from "@/components/brand";
 import {
   uploadCourseMaterial, listMaterialsForCourse, deleteMaterial,
   findDuplicateMaterial, ACCEPTED_UPLOAD_MIME,
-  isRetryableMaterial, retryExtraction,
+  isRetryableMaterial, retryExtraction, isBeingRead,
   savePastedText, MIN_PASTED_CHARS, PASTED_TOO_SHORT_MESSAGE,
   type CourseMaterial, type UploadStage,
 } from "@/lib/course-materials";
@@ -38,6 +38,9 @@ import { courseFeatureOrder } from "@/lib/personalization";
 
 
 /* -------- shared materials loader for this screen -------- */
+
+/** A "pending" file younger than this is assumed to be on its way (this tab, another tab, or the server's scan reader). */
+const REPAIR_AFTER_MS = 4 * 60_000;
 
 function useCourseMaterials(courseCode: string) {
   const [items, setItems] = useState<CourseMaterial[] | null>(null);
@@ -69,8 +72,14 @@ function useCourseMaterials(courseCode: string) {
   const repaired = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!items) return;
+    // A file that is still being read RIGHT NOW is not stuck. Without this, uploading three files in a row made the list reload
+    // after each one, "repair" the other two (a second, heavy read on the server) and report a failure for a file that was fine.
     const stuck = items.filter(
-      (m) => m.extraction_status === "pending" && !repaired.current.has(m.id),
+      (m) =>
+        m.extraction_status === "pending" &&
+        !repaired.current.has(m.id) &&
+        !isBeingRead(m.id) &&
+        Date.now() - new Date(m.created_at).getTime() > REPAIR_AFTER_MS,
     );
     if (stuck.length === 0) return;
     for (const m of stuck) repaired.current.add(m.id);
@@ -566,11 +575,20 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         },
         // Text is read in the background after the upload finishes; this
         // reports how that went (the list already shows the file as "Reading…").
-        onProcessed: (fresh) => {
-          lastStageKind.current = null;
-          setStage(null); // the "Extracting text…" banner ends here; the toast reports the result
+        onProcessed: (fresh, notes) => {
+          // The "Extracting text…" banner ends here; the toast reports the result. Not while ANOTHER file is mid-upload: its
+          // progress would vanish and the upload button would unlock under it.
+          if (lastStageKind.current !== "uploading" && lastStageKind.current !== "compressing") {
+            lastStageKind.current = null;
+            setStage(null);
+          }
           if (fresh?.extraction_status === "success") {
-            toast.success(`${file.name}: text ready. You can generate a mock test now.`);
+            const cut = !!notes?.usedPages && !!notes?.totalPages && notes.totalPages > notes.usedPages;
+            toast.success(
+              cut
+                ? `${file.name}: text ready for the first ${notes?.usedPages} of its ${notes?.totalPages} pages (the limit is ${notes?.usedPages}). Upload the rest as a second file to use it.`
+                : `${file.name}: text ready. You can generate a mock test now.`,
+            );
           } else if (fresh && fresh.extraction_status !== "pending") {
             toast.message(`We couldn't read the text in ${file.name}`, {
               description: extractionToastMessage(fresh),
