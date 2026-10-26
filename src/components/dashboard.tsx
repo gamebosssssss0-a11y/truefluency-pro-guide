@@ -334,13 +334,20 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   const [hasStudyMaterials, setHasStudyMaterials] = useState<boolean | null>(null);
   useEffect(() => {
     let live = true;
-    void listAllUserMaterials()
-      .then((items) => {
-        if (!live) return;
-        setHasStudyMaterials(items.some((item) => !(item as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy));
-      })
-      .catch((error) => console.warn("[home] couldn't check study materials", error));
-    return () => { live = false; };
+    const loadStudyMaterials = () => {
+      void listAllUserMaterials()
+        .then((items) => {
+          if (!live) return;
+          setHasStudyMaterials(items.some((item) => !(item as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy));
+        })
+        .catch((error) => console.warn("[home] couldn't check study materials", error));
+    };
+    loadStudyMaterials();
+    window.addEventListener("course-materials-refresh", loadStudyMaterials);
+    return () => {
+      live = false;
+      window.removeEventListener("course-materials-refresh", loadStudyMaterials);
+    };
   }, []);
   /** First name only, in title case: never the full legal name, never ALL-CAPS. */
   const name = (() => {
