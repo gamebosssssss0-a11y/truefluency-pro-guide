@@ -257,6 +257,8 @@ export function AccountScreen() {
       surface: "row",
       onClick: () => {
         update({ tourSeen: false });
+        try { window.sessionStorage.setItem("truefluency-show-tour-on-home", "1"); }
+        catch { /* the optional tour can be opened again later */ }
         navigate("home");
       },
     },
