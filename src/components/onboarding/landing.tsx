@@ -243,7 +243,7 @@ function TopicRow({
     tone === "strong"
       ? "bg-accent text-accent-foreground"
       : tone === "moderate"
-        ? "on-sand bg-[#F3E6C8] text-foreground"
+        ? "bg-secondary text-secondary-foreground"
         : "bg-background text-muted-foreground border border-border";
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
