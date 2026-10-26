@@ -111,6 +111,15 @@ export function MockGenerationScreen() {
   }, [reduceMotion]);
 
   useEffect(() => {
+    // Never replace saved work with a newly generated set. Route back to the
+    // active attempt even if another screen reaches this flow unexpectedly.
+    if (profile.inProgressTest) {
+      toast.message("Practice already in progress", {
+        description: `Continue ${profile.inProgressTest.courseCode} before starting another test.`,
+      });
+      navigate("mock-run", { courseCode: profile.inProgressTest.courseCode });
+      return;
+    }
     // One job at a time. Retry can only start a new job once the previous one
     // has settled, so a retry never stacks on top of a running request.
     if (!course || fetchedRef.current || inFlightRef.current) return;
