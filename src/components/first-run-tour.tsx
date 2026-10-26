@@ -87,17 +87,17 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
  * existing persisted profile flag.
  */
 export function FirstRunTourHost() {
-  const { profile, update } = useProfile();
+  const { profile, update, view } = useProfile();
   const onboardingDone = profile.setupComplete && profile.courses.length > 0;
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    if (!onboardingDone || profile.tourSeen) return;
+    if (view !== "home" || !onboardingDone || profile.tourSeen) return;
     try {
       if (window.sessionStorage.getItem("truefluency-show-tour-on-home") === "1") setOpen(true);
     } catch {
       /* the optional tour is unavailable when session storage is blocked */
     }
-  }, [onboardingDone, profile.tourSeen]);
+  }, [view, onboardingDone, profile.tourSeen]);
   if (!open || !onboardingDone || profile.tourSeen) return null;
   return (
     <FirstRunTour
