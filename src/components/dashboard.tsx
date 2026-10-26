@@ -220,7 +220,7 @@ function NextStepCard() {
     };
   }, []);
 
-  const lastAttempt = profile.attempts[0];
+  const lastAttempt = [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt)[0];
 
   const next = (() => {
     if (profile.inProgressTest) {
