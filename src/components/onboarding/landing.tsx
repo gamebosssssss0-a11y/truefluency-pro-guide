@@ -86,11 +86,19 @@ export function LandingScreen() {
               Start 7-day free trial
             </Button>
             <div className="space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
-              <p>{TRIAL_LINE}</p>
-              <p className="break-words">{PRICE_LINE}</p>
               <p>No card required up front.</p>
-              <p>No automatic debit. Trial runs 7 days. Pay when you upgrade.</p>
+              <p>No automatic debit.</p>
             </div>
+            <details className="rounded-xl border border-border bg-card p-3">
+              <summary className="cursor-pointer text-center text-xs font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                Trial and plan details
+              </summary>
+              <div className="mt-3 space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
+                <p>{TRIAL_LINE}</p>
+                <p className="break-words">{PRICE_LINE}</p>
+                <p>Trial runs 7 days. Pay when you upgrade.</p>
+              </div>
+            </details>
             <Button
               size="lg"
               variant="outline"
@@ -217,16 +225,6 @@ export function LandingScreen() {
           </div>
         </details>
 
-        <details className="mt-8 rounded-2xl border border-border bg-card p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            Trial and plan details
-          </summary>
-          <div className="mt-3 space-y-1 text-xs leading-relaxed text-muted-foreground">
-            <p>{TRIAL_LINE}</p>
-            <p className="break-words">{PRICE_LINE}</p>
-            <p>No automatic debit. Trial runs 7 days. Pay when you upgrade.</p>
-          </div>
-        </details>
       </div>
     </div>
   );
