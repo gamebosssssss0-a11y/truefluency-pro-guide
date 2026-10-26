@@ -398,7 +398,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
               <h1 className="font-display text-2xl font-bold leading-tight text-[#F7F3EA] mix-blend-difference">
-                Welcome back, {name}
+                {isNewStudent ? "Welcome" : "Welcome back"}, {name}
               </h1>
               {meta ? <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">{meta}</p> : null}
               {subline ? (
@@ -422,17 +422,21 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         </div>
 
-        <PlanChip />
-        <button type="button" onClick={() => setReminderOpen(true)} className="mb-5 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
-          See plan options
-        </button>
+        {!isNewStudent ? (
+          <>
+            <PlanChip />
+            <button type="button" onClick={() => setReminderOpen(true)} className="mb-5 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
+              See plan options
+            </button>
+          </>
+        ) : null}
         <UpgradeReminderSheet open={reminderOpen} onOpenChange={setReminderOpen} />
 
         {isNewStudent ? (
           <section aria-label="Your first study step">
             <NextStepCard />
             <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-              After you add a course, upload your notes or a past paper. Then you can practise from that material.
+              After this step, add a past paper or notes to practise from your own course material.
             </p>
           </section>
         ) : (
@@ -538,7 +542,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           Predictions are statistical estimates. Always cross-check against your official material.
         </p>
       </div>
-      <FirstRunTourHost />
+      {!isNewStudent ? <FirstRunTourHost /> : null}
     </div>
   );
 }
