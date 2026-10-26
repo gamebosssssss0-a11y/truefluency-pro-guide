@@ -1119,8 +1119,7 @@ export function MockRunScreen() {
                       ) : explanation ? (
                         <>
                           {wasWrong ? <p className="mb-1 text-muted-foreground">Your answer: <MathText>{chosenText}</MathText>. Correct answer: <MathText>{answerText}</MathText>.</p> : null}
-                          {wasWrong && !blocks.wrong ? <p className="mb-1 text-muted-foreground">The saved explanation does not include a separate reason for this option.</p> : null}
-                          <MathText>{wasWrong ? (blocks.wrong ?? blocks.correct) : blocks.correct}</MathText>
+                          {wasWrong ? (blocks.wrong ? <MathText>{blocks.wrong}</MathText> : <p className="text-muted-foreground">The saved explanation does not include a separate reason for this option.</p>) : <MathText>{blocks.correct}</MathText>}
                           {wasWrong ? <div className="mt-2"><h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why the correct answer is right</h4><MathText>{blocks.correct}</MathText></div> : null}
                         </>
                       ) : (
