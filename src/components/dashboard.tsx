@@ -232,6 +232,14 @@ function NextStepCard() {
         go: () => navigate("mock-run", { courseCode: session.courseCode }),
       };
     }
+    if (lastAttempt) {
+      return {
+        title: "Review your last practice",
+        line: `Pick up from your latest ${lastAttempt.courseCode} practice by reviewing the answers.`,
+        cta: "Review last practice",
+        go: () => navigate("attempt-review", { courseCode: lastAttempt.courseCode, attemptId: lastAttempt.id }),
+      };
+    }
     if (!profile.courses.length) {
       return {
         title: "Add your courses",
@@ -371,12 +379,15 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   const activeToday = profile.lastActiveDate === today;
   const subline = greetingSubline(profile.goal);
   const streak = getStreakState(profile, today);
-  const isNewStudent = hydrated && hasStudyMaterials === false &&
-    profile.attempts.length === 0 &&
+  const hasNoStudyHistory = profile.attempts.length === 0 &&
     profile.topicScores.length === 0 &&
     !profile.cgpaActual &&
     !profile.cgpaPlan &&
     !profile.inProgressTest;
+  const isNewStudent = hydrated && hasStudyMaterials === false && hasNoStudyHistory;
+  // Keep the first-use layout sparse while the private uploads list is loading.
+  // NextStepCard shows a safe "checking" state until that read finishes.
+  const showFirstUseLayout = hydrated && hasStudyMaterials !== true && hasNoStudyHistory;
 
   // Saved history is the source of truth for today's mocks: the server counter
   // stays at 0 on trial / full access, which used to zero the meter.
@@ -413,7 +424,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
               <h1 className="font-display text-2xl font-bold leading-tight text-[#F7F3EA] mix-blend-difference">
-                {isNewStudent ? "Welcome" : "Welcome back"}, {name}
+                {showFirstUseLayout ? "Welcome" : "Welcome back"}, {name}
               </h1>
               {meta ? <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">{meta}</p> : null}
               {subline ? (
@@ -437,7 +448,20 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         </div>
 
-        {!isNewStudent ? (
+        {showFirstUseLayout ? (
+          <section aria-label="Your first study step">
+            <NextStepCard />
+            {isNewStudent ? (
+              <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+                After this step, add a past paper or notes to practise from your own course material.
+              </p>
+            ) : null}
+          </section>
+        ) : (
+          <NextStepCard />
+        )}
+
+        {!showFirstUseLayout ? (
           <>
             <PlanChip />
             <button type="button" onClick={() => setReminderOpen(true)} className="mb-5 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
@@ -447,14 +471,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         ) : null}
         <UpgradeReminderSheet open={reminderOpen} onOpenChange={setReminderOpen} />
 
-        {isNewStudent ? (
-          <section aria-label="Your first study step">
-            <NextStepCard />
-            <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-              After this step, add a past paper or notes to practise from your own course material.
-            </p>
-          </section>
-        ) : (
+        {!showFirstUseLayout ? (
           <>
         {/* Streak: cloud-backed qualifying mock activity only. */}
         <div className="mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
@@ -509,8 +526,6 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           <HomeRowLink label="Test history" onClick={() => navigate("test-history")} />
         </div>
 
-        <NextStepCard />
-
         <ContinueFileCard />
         <StrengthsCard />
 
@@ -553,9 +568,11 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
 
           </>
         )}
-        <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
-          Predictions are statistical estimates. Always cross-check against your official material.
-        </p>
+        {!showFirstUseLayout ? (
+          <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
+            Predictions are statistical estimates. Always cross-check against your official material.
+          </p>
+        ) : null}
       </div>
       <FirstRunTourHost />
     </div>
