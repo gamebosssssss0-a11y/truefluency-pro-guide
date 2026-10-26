@@ -356,7 +356,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   const activeToday = profile.lastActiveDate === today;
   const subline = greetingSubline(profile.goal);
   const streak = getStreakState(profile, today);
-  const isNewStudent = hasStudyMaterials === false &&
+  const isNewStudent = hydrated && hasStudyMaterials === false &&
     profile.attempts.length === 0 &&
     profile.topicScores.length === 0 &&
     !profile.cgpaActual &&
