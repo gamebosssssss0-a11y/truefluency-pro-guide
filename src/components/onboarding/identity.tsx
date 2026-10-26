@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,25 @@ export function IdentityScreen() {
   const { profile, update, go } = useProfile();
   const [tab, setTab] = useState<Tab>(() => {
     try {
-      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ? "login" : "signup";
+      const returning = localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1";
+      const requested = sessionStorage.getItem("truefluency-open-identity-auth") === "1";
+      return returning || requested ? "login" : "signup";
     } catch {
       return "signup";
     }
   });
+  const [authOpen, setAuthOpen] = useState(() => {
+    try {
+      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ||
+        sessionStorage.getItem("truefluency-open-identity-auth") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try { sessionStorage.removeItem("truefluency-open-identity-auth"); }
+    catch { /* authentication remains available in the disclosure */ }
+  }, []);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -161,7 +175,16 @@ export function IdentityScreen() {
         </div>
       </button>
 
-      {/* Create an account or sign in when you want progress syncing. */}
+      <details
+        open={authOpen}
+        onToggle={(event) => setAuthOpen(event.currentTarget.open)}
+        className="rounded-2xl border border-border bg-card p-4"
+      >
+        <summary className="cursor-pointer text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+          Sign in or create an account to sync progress
+        </summary>
+        <div className="mt-4">
+      {/* Existing account creation and sign-in flow, kept in one optional disclosure. */}
       {/* Tabs */}
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
         {(["signup", "login"] as Tab[]).map((t) => (
@@ -236,7 +259,8 @@ export function IdentityScreen() {
         {busy === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleGlyph />}
         <span className="text-[15px]">Continue with Google</span>
       </button>
-
+        </div>
+      </details>
 
     </AppShell>
   );
