@@ -1076,7 +1076,7 @@ export function MockRunScreen() {
                 const isCorrectOption = mode === "tutor" && locked && i === q.correct_index;
                 const isWrongSelection = mode === "tutor" && on && i !== q.correct_index;
                 return (
-                  <button key={i} type="button" aria-pressed={on} disabled={locked}
+                  <button key={i} type="button" aria-pressed={on} aria-disabled={locked}
                     onClick={() => setAnswer(i)}
                     className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       isCorrectOption ? "border-success bg-success/10" : isWrongSelection ? "border-destructive bg-destructive/10" : on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
@@ -1092,7 +1092,8 @@ export function MockRunScreen() {
             {mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined ? (() => {
               const selected = t.answers[idx] as number;
               const wasWrong = selected !== q.correct_index;
-              const blocks = toWhyBlocks(q.explanation ?? "", wasWrong);
+              const explanation = q.explanation?.trim() ?? "";
+              const blocks = toWhyBlocks(explanation, wasWrong);
               const chosenText = q.options[selected] ?? "your selected option";
               const answerText = q.options[q.correct_index] ?? "the correct option";
               return (
@@ -1113,21 +1114,25 @@ export function MockRunScreen() {
                       {wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
                     </h3>
                     <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
-                      {failsQualityCheck(q.explanation ?? "") ? (
+                      {failsQualityCheck(explanation) ? (
                         <p className="text-muted-foreground">{QUALITY_FAIL_NOTICE}</p>
-                      ) : (
+                      ) : explanation ? (
                         <>
                           {wasWrong ? <p className="mb-1 text-muted-foreground">Your answer: <MathText>{chosenText}</MathText>. Correct answer: <MathText>{answerText}</MathText>.</p> : null}
+                          {wasWrong && !blocks.wrong ? <p className="mb-1 text-muted-foreground">The saved explanation does not include a separate reason for this option.</p> : null}
                           <MathText>{wasWrong ? (blocks.wrong ?? blocks.correct) : blocks.correct}</MathText>
+                          {wasWrong ? <div className="mt-2"><h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why the correct answer is right</h4><MathText>{blocks.correct}</MathText></div> : null}
                         </>
+                      ) : (
+                        <p className="text-muted-foreground">No explanation was saved for this question.</p>
                       )}
                     </div>
                   </div>
                   <div>
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
                     <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
-                      {failsQualityCheck(q.explanation ?? "") ? (
-                        <span className="text-muted-foreground">Review the explanation when you revisit this question.</span>
+                      {failsQualityCheck(explanation) || !explanation ? (
+                        <span className="text-muted-foreground">The key concept is not available for this question.</span>
                       ) : <MathText>{blocks.concept ?? blocks.correct}</MathText>}
                     </div>
                   </div>
