@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { Upload, ClipboardList, Layers, User, X } from "lucide-react";
@@ -82,20 +82,29 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * Home-only host. The tour shows exactly once: on the first arrival at Home
- * after onboarding is fully finished (profile set up and at least one course).
- * The `tourSeen` flag lives on the persisted profile, so a returning login,
- * a completed signup or a refresh never brings it back.
+ * The tour is optional and opens only when the student asks for it from
+ * Account. The request is session-scoped; tour completion remains in the
+ * existing persisted profile flag.
  */
 export function FirstRunTourHost() {
   const { profile, update } = useProfile();
   const onboardingDone = profile.setupComplete && profile.courses.length > 0;
-  const [open, setOpen] = useState(onboardingDone && !profile.tourSeen);
-  if (!open || profile.tourSeen) return null;
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!onboardingDone || profile.tourSeen) return;
+    try {
+      if (window.sessionStorage.getItem("truefluency-show-tour-on-home") === "1") setOpen(true);
+    } catch {
+      /* the optional tour is unavailable when session storage is blocked */
+    }
+  }, [onboardingDone, profile.tourSeen]);
+  if (!open || !onboardingDone || profile.tourSeen) return null;
   return (
     <FirstRunTour
       onClose={() => {
         setOpen(false);
+        try { window.sessionStorage.removeItem("truefluency-show-tour-on-home"); }
+        catch { /* the tour is still closed for this render */ }
         update({ tourSeen: true });
       }}
     />
