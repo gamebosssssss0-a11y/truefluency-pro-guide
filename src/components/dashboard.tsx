@@ -557,7 +557,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           Predictions are statistical estimates. Always cross-check against your official material.
         </p>
       </div>
-      {!isNewStudent ? <FirstRunTourHost /> : null}
+      <FirstRunTourHost />
     </div>
   );
 }
