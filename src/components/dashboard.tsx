@@ -223,6 +223,15 @@ function NextStepCard() {
   const lastAttempt = profile.attempts[0];
 
   const next = (() => {
+    if (profile.inProgressTest) {
+      const session = profile.inProgressTest;
+      return {
+        title: "Continue practice",
+        line: `Resume your in-progress practice for ${session.courseCode}. Your saved answers are ready.`,
+        cta: "Continue practice",
+        go: () => navigate("mock-run", { courseCode: session.courseCode }),
+      };
+    }
     if (!profile.courses.length) {
       return {
         title: "Add your courses",
@@ -314,6 +323,17 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   const { profile, navigate, hydrated } = useProfile();
   const { access } = useEntitlement();
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [hasStudyMaterials, setHasStudyMaterials] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void listAllUserMaterials()
+      .then((items) => {
+        if (!live) return;
+        setHasStudyMaterials(items.some((item) => !(item as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy));
+      })
+      .catch((error) => console.warn("[home] couldn't check study materials", error));
+    return () => { live = false; };
+  }, []);
   /** First name only, in title case: never the full legal name, never ALL-CAPS. */
   const name = (() => {
     const raw = (profile.identity?.name ?? "").trim();
@@ -336,6 +356,11 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   const activeToday = profile.lastActiveDate === today;
   const subline = greetingSubline(profile.goal);
   const streak = getStreakState(profile, today);
+  const isNewStudent = hasStudyMaterials === false &&
+    profile.attempts.length === 0 &&
+    profile.topicScores.length === 0 &&
+    !profile.cgpaActual &&
+    !profile.cgpaPlan;
 
   // Saved history is the source of truth for today's mocks: the server counter
   // stays at 0 on trial / full access, which used to zero the meter.
@@ -402,6 +427,15 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         </button>
         <UpgradeReminderSheet open={reminderOpen} onOpenChange={setReminderOpen} />
 
+        {isNewStudent ? (
+          <section aria-label="Your first study step">
+            <NextStepCard />
+            <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+              After you add a course, upload your notes or a past paper. Then you can practise from that material.
+            </p>
+          </section>
+        ) : (
+          <>
         {/* Streak: cloud-backed qualifying mock activity only. */}
         <div className="mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
@@ -497,6 +531,8 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         </div>
 
+          </>
+        )}
         <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
           Predictions are statistical estimates. Always cross-check against your official material.
         </p>
