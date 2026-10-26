@@ -41,7 +41,7 @@ const FACULTIES = "Science, Clinical, Arts, Law, Technology, Social Sciences";
 
 export function LandingScreen() {
   const { go } = useProfile();
-  const insideRef = useRef<HTMLDivElement | null>(null);
+  const insideRef = useRef<HTMLDetailsElement | null>(null);
 
   return (
     <div className="on-sand min-h-screen">
@@ -76,7 +76,7 @@ export function LandingScreen() {
           <div className="mt-6 space-y-3">
             <Button
               size="lg"
-              className="h-12 min-h-[48px] w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
+              className="h-12 min-h-[48px] w-full bg-accent text-accent-foreground hover:bg-accent/90"
               onClick={() => go("disclaimer")}
             >
               Start 7-day free trial
@@ -92,7 +92,11 @@ export function LandingScreen() {
               variant="outline"
               className="w-full border-[#E4DCC8] bg-surface text-[#1B2A4A]"
               onClick={() =>
-                insideRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                (() => {
+                  if (!insideRef.current) return;
+                  insideRef.current.open = true;
+                  insideRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+                })()
               }
             >
               See what's inside
@@ -159,8 +163,10 @@ export function LandingScreen() {
           Built for University of Ibadan students across {FACULTIES}.
         </p>
 
-        <div ref={insideRef} className="mt-10 scroll-mt-4">
-          <h2 className="font-display text-xl font-semibold text-[#1B2A4A]">What's inside</h2>
+        <details ref={insideRef} className="mt-10 scroll-mt-4 rounded-2xl border border-border bg-card p-4">
+          <summary className="cursor-pointer list-none font-display text-xl font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            What's inside
+          </summary>
           <figure className="mt-4">
             <img
               src={productPreview.url}
@@ -183,7 +189,7 @@ export function LandingScreen() {
               </div>
             ))}
           </div>
-        </div>
+        </details>
 
         <div className="mt-10 rounded-2xl border border-[#E4DCC8] bg-surface p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[#1B2A4A]">
@@ -205,7 +211,7 @@ export function LandingScreen() {
         <div className="mt-8">
           <Button
             size="lg"
-            className="h-12 min-h-[48px] w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
+            className="h-12 min-h-[48px] w-full bg-accent text-accent-foreground hover:bg-accent/90"
             onClick={() => go("disclaimer")}
           >
             Start 7-day free trial
