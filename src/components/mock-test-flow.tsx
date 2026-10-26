@@ -63,6 +63,8 @@ const QUOTE_CYCLE_MS = 6000;
 export function MockGenerationScreen() {
   const course = useActiveCourse();
   const { navigate, profile, update } = useProfile();
+  const activeSessionRef = useRef(profile.inProgressTest);
+  activeSessionRef.current = profile.inProgressTest;
   const [pct, setPct] = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
   // Random starting quote on every visit to this screen.
@@ -234,6 +236,17 @@ export function MockGenerationScreen() {
 
         clearInterval(animId);
         setPct(100);
+
+        // A session could have appeared in another tab while this job was
+        // running. Keep those saved answers instead of replacing them.
+        const activeSession = activeSessionRef.current;
+        if (activeSession) {
+          toast.message("Practice already in progress", {
+            description: `Continue ${activeSession.courseCode} before starting another test.`,
+          });
+          navigate("mock-run", { courseCode: activeSession.courseCode });
+          return;
+        }
 
         // Store the AI questions under this course code so a set generated for
         // one course can never be served during another course's test.
