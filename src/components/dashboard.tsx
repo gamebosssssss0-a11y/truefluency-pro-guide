@@ -567,7 +567,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         </div>
 
           </>
-        )}
+        ) : null}
         {!showFirstUseLayout ? (
           <p className="mt-8 text-center text-[11px] leading-relaxed text-[#F7F3EA] mix-blend-difference">
             Predictions are statistical estimates. Always cross-check against your official material.
