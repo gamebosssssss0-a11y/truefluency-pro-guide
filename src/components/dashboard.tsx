@@ -360,7 +360,8 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
     profile.attempts.length === 0 &&
     profile.topicScores.length === 0 &&
     !profile.cgpaActual &&
-    !profile.cgpaPlan;
+    !profile.cgpaPlan &&
+    !profile.inProgressTest;
 
   // Saved history is the source of truth for today's mocks: the server counter
   // stays at 0 on trial / full access, which used to zero the meter.
