@@ -240,6 +240,14 @@ function NextStepCard() {
         go: () => navigate("add-course"),
       };
     }
+    if (ownCount === null) {
+      return {
+        title: "Checking your study materials",
+        line: "Your uploads are loading. You can open My Files to see them.",
+        cta: "Open My Files",
+        go: () => navigate("library"),
+      };
+    }
     if (ownCount === 0) {
       const code = firstOwn?.course_code ?? profile.courses[0]!.code;
       return {
