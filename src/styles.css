@@ -67,7 +67,7 @@
   --ink: #1B2A4A;
 
   --background: #F7F3EA;
-  --foreground: #1B2A4A;
+  --foreground: #243447;
   --surface: #FBF7EE;
 
   --card: var(--surface);
@@ -75,17 +75,18 @@
   --popover: var(--surface);
   --popover-foreground: #1B2A4A;
 
-  --primary: #1B2A4A;
+  --primary: #334155;
   --primary-foreground: #F7F3EA;
 
   --secondary: oklch(0.94 0.02 85);
   --secondary-foreground: #1B2A4A;
 
   --muted: oklch(0.94 0.015 85);
-  --muted-foreground: #5C5C70;
+  --muted-foreground: #526171;
 
-  --accent: #B86E0A;
-  --accent-foreground: #1B2A4A;
+  --accent: #0F766E;
+  --accent-foreground: #F7F3EA;
+  --accent-on-sand: #0F766E;
 
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: #F7F3EA;
@@ -95,7 +96,7 @@
 
   --border: #E4DCC8;
   --input: oklch(0.9 0.015 85);
-  --ring: #B86E0A;
+  --ring: #0F766E;
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
   --pill-text-l: 30%;
 
@@ -114,30 +115,31 @@
 
 }
 
-/* Dark: navy page, raised navy cards, slate wash, and the same amber accent. */
+/* Dark: navy page, raised navy cards, slate wash, and a teal accent. */
 .dark {
   --background: #020A1A;
-  --foreground: #F7F3EA;
+  --foreground: #E2E8F0;
   --card: #0E1A33;
   --surface: var(--card);
   --card-foreground: #F7F3EA;
   --popover: #132240;
   --popover-foreground: #F7F3EA;
-  --primary: #0E1A33;
+  --primary: #1E293B;
   --primary-foreground: #F7F3EA;
   --secondary: #132240;
   --secondary-foreground: #F7F3EA;
   --muted: #132240;
-  --muted-foreground: #C4B8A0;
-  --accent: #B86E0A;
+  --muted-foreground: #A8B3C2;
+  --accent: #2DD4BF;
   --accent-foreground: #020A1A;
+  --accent-on-sand: #0F766E;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: #F7F3EA;
   --success: oklch(0.7 0.15 150);
   --warning: #B86E0A;
   --border: #243656;
   --input: #243656;
-  --ring: #B86E0A;
+  --ring: #2DD4BF;
   --cream: #F7F3EA;
   --sand: #F3E6C8;
   --ink: #F7F3EA;
@@ -234,21 +236,15 @@
     color: #1B2A4A;
   }
 
-  .on-sand :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  .surface-wash :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  .surface-icon-well :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  .bg-sand :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  [class*="bg-sand/"] :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  .bg-cream :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  [class*="bg-cream/"] :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  .on-sand.text-accent,
-  .on-sand.text-amber,
-  .on-sand.text-warn,
-  .on-sand.text-ppt-amber,
-  .surface-wash.text-accent,
-  .surface-wash.text-amber,
-  .surface-wash.text-warn,
-  .surface-wash.text-ppt-amber {
+  :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) :is(.text-accent),
+  :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-accent {
+    color: var(--accent-on-sand);
+  }
+
+  :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) :is(.text-amber, .text-warn, .text-ppt-amber),
+  :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-amber,
+  :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-warn,
+  :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-ppt-amber {
     color: #8B5106;
   }
 
@@ -259,13 +255,13 @@
 
   /* Keep the brand amber for fills while using readable amber text. */
   .text-accent,
-  .text-amber,
-  .text-ppt-amber,
-  .text-warn {
-    color: #8B5106;
+  .text-accent:hover {
+    color: var(--accent);
   }
 
-  .text-accent:hover,
+  .text-amber,
+  .text-ppt-amber,
+  .text-warn,
   .text-amber:hover,
   .text-ppt-amber:hover,
   .text-warn:hover {
@@ -273,30 +269,24 @@
   }
 
   .dark .text-accent,
+  .dark .text-accent:hover {
+    color: var(--accent);
+  }
+
   .dark .text-amber,
   .dark .text-ppt-amber,
   .dark .text-warn,
-  .dark .text-accent:hover,
   .dark .text-amber:hover,
   .dark .text-ppt-amber:hover,
   .dark .text-warn:hover {
     color: #E3B36B;
   }
 
-  .text-accent-foreground {
-    color: #080D19;
-  }
-
-  .dark .text-accent-foreground {
-    color: #020A1A;
-  }
-
-  .bg-accent.text-accent-foreground {
-    color: #080D19;
-  }
-
+  .text-accent-foreground,
+  .dark .text-accent-foreground,
+  .bg-accent.text-accent-foreground,
   .dark .bg-accent.text-accent-foreground {
-    color: #020A1A;
+    color: var(--accent-foreground);
   }
 
   .bg-amber.text-cream,
@@ -319,7 +309,7 @@
   }
 
   .dark .bg-accent.text-accent-foreground:hover {
-    color: #020A1A;
+    color: var(--accent-foreground);
   }
 
   .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) .text-navy,
@@ -327,8 +317,12 @@
     color: #1B2A4A;
   }
 
-  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) :is(.text-accent, .text-amber, .text-warn, .text-ppt-amber),
-  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-accent,
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) :is(.text-accent),
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-accent {
+    color: var(--accent-on-sand);
+  }
+
+  .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]) :is(.text-amber, .text-warn, .text-ppt-amber),
   .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-amber,
   .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-warn,
   .dark :is(.on-sand, .surface-wash, .surface-icon-well, .bg-sand, [class*="bg-sand/"], .bg-cream, [class*="bg-cream/"]).text-ppt-amber {
@@ -370,7 +364,7 @@
     background-image: linear-gradient(90deg, #F7F3EA 0%, #F7F3EA 38%, #E3B36B 50%, #F7F3EA 62%, #F7F3EA 100%);
   }
 
-  /* High-contrast quote card: dark ink panel, glowing amber edge. */
+  /* High-contrast quote card: dark slate panel, restrained accent edge. */
   .quote-card {
     background: #1B2A4A;
     border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
@@ -621,31 +615,56 @@
   }
 }
 
-/* Scoped accessibility and solid page treatment for utility screens. */
+/* Solid study utility surfaces follow the same slate/teal system in both themes. */
 .study-utility-page {
   --background: #F7F3EA;
-  --foreground: #1B2A4A;
+  --foreground: #243447;
   --surface: #FBF7EE;
   --card: #FBF7EE;
-  --card-foreground: #1B2A4A;
+  --card-foreground: #243447;
   --popover: #FBF7EE;
-  --popover-foreground: #1B2A4A;
-  --primary: #1B2A4A;
+  --popover-foreground: #243447;
+  --primary: #334155;
   --primary-foreground: #F7F3EA;
   --secondary: #EFE8D9;
-  --secondary-foreground: #1B2A4A;
+  --secondary-foreground: #243447;
   --muted: #EFE8D9;
-  --muted-foreground: #46536C;
-  --accent: #B86E0A;
-  --accent-foreground: #1B2A4A;
+  --muted-foreground: #526171;
+  --accent: #0F766E;
+  --accent-foreground: #F7F3EA;
   --success: #2F6B4F;
   --warning: #B86E0A;
   --destructive: #8B2E2E;
   --border: #E4DCC8;
   --input: #E4DCC8;
-  background-color: #F7F3EA;
+  background-color: var(--background);
   background-image: none;
-  color: #1B2A4A;
+  color: var(--foreground);
+}
+
+.dark .study-utility-page {
+  --background: #020A1A;
+  --foreground: #E2E8F0;
+  --surface: #0E1A33;
+  --card: #0E1A33;
+  --card-foreground: #E2E8F0;
+  --popover: #132240;
+  --popover-foreground: #E2E8F0;
+  --primary: #1E293B;
+  --primary-foreground: #F7F3EA;
+  --secondary: #132240;
+  --secondary-foreground: #E2E8F0;
+  --muted: #132240;
+  --muted-foreground: #A8B3C2;
+  --accent: #2DD4BF;
+  --accent-foreground: #020A1A;
+  --success: #7BBF9A;
+  --warning: #F2C27E;
+  --destructive: #F2A3A3;
+  --border: #243656;
+  --input: #243656;
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 /* Let selected utility screens share the app shell background. */
@@ -656,21 +675,29 @@
 
 .study-utility-page .text-muted-foreground,
 .study-utility-page [class~="text-muted-foreground/80"] {
-  color: #46536C;
+  color: #526171;
 }
 
-.study-utility-page .text-accent,
+.dark .study-utility-page .text-muted-foreground,
+.dark .study-utility-page [class~="text-muted-foreground/80"] {
+  color: #A8B3C2;
+}
+
+.study-utility-page .text-accent {
+  color: var(--accent);
+}
+
 .study-utility-page .text-warning {
-  color: #8A4F00;
+  color: var(--warning);
 }
 
 .study-utility-page .bg-accent {
-  background-color: #8A4F00;
+  background-color: var(--accent);
 }
 
 .study-utility-page .bg-accent.text-accent-foreground,
 .study-utility-page .bg-accent .text-accent-foreground {
-  color: #F7F3EA;
+  color: var(--accent-foreground);
 }
 
 .study-utility-page [class~="text-[9px]"],

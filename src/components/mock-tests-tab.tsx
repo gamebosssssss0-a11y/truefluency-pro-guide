@@ -81,18 +81,34 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F7F3EA] mix-blend-difference">
             Practice
           </span>
         </div>
 
-        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] dark:text-[#F7F3EA]">Practice</h1>
-        <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
+        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] mix-blend-difference">Practice</h1>
+        <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">
           Sit a mock test built from your own uploads. Pick a course, choose how long, then start.
         </p>
 
+        {profile.inProgressTest ? (
+          <section aria-label="Practice in progress" className="mt-5 rounded-2xl border border-accent/40 border-l-4 border-l-accent bg-card p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">Practice in progress</div>
+            <h2 className="mt-1 text-base font-semibold text-foreground">{profile.inProgressTest.courseCode}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Your answers and question position are saved. Continue where you left off.
+            </p>
+            <Button
+              className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => navigate("mock-run", { courseCode: profile.inProgressTest!.courseCode })}
+            >
+              Continue practice
+            </Button>
+          </section>
+        ) : null}
+
         {/* Course selection */}
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
+        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-[#F7F3EA] mix-blend-difference">
           Choose a course
         </h2>
         {profile.courses.length === 0 ? (
@@ -165,11 +181,11 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                     </Button>
                     <Button
                       size="sm"
-                      disabled={materialsLoading}
+                      disabled={materialsLoading || Boolean(profile.inProgressTest)}
                       onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}
                     >
                       <Zap className="mr-1.5 h-3.5 w-3.5" />
-                      {materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
+                      {profile.inProgressTest ? "Finish current practice first" : materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
                     </Button>
                   </div>
                 </div>

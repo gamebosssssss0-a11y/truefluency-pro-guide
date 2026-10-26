@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings } from "@/lib/profile-store";
+import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings, type MockMode } from "@/lib/profile-store";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -63,6 +63,8 @@ const QUOTE_CYCLE_MS = 6000;
 export function MockGenerationScreen() {
   const course = useActiveCourse();
   const { navigate, profile, update } = useProfile();
+  const activeSessionRef = useRef(profile.inProgressTest);
+  activeSessionRef.current = profile.inProgressTest;
   const [pct, setPct] = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
   // Random starting quote on every visit to this screen.
@@ -111,6 +113,15 @@ export function MockGenerationScreen() {
   }, [reduceMotion]);
 
   useEffect(() => {
+    // Never replace saved work with a newly generated set. Route back to the
+    // active attempt even if another screen reaches this flow unexpectedly.
+    if (profile.inProgressTest) {
+      toast.message("Practice already in progress", {
+        description: `Continue ${profile.inProgressTest.courseCode} before starting another test.`,
+      });
+      navigate("mock-run", { courseCode: profile.inProgressTest.courseCode });
+      return;
+    }
     // One job at a time. Retry can only start a new job once the previous one
     // has settled, so a retry never stacks on top of a running request.
     if (!course || fetchedRef.current || inFlightRef.current) return;
@@ -226,6 +237,17 @@ export function MockGenerationScreen() {
         clearInterval(animId);
         setPct(100);
 
+        // A session could have appeared in another tab while this job was
+        // running. Keep those saved answers instead of replacing them.
+        const activeSession = activeSessionRef.current;
+        if (activeSession) {
+          toast.message("Practice already in progress", {
+            description: `Continue ${activeSession.courseCode} before starting another test.`,
+          });
+          navigate("mock-run", { courseCode: activeSession.courseCode });
+          return;
+        }
+
         // Store the AI questions under this course code so a set generated for
         // one course can never be served during another course's test.
         update({
@@ -236,6 +258,7 @@ export function MockGenerationScreen() {
           inProgressTest: {
             courseCode: course.code,
             courseTitle: course.name,
+            mode: settings?.mode ?? "tutor",
             questionCount: questions.length,
             durationSec: (settings?.minutes ?? 30) * 60,
             startedAt: Date.now(),
@@ -493,6 +516,7 @@ export function MockConfigScreen() {
   const [count, setCount] = useState(initialCount);
   const [minutes, setMinutes] = useState(initial?.minutes ?? defaultMinutesForCount(initialCount));
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
+  const [mode, setMode] = useState<MockMode>(initial?.mode ?? "tutor");
 
   // Topic options come from THIS course's stored analysis, not from a
   // previously generated question set (which may belong to another course).
@@ -574,6 +598,7 @@ export function MockConfigScreen() {
           ? difficulty === "exam" ? "challenging" : difficulty
           : "balanced";
     const nextSettings: CourseTestSettings = {
+      mode,
       questionCount: effectiveCount,
       minutes,
       difficulty: effectiveDifficulty,
@@ -654,6 +679,30 @@ export function MockConfigScreen() {
 
 
           <ConfigSlider label="Duration" unit="minutes" value={minutes} min={15} max={75} step={5} onChange={setMinutes} />
+
+          <fieldset>
+            <legend className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Practice mode</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { key: "tutor", title: "Tutor", detail: "See an explanation after each answer." },
+                { key: "exam", title: "Exam", detail: "Review answers after you finish." },
+              ] as const).map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  aria-pressed={mode === option.key}
+                  onClick={() => setMode(option.key)}
+                  className={cn(
+                    "rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                    mode === option.key ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50",
+                  )}
+                >
+                  <span className="block text-sm font-semibold text-foreground">{option.title}</span>
+                  <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">{option.detail}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Difficulty</label>
@@ -790,6 +839,8 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeilin
 export function MockRunScreen() {
   const { profile, update, navigate } = useProfile();
   const t = profile.inProgressTest;
+  // Legacy sessions without a mode retain the existing end-only answer reveal.
+  const mode: MockMode = t?.mode ?? "exam";
   // Only this course's generated set, so questions never cross courses.
   const aiQuestions: AIQuestion[] = t ? (t.questions ?? profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
 
@@ -965,6 +1016,7 @@ export function MockRunScreen() {
   const timerColor = pct <= 20 ? "text-destructive" : pct <= 50 ? "text-warning" : "text-primary";
 
   const setAnswer = (a: number) => {
+    if (mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined) return;
     const next = [...t.answers]; next[idx] = a;
     update({ inProgressTest: { ...t, answers: next } });
   };
@@ -1042,10 +1094,14 @@ export function MockRunScreen() {
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
                 const on = t.answers[idx] === i;
+                const locked = mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined;
+                const isCorrectOption = mode === "tutor" && locked && i === q.correct_index;
+                const isWrongSelection = mode === "tutor" && on && i !== q.correct_index;
                 return (
-                  <button key={i} onClick={() => setAnswer(i)}
-                    className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition",
-                      on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
+                  <button key={i} type="button" aria-pressed={on} aria-disabled={locked}
+                    onClick={() => setAnswer(i)}
+                    className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                      isCorrectOption ? "border-success bg-success/10" : isWrongSelection ? "border-destructive bg-destructive/10" : on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
                     <div className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
                       on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
@@ -1055,6 +1111,69 @@ export function MockRunScreen() {
                 );
               })}
             </div>
+            {mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined ? (() => {
+              const selected = t.answers[idx] as number;
+              const wasWrong = selected !== q.correct_index;
+              const explanation = q.explanation?.trim() ?? "";
+              const blocks = toWhyBlocks(explanation, wasWrong);
+              const chosenText = q.options[selected] ?? "your selected option";
+              const answerText = q.options[q.correct_index] ?? "the correct option";
+              return (
+                <section
+                  className="mt-4 space-y-3 rounded-xl border border-border bg-background p-4"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  aria-label="Answer feedback"
+                >
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden="true" className={cn("grid h-6 w-6 place-items-center rounded-full text-xs font-bold", wasWrong ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
+                      {wasWrong ? "!" : "✓"}
+                    </span>
+                    <h2 className="text-sm font-semibold text-foreground">{wasWrong ? "Not quite" : "Correct"}</h2>
+                  </div>
+                  <div>
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
+                    </h3>
+                    <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      {failsQualityCheck(explanation) ? (
+                        <p className="text-muted-foreground">{QUALITY_FAIL_NOTICE}</p>
+                      ) : explanation ? (
+                        <>
+                          {wasWrong ? <p className="mb-1 text-muted-foreground">Your answer: <MathText>{chosenText}</MathText>. Correct answer: <MathText>{answerText}</MathText>.</p> : null}
+                          {wasWrong ? (blocks.wrong ? <MathText>{blocks.wrong}</MathText> : <p className="text-muted-foreground">The saved explanation does not include a separate reason for this option.</p>) : <MathText>{blocks.correct}</MathText>}
+                          {wasWrong ? <div className="mt-2"><h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why the correct answer is right</h4><MathText>{blocks.correct}</MathText></div> : null}
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">No explanation was saved for this question.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
+                    <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      {failsQualityCheck(explanation) || !explanation ? (
+                        <span className="text-muted-foreground">The key concept is not available for this question.</span>
+                      ) : blocks.concept ? (
+                        <MathText>{blocks.concept}</MathText>
+                      ) : (
+                        <span className="text-muted-foreground">A separate key concept was not included in the saved explanation.</span>
+                      )}
+                    </div>
+                  </div>
+                  {!failsQualityCheck(explanation) && explanation.length > 180 ? (
+                    <details className="rounded-lg border border-border bg-card/60 px-3 py-2">
+                      <summary className="cursor-pointer text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+                        Read the full saved explanation
+                      </summary>
+                      <div className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                        <MathText>{explanation}</MathText>
+                      </div>
+                    </details>
+                  ) : null}
+                </section>
+              );
+            })() : null}
             <div className="mt-4 flex items-start justify-between gap-3">
               <AiGeneratedLabel />
               {/* Optional: a question that is cut off, has two right answers, a wrong key ... can be reported right here. */}
@@ -1070,11 +1189,11 @@ export function MockRunScreen() {
             </Button>
             {idx === questions.length - 1 ? (
               <Button size="lg" onClick={submitWithWarning} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90" disabled={answered === 0}>
-                Submit ({answered}/{questions.length})
+                {mode === "tutor" ? "Finish practice" : `Submit (${answered}/${questions.length})`}
               </Button>
             ) : (
               <Button size="lg" onClick={() => move(1)} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                Next <ChevronRight className="ml-1 h-4 w-4" />
+                {mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined ? "Next question" : "Next"} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             )}
 

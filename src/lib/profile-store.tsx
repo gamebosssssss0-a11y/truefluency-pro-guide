@@ -29,8 +29,12 @@ export type MockAttempt = {
   settings?: CourseTestSettings;
 };
 
+export type MockMode = "tutor" | "exam";
+
 export type InProgressTest = {
   courseCode: string;
+  /** Missing on legacy sessions; treated as Exam mode to preserve end-only feedback. */
+  mode?: MockMode;
   courseTitle: string;
   questionCount: number;
   durationSec: number;
@@ -49,6 +53,8 @@ export type TopicScore = { course: string; topic: string; score: number };
 export type Difficulty = "gentle" | "balanced" | "challenging" | "exam";
 
 export type CourseTestSettings = {
+  /** Practice mode is separate from question difficulty. */
+  mode?: MockMode;
   questionCount: number;
   minutes: number;
   difficulty: Difficulty;

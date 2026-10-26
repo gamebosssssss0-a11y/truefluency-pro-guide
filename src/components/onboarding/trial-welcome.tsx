@@ -29,11 +29,13 @@ export function TrialWelcomeScreen() {
           {PAID_MAX_QUESTIONS} questions, unlimited topic refreshes, and the WHY
           behind every answer.
         </p>
-        <p>
-          After the trial, a free account gets 2 mock sets a day and{" "}
-          {FREE_MAX_QUESTIONS} questions per set.
-        </p>
-        <p className="break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
+        <details className="rounded-xl border border-border bg-background/60 p-3">
+          <summary className="cursor-pointer font-medium text-foreground">After your trial</summary>
+          <p className="mt-2">
+            A free account gets 2 mock sets a day and {FREE_MAX_QUESTIONS} questions per set.
+          </p>
+          <p className="mt-2 break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
+        </details>
       </div>
 
       <Button

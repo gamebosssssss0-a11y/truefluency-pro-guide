@@ -184,8 +184,11 @@ export function CoursesScreen() {
       .filter((c) => selectedDept.includes(c.code))
       .map((c) => ({ ...c, source: "verified" }));
     const all: UserCourse[] = [...gesCourses, ...chosenDept, ...manualCourses];
-    update({ courses: all, setupComplete: true });
-    go("cgpa-intro");
+    // CGPA tools stay available in Account; don't make their introduction
+    // an extra gate before a student's first study action.
+    update({ courses: all, setupComplete: true, cgpaIntroSeen: true });
+    if (profile.trialNoticeSeen) go("dashboard");
+    else go("trial-welcome");
   };
 
   const totalPicked = ges.length + selectedDept.length + manualCourses.length;

@@ -50,7 +50,7 @@ function Dots({ index }: { index: 0 | 1 | 2 }) {
 }
 
 function PersonalizationScreen<T extends string>({
-  step, stepIndex, title, subtitle, options, value, onChange, onBack, onNext,
+  step, stepIndex, title, subtitle, options, value, onChange, onBack, onNext, onSkip,
 }: {
   step: number;
   stepIndex: 0 | 1 | 2;
@@ -61,6 +61,7 @@ function PersonalizationScreen<T extends string>({
   onChange: (v: T) => void;
   onBack: () => void;
   onNext: () => void;
+  onSkip: () => void;
 }) {
   return (
     <AppShell step={step} total={7} title={title} subtitle={subtitle}>
@@ -111,6 +112,9 @@ function PersonalizationScreen<T extends string>({
           Next <ArrowRight className="ml-1.5 h-4 w-4" />
         </Button>
       </div>
+      <button type="button" onClick={onSkip} className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        Skip for now
+      </button>
     </AppShell>
   );
 }
@@ -123,12 +127,13 @@ export function GoalScreen() {
       step={1}
       stepIndex={0}
       title="What's your main goal right now?"
-      subtitle="We'll tune your Home around this."
+      subtitle="Optional. We'll tune your Home around this."
       options={goals}
       value={value}
       onChange={setValue}
       onBack={() => go("identity" as OnboardingStep)}
       onNext={() => { if (value) { update({ goal: value }); go("timeline"); } }}
+      onSkip={() => go("timeline")}
     />
   );
 }
@@ -141,12 +146,13 @@ export function TimelineScreen() {
       step={2}
       stepIndex={1}
       title="How much time until your next exam?"
-      subtitle="This helps us pace your study sessions."
+      subtitle="Optional. This helps us pace your study sessions."
       options={timelines}
       value={value}
       onChange={setValue}
       onBack={() => go("goal")}
       onNext={() => { if (value) { update({ timeline: value }); go("study-pref"); } }}
+      onSkip={() => go("study-pref")}
     />
   );
 }
@@ -159,12 +165,13 @@ export function StudyPreferenceScreen() {
       step={3}
       stepIndex={2}
       title="How do you prefer to study?"
-      subtitle="We'll surface this style first on your Home."
+      subtitle="Optional. We'll surface this style first on your Home."
       options={prefs}
       value={value}
       onChange={setValue}
       onBack={() => go("timeline")}
       onNext={() => { if (value) { update({ studyPreference: value }); go("faculty"); } }}
+      onSkip={() => go("faculty")}
     />
   );
 }

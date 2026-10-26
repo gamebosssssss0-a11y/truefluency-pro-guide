@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,25 @@ export function IdentityScreen() {
   const { profile, update, go } = useProfile();
   const [tab, setTab] = useState<Tab>(() => {
     try {
-      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ? "login" : "signup";
+      const returning = localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1";
+      const requested = sessionStorage.getItem("truefluency-open-identity-auth") === "1";
+      return returning || requested ? "login" : "signup";
     } catch {
       return "signup";
     }
   });
+  const [authOpen, setAuthOpen] = useState(() => {
+    try {
+      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ||
+        sessionStorage.getItem("truefluency-open-identity-auth") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try { sessionStorage.removeItem("truefluency-open-identity-auth"); }
+    catch { /* authentication remains available in the disclosure */ }
+  }, []);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -144,9 +158,33 @@ export function IdentityScreen() {
 
   return (
     <AppShell
-      title={tab === "signup" ? "Create your account" : "Welcome back"}
-      subtitle="Signed-in progress syncs to your account across devices."
+      title={authOpen ? (tab === "signup" ? "Create your account" : "Welcome back") : "Start studying"}
+      subtitle={authOpen ? "Sign in to sync your progress across devices." : "Continue as a guest now. Add an account later if you want to sync across devices."}
     >
+      <button
+        onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
+        disabled={busy !== null}
+        className="group mb-5 flex w-full items-center gap-4 rounded-2xl border border-accent/40 bg-accent/5 p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md disabled:opacity-60"
+      >
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+          {busy === "guest" ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserRound className="h-5 w-5" />}
+        </div>
+        <div>
+          <div className="font-semibold text-foreground">Continue without signing in</div>
+          <div className="text-xs text-muted-foreground">Start studying now. Add an account later to sync progress.</div>
+        </div>
+      </button>
+
+      <details
+        open={authOpen}
+        onToggle={(event) => setAuthOpen(event.currentTarget.open)}
+        className="rounded-2xl border border-border bg-card p-4"
+      >
+        <summary className="cursor-pointer text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+          Sign in or create an account to sync progress
+        </summary>
+        <div className="mt-4">
+      {/* Existing account creation and sign-in flow, kept in one optional disclosure. */}
       {/* Tabs */}
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
         {(["signup", "login"] as Tab[]).map((t) => (
@@ -221,20 +259,9 @@ export function IdentityScreen() {
         {busy === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleGlyph />}
         <span className="text-[15px]">Continue with Google</span>
       </button>
+        </div>
+      </details>
 
-      <button
-        onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
-        disabled={busy !== null}
-        className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md disabled:opacity-60"
-      >
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-accent-foreground">
-          {busy === "guest" ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserRound className="h-5 w-5" />}
-        </div>
-        <div>
-          <div className="font-semibold text-foreground">Continue as Guest</div>
-          <div className="text-xs text-muted-foreground">Skip ahead. You can add an account later.</div>
-        </div>
-      </button>
     </AppShell>
   );
 }
