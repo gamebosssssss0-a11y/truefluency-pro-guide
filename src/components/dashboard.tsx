@@ -430,7 +430,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               {subline ? (
                 <p className="mt-1 text-[12px] text-[#F7F3EA] mix-blend-difference">{subline}</p>
               ) : null}
-              <p className="mt-1 text-[12px] text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
+              <p className="mt-1 text-[12px] text-[#F7F3EA] mix-blend-difference">
                 Your study home: upload a file, practise on it, revise it.
               </p>
             </div>
@@ -569,7 +569,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </>
         )}
         {!showFirstUseLayout ? (
-          <p className="mt-8 text-center text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-8 text-center text-[11px] leading-relaxed text-[#F7F3EA] mix-blend-difference">
             Predictions are statistical estimates. Always cross-check against your official material.
           </p>
         ) : null}
