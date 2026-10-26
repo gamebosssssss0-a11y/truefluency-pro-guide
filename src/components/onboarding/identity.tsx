@@ -158,8 +158,8 @@ export function IdentityScreen() {
 
   return (
     <AppShell
-      title={tab === "signup" ? "Create your account" : "Welcome back"}
-      subtitle="Explore as a guest now, or sign in to sync progress across devices."
+      title={authOpen ? (tab === "signup" ? "Create your account" : "Welcome back") : "Start studying"}
+      subtitle={authOpen ? "Sign in to sync your progress across devices." : "Continue as a guest now. Add an account later if you want to sync across devices."}
     >
       <button
         onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
