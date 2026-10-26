@@ -67,7 +67,7 @@
   --ink: #1B2A4A;
 
   --background: #F7F3EA;
-  --foreground: #1B2A4A;
+  --foreground: #243447;
   --surface: #FBF7EE;
 
   --card: var(--surface);
@@ -75,17 +75,17 @@
   --popover: var(--surface);
   --popover-foreground: #1B2A4A;
 
-  --primary: #1B2A4A;
+  --primary: #334155;
   --primary-foreground: #F7F3EA;
 
   --secondary: oklch(0.94 0.02 85);
   --secondary-foreground: #1B2A4A;
 
   --muted: oklch(0.94 0.015 85);
-  --muted-foreground: #5C5C70;
+  --muted-foreground: #526171;
 
-  --accent: #B86E0A;
-  --accent-foreground: #1B2A4A;
+  --accent: #0F766E;
+  --accent-foreground: #F7F3EA;
 
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: #F7F3EA;
@@ -95,7 +95,7 @@
 
   --border: #E4DCC8;
   --input: oklch(0.9 0.015 85);
-  --ring: #B86E0A;
+  --ring: #0F766E;
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
   --pill-text-l: 30%;
 
@@ -117,19 +117,19 @@
 /* Dark: navy page, raised navy cards, slate wash, and the same amber accent. */
 .dark {
   --background: #020A1A;
-  --foreground: #F7F3EA;
+  --foreground: #E2E8F0;
   --card: #0E1A33;
   --surface: var(--card);
   --card-foreground: #F7F3EA;
   --popover: #132240;
   --popover-foreground: #F7F3EA;
-  --primary: #0E1A33;
+  --primary: #1E293B;
   --primary-foreground: #F7F3EA;
   --secondary: #132240;
   --secondary-foreground: #F7F3EA;
   --muted: #132240;
-  --muted-foreground: #C4B8A0;
-  --accent: #B86E0A;
+  --muted-foreground: #A8B3C2;
+  --accent: #2DD4BF;
   --accent-foreground: #020A1A;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: #F7F3EA;
@@ -137,7 +137,7 @@
   --warning: #B86E0A;
   --border: #243656;
   --input: #243656;
-  --ring: #B86E0A;
+  --ring: #2DD4BF;
   --cream: #F7F3EA;
   --sand: #F3E6C8;
   --ink: #F7F3EA;
