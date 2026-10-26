@@ -191,7 +191,11 @@ export function LandingScreen() {
           </div>
         </details>
 
-        <div className="mt-10 rounded-2xl border border-[#E4DCC8] bg-surface p-5 shadow-sm">
+        <details className="mt-10 rounded-2xl border border-border bg-card p-4">
+          <summary className="cursor-pointer font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            Why TrueFluency is built for UI students
+          </summary>
+          <div className="mt-4 rounded-2xl border border-[#E4DCC8] bg-surface p-5 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-[#1B2A4A]">
             Built for UI, across every faculty and department
           </h2>
@@ -206,22 +210,19 @@ export function LandingScreen() {
             lectures. It shows you what your own material leans on, and it never
             promises which questions will appear.
           </p>
-        </div>
+          </div>
+        </details>
 
-        <div className="mt-8">
-          <Button
-            size="lg"
-            className="h-12 min-h-[48px] w-full bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={() => go("disclaimer")}
-          >
-            Start 7-day free trial
-          </Button>
-          <div className="mt-3 space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
+        <details className="mt-8 rounded-2xl border border-border bg-card p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            Trial and plan details
+          </summary>
+          <div className="mt-3 space-y-1 text-xs leading-relaxed text-muted-foreground">
             <p>{TRIAL_LINE}</p>
             <p className="break-words">{PRICE_LINE}</p>
             <p>No automatic debit. Trial runs 7 days. Pay when you upgrade.</p>
           </div>
-        </div>
+        </details>
       </div>
     </div>
   );
