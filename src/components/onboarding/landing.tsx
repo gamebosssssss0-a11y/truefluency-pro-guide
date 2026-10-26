@@ -53,7 +53,11 @@ export function LandingScreen() {
           </span>
           <button
             type="button"
-            onClick={() => go("identity")}
+            onClick={() => {
+              try { sessionStorage.setItem("truefluency-open-identity-auth", "1"); }
+              catch { /* the identity screen still offers account access */ }
+              go("identity");
+            }}
             className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             Already have an account? Log in
