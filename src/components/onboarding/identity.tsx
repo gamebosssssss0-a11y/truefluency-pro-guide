@@ -145,8 +145,23 @@ export function IdentityScreen() {
   return (
     <AppShell
       title={tab === "signup" ? "Create your account" : "Welcome back"}
-      subtitle="Signed-in progress syncs to your account across devices."
+      subtitle="Explore as a guest now, or sign in to sync progress across devices."
     >
+      <button
+        onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
+        disabled={busy !== null}
+        className="group mb-5 flex w-full items-center gap-4 rounded-2xl border border-accent/40 bg-accent/5 p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md disabled:opacity-60"
+      >
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+          {busy === "guest" ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserRound className="h-5 w-5" />}
+        </div>
+        <div>
+          <div className="font-semibold text-foreground">Continue without signing in</div>
+          <div className="text-xs text-muted-foreground">Start studying now. Add an account later to sync progress.</div>
+        </div>
+      </button>
+
+      {/* Create an account or sign in when you want progress syncing. */}
       {/* Tabs */}
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
         {(["signup", "login"] as Tab[]).map((t) => (
@@ -222,19 +237,7 @@ export function IdentityScreen() {
         <span className="text-[15px]">Continue with Google</span>
       </button>
 
-      <button
-        onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
-        disabled={busy !== null}
-        className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md disabled:opacity-60"
-      >
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-accent-foreground">
-          {busy === "guest" ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserRound className="h-5 w-5" />}
-        </div>
-        <div>
-          <div className="font-semibold text-foreground">Continue as Guest</div>
-          <div className="text-xs text-muted-foreground">Skip ahead. You can add an account later.</div>
-        </div>
-      </button>
+
     </AppShell>
   );
 }
