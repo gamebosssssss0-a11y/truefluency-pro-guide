@@ -38,10 +38,10 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
   const last = i === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-[#1B2A4A]/60 p-4 sm:place-items-center">
-      <div className="w-full max-w-md rounded-3xl border border-[#E4DCC8] bg-card p-5 shadow-lg">
+    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/60 p-4 sm:place-items-center">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-lg">
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="on-sand grid h-11 w-11 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A]">
+          <div className="on-sand grid h-11 w-11 place-items-center rounded-2xl bg-secondary text-secondary-foreground">
             <step.icon className="h-5 w-5" />
           </div>
           <button
@@ -63,14 +63,14 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
                 key={n}
                 className={
                   n === i
-                    ? "h-1.5 w-6 rounded-full bg-[#B86E0A]"
-                    : "h-1.5 w-1.5 rounded-full bg-[#E4DCC8]"
+                    ? "h-1.5 w-6 rounded-full bg-accent"
+                    : "h-1.5 w-1.5 rounded-full bg-border"
                 }
               />
             ))}
           </div>
           <Button
-            className="bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
+            className="bg-accent text-accent-foreground hover:bg-accent/90"
             onClick={() => (last ? onClose() : setI(i + 1))}
           >
             {last ? "Got it" : "Next"}
