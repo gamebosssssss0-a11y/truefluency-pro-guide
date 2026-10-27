@@ -587,10 +587,28 @@ export async function saveSharedFile(opts: {
   }
 
   if (shareId) {
-    await db
+    // Optimistic atomic claim: only one concurrent save can advance a given
+    // use_count value. Recheck revocation/expiry/capacity at commit time too;
+    // resolveShare alone is only a snapshot taken before the storage copy.
+    const { data: claimed, error: claimError } = await db
       .from("library_shares")
       .update({ use_count: useCount + 1 })
-      .eq("id", shareId);
+      .eq("id", shareId)
+      .eq("use_count", useCount)
+      .eq("is_revoked", false)
+      .gt("expires_at", new Date().toISOString())
+      .lt("use_count", SHARE_MAX_USES)
+      .select("id")
+      .maybeSingle();
+
+    if (claimError || !claimed) {
+      // This copy lost the race, the link was revoked/expired, or the use
+      // limit was reached while copying. Roll back both rows and object so a
+      // failed claim never creates an unmetered peer copy.
+      await db.from("course_materials").delete().eq("id", inserted.id).eq("user_id", opts.recipientId);
+      await r2.deleteObject(destPath).catch(() => {});
+      return { ok: false, reason: REDEEM_MISS_MESSAGE };
+    }
   }
 
   return { ok: true, materialId: inserted.id };
