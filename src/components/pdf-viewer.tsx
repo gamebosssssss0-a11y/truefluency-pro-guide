@@ -134,7 +134,7 @@ function ScrollPage({
         const ctx = canvas?.getContext("2d");
         if (!canvas || !ctx || cancelled) return;
         const base = p.getViewport({ scale: 1 });
-        const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+        const scale = Math.max(0.4, Math.min(3, (boxWidth / base.width) * zoom));
         const viewport = p.getViewport({ scale });
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.floor(viewport.width * dpr);
