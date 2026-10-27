@@ -154,7 +154,7 @@ test("chat thinking animation remains visible independently of the empty-thread 
   const anchor = chat.indexOf('<div ref={scrollAnchorRef} />');
   assert.notEqual(indicator, -1);
   assert.notEqual(thinking, -1);
-  assert.match(chat.slice(indicator - 30, indicator), /\\) : null\\}\\s*$/);
+  assert.ok(chat.slice(indicator - 30, indicator).includes(") : null}"), "indicator must be outside the empty-thread conditional");
   assert.ok(thinking > indicator, "thinking animation must be rendered in the independent send-status block");
   assert.ok(anchor > thinking, "thinking indicator must remain inside the scrollable thread");
   assert.match(chat, /aria-busy=\{isLoadingThread \|\| isSending\}/);
