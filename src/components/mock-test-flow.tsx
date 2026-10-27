@@ -978,9 +978,11 @@ export function MockRunScreen() {
     // 1. the attempt row (History reads this),
     // 2. the study streak when at least five answers were given.
     // (The daily mock-set count is recorded by the generation service.)
+    let attemptSaved = false;
     try {
       const { pushMockAttempt } = await import("@/lib/cloud-sync");
       await pushMockAttempt(attempt);
+      attemptSaved = true;
     } catch (error) {
       console.error("[mock] attempt save failed", error);
       toast.error("Couldn't save this test to your account.");
@@ -989,9 +991,11 @@ export function MockRunScreen() {
     // No daily-count write here any more. The generation service already
     // recorded this set (when it succeeded); counting it again on submit made
     // every finished mock cost TWO of a free student's daily sets.
-    void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
-      recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: t.analyticsSessionId ?? attempt.id } })
-    ).catch(() => undefined);
+    if (attemptSaved && t.analyticsSessionId) {
+      void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+        recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: t.analyticsSessionId! } })
+      ).catch(() => undefined);
+    }
 
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
     if (answeredCount >= 5) {
