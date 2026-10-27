@@ -1601,3 +1601,197 @@ html.dark .reference-home .reference-stat-card .bg-sand {
 html.dark .reference-home .reference-stat-card .bg-accent {
   background: #E7BD68;
 }
+
+
+/* Authoritative TrueFluency Home reference theme.
+   Dark: navy canvas with a warm gold bloom and curved hero seam.
+   Light: cream canvas with the slate/navy-to-gold hero gradient.
+   These tokens intentionally replace the earlier experimental wallpaper rules. */
+:root {
+  --tf-navy-950: #061329;
+  --tf-navy-900: #071a38;
+  --tf-navy-850: #0b2448;
+  --tf-navy-800: #102647;
+  --tf-navy-700: #1b304d;
+  --tf-navy-card: #0a1f42;
+  --tf-navy-card-2: #0e2b59;
+  --tf-gold: #e7bd68;
+  --tf-gold-bright: #ffd66f;
+  --tf-cream: #fff4d9;
+  --tf-muted: #b8c7dc;
+  --tf-line: #31547d;
+  --tf-light-canvas: #f7f0e2;
+  --tf-light-card: #fbf7ee;
+  --tf-light-card-2: #f3e7c9;
+  --tf-light-gold: #c28725;
+  --tf-light-gold-bright: #a96b08;
+  --tf-light-ink: #1b2d4a;
+  --tf-light-muted: #5c6675;
+  --tf-light-line: #e4dccb;
+}
+
+/* Remove the previous fixed pseudo-element wallpaper: the reference uses a
+   screen canvas plus a component-owned hero, not a gradient over the whole app. */
+html:not(.dark),
+html:not(.dark) body {
+  background: var(--tf-light-canvas) !important;
+  color: var(--tf-light-ink);
+}
+html.dark,
+html.dark body {
+  background: var(--tf-navy-950) !important;
+  color: var(--tf-cream);
+}
+html:not(.dark) body::before,
+html.dark body::before {
+  content: none !important;
+  display: none !important;
+}
+html:not(.dark) #root,
+html.dark #root,
+html:not(.dark) [data-tab-swipe-stage],
+html.dark [data-tab-swipe-stage],
+html:not(.dark) [data-root-tab],
+html.dark [data-root-tab],
+html:not(.dark) .app-stage-wide,
+html.dark .app-stage-wide {
+  background: transparent !important;
+}
+
+/* The app's real home component maps to the supplied .screen reference. */
+html.dark .reference-home {
+  min-height: 100svh;
+  color: var(--tf-cream);
+  background:
+    radial-gradient(ellipse 84% 38% at 78% 31%, rgba(190, 132, 42, .25), transparent 68%),
+    radial-gradient(ellipse 100% 45% at 8% 5%, rgba(31, 59, 96, .7), transparent 74%),
+    linear-gradient(180deg, #07142a 0%, #102647 23%, #1b304d 38%, #1b2c43 52%, #10213b 68%, #09172d 100%);
+}
+html:not(.dark) .reference-home {
+  min-height: 100svh;
+  color: var(--tf-light-ink);
+  background: var(--tf-light-canvas);
+}
+html.dark .reference-home__inner,
+html:not(.dark) .reference-home__inner {
+  width: min(100%, 430px);
+  min-height: 100svh;
+  padding: 24px 18px 92px;
+}
+html.dark .reference-hero,
+html:not(.dark) .reference-hero {
+  position: relative;
+  isolation: isolate;
+  margin: -24px -18px 20px;
+  padding: 24px 18px 50px;
+  overflow: hidden;
+}
+html.dark .reference-hero {
+  background:
+    radial-gradient(ellipse 74% 72% at 88% 78%, rgba(220, 167, 67, .28), rgba(220, 167, 67, .07) 34%, transparent 68%),
+    linear-gradient(180deg, #071a38 0%, #0b2448 47%, #1d344f 76%, #243c53 100%);
+}
+html:not(.dark) .reference-hero {
+  background:
+    radial-gradient(ellipse 74% 72% at 88% 78%, rgba(224, 169, 65, .7), rgba(224, 169, 65, .15) 34%, transparent 68%),
+    linear-gradient(180deg, #263d60 0%, #3b506f 38%, #778394 68%, #f2e6c8 100%);
+}
+html.dark .reference-hero::after,
+html:not(.dark) .reference-hero::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: -10%;
+  right: -10%;
+  bottom: -52px;
+  height: 92px;
+  border-top: 3px solid var(--tf-gold);
+  border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+  background: var(--tf-navy-950);
+  box-shadow: 0 -10px 24px rgba(231, 189, 104, .16);
+  transform: rotate(-4deg);
+}
+html:not(.dark) .reference-hero::after {
+  border-top-color: #e0a941;
+  background: var(--tf-light-canvas);
+  box-shadow: 0 -10px 24px rgba(224, 169, 65, .18);
+}
+html.dark .reference-hero > *,
+html:not(.dark) .reference-hero > * {
+  position: relative;
+  z-index: 1;
+}
+html.dark .reference-hero__label { color: var(--tf-gold-bright); }
+html:not(.dark) .reference-hero__label { color: var(--tf-light-gold-bright); }
+html.dark .reference-hero__title { color: var(--tf-cream) !important; }
+html:not(.dark) .reference-hero__title { color: var(--tf-cream) !important; }
+html.dark .reference-avatar,
+html:not(.dark) .reference-avatar {
+  border: 2px solid rgba(231, 189, 104, .85);
+  background: radial-gradient(circle at 36% 25%, #db7d23, #7d1833 48%, #172b59 100%);
+  color: var(--tf-cream);
+  box-shadow: 0 0 0 4px rgba(231, 189, 104, .12);
+}
+html.dark .reference-plan-chip {
+  border-color: #536b8d;
+  background: rgba(7, 26, 56, .9);
+  color: #f7f3ea;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+}
+html.dark .reference-plan-chip span,
+html.dark .reference-plan-chip svg { color: var(--tf-gold-bright) !important; }
+html:not(.dark) .reference-plan-chip {
+  border-color: var(--tf-light-line);
+  background: rgba(251, 247, 238, .94);
+  color: var(--tf-light-ink);
+}
+html:not(.dark) .reference-plan-chip span { color: var(--tf-light-ink) !important; }
+html:not(.dark) .reference-plan-chip svg { color: var(--tf-light-gold-bright) !important; }
+html.dark .reference-home .reference-stat-card {
+  border-color: var(--tf-line);
+  background: rgba(10, 31, 66, .92);
+  color: #f7f3ea;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+}
+html:not(.dark) .reference-home .reference-stat-card {
+  border-color: var(--tf-light-line);
+  background: rgba(251, 247, 238, .94);
+  color: var(--tf-light-ink);
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+}
+html.dark .reference-home .reference-stat-card h2 { color: #f7f3ea; }
+html.dark .reference-home .reference-stat-card p { color: var(--tf-muted); }
+html.dark .reference-home .reference-streak { border-left-color: var(--tf-gold-bright); }
+html:not(.dark) .reference-home .reference-stat-card h2 { color: var(--tf-light-ink); }
+html:not(.dark) .reference-home .reference-stat-card p { color: var(--tf-light-muted); }
+html:not(.dark) .reference-home .reference-streak { border-left-color: var(--tf-light-gold-bright); }
+html.dark .reference-home .reference-stat-card .bg-accent\/15 {
+  background: rgba(231, 189, 104, .22);
+}
+html:not(.dark) .reference-home .reference-stat-card .bg-accent\/15 {
+  background: rgba(224, 169, 65, .2);
+}
+html.dark .reference-home .reference-stat-card .text-accent,
+html.dark .reference-home .reference-stat-card .text-accent-foreground { color: var(--tf-gold-bright); }
+html:not(.dark) .reference-home .reference-stat-card .text-accent,
+html:not(.dark) .reference-home .reference-stat-card .text-accent-foreground { color: var(--tf-light-gold-bright); }
+html.dark .reference-home .reference-stat-card .bg-sand { background: #244a7a; }
+html:not(.dark) .reference-home .reference-stat-card .bg-sand { background: #f3dfae; }
+html.dark .reference-home .reference-stat-card .bg-accent { background: var(--tf-gold-bright); }
+html:not(.dark) .reference-home .reference-stat-card .bg-accent { background: var(--tf-gold); }
+
+/* The persistent dock follows the same reference palettes in either mode. */
+html.dark nav[aria-label="Primary navigation"],
+html.dark nav[aria-label="Mobile primary navigation"],
+html.dark [data-bottom-nav] {
+  background: rgba(6, 19, 41, .97) !important;
+  border-color: #294b76 !important;
+  color: #b5c8e1;
+}
+html:not(.dark) nav[aria-label="Primary navigation"],
+html:not(.dark) nav[aria-label="Mobile primary navigation"],
+html:not(.dark) [data-bottom-nav] {
+  background: rgba(251, 247, 238, .98) !important;
+  border-color: var(--tf-light-line) !important;
+  color: #52617a;
+}
