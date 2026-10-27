@@ -8,7 +8,7 @@
  * with Back/Next; full screen stacks the pages in a continuous scroll.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, ZoomIn, ZoomOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
@@ -90,6 +90,7 @@ function ScrollPage({
   active,
   distance,
   estimatedPageHeight,
+  zoom,
   register,
 }: {
   doc: PdfDoc;
@@ -98,6 +99,7 @@ function ScrollPage({
   active: boolean;
   distance: number;
   estimatedPageHeight: number;
+  zoom: number;
   register: (n: number, el: HTMLDivElement | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -113,11 +115,11 @@ function ScrollPage({
     void doc.getPage(pageNumber).then((p) => {
       if (cancelled) return;
       const base = p.getViewport({ scale: 1 });
-      const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+      const scale = Math.max(0.4, Math.min(3, (boxWidth / base.width) * zoom));
       setPageHeight(Math.floor(p.getViewport({ scale }).height));
     }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [boxWidth, doc, pageNumber]);
+  }, [boxWidth, doc, pageNumber, zoom]);
 
   useEffect(() => {
     if (!active) return;
@@ -132,7 +134,7 @@ function ScrollPage({
         const ctx = canvas?.getContext("2d");
         if (!canvas || !ctx || cancelled) return;
         const base = p.getViewport({ scale: 1 });
-        const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+        const scale = Math.max(0.4, Math.min(3, (boxWidth / base.width) * zoom));
         const viewport = p.getViewport({ scale });
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.floor(viewport.width * dpr);
@@ -165,7 +167,7 @@ function ScrollPage({
         current?.cleanup?.();
       }
     };
-  }, [active, boxWidth, doc, pageNumber]);
+  }, [active, boxWidth, doc, pageNumber, zoom]);
 
   useEffect(() => {
     if (distance <= 8) return;
@@ -226,7 +228,9 @@ export function PdfViewer({
   const lastPageUpdateRef = useRef(0);
   const ignoreObserverUntilRef = useRef(0);
   const pageNavPointerRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pageAspect, setPageAspect] = useState(Math.SQRT2);
+  const [zoom, setZoom] = useState(1);
 
   pageRef.current = page;
 
@@ -237,6 +241,7 @@ export function PdfViewer({
 
   const load = useCallback(() => {
     let alive = true;
+    const cacheController = new AbortController();
     setStatus("loading");
     setDoc(null);
     void (async () => {
@@ -281,9 +286,14 @@ export function PdfViewer({
         if (!cached && fileKey) {
           void (async () => {
             try {
-              const res = await fetch(url);
+              const res = await fetch(url, { signal: cacheController.signal });
               if (!res.ok) return;
+              const declaredSize = Number(res.headers.get("content-length") ?? 0);
+              // Avoid retaining or caching oversized documents in the secondary byte cache.
+              if (declaredSize > 60 * 1024 * 1024) return;
               const buffer = await res.arrayBuffer();
+              if (buffer.byteLength > 60 * 1024 * 1024) return;
+              if (!alive) return;
               memoryCache = { key: fileKey, buffer };
               await putCachedPdf(fileKey, buffer);
             } catch {
@@ -299,6 +309,7 @@ export function PdfViewer({
     })();
     return () => {
       alive = false;
+      cacheController.abort();
       void taskRef.current?.destroy();
       taskRef.current = null;
     };
@@ -354,7 +365,7 @@ export function PdfViewer({
         if (!canvas || !ctx || cancelled) return;
         const base = p.getViewport({ scale: 1 });
         const box = width || wrapRef.current?.clientWidth || 340;
-        const scale = Math.max(0.4, Math.min(2.5, (box - 8) / base.width));
+        const scale = Math.max(0.4, Math.min(3, ((box - 8) / base.width) * zoom));
         const viewport = p.getViewport({ scale });
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.floor(viewport.width * dpr);
@@ -384,7 +395,7 @@ export function PdfViewer({
       }
       current?.cleanup?.();
     };
-  }, [doc, page, status, total, width, expanded]);
+  }, [doc, page, status, total, width, expanded, zoom]);
 
   // Full screen: follow the page the student has scrolled to.
   useEffect(() => {
@@ -493,6 +504,48 @@ export function PdfViewer({
     }
   };
 
+  // Horizontal swipes page through the PDF on touch devices. Vertical gestures
+  // remain native scrolling, and the expanded continuous reader keeps its scroll UX.
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (expanded || status !== "ready" || event.touches.length !== 1) {
+      touchStartRef.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || expanded || status !== "ready") return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    // Require a clear horizontal intent to avoid accidental page turns while scrolling.
+    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+    if (dx < 0 && pageRef.current < total) go(pageRef.current + 1);
+    else if (dx > 0 && pageRef.current > 1) go(pageRef.current - 1);
+  };
+
+  useEffect(() => {
+    if (status !== "ready" || expanded) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "ArrowRight" || event.key === "PageDown") {
+        event.preventDefault();
+        go(pageRef.current + 1);
+      } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        go(pageRef.current - 1);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [status, expanded, total]);
+
   const cancelLoad = () => {
     void taskRef.current?.destroy();
     taskRef.current = null;
@@ -531,6 +584,17 @@ export function PdfViewer({
         <span className="shrink-0 text-[11px] text-muted-foreground">
           {status === "ready" ? `page ${page} / ${total}` : ""}
         </span>
+        {status === "ready" ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 0.6} onClick={() => setZoom((v) => Math.max(0.6, Math.round((v - 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <span className="min-w-10 text-center text-[11px] tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
+            <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= 2} onClick={() => setZoom((v) => Math.min(2, Math.round((v + 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
+              <ZoomIn className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
         <button
           type="button"
           aria-label={expanded ? "Exit full screen" : "Full screen"}
@@ -556,7 +620,10 @@ export function PdfViewer({
 
       <div
         ref={wrapRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={expanded ? "flex-1 overflow-y-auto p-1" : "flex-1 overflow-hidden p-1"}
+        style={!expanded && status === "ready" ? { touchAction: "pan-y pinch-zoom" } : undefined}
       >
         {status === "loading" ? (
           <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
@@ -584,7 +651,8 @@ export function PdfViewer({
               width={width || 340}
               distance={Math.abs(n - page)}
               active={Math.abs(n - page) <= 4}
-              estimatedPageHeight={Math.max(1, Math.round(Math.max(120, (width || 340) - 8) * pageAspect))}
+              estimatedPageHeight={Math.max(1, Math.round(Math.max(120, (width || 340) - 8) * pageAspect * zoom))}
+              zoom={zoom}
               register={registerPage}
             />
           ))

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
@@ -94,7 +95,7 @@ function AccountPhotoCard() {
       <div className="mt-3 flex gap-2">
         <Button
           variant="outline"
-          className="h-10"
+          className="min-h-11"
           disabled={working}
           onClick={() => inputRef.current?.click()}
         >
@@ -102,7 +103,7 @@ function AccountPhotoCard() {
           {url ? "Change photo" : "Add photo"}
         </Button>
         {url ? (
-          <Button variant="ghost" className="h-10" disabled={working} onClick={() => void clear()}>
+          <Button variant="ghost" className="min-h-11" disabled={working} onClick={() => void clear()}>
             Remove
           </Button>
         ) : null}
@@ -286,12 +287,12 @@ export function AccountScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Account
           </span>
         </div>
-        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] dark:text-[#F7F3EA]">Account</h1>
-        <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Account</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your profile, your tools, and your data.
         </p>
 
@@ -306,7 +307,7 @@ export function AccountScreen() {
           <button
             type="button"
             onClick={() => navigate("upgrade")}
-            className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:text-accent/80"
+            className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-accent hover:text-accent/80"
           >
             View premium <ChevronRight className="h-3 w-3" />
           </button>
@@ -318,7 +319,7 @@ export function AccountScreen() {
           <button
             type="button"
             onClick={() => navigate("upgrade")}
-            className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:text-accent/80"
+            className="mt-2 inline-flex min-h-11 items-center gap-1 px-1 text-sm font-semibold text-accent hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             Receipts and renewal <ChevronRight className="h-3 w-3" />
           </button>
@@ -431,7 +432,7 @@ export function AccountScreen() {
                 <div className="truncate text-[11px] text-muted-foreground">{profile.identity.email}</div>
               ) : null}
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent">
+            <span className="inline-flex min-h-11 items-center gap-1 px-1 text-sm font-medium text-accent">
               <Pencil className="h-3 w-3" /> Edit
             </span>
           </button>
@@ -442,7 +443,7 @@ export function AccountScreen() {
 
         <button
           onClick={() => navigate("edit-identity")}
-          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent/80"
+          className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-accent hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Pencil className="h-3 w-3" /> Edit faculty, department or level
         </button>
@@ -466,7 +467,7 @@ export function AccountScreen() {
               aria-pressed={theme === "light"}
               onClick={() => setTheme("light")}
               className={
-                "px-2.5 py-1.5 text-[11px] font-semibold transition " +
+                "min-h-11 min-w-16 px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
                 (theme === "light" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground")
               }
             >
@@ -620,7 +621,7 @@ export function AccountScreen() {
 /** Back-compat alias for older navigation that still says "settings". */
 export const SettingsScreen = AccountScreen;
 
-function Row({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
+function Row({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: string; value: string; sub?: string }) {
   return (
     <div className="surface-key-card flex items-center gap-3 p-3.5">
       <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">

@@ -13,7 +13,7 @@
   --radius-3xl: calc(var(--radius) + 12px);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -61,42 +61,51 @@
 :root {
   --radius: 0.875rem;
 
-  /* Brand palette: deep academic ink, warm amber, cream, sand */
-  --cream: #F7F3EA;
-  --sand: #F3E6C8;
-  --ink: #1B2A4A;
+  /* Blueprint aliases: one calm slate/teal system for every surface. */
+  --surface-base: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --brand-teal: #0D9488;
+  --state-success: #2F6B4F;
+  --state-error: #B42332;
 
-  --background: #F7F3EA;
-  --foreground: #243447;
-  --surface: #FBF7EE;
+  /* Brand palette: slate, teal, and soft neutral surfaces */
+  --cream: #F8FAFC;
+  --sand: #CCFBF1;
+  --ink: #0F172A;
 
-  --card: var(--surface);
-  --card-foreground: #1B2A4A;
-  --popover: var(--surface);
-  --popover-foreground: #1B2A4A;
+  --background: var(--surface-base);
+  --foreground: var(--text-primary);
+  --surface: var(--surface-card);
 
-  --primary: #334155;
-  --primary-foreground: #F7F3EA;
+  --card: var(--surface-card);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-card);
+  --popover-foreground: var(--text-primary);
 
-  --secondary: oklch(0.94 0.02 85);
-  --secondary-foreground: #1B2A4A;
+  --primary: #0D9488;
+  --primary-foreground: #FFFFFF;
 
-  --muted: oklch(0.94 0.015 85);
-  --muted-foreground: #526171;
+  --secondary: #F1F5F9;
+  --secondary-foreground: var(--text-primary);
 
-  --accent: #0F766E;
-  --accent-foreground: #F7F3EA;
-  --accent-on-sand: #0F766E;
+  --muted: #F1F5F9;
+  --muted-foreground: var(--text-secondary);
+
+  --accent: var(--brand-teal);
+  --accent-foreground: #FFFFFF;
+  --accent-on-sand: #115E59;
 
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: #F7F3EA;
 
   --success: oklch(0.62 0.14 150);
-  --warning: #B86E0A;
+  --warning: #946200;
 
-  --border: #E4DCC8;
-  --input: oklch(0.9 0.015 85);
-  --ring: #0F766E;
+  --border: #E2E8F0;
+  --input: #94A3B8;
+  --ring: #0D9488;
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
   --pill-text-l: 30%;
 
@@ -109,7 +118,7 @@
   --good: #2F6B4F;
   --warn: #B86E0A;
   --bad: #8B2E2E;
-  --chat-page: #F7F3EA;
+  --chat-page: #F8FAFC;
   --chat-card: var(--surface);
   --chat-foreground: #1B2A4A;
 
@@ -117,28 +126,35 @@
 
 /* Dark: navy page, raised navy cards, slate wash, and a teal accent. */
 .dark {
-  --background: #020A1A;
-  --foreground: #E2E8F0;
-  --card: #0E1A33;
+  --surface-base: #0F172A;
+  --surface-card: #172334;
+  --text-primary: #F1F5F9;
+  --text-secondary: #B6C2CF;
+  --brand-teal: #5EEAD4;
+  --state-success: #86D8A8;
+  --state-error: #FDA4AF;
+  --background: var(--surface-base);
+  --foreground: var(--text-primary);
+  --card: var(--surface-card);
   --surface: var(--card);
-  --card-foreground: #F7F3EA;
+  --card-foreground: var(--text-primary);
   --popover: #132240;
-  --popover-foreground: #F7F3EA;
+  --popover-foreground: var(--text-primary);
   --primary: #1E293B;
   --primary-foreground: #F7F3EA;
   --secondary: #132240;
   --secondary-foreground: #F7F3EA;
   --muted: #132240;
   --muted-foreground: #A8B3C2;
-  --accent: #2DD4BF;
+  --accent: var(--brand-teal);
   --accent-foreground: #020A1A;
   --accent-on-sand: #0F766E;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: #F7F3EA;
   --success: oklch(0.7 0.15 150);
   --warning: #B86E0A;
-  --border: #243656;
-  --input: #243656;
+  --border: #334155;
+  --input: #334155;
   --ring: #2DD4BF;
   --cream: #F7F3EA;
   --sand: #F3E6C8;
@@ -156,8 +172,8 @@
   }
 
   html, body {
-    background-color: #F7F3EA;
-    background-image: linear-gradient(165deg, #1B2A4A 0%, #3D5278 18%, #F3E6C8 46%, #F7F3EA 100%);
+    background-color: var(--background);
+    background-image: none;
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -165,9 +181,19 @@
   }
 
   html.dark, html.dark body {
-    background-color: #020A1A;
-    background-image: linear-gradient(165deg, #020A1A 0%, #132240 40%, #1B2A4A 100%);
+    background-color: var(--background);
+    background-image: none;
     background-attachment: fixed;
+  }
+
+  button, [role="button"], input, textarea, select, summary {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  details[open] > :not(summary) {
+    animation: detail-expand 250ms cubic-bezier(0.2, 0, 0, 1) both;
+    transform-origin: top;
   }
 
   h1, h2, h3, .font-display {
@@ -196,8 +222,7 @@
   .surface-key-card {
     background-color: var(--card);
     border: 1px solid var(--border);
-    border-left: 4px solid #1B2A4A;
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: none;
   }
 
@@ -216,10 +241,10 @@
   }
 
   .surface-wash {
-    background-color: var(--sand);
+    background-color: var(--card);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    color: #1B2A4A;
+    border-radius: 12px;
+    color: var(--foreground);
     box-shadow: none;
   }
 
@@ -366,13 +391,13 @@
 
   /* High-contrast quote card: dark slate panel, restrained accent edge. */
   .quote-card {
-    background: #1B2A4A;
-    border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
+    background: var(--card);
+    border: 1px solid var(--border);
     box-shadow: none;
   }
 
   .quote-text {
-    color: #F7F3EA;
+    color: var(--foreground);
     text-shadow: none;
   }
 
@@ -616,54 +641,15 @@
 }
 
 /* Solid study utility surfaces follow the same slate/teal system in both themes. */
+/* Every screen shares the same page-level theme background. Cards and controls remain solid surfaces. */
 .study-utility-page {
-  --background: #F7F3EA;
-  --foreground: #243447;
-  --surface: #FBF7EE;
-  --card: #FBF7EE;
-  --card-foreground: #243447;
-  --popover: #FBF7EE;
-  --popover-foreground: #243447;
-  --primary: #334155;
-  --primary-foreground: #F7F3EA;
-  --secondary: #EFE8D9;
-  --secondary-foreground: #243447;
-  --muted: #EFE8D9;
-  --muted-foreground: #526171;
-  --accent: #0F766E;
-  --accent-foreground: #F7F3EA;
-  --success: #2F6B4F;
-  --warning: #B86E0A;
-  --destructive: #8B2E2E;
-  --border: #E4DCC8;
-  --input: #E4DCC8;
-  background-color: var(--background);
+  background-color: transparent;
   background-image: none;
   color: var(--foreground);
 }
 
 .dark .study-utility-page {
-  --background: #020A1A;
-  --foreground: #E2E8F0;
-  --surface: #0E1A33;
-  --card: #0E1A33;
-  --card-foreground: #E2E8F0;
-  --popover: #132240;
-  --popover-foreground: #E2E8F0;
-  --primary: #1E293B;
-  --primary-foreground: #F7F3EA;
-  --secondary: #132240;
-  --secondary-foreground: #E2E8F0;
-  --muted: #132240;
-  --muted-foreground: #A8B3C2;
-  --accent: #2DD4BF;
-  --accent-foreground: #020A1A;
-  --success: #7BBF9A;
-  --warning: #F2C27E;
-  --destructive: #F2A3A3;
-  --border: #243656;
-  --input: #243656;
-  background-color: var(--background);
+  background-color: transparent;
   color: var(--foreground);
 }
 
@@ -675,12 +661,7 @@
 
 .study-utility-page .text-muted-foreground,
 .study-utility-page [class~="text-muted-foreground/80"] {
-  color: #526171;
-}
-
-.dark .study-utility-page .text-muted-foreground,
-.dark .study-utility-page [class~="text-muted-foreground/80"] {
-  color: #A8B3C2;
+  color: var(--muted-foreground);
 }
 
 .study-utility-page .text-accent {
@@ -735,4 +716,246 @@
 
 .dark .chat-assistant-actions button:hover {
   color: #F7F3EA;
+}
+
+
+/* Accessibility and mobile polish: additive only; preserves existing component layouts. */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--ring, #0F766E);
+  outline-offset: 3px;
+}
+
+:where(input, select, textarea) {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  /* Prevent mobile browser zoom on focus without changing desktop typography. */
+  :where(input, select, textarea) {
+    font-size: max(16px, 1em);
+  }
+
+  /* Keep the app usable on narrow Android screens and respect device insets. */
+  .app-stage,
+  .app-stage-wide {
+    min-width: 0;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* Visual refinement pass: calmer surfaces, clearer hierarchy, and consistent interaction states. */
+:where(button, [role="button"], a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, [role="button"]) {
+  transition:
+    background-color 150ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 150ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 150ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    color 150ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 150ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):hover {
+    filter: brightness(0.985);
+  }
+}
+
+:where(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):active {
+  transform: translateY(1px);
+}
+
+:where(button:disabled, [role="button"][aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+:where(input, select, textarea) {
+  border-radius: max(0.65rem, var(--radius, 0.65rem));
+}
+
+:where(input, select, textarea):focus-visible {
+  border-color: var(--ring, #0F766E);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0F766E) 16%, transparent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent, #0F766E) 22%, transparent);
+}
+
+/* Keep common card surfaces crisp without forcing a new layout or theme. */
+:where([data-card], .study-card) {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  :where(button, [role="button"]) {
+    touch-action: manipulation;
+  }
+}
+
+
+/* Opt-in entrance motion for repeated cards; reduced-motion rules below override it. */
+@keyframes tf-card-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ui-card-enter {
+  animation: tf-card-enter 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-card-enter { animation: none !important; }
+}
+
+
+/* Accessibility contrast: keep muted copy readable and make focus unmistakable in both themes. */
+:root {
+  --muted-foreground: #64748B;
+}
+.dark {
+  --muted-foreground: #B6C2D2;
+}
+
+:where(a, button, [role="button"], input, select, textarea):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+
+:where(button, [role="button"])[aria-busy="true"],
+:where(button, [role="button"])[data-loading="true"] {
+  cursor: progress;
+}
+
+:where(button, [role="button"]):disabled,
+:where(button, [role="button"])[aria-disabled="true"] {
+  opacity: 0.68;
+  filter: none;
+}
+
+@media (min-width: 768px) {
+  /* Avoid edge-to-edge reading columns on wide displays while retaining existing layouts. */
+  .app-stage {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 1440px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where([data-card], .study-card, .ui-card-enter) {
+    backface-visibility: hidden;
+  }
+}
+
+
+/* Blueprint design tokens are also available to non-Tailwind surfaces. */
+@theme inline {
+  --color-surface-base: var(--surface-base);
+  --color-surface-card: var(--surface-card);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-brand-teal: var(--brand-teal);
+  --color-state-success: var(--state-success);
+  --color-state-error: var(--state-error);
+}
+
+@keyframes detail-expand {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* Specification-aligned light theme tokens. Keep cards solid and the canvas quiet. */
+:root {
+  --surface-base: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --muted-foreground: #64748B;
+  --brand-teal: #0D9488;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #0D9488;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #0D9488;
+  --accent-foreground: #FFFFFF;
+  --border: #E2E8F0;
+  --input: #94A3B8;
+  --ring: #0D9488;
+  --chat-page: #F8FAFC;
+  --chat-card: #FFFFFF;
+  --chat-foreground: #0F172A;
+}
+:root {
+  --color-feedback-error: #991B1B;
+}
+
+/* Calm, short screen and disclosure transitions. Reduced-motion overrides remain authoritative. */
+[data-tab-swipe-stage] > [data-root-tab] {
+  animation: tf-screen-enter 200ms ease-out both;
+}
+@keyframes tf-screen-enter {
+  from { opacity: 0.94; }
+  to { opacity: 1; }
+}
+details[open] > :not(summary) {
+  animation: detail-expand 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+
+/* Final calm-motion guard: suppress decorative brand animations; retain short control transitions. */
+.quote-card-cycle,
+.splash-logo,
+.splash-glow,
+.sonic-mark-in,
+.sonic-mark-loop,
+.sonic-unfurl-path,
+.sonic-pulse,
+.sonic-dot,
+.sonic-flare,
+.sonic-flare-loop,
+.sonic-particle,
+.sonic-particle-loop,
+.sonic-text-1,
+.sonic-text-2 {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :where(button, [role="button"], a, input, select, textarea) {
+    transition-duration: 150ms;
+  }
 }

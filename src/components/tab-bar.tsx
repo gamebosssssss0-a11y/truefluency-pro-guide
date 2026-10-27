@@ -87,7 +87,7 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
                 onClick={() => navigate(t.view, { replace: true })}
                 aria-current={on ? "page" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center rounded-lg px-3 py-2 text-sm transition",
+                  "relative flex min-h-11 flex-col items-center justify-center rounded-lg px-3 py-2 text-sm transition",
                   on ? "font-semibold text-accent" : "font-medium text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -132,7 +132,7 @@ export function BottomTabBar({ highlightedView }: { highlightedView?: AppView | 
               onClick={() => navigate(t.view, { replace: true })}
               aria-current={on ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 px-1 pb-2.5 pt-2.5 transition",
+                "flex min-h-12 flex-1 flex-col items-center justify-center gap-1 px-1 pb-2.5 pt-2.5 transition",
                 on ? "text-accent" : "text-muted-foreground hover:text-foreground",
               )}
             >

@@ -20,7 +20,7 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase client is provided by the Deno runtime.
   let supabase: any = null;
   let materialId: string | null = null;
 
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
 });
 
 async function persistFailure(
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase client is provided by the Deno runtime.
   supabase: any,
   materialId: string,
   error: string,

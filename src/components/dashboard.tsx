@@ -232,6 +232,28 @@ function NextStepCard() {
         go: () => navigate("mock-run", { courseCode: session.courseCode }),
       };
     }
+    // Use the saved onboarding choice for the primary Home action.
+    if (profile.studyPreference === "cgpa") {
+      return { title: "Check your CGPA", line: "Open your CGPA calculator and see where your results stand.", cta: "Open CGPA calculator", go: () => navigate("cgpa") };
+    }
+    if (profile.studyPreference === "tutor") {
+      return { title: "Get help with a topic", line: "Ask Study Chat for a clear explanation or help working through a question.", cta: "Open Study Chat", go: () => navigate("chatbot") };
+    }
+    if (profile.studyPreference === "reading") {
+      return { title: "Read your course materials", line: "Open your files to find lecture notes and past papers.", cta: "Open My Files", go: () => navigate("library") };
+    }
+    if (profile.studyPreference === "flashcards") {
+      return { title: "Review with flashcards", line: "Start a short review session with your saved flashcard decks.", cta: "Open flashcards", go: () => navigate("flashcards") };
+    }
+    if (profile.studyPreference === "practice") {
+      const code = firstOwn?.course_code ?? profile.courses[0]?.code ?? null;
+      return {
+        title: "Practice past questions",
+        line: code ? (ownCount === 0 ? "Upload a past paper or notes for " + code + " to prepare a practice set." : "Open " + code + " to upload material or continue into a mock test.") : "Add your courses first, then choose a course to upload past questions or start practice.",
+        cta: code ? (ownCount === 0 ? "Upload past questions" : "Open practice course") : "Add courses",
+        go: () => code ? navigate("course-detail", { courseCode: code }) : navigate("add-course"),
+      };
+    }
     if (lastAttempt) {
       return {
         title: "Review your last practice",

@@ -50,11 +50,14 @@ function SharedChatPage() {
 
     void (async () => {
       try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!alive) return;
+        setSignedIn(!!sessionData.session);
+
         const publicResult = await readPublicChatShare({ data: { token } });
         if (!alive) return;
         if (publicResult.ok) {
           setConversation(publicResult.conversation);
-          setSignedIn(false);
           setState("ready");
           return;
         }
@@ -63,9 +66,9 @@ function SharedChatPage() {
           return;
         }
 
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: currentSessionData } = await supabase.auth.getSession();
         if (!alive) return;
-        const hasSession = !!sessionData.session;
+        const hasSession = !!currentSessionData.session;
         setSignedIn(hasSession);
         if (!hasSession) {
           setState("unavailable");
@@ -172,6 +175,21 @@ function SharedChatPage() {
                 </article>
               ))}
             </div>
+            <section className="mt-8 rounded-2xl border border-[#E4DCC8]/40 bg-card p-4 text-card-foreground shadow-sm">
+              <h3 className="font-display text-base font-semibold">Continue with TrueFluency</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {signedIn
+                  ? "Open the app to keep studying with your account."
+                  : "Sign in to continue studying, save your work, and explore the rest of the app."}
+              </p>
+              <button
+                type="button"
+                onClick={goSignIn}
+                className="mt-3 w-full rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-cream transition hover:bg-navy/90"
+              >
+                {signedIn ? "Open TrueFluency Pro" : "Continue to sign in"}
+              </button>
+            </section>
           </main>
         ) : null}
       </div>

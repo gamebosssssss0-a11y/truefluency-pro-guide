@@ -39,6 +39,14 @@ export type InProgressTest = {
   questionCount: number;
   durationSec: number;
   startedAt: number;
+  /** Stable ID correlating start and submit analytics across refresh/resume. */
+  analyticsSessionId?: string;
+  /** Total active seconds already consumed, excluding paused time. */
+  elapsedSec?: number;
+  /** Timestamp when the current active segment began; absent while paused. */
+  resumedAt?: number;
+  /** Persisted pause state, including when the app is backgrounded. */
+  isPaused?: boolean;
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
@@ -99,7 +107,8 @@ export type OnboardingStep =
 
 export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
-export type StudyPreference = "practice" | "flashcards" | "reading";
+/** First-action preference captured during onboarding and reused on Home. */
+export type StudyPreference = "practice" | "flashcards" | "reading" | "cgpa" | "tutor";
 
 /**
  * Local record of an account that has signed in on this device. It holds no
@@ -615,6 +624,59 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!hydrated || authPending) return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem("sharedMockToPractice");
+      if (raw) sessionStorage.removeItem("sharedMockToPractice");
+    } catch { return; }
+    if (!raw) return;
+    try {
+      const shared = JSON.parse(raw) as {
+        courseCode?: unknown; courseTitle?: unknown;
+        questions?: { id: number; topic: string; question: string; options: string[]; correct_index: number; explanation: string }[];
+      };
+      if (typeof shared.courseCode !== "string" || typeof shared.courseTitle !== "string" ||
+          !Array.isArray(shared.questions) || shared.questions.length < 1 || shared.questions.length > 60 ||
+          !shared.questions.every((q) => q && typeof q.question === "string" && Array.isArray(q.options) &&
+            Number.isInteger(q.correct_index) && q.correct_index >= 0 && q.correct_index < q.options.length)) return;
+      const questions = shared.questions;
+      const test: InProgressTest = {
+        courseCode: shared.courseCode,
+        courseTitle: shared.courseTitle,
+        mode: "tutor",
+        questionCount: questions.length,
+        durationSec: 40 * 60,
+        startedAt: Date.now(),
+        analyticsSessionId: crypto.randomUUID(),
+        resumedAt: Date.now(),
+        elapsedSec: 0,
+        isPaused: false,
+        answers: Array(questions.length).fill(null),
+        currentIndex: 0,
+        questionIds: questions.map((q) => q.id),
+        questions,
+        source: "ai",
+      };
+      const analyticsSessionId = test.analyticsSessionId;
+      void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+        recordAnalytics({ data: { eventName: "mock_started", courseCode: shared.courseCode as string, attemptId: analyticsSessionId } })
+      ).catch(() => undefined);
+      setProfile((current) => ({
+        ...current,
+        aiQuestionsByCourse: { ...current.aiQuestionsByCourse, [shared.courseCode as string]: questions },
+        inProgressTest: test,
+      }));
+      setStep("dashboard");
+      setView("mock-run");
+      setActiveCourseCode(shared.courseCode);
+      writeAppLocation("mock-run", { courseCode: shared.courseCode }, true, historySessionId.current ?? undefined);
+    } catch {
+      // Invalid session handoffs are ignored; no profile state is changed.
+    }
+  }, [hydrated, authPending]);
+
+  useEffect(() => {
     if (!hydrated) return;
     const onPopState = () => {
       if (viewRef.current === "mock-run" || viewRef.current === "mock-gen") return;
@@ -817,7 +879,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           if (keepCurrentDashboard) return;
           try {
             const returnTo = sessionStorage.getItem("returnTo");
-            if (returnTo && returnTo.startsWith("/s/")) {
+            if (returnTo && !returnTo.startsWith("//") && (returnTo.startsWith("/s/") || returnTo.startsWith("/chat-share/") || returnTo.startsWith("/mock-share/"))) {
               sessionStorage.removeItem("returnTo");
               window.location.assign(returnTo);
               return;

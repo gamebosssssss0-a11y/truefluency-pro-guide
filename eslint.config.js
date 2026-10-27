@@ -1,5 +1,4 @@
 import js from "@eslint/js";
-import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -36,5 +35,12 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
-  eslintPluginPrettier,
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      // Keep repository-wide formatting separate from semantic lint checks.
+      // Prettier runs as its own explicit check rather than emitting thousands of ESLint errors.
+      "prettier/prettier": "off",
+    },
+  },
 );

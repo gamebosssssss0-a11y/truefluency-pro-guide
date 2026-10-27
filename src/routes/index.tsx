@@ -142,8 +142,6 @@ function Router() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
-  const previousView = useRef(view);
-  const rootScroll = useRef(new Map<AppView, number>());
 
   useLayoutEffect(() => {
     const stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");
@@ -156,12 +154,8 @@ function Router() {
       stage.dataset.swipeActive = "false";
     }
 
-    const oldRoot = rootTabFor(previousView.current);
-    if (oldRoot) rootScroll.current.set(oldRoot, window.scrollY);
-    const nextRoot = rootTabFor(view);
-    if (nextRoot) window.scrollTo(0, rootScroll.current.get(nextRoot) ?? 0);
-    else window.scrollTo(0, 0);
-    previousView.current = view;
+    // New screens start at the top; in-progress study data remains in ProfileProvider.
+    window.scrollTo({ top: 0, behavior: "auto" });
   }, [view]);
 
   useEffect(() => {

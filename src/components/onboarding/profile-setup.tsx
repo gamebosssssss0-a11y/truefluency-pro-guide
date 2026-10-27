@@ -22,48 +22,63 @@ import { cn } from "@/lib/utils";
 /* -------- Faculty -------- */
 export function FacultyScreen() {
   const { update, go } = useProfile();
-  const faculties = Object.keys(facultyData);
+  const [query, setQuery] = useState("");
+  const faculties = useMemo(() => {
+    const search = query.trim().toLocaleLowerCase();
+    return Object.keys(facultyData).filter((faculty) => faculty.toLocaleLowerCase().includes(search));
+  }, [query]);
+
   return (
     <AppShell
       step={4}
       total={7}
       title="Pick your faculty"
-      subtitle="Tap the one you belong to. You can change this later in Settings."
+      subtitle="Search or choose a faculty. You can change this later in Settings."
     >
-      <div className="space-y-2.5">
-        {faculties.map((f) => {
-          const incomplete = facultyData[f].length === 0;
-          return (
-            <button
-              key={f}
-              onClick={() => { update({ faculty: f, department: null }); go("department"); }}
-              className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-accent hover:shadow-md"
-            >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-                <LogoMark className="h-7 w-7" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-foreground">{f}</div>
-                {incomplete ? (
-                  <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Info className="h-3 w-3" />
-                    List may be incomplete. Verify your department with your faculty.
+      <label className="relative mb-4 block">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Search faculties</span>
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search faculties…"
+          className="h-12 pl-10 text-base"
+        />
+      </label>
+      {faculties.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          No faculties match “{query.trim()}”. Try another search.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {faculties.map((faculty) => {
+            const incomplete = facultyData[faculty].length === 0;
+            return (
+              <button
+                key={faculty}
+                type="button"
+                onClick={() => { update({ faculty, department: null }); go("department"); }}
+                className="group flex min-h-28 w-full items-start gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+                  <LogoMark className="h-7 w-7" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold leading-snug text-foreground">{faculty}</div>
+                  <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {incomplete ? "Department list may be incomplete" : `${facultyData[faculty].length} departments`}
                   </div>
-                ) : (
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {facultyData[f].length} departments
-                  </div>
-                )}
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground transition group-hover:text-accent" />
-            </button>
-          );
-        })}
-      </div>
+                </div>
+                <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-accent" aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </AppShell>
   );
 }
-
 /* -------- Department -------- */
 export function DepartmentScreen() {
   const { profile, update, go } = useProfile();
@@ -160,7 +175,7 @@ export function LevelScreen() {
 
 /* -------- Course confirmation (Screen 4) -------- */
 export function CoursesScreen() {
-  const { profile, update, go } = useProfile();
+  const { profile, update, go, navigate } = useProfile();
   const level = profile.level!;
   const dept = profile.department!;
 
@@ -187,8 +202,21 @@ export function CoursesScreen() {
     // CGPA tools stay available in Account; don't make their introduction
     // an extra gate before a student's first study action.
     update({ courses: all, setupComplete: true, cgpaIntroSeen: true });
-    if (profile.trialNoticeSeen) go("dashboard");
-    else go("trial-welcome");
+    if (profile.trialNoticeSeen) {
+      go("dashboard");
+      switch (profile.studyPreference) {
+        case "practice": {
+          const firstCourse = chosenDept[0] ?? manualCourses[0] ?? gesCourses[0];
+          navigate(firstCourse ? "course-detail" : "add-course", { courseCode: firstCourse?.code ?? null });
+          break;
+        }
+        case "cgpa": navigate("cgpa"); break;
+        case "tutor": navigate("chatbot"); break;
+        case "flashcards": navigate("flashcards"); break;
+        case "reading": navigate("library"); break;
+        default: navigate("home");
+      }
+    } else go("trial-welcome");
   };
 
   const totalPicked = ges.length + selectedDept.length + manualCourses.length;

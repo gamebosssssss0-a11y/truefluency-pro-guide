@@ -26,6 +26,7 @@ import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
+import { createMockShare } from "@/lib/mock-sharing.functions";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = EXAM_MAX_QUESTIONS;
@@ -250,6 +251,14 @@ export function MockGenerationScreen() {
 
         // Store the AI questions under this course code so a set generated for
         // one course can never be served during another course's test.
+        const analyticsSessionId = crypto.randomUUID();
+        void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+          recordAnalytics({ data: { eventName: "mock_started", courseCode: course.code, materialId: ready.id, attemptId: analyticsSessionId } })
+        ).catch(() => undefined);
+        void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+          recordAnalytics({ data: { eventName: "upload_practice", courseCode: course.code, materialId: ready.id } })
+        ).catch(() => undefined);
+
         update({
           aiQuestionsByCourse: {
             ...profile.aiQuestionsByCourse,
@@ -262,6 +271,7 @@ export function MockGenerationScreen() {
             questionCount: questions.length,
             durationSec: (settings?.minutes ?? 30) * 60,
             startedAt: Date.now(),
+            analyticsSessionId,
             answers: Array(questions.length).fill(null),
             currentIndex: 0,
             questionIds: questions.map((q) => q.id),
@@ -849,25 +859,49 @@ export function MockRunScreen() {
   const [calcOpen, setCalcOpen] = useState(false);
   const submittedRef = useRef(false);
   const updateRef = useRef(update);
+  const testRef = useRef(t);
   updateRef.current = update;
+  testRef.current = t;
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
   }, []);
 
+  // Freeze the active-time clock whenever the runner is hidden or unmounted.
+  // A ref keeps this lifecycle listener independent of answer/index updates.
+  useEffect(() => {
+    const pause = () => {
+      const current = testRef.current;
+      if (!current || current.isPaused) return;
+      const resumedAt = current.resumedAt ?? current.startedAt;
+      const elapsedSec = (current.elapsedSec ?? 0) + Math.max(0, Math.floor((Date.now() - resumedAt) / 1000));
+      const paused = { ...current, elapsedSec, resumedAt: undefined, isPaused: true };
+      testRef.current = paused;
+      updateRef.current({ inProgressTest: paused });
+    };
+    const onVisibility = () => { if (document.visibilityState !== "visible") pause(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", pause);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", pause);
+      pause();
+    };
+  }, []);
+
+  // Persist current state periodically without changing the active-time baseline.
   useEffect(() => {
     if (!t) return;
-    const id = window.setInterval(() => {
-      updateRef.current({ inProgressTest: { ...t } });
-    }, 15_000);
+    const id = window.setInterval(() => updateRef.current({ inProgressTest: { ...testRef.current! } }), 15_000);
     return () => window.clearInterval(id);
-  }, [t]);
+  }, [Boolean(t)]);
 
   const remaining = useMemo(() => {
     if (!t) return 0;
-    const elapsed = Math.floor((now - t.startedAt) / 1000);
-    return Math.max(0, t.durationSec - elapsed);
+    const baseElapsed = t.elapsedSec ?? 0;
+    const activeSince = t.isPaused ? 0 : Math.max(0, Math.floor((now - (t.resumedAt ?? t.startedAt)) / 1000));
+    return Math.max(0, t.durationSec - baseElapsed - activeSince);
   }, [t, now]);
 
   // Use AI questions instead of hardcoded sampleQuestions
@@ -944,9 +978,11 @@ export function MockRunScreen() {
     // 1. the attempt row (History reads this),
     // 2. the study streak when at least five answers were given.
     // (The daily mock-set count is recorded by the generation service.)
+    let attemptSaved = false;
     try {
       const { pushMockAttempt } = await import("@/lib/cloud-sync");
       await pushMockAttempt(attempt);
+      attemptSaved = true;
     } catch (error) {
       console.error("[mock] attempt save failed", error);
       toast.error("Couldn't save this test to your account.");
@@ -955,6 +991,11 @@ export function MockRunScreen() {
     // No daily-count write here any more. The generation service already
     // recorded this set (when it succeeded); counting it again on submit made
     // every finished mock cost TWO of a free student's daily sets.
+    if (attemptSaved && t.analyticsSessionId) {
+      void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+        recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: t.analyticsSessionId! } })
+      ).catch(() => undefined);
+    }
 
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
     if (answeredCount >= 5) {
@@ -998,12 +1039,46 @@ export function MockRunScreen() {
     if (remaining === 0) void submit();
   }, [remaining, t]);
 
+  // Only repair legacy records that have no clock state. A deliberately paused
+  // test stays paused across navigation and reload until the student resumes it.
+  useEffect(() => {
+    if (!t || t.isPaused || t.resumedAt) return;
+    const resumed = { ...t, isPaused: false, resumedAt: Date.now() };
+    testRef.current = resumed;
+    updateRef.current({ inProgressTest: resumed });
+  }, [t?.courseCode, t?.isPaused, t?.resumedAt, t?.startedAt]);
+
   if (!t) {
     return (
       <div className="study-utility-page min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
-          <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
+          <section className="mt-6 rounded-2xl border border-border bg-card p-5">
+            <h1 className="font-display text-lg font-semibold text-foreground">No questions yet</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Start a practice set from one of your courses. Your progress will be saved as you go.</p>
+            <Button className="mt-4 w-full" onClick={() => navigate("mock-tests")}>Choose a practice set</Button>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (t.isPaused) {
+    const resume = () => {
+      const resumed = { ...t, isPaused: false, resumedAt: Date.now() };
+      testRef.current = resumed;
+      update({ inProgressTest: resumed });
+      setNow(Date.now());
+    };
+    return (
+      <div className="study-utility-page min-h-screen">
+        <div className="mx-auto max-w-md px-5 pt-12">
+          <section className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+            <h1 className="font-display text-xl font-semibold text-foreground">Your test is saved</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Your answers and remaining time are saved. The timer stays paused until you continue.</p>
+            <Button size="lg" className="mt-5 w-full" onClick={resume}>Resume test</Button>
+            <Button variant="outline" size="lg" className="mt-2 w-full" onClick={() => navigate("home")}>Return home</Button>
+          </section>
         </div>
       </div>
     );
@@ -1064,14 +1139,14 @@ export function MockRunScreen() {
             >
               <CalcIcon className="h-4 w-4" />
             </button>
-            <div className={cn("font-display text-2xl font-semibold tabular-nums", timerColor)}>
+            <div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`} className={cn("rounded-xl border border-border bg-card px-3 py-2 font-display text-xl font-semibold tabular-nums shadow-sm", timerColor)}>
               {mm}:{String(ss).padStart(2, "0")}
             </div>
           </div>
         </div>
 
         <div className="mb-2 flex items-center gap-3">
-          <Progress value={((idx + 1) / questions.length) * 100} className="h-1.5 flex-1" />
+          <Progress value={((idx + 1) / questions.length) * 100} className="h-2 flex-1" />
           <span className="text-[11px] text-muted-foreground">Q {idx + 1} of {questions.length}</span>
         </div>
 
@@ -1087,9 +1162,12 @@ export function MockRunScreen() {
 
 
         {q ? (
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText>{q.question}</MathText></div>
+          <section aria-label={`Question ${idx + 1}`} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{q.topic}</div>
+              <span role="progressbar" aria-label="Practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((idx + 1) / questions.length) * 100)} aria-valuetext={`Question ${idx + 1} of ${questions.length}`} className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}% complete</span>
+            </div>
+            <div className="break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -1100,13 +1178,26 @@ export function MockRunScreen() {
                 return (
                   <button key={i} type="button" aria-pressed={on} aria-disabled={locked}
                     onClick={() => setAnswer(i)}
-                    className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                    className={cn("flex min-h-14 w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       isCorrectOption ? "border-success bg-success/10" : isWrongSelection ? "border-destructive bg-destructive/10" : on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
-                    <div className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
-                      on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
-                      {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
+                    <div
+                      aria-hidden="true"
+                      className={cn(
+                        "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+                        isCorrectOption
+                          ? "border-success bg-success/10 text-success"
+                          : isWrongSelection
+                            ? "border-destructive bg-destructive/10 text-destructive"
+                            : on
+                              ? "border-accent bg-accent text-accent-foreground"
+                              : "border-border bg-muted/50 text-muted-foreground",
+                      )}
+                    >
+                      {isCorrectOption ? <Check className="h-3.5 w-3.5" /> : isWrongSelection ? <X className="h-3.5 w-3.5" /> : on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="min-w-0 break-words whitespace-pre-wrap text-base leading-6 text-foreground"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 flex-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground"><MathText>{opt}</MathText></span>
+                    {mode === "tutor" && locked && isCorrectOption ? <span className="sr-only">Correct answer</span> : null}
+                    {mode === "tutor" && locked && isWrongSelection ? <span className="sr-only">Your selected answer is incorrect</span> : null}
                   </button>
                 );
               })}
@@ -1149,18 +1240,14 @@ export function MockRunScreen() {
                       )}
                     </div>
                   </div>
-                  <div>
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
-                    <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
-                      {failsQualityCheck(explanation) || !explanation ? (
-                        <span className="text-muted-foreground">The key concept is not available for this question.</span>
-                      ) : blocks.concept ? (
+                  {!failsQualityCheck(explanation) && blocks.concept ? (
+                    <div>
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
+                      <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
                         <MathText>{blocks.concept}</MathText>
-                      ) : (
-                        <span className="text-muted-foreground">A separate key concept was not included in the saved explanation.</span>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                   {!failsQualityCheck(explanation) && explanation.length > 180 ? (
                     <details className="rounded-lg border border-border bg-card/60 px-3 py-2">
                       <summary className="cursor-pointer text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
@@ -1179,7 +1266,7 @@ export function MockRunScreen() {
               {/* Optional: a question that is cut off, has two right answers, a wrong key ... can be reported right here. */}
               <ReportQuestionButton compact courseCode={t.courseCode} question={q.question} options={q.options} markedIndex={q.correct_index} />
             </div>
-          </div>
+          </section>
         ) : null}
 
         <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur">
@@ -1391,6 +1478,7 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
 
 export function MockResultScreen() {
   const { profile, navigate } = useProfile();
+  const [sharing, setSharing] = useState(false);
   const { access } = useEntitlement();
   const streak = getStreakState(profile, access?.watToday);
   const attempt = profile.attempts.find((a) => a.id === profile.lastResultId);
@@ -1478,6 +1566,32 @@ export function MockResultScreen() {
           onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
         >
           Review answers
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="mt-2 w-full"
+          disabled={sharing || !attempt.questions?.length}
+          onClick={async () => {
+            setSharing(true);
+            try {
+              const result = await createMockShare({ data: { attemptId: attempt.id } });
+              if (!result.ok) {
+                toast.error(result.reason);
+                return;
+              }
+              const url = new URL("/mock-share/" + result.token, window.location.origin).toString();
+              await navigator.clipboard.writeText(url);
+              toast.success("Mock link copied", { description: "Anyone with the link can preview this mock." });
+            } catch {
+              toast.error("Couldn't create a share link. Please try again.");
+            } finally {
+              setSharing(false);
+            }
+          }}
+        >
+          <span className="mr-2">↗</span>{sharing ? "Creating link…" : "Share mock"}
         </Button>
 
 
