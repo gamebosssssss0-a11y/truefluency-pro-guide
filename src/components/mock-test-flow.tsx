@@ -1182,7 +1182,7 @@ export function MockRunScreen() {
               {/* Optional: a question that is cut off, has two right answers, a wrong key ... can be reported right here. */}
               <ReportQuestionButton compact courseCode={t.courseCode} question={q.question} options={q.options} markedIndex={q.correct_index} />
             </div>
-          </div>
+          </section>
         ) : null}
 
         <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur">
