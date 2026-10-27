@@ -39,6 +39,8 @@ export type InProgressTest = {
   questionCount: number;
   durationSec: number;
   startedAt: number;
+  /** Stable ID correlating start and submit analytics across refresh/resume. */
+  analyticsSessionId?: string;
   /** Total active seconds already consumed, excluding paused time. */
   elapsedSec?: number;
   /** Timestamp when the current active segment began; absent while paused. */
@@ -645,6 +647,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         questionCount: questions.length,
         durationSec: 40 * 60,
         startedAt: Date.now(),
+        analyticsSessionId: crypto.randomUUID(),
         resumedAt: Date.now(),
         elapsedSec: 0,
         isPaused: false,
@@ -654,6 +657,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         questions,
         source: "ai",
       };
+      const analyticsSessionId = test.analyticsSessionId;
+      void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+        recordAnalytics({ data: { eventName: "mock_started", courseCode: shared.courseCode as string, attemptId: analyticsSessionId } })
+      ).catch(() => undefined);
       setProfile((current) => ({
         ...current,
         aiQuestionsByCourse: { ...current.aiQuestionsByCourse, [shared.courseCode as string]: questions },
