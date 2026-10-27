@@ -175,7 +175,7 @@ export function LevelScreen() {
 
 /* -------- Course confirmation (Screen 4) -------- */
 export function CoursesScreen() {
-  const { profile, update, go } = useProfile();
+  const { profile, update, go, navigate } = useProfile();
   const level = profile.level!;
   const dept = profile.department!;
 
@@ -202,8 +202,19 @@ export function CoursesScreen() {
     // CGPA tools stay available in Account; don't make their introduction
     // an extra gate before a student's first study action.
     update({ courses: all, setupComplete: true, cgpaIntroSeen: true });
-    if (profile.trialNoticeSeen) go("dashboard");
-    else go("trial-welcome");
+    if (profile.trialNoticeSeen) {
+      go("dashboard");
+      switch (profile.studyPreference) {
+        case "practice":
+          navigate(all[0] ? "course-detail" : "add-course", { courseCode: all[0]?.code ?? null });
+          break;
+        case "cgpa": navigate("cgpa"); break;
+        case "tutor": navigate("chatbot"); break;
+        case "flashcards": navigate("flashcards"); break;
+        case "reading": navigate("library"); break;
+        default: navigate("home");
+      }
+    } else go("trial-welcome");
   };
 
   const totalPicked = ges.length + selectedDept.length + manualCourses.length;
