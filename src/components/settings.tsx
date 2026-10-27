@@ -287,12 +287,12 @@ export function AccountScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/90 dark:text-[#C4B8A0]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Account
           </span>
         </div>
-        <h1 className="font-display text-3xl font-bold text-[#F7F3EA] dark:text-[#F7F3EA]">Account</h1>
-        <p className="mt-1 text-sm text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Account</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your profile, your tools, and your data.
         </p>
 
@@ -307,7 +307,7 @@ export function AccountScreen() {
           <button
             type="button"
             onClick={() => navigate("upgrade")}
-            className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:text-accent/80"
+            className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-accent hover:text-accent/80"
           >
             View premium <ChevronRight className="h-3 w-3" />
           </button>
