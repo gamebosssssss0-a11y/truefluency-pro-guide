@@ -458,7 +458,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {locker === null ? (
               lockerError ? (
                 <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
-              ) : <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
+              ) : <div role="status" aria-label="Loading your files" className="space-y-3"><div className="h-20 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-20 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-20 animate-pulse rounded-2xl border border-border bg-card" /></div>
             ) : openFolder ? (
               <>
                 {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
@@ -549,7 +549,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {shelfOffline && shelf === null ? (
               <Card><p className="text-sm text-muted-foreground">{SHARING_OFFLINE_MESSAGE}</p></Card>
             ) : shelf === null ? (
-              <Card><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></Card>
+              <div role="status" aria-label="Loading course shelf" className="space-y-3"><div className="h-16 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-16 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-16 animate-pulse rounded-2xl border border-border bg-card" /></div>
             ) : (
               <>
                 {shelfLoading ? <p className="text-xs text-muted-foreground" role="status">Updating course shelf…</p> : null}
