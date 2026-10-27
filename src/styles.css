@@ -616,54 +616,15 @@
 }
 
 /* Solid study utility surfaces follow the same slate/teal system in both themes. */
+/* Every screen shares the same page-level theme background. Cards and controls remain solid surfaces. */
 .study-utility-page {
-  --background: #F7F3EA;
-  --foreground: #243447;
-  --surface: #FBF7EE;
-  --card: #FBF7EE;
-  --card-foreground: #243447;
-  --popover: #FBF7EE;
-  --popover-foreground: #243447;
-  --primary: #334155;
-  --primary-foreground: #F7F3EA;
-  --secondary: #EFE8D9;
-  --secondary-foreground: #243447;
-  --muted: #EFE8D9;
-  --muted-foreground: #526171;
-  --accent: #0F766E;
-  --accent-foreground: #F7F3EA;
-  --success: #2F6B4F;
-  --warning: #B86E0A;
-  --destructive: #8B2E2E;
-  --border: #E4DCC8;
-  --input: #E4DCC8;
-  background-color: var(--background);
+  background-color: transparent;
   background-image: none;
   color: var(--foreground);
 }
 
 .dark .study-utility-page {
-  --background: #020A1A;
-  --foreground: #E2E8F0;
-  --surface: #0E1A33;
-  --card: #0E1A33;
-  --card-foreground: #E2E8F0;
-  --popover: #132240;
-  --popover-foreground: #E2E8F0;
-  --primary: #1E293B;
-  --primary-foreground: #F7F3EA;
-  --secondary: #132240;
-  --secondary-foreground: #E2E8F0;
-  --muted: #132240;
-  --muted-foreground: #A8B3C2;
-  --accent: #2DD4BF;
-  --accent-foreground: #020A1A;
-  --success: #7BBF9A;
-  --warning: #F2C27E;
-  --destructive: #F2A3A3;
-  --border: #243656;
-  --input: #243656;
-  background-color: var(--background);
+  background-color: transparent;
   color: var(--foreground);
 }
 
@@ -675,12 +636,7 @@
 
 .study-utility-page .text-muted-foreground,
 .study-utility-page [class~="text-muted-foreground/80"] {
-  color: #526171;
-}
-
-.dark .study-utility-page .text-muted-foreground,
-.dark .study-utility-page [class~="text-muted-foreground/80"] {
-  color: #A8B3C2;
+  color: var(--muted-foreground);
 }
 
 .study-utility-page .text-accent {
