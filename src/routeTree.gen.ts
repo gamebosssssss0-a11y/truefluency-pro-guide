@@ -15,6 +15,7 @@ import { Route as ResetRouteImport } from './routes/reset'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ChatShareTokenRouteImport } from './routes/chat-share.$token'
 import { Route as STokenRouteImport } from './routes/s.$token'
+import { Route as MockShareTokenRouteImport } from './routes/mock-share.$token'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
 const IndexRoute = IndexRouteImport.update({
@@ -42,6 +43,11 @@ const ChatShareTokenRoute = ChatShareTokenRouteImport.update({
   path: '/chat-share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MockShareTokenRoute = MockShareTokenRouteImport.update({
+  id: '/mock-share/$token',
+  path: '/mock-share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const STokenRoute = STokenRouteImport.update({
   id: '/s/$token',
   path: '/s/$token',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/s/$token': typeof STokenRoute
+  '/mock-share/$token': typeof MockShareTokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesByTo {
@@ -91,6 +98,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/chat-share/$token'
     | '/s/$token'
+    | '/mock-share/$token'
     | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -183,6 +191,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ChatShareTokenRoute: ChatShareTokenRoute,
   STokenRoute: STokenRoute,
+  MockShareTokenRoute: MockShareTokenRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
 }
 export const routeTree = rootRouteImport
