@@ -773,3 +773,56 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Visual refinement pass: calmer surfaces, clearer hierarchy, and consistent interaction states. */
+:where(button, [role="button"], a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, [role="button"]) {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):hover {
+    filter: brightness(0.985);
+  }
+}
+
+:where(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):active {
+  transform: translateY(1px);
+}
+
+:where(button:disabled, [role="button"][aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+:where(input, select, textarea) {
+  border-radius: max(0.65rem, var(--radius, 0.65rem));
+}
+
+:where(input, select, textarea):focus-visible {
+  border-color: var(--ring, #0F766E);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0F766E) 16%, transparent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent, #0F766E) 22%, transparent);
+}
+
+/* Keep common card surfaces crisp without forcing a new layout or theme. */
+:where([data-card], .study-card) {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  :where(button, [role="button"]) {
+    touch-action: manipulation;
+  }
+}
