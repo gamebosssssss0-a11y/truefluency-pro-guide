@@ -207,12 +207,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // fix; the key scoping is the second layer in case a key is ever read
   // before that effect fires.
   const currentUid = useRef<string | null>(null);
+  const authEpoch = useRef(0);
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUid = session?.user.id ?? null;
       if (nextUid !== currentUid.current) {
+        authEpoch.current += 1;
+        loadToken.current += 1;
         threadCache.current.clear();
         setMessages([]);
+        setIsSending(false);
+        setStreamingBubbleId(null);
       }
       currentUid.current = nextUid;
     });
@@ -595,6 +600,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const pageToSend = retry ? retryPageAttachments.current.get(retry.messageId) ?? null : attachedPage;
     if (!course || (!text && !fileToSend)) return;
     if (isSending || isUploadingPhoto || isPreparingPhoto) return;
+    const sendAuthEpoch = authEpoch.current;
 
     // A photo on its own is a complete message: the AI reads it and helps with what is on it.
 
@@ -671,6 +677,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         sendMode,
         imagePath,
         (delta) => {
+          if (authEpoch.current !== sendAuthEpoch) return;
           if (streamId === null) {
             const id = nextId.current++;
             const createdAt = new Date().toISOString();
@@ -689,6 +696,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         },
         pageContext,
       );
+      if (authEpoch.current !== sendAuthEpoch) return;
 
       // One corrective pass once the full reply is known: the moderation
       // short-circuit path (blocked message, image rejected) isn't streamed
@@ -731,6 +739,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         void refreshAccess().catch((e) => console.warn("[chat] couldn't refresh access", e));
       }
     } catch (error) {
+      if (authEpoch.current !== sendAuthEpoch) return;
       // Logged so a failed send is visible in DevTools → Console with the real
       // reason (backend error text, network failure) instead of only the
       // generic "Couldn't send." under the message.
@@ -760,8 +769,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         return next;
       });
     } finally {
-      setIsSending(false);
-      setStreamingBubbleId(null);
+      if (authEpoch.current === sendAuthEpoch) {
+        setIsSending(false);
+        setStreamingBubbleId(null);
+      }
     }
   };
 
