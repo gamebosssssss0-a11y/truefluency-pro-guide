@@ -134,3 +134,10 @@ test("library empty state explains how to upload and loading uses skeleton cards
   assert.match(library, /aria-label="Loading your files"/);
   assert.match(library, /animate-pulse rounded-2xl border border-border bg-card/);
 });
+
+
+test("mock practice empty state offers a clear next action", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /No questions yet/);
+  assert.match(flow, /Choose a practice set/);
+});
