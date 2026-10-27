@@ -1022,17 +1022,6 @@ export function MockRunScreen() {
     if (remaining === 0) void submit();
   }, [remaining, t]);
 
-  if (!t) {
-    return (
-      <div className="study-utility-page min-h-screen">
-        <div className="mx-auto max-w-md px-5 pt-6">
-          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
-          <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
-        </div>
-      </div>
-    );
-  }
-
   // Re-entering the runner starts a fresh active-time segment; paused time is never charged.
   useEffect(() => {
     if (!t || (!t.isPaused && t.resumedAt)) return;
@@ -1044,6 +1033,17 @@ export function MockRunScreen() {
     testRef.current = resumed;
     updateRef.current({ inProgressTest: resumed });
   }, [t?.courseCode, t?.isPaused, t?.resumedAt, t?.startedAt]);
+
+  if (!t) {
+    return (
+      <div className="study-utility-page min-h-screen">
+        <div className="mx-auto max-w-md px-5 pt-6">
+          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
+          <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
+        </div>
+      </div>
+    );
+  }
 
   const idx = t.currentIndex;
   const q = questions[idx];
