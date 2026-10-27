@@ -183,7 +183,7 @@ function ScrollPage({
       style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? estimatedPageHeight }}
     >
       {active || (distance <= 8 && hasPainted) ? (
-        <canvas ref={canvasRef} className="block rounded-md bg-white shadow-sm" />
+        <canvas ref={canvasRef} className="block max-w-full rounded-md bg-white shadow-sm" />
       ) : (
         <div
           className="rounded-md bg-white/60 shadow-sm"
@@ -660,7 +660,7 @@ export function PdfViewer({
           <canvas
             ref={canvasRef}
             className={
-              expanded ? "hidden" : "mx-auto block max-h-full rounded-md bg-white shadow-sm"
+              expanded ? "hidden" : "mx-auto block max-h-full max-w-full rounded-md bg-white shadow-sm"
             }
           />
         )}
