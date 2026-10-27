@@ -24,7 +24,7 @@ test("admin analytics use Lagos half-open day bounds and deduplicate active user
   assert.match(migration, /lagos_today_start/);
   assert.match(migration, /lagos_tomorrow_start/);
   assert.match(migration, /created_at >= lagos_today_start and created_at < lagos_tomorrow_start/);
-  assert.match(migration, /select count\(\*\) from active_users/);
+  assert.match(migration, /select count\(distinct user_id\) from active_users/);
 });
 
 test("mock completion uses correlated session IDs and distinct event IDs", async () => {
@@ -32,7 +32,7 @@ test("mock completion uses correlated session IDs and distinct event IDs", async
   const mockFlow = await read("../src/components/mock-test-flow.tsx");
   const profile = await read("../src/lib/profile-store.tsx");
   assert.match(mockFlow, /analyticsSessionId = crypto\.randomUUID\(\)/);
-  assert.match(mockFlow, /eventName: "mock_submitted"[\s\S]*?t\.analyticsSessionId \?\? attempt\.id/);
+  assert.match(mockFlow, /attemptSaved && t\.analyticsSessionId/);\n  assert.match(mockFlow, /eventName: "mock_submitted"[\s\S]*?t\.analyticsSessionId!/);
   assert.match(profile, /analyticsSessionId: crypto\.randomUUID\(\)/);
   assert.match(migration, /count\(distinct attempt_id\)/);
 });
