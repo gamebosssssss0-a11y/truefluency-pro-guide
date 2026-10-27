@@ -38,7 +38,7 @@ test("mock completion uses correlated session IDs and distinct event IDs", async
 });
 
 test("top-course counts aggregate uploads and submitted mocks independently", async () => {
-  const migration = await read("../supabase/migrations/20261027150000_fix_admin_analytics_metrics.sql");
+  const migration = await read("../supabase/migrations/20261027160000_exclude_null_activity_users.sql");
   assert.match(migration, /upload_courses as/);
   assert.match(migration, /mock_courses as/);
   assert.match(migration, /full outer join mock_courses/);
