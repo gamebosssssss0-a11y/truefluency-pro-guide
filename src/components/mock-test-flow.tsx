@@ -1223,18 +1223,14 @@ export function MockRunScreen() {
                       )}
                     </div>
                   </div>
-                  <div>
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
-                    <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
-                      {failsQualityCheck(explanation) || !explanation ? (
-                        <span className="text-muted-foreground">The key concept is not available for this question.</span>
-                      ) : blocks.concept ? (
+                  {!failsQualityCheck(explanation) && blocks.concept ? (
+                    <div>
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
+                      <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
                         <MathText>{blocks.concept}</MathText>
-                      ) : (
-                        <span className="text-muted-foreground">A separate key concept was not included in the saved explanation.</span>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                   {!failsQualityCheck(explanation) && explanation.length > 180 ? (
                     <details className="rounded-lg border border-border bg-card/60 px-3 py-2">
                       <summary className="cursor-pointer text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
