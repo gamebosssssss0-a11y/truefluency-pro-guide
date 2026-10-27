@@ -629,7 +629,9 @@
    Keep the chat viewport inside that stage instead of letting its own fixed
    height extend behind the mobile tab bar. */
 .study-chat-screen {
-  height: calc(100dvh - 9rem - env(safe-area-inset-bottom));
+  /* The tab stage already reserves the bottom-nav space with its own padding.
+     Subtracting that space here too made the composer hover well above the nav. */
+  height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
   min-height: 0;
   min-width: 0;
 }

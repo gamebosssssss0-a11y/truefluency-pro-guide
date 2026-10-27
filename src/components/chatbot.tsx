@@ -429,27 +429,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }, [selected, reloadNonce]);
 
   useEffect(() => {
-    // Re-fetches every time the sheet opens, on purpose — no "already loaded"
-    // latch. One used to exist here (historyLoaded, a useRef set true after
-    // the first successful load and never reset) which meant History showed
-    // its first-ever snapshot for the rest of the session: every message
-    // sent afterwards was genuinely saved server-side, just never visible
-    // here, because this effect refused to run again.
+    // Refresh whenever the history sheet opens. Render each course as soon as
+    // it arrives instead of waiting for the slowest course's network request.
     if (!historyOpen) return;
     let alive = true;
     setHistoryError(null);
+    setHistoryRows([]);
     setHistoryLoading(true);
-    void Promise.all(courseOptions.map(async (course) => {
+
+    const loadCourse = async (course: string) => {
       const raw = (await getCourseHistory(course)).messages;
-      if (!threadCache.current.has(cacheMapKey(course))) persistCache(course, toUiMessages(raw));
-      // Grouped by conversation_id, not date — a row is now exactly one real
-      // conversation, so it can be opened or deleted precisely. Legacy
-      // messages saved before conversation_id was exposed (shouldn't exist
-      // going forward) fall back to a per-course bucket rather than crashing.
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
         const convKey = message.conversation_id ?? `legacy:${course}`;
-        grouped.set(convKey, [...(grouped.get(convKey) ?? []), message]);
+        const group = grouped.get(convKey);
+        if (group) group.push(message);
+        else grouped.set(convKey, [message]);
       }
       return [...grouped.entries()].map(([conversationId, items]) => {
         const first = items[0];
@@ -464,19 +459,35 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           messages: items,
         };
       });
-    })).then((rows) => {
-      if (alive) {
-        setHistoryRows(rows.flat());
-      }
-    }).catch((error) => {
-      if (alive) {
-        const message = error instanceof Error ? error.message : "Couldn't load chat history.";
-        setHistoryError(message);
-        toast.error(message);
+    };
+
+    let failureCount = 0;
+    const requests = courseOptions.map((course) =>
+      loadCourse(course).then((rows) => {
+        if (!alive) return;
+        setHistoryRows((current) => [
+          ...current.filter((row) => row.course !== course),
+          ...rows,
+        ]);
+      }).catch((error: unknown) => {
+        failureCount += 1;
+        if (alive && failureCount === courseOptions.length) {
+          const message = error instanceof Error ? error.message : "Couldn't load chat history.";
+          setHistoryError(message);
+          toast.error(message);
+        }
+      })
+    );
+
+    void Promise.all(requests).then(() => {
+      if (!alive) return;
+      if (failureCount > 0 && failureCount < courseOptions.length) {
+        toast.error("Some course histories couldn't load. The available conversations are shown.");
       }
     }).finally(() => {
       if (alive) setHistoryLoading(false);
     });
+
     return () => { alive = false; };
   }, [historyOpen, profile.courses]);
 
@@ -1100,13 +1111,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <>
               {messages.map((m) =>
                 m.from === "student" ? (
-                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[85%] break-words">
+                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[85%] break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
                       <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-card p-3.5 text-sm text-card-foreground">
+                    <div className="whitespace-pre-wrap rounded-2xl border border-border bg-card p-3.5 text-sm text-card-foreground [overflow-wrap:anywhere]">
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
@@ -1150,7 +1161,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     </div>
                   </div>
                 ) : m.from === "assistant" ? (
-                  <div key={m.id} className="w-full">
+                  <div key={m.id} className="w-full min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
                       <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1B2A4A]">
                         {displayCode(m.courseTag)}
@@ -1348,12 +1359,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <SheetTitle>Study Chat history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>
           </SheetHeader>
-          {historyLoading ? <p className="py-6 text-sm text-muted-foreground">Loading history…</p> : historyError ? (
+          {historyRows.length === 0 && historyLoading ? (
+            <p className="py-6 text-sm text-muted-foreground">Loading history…</p>
+          ) : historyRows.length === 0 && historyError ? (
             <p className="py-6 text-sm text-muted-foreground">{historyError}</p>
           ) : historyRows.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
           ) : (
             <div className="mt-4 space-y-2">
+              {historyLoading ? <p role="status" className="text-xs text-muted-foreground">Loading more conversations…</p> : null}
               {historyRows.map((row) => {
                 const isExpanded = expandedConvId === row.conversationId;
                 const previewText = plainText(row.messages[row.messages.length - 1]?.content ?? "");

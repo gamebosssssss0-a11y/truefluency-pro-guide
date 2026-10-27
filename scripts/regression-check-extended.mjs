@@ -115,7 +115,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
   assert.match(chat, /line-clamp-2 whitespace-normal break-words text-left leading-4/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
-  assert.match(styles, /height: calc\(100dvh - 9rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /height: calc\(100dvh - 4\.5rem - env\(safe-area-inset-bottom\)\)/);
   assert.match(styles, /--accent: #E0B458/);
   assert.match(styles, /--muted-foreground: #C5CCD6/);
   assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
@@ -242,4 +242,36 @@ test("peer share use limits are claimed atomically and failed claims roll back c
   assert.match(server, /\.gt\("expires_at", new Date\(\)\.toISOString\(\)\)/);
   assert.match(server, /\.lt\("use_count", useLimit\)/);
   assert.match(server, /if \(claimError \|\| !claimed\) \{[\s\S]*\.delete\(\)\.eq\("id", inserted\.id\)[\s\S]*deleteObject\(destPath\)/);
+});
+
+
+test("theme follows the browser color scheme and does not force dark on app entry", async () => {
+  const theme = await read("../src/lib/theme.tsx");
+  const root = await read("../src/routes/__root.tsx");
+  assert.match(theme, /matchMedia\("\(prefers-color-scheme: dark\)"\)/);
+  assert.match(theme, /media\.addEventListener\?\.\("change", syncTheme\)/);
+  assert.doesNotMatch(theme, /setThemeState\("dark"\)|localStorage\.setItem\(KEY/);
+  assert.doesNotMatch(root, /<html lang="en" className="dark">/);
+  assert.match(root, /window\.matchMedia\('\(prefers-color-scheme: dark\)'\)/);
+});
+
+test("chat history does not overwrite the active thread cache and tolerates per-course failures", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(chat, /const requests = courseOptions\.map/);
+  assert.match(chat, /setHistoryRows\(\(current\) => \[/);
+  assert.match(chat, /const group = grouped\.get\(convKey\)/);
+  assert.match(chat, /historyRows\.length === 0 && historyLoading/);
+  assert.match(chat, /Loading more conversations…/);
+  assert.doesNotMatch(chat, /Promise\.allSettled\(courseOptions\.map/);
+  const historyEffect = chat.slice(chat.indexOf("const loadCourse"), chat.indexOf("const handleResumeConversation"));
+  assert.doesNotMatch(historyEffect, /persistCache/);
+  assert.doesNotMatch(chat, /const raw = \(await getCourseHistory\(course\)\)\.messages;\s*if \(!threadCache\.current\.has\(cacheMapKey\(course\)\)\) persistCache/);
+});
+
+test("mobile chat composer uses the tab-nav-reserved viewport and message text wraps", async () => {
+  const styles = await read("../src/styles.css");
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(styles, /height: calc\(100dvh - 4\.5rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(chat, /whitespace-pre-wrap rounded-2xl[^\n]*\[overflow-wrap:anywhere\]/);
+  assert.match(chat, /w-full min-w-0 max-w-full break-words \[overflow-wrap:anywhere\]/);
 });
