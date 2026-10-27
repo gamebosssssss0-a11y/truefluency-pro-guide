@@ -174,3 +174,12 @@ test("failed chat streams discard incomplete assistant text but preserve retryab
   assert.match(failureHandler, /retryMode: sendMode/);
   assert.match(failureHandler, /persistCache\(course, next\)/);
 });
+
+
+test("admin permission failures are not misreported as zero paywall hits", async () => {
+  const admin = await read("../src/routes/admin.tsx");
+  assert.match(admin, /gateCountsError/);
+  assert.match(admin, /Some paywall-hit counts could not be verified/);
+  assert.match(admin, /gate in gateCounts \? gateCounts\[gate\] : "—"/);
+  assert.doesNotMatch(admin, /countResult\.error \? 0 : countResult\.count/);
+});
