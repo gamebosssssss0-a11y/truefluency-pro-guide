@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
@@ -620,7 +621,7 @@ export function AccountScreen() {
 /** Back-compat alias for older navigation that still says "settings". */
 export const SettingsScreen = AccountScreen;
 
-function Row({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
+function Row({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: string; value: string; sub?: string }) {
   return (
     <div className="surface-key-card flex items-center gap-3 p-3.5">
       <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
