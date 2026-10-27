@@ -1022,14 +1022,11 @@ export function MockRunScreen() {
     if (remaining === 0) void submit();
   }, [remaining, t]);
 
-  // Re-entering the runner starts a fresh active-time segment; paused time is never charged.
+  // Only repair legacy records that have no clock state. A deliberately paused
+  // test stays paused across navigation and reload until the student resumes it.
   useEffect(() => {
-    if (!t || (!t.isPaused && t.resumedAt)) return;
-    const resumed = {
-      ...t,
-      isPaused: false,
-      resumedAt: t.resumedAt ?? t.startedAt,
-    };
+    if (!t || t.isPaused || t.resumedAt) return;
+    const resumed = { ...t, isPaused: false, resumedAt: Date.now() };
     testRef.current = resumed;
     updateRef.current({ inProgressTest: resumed });
   }, [t?.courseCode, t?.isPaused, t?.resumedAt, t?.startedAt]);
@@ -1040,6 +1037,27 @@ export function MockRunScreen() {
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (t.isPaused) {
+    const resume = () => {
+      const resumed = { ...t, isPaused: false, resumedAt: Date.now() };
+      testRef.current = resumed;
+      update({ inProgressTest: resumed });
+      setNow(Date.now());
+    };
+    return (
+      <div className="study-utility-page min-h-screen">
+        <div className="mx-auto max-w-md px-5 pt-12">
+          <section className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+            <h1 className="font-display text-xl font-semibold text-foreground">Your test is saved</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Your answers and remaining time are saved. The timer stays paused until you continue.</p>
+            <Button size="lg" className="mt-5 w-full" onClick={resume}>Resume test</Button>
+            <Button variant="outline" size="lg" className="mt-2 w-full" onClick={() => navigate("home")}>Return home</Button>
+          </section>
         </div>
       </div>
     );
