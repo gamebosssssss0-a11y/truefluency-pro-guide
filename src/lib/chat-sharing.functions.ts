@@ -23,7 +23,7 @@ function sharingReady(): boolean {
 
 function cleanConversationId(value: unknown): string {
   const id = typeof value === "string" ? value.trim() : "";
-  if (!id || id.length > 128 || /[\u0000-\u001f]/.test(id)) {
+  if (!id || id.length > 128 || Array.from(id).some((char) => char.charCodeAt(0) <= 31)) {
     throw new Error("Conversation not found.");
   }
   return id;
