@@ -12,6 +12,10 @@ type Stats = {
   active_today: number;
   trials_in_7_days: number;
   mock_sets_7_days: number;
+  upload_to_practice: number;
+  mock_started_7_days: number;
+  mock_submitted_events_7_days: number;
+  seven_day_depth: number;
   top_courses: CourseRow[];
   pipeline_usable: number;
   pipeline_failed: FailedRow[];
@@ -127,9 +131,9 @@ function AdminPage() {
         </section>
 
         <section className="grid gap-3 sm:grid-cols-3" aria-label="Engagement ratios">
-          <article className="rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Upload to practice</h2><p className="mt-2 text-lg font-semibold">Not counted</p><p className="text-xs text-muted-foreground">The upload-to-practice event is not stored.</p></article>
-          <article className="rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Mock completion</h2><p className="mt-2 text-lg font-semibold">{stats.mock_sets_7_days.toLocaleString()} submitted mocks (7 days)</p><p className="text-xs text-muted-foreground">A completion rate cannot be computed because no “started” event exists.</p></article>
-          <article className="rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">7-day depth</h2><p className="mt-2 text-lg font-semibold">Not counted yet</p><p className="text-xs text-muted-foreground">Active days per student are not returned by the existing summary.</p></article>
+          <article className="rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Upload to practice</h2><p className="mt-2 text-2xl font-semibold tabular-nums">{stats.upload_to_practice.toLocaleString()}</p><p className="text-xs text-muted-foreground">Distinct uploads used to start practice in the last 7 days.</p></article>
+          <article className="rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Mock completion rate</h2><p className="mt-2 text-2xl font-semibold tabular-nums">{stats.mock_started_7_days > 0 ? Math.round((stats.mock_submitted_events_7_days / stats.mock_started_7_days) * 100) : 0}%</p><p className="text-xs text-muted-foreground">{stats.mock_submitted_events_7_days.toLocaleString()} submitted ÷ {stats.mock_started_7_days.toLocaleString()} started · last 7 days</p></article>
+          <article className="rounded-2xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">7-day depth</h2><p className="mt-2 text-2xl font-semibold tabular-nums">{Number(stats.seven_day_depth ?? 0).toFixed(2)} days</p><p className="text-xs text-muted-foreground">Average active days per student with recorded activity.</p></article>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-4">
@@ -158,7 +162,7 @@ function AdminPage() {
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {GATES.map((gate) => <div key={gate} className="rounded-xl bg-background p-3"><p className="text-[10px] leading-tight text-muted-foreground">{gate.replaceAll("_", " ")}</p><p className="mt-1 text-xl font-semibold">{gateCounts[gate] ?? 0}</p></div>)}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Upload lock counts begin with this tracking update. Upload-to-practice conversion is Not counted.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Event metrics begin accumulating from this tracking update; historical events are not backfilled.</p>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-4">
