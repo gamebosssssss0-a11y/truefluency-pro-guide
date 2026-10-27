@@ -66,9 +66,9 @@ function SharedChatPage() {
           return;
         }
 
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: currentSessionData } = await supabase.auth.getSession();
         if (!alive) return;
-        const hasSession = !!sessionData.session;
+        const hasSession = !!currentSessionData.session;
         setSignedIn(hasSession);
         if (!hasSession) {
           setState("unavailable");
