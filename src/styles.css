@@ -841,3 +841,43 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-card-enter { animation: none !important; }
 }
+
+
+/* Accessibility contrast: keep muted copy readable and make focus unmistakable in both themes. */
+:root {
+  --muted-foreground: #475569;
+}
+.dark {
+  --muted-foreground: #B6C2D2;
+}
+
+:where(a, button, [role="button"], input, select, textarea):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+
+:where(button, [role="button"])[aria-busy="true"],
+:where(button, [role="button"])[data-loading="true"] {
+  cursor: progress;
+}
+
+:where(button, [role="button"]):disabled,
+:where(button, [role="button"])[aria-disabled="true"] {
+  opacity: 0.68;
+  filter: none;
+}
+
+@media (min-width: 768px) {
+  /* Avoid edge-to-edge reading columns on wide displays while retaining existing layouts. */
+  .app-stage {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 1440px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where([data-card], .study-card, .ui-card-enter) {
+    backface-visibility: hidden;
+  }
+}
