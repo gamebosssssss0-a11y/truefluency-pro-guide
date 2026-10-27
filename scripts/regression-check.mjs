@@ -81,3 +81,46 @@ test("billing entitlement writes remain server-controlled", async () => {
   assert.match(migration, /revoke insert, update, delete, truncate, references, trigger[\s\S]*?from authenticated/);
   assert.match(migration, /create policy "Users can read own subscription"/);
 });
+
+
+test("same-day streak return stays active and expired streaks do not display stale counts", async () => {
+  const helper = await read("../src/lib/streak-state.ts");
+  const store = await read("../src/lib/profile-store.tsx");
+  assert.match(helper, /input\.lastActiveDate === today \|\| input\.lastActiveDate === yesterday/);
+  assert.match(helper, /return \{ state: "none", days: 0 \}/);
+  assert.match(store, /lastActiveDate: string \| null/);
+  assert.match(store, /streakDays: number/);
+});
+
+test("mock pause and resume preserve saved answers and remaining time", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /Your answers and remaining time are saved/);
+  assert.match(flow, /isPaused: true/);
+  assert.match(flow, /isPaused: false, resumedAt: Date\.now\(\)/);
+  assert.match(flow, /answers: t\.answers/);
+});
+
+test("shared mock sign-in handoff returns to the same preview", async () => {
+  const share = await read("../src/routes/mock-share.$token.tsx");
+  const profile = await read("../src/lib/profile-store.tsx");
+  assert.match(share, /sessionStorage\.setItem\("returnTo", "\/mock-share\/" \+ token\)/);
+  assert.match(profile, /returnTo\.startsWith\("\/mock-share\/"\)/);
+});
+
+test("Tutor Mode hides the Key Concept section when no concept is saved", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /!failsQualityCheck\(explanation\) && blocks\.concept \?/);
+  assert.doesNotMatch(flow, /A separate key concept was not included/);
+  assert.doesNotMatch(flow, /The key concept is not available for this question/);
+});
+
+test("University of Ibadan A-F grade scale remains 5-0", async () => {
+  const cgpa = await read("../src/lib/cgpa.ts");
+  assert.match(cgpa, /grade: "A", points: 5/);
+  assert.match(cgpa, /grade: "B", points: 4/);
+  assert.match(cgpa, /grade: "C", points: 3/);
+  assert.match(cgpa, /grade: "D", points: 2/);
+  assert.match(cgpa, /grade: "E", points: 1/);
+  assert.match(cgpa, /grade: "F", points: 0/);
+  assert.match(cgpa, /export const MAX_POINTS = 5/);
+});
