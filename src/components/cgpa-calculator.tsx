@@ -360,8 +360,8 @@ export function CgpaCalculatorScreen() {
   const allYears = weighted(semesters);
 
   return (
-    <div data-cgpa-form="calculator" className="study-utility-page study-page-blend min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+    <div data-cgpa-form="calculator" className="study-utility-page min-h-screen">
+      <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
@@ -789,7 +789,7 @@ function ResultBlock({
     <>
       <section
         aria-live="polite"
-        className="sticky top-0 z-20 -mx-2 rounded-2xl bg-primary p-4 text-primary-foreground shadow-lg"
+        className="relative z-10 rounded-2xl border border-slate-300 bg-slate-900 p-4 text-white shadow-md dark:border-slate-600 dark:bg-slate-800"
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
