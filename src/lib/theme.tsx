@@ -2,8 +2,6 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 export type ThemeMode = "light" | "dark";
 
-const KEY = "truefluency-theme";
-
 type Ctx = { theme: ThemeMode; setTheme: (t: ThemeMode) => void; toggle: () => void };
 
 const ThemeCtx = createContext<Ctx | null>(null);
@@ -19,22 +17,32 @@ function applyTheme(t: ThemeMode) {
  * profile so it applies before any session exists and never fights cloud sync.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // The product's primary presentation is the navy-and-gold reference screen.
-  // Keep the initial state dark so the app never flashes a light background on startup.
-  const [theme, setThemeState] = useState<ThemeMode>("dark");
+  // The browser/OS color scheme is the source of truth. Do not persist or force
+  // a theme across app entries; also follow system changes while the app is open.
+  const [theme, setThemeState] = useState<ThemeMode>(() =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light"
+  );
 
-  // Apply the reference presentation on every app open. Users can still switch
-  // manually from Settings for accessibility, but a saved light preference does
-  // not override the requested navy startup background.
   useEffect(() => {
-    setThemeState("dark");
-    applyTheme("dark");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncTheme = () => {
+      const next: ThemeMode = media.matches ? "dark" : "light";
+      setThemeState(next);
+      applyTheme(next);
+    };
+    syncTheme();
+    media.addEventListener?.("change", syncTheme);
+    return () => media.removeEventListener?.("change", syncTheme);
   }, []);
 
-  const setTheme = (t: ThemeMode) => {
-    setThemeState(t);
-    applyTheme(t);
-    try { localStorage.setItem(KEY, t); } catch { /* ignore */ }
+  // Keep existing settings consumers compatible, but the system preference is
+  // authoritative instead of storing a conflicting manual theme override.
+  const setTheme = (_t: ThemeMode) => {
+    const next: ThemeMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    setThemeState(next);
+    applyTheme(next);
   };
 
   return (
