@@ -1064,14 +1064,14 @@ export function MockRunScreen() {
             >
               <CalcIcon className="h-4 w-4" />
             </button>
-            <div className={cn("font-display text-2xl font-semibold tabular-nums", timerColor)}>
+            <div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`} className={cn("rounded-xl border border-border bg-card px-3 py-2 font-display text-xl font-semibold tabular-nums shadow-sm", timerColor)}>
               {mm}:{String(ss).padStart(2, "0")}
             </div>
           </div>
         </div>
 
         <div className="mb-2 flex items-center gap-3">
-          <Progress value={((idx + 1) / questions.length) * 100} className="h-1.5 flex-1" />
+          <Progress value={((idx + 1) / questions.length) * 100} className="h-2 flex-1" />
           <span className="text-[11px] text-muted-foreground">Q {idx + 1} of {questions.length}</span>
         </div>
 
@@ -1087,9 +1087,12 @@ export function MockRunScreen() {
 
 
         {q ? (
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{q.topic}</div>
-            <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText>{q.question}</MathText></div>
+          <section aria-label={`Question ${idx + 1}`} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{q.topic}</div>
+              <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}%</span>
+            </div>
+            <div className="break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground"><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -1100,13 +1103,13 @@ export function MockRunScreen() {
                 return (
                   <button key={i} type="button" aria-pressed={on} aria-disabled={locked}
                     onClick={() => setAnswer(i)}
-                    className={cn("flex w-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                    className={cn("flex min-h-14 w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       isCorrectOption ? "border-success bg-success/10" : isWrongSelection ? "border-destructive bg-destructive/10" : on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
                     <div className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
-                      on ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground")}>
+                      on ? "border-accent bg-accent text-accent-foreground" : "border-border bg-muted/50 text-muted-foreground")}>
                       {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="min-w-0 break-words whitespace-pre-wrap text-base leading-6 text-foreground"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 break-words whitespace-pre-wrap text-base leading-7 text-foreground"><MathText>{opt}</MathText></span>
                   </button>
                 );
               })}
