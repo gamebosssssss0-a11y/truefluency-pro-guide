@@ -10,12 +10,31 @@ import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS } from "@/lib/entitlements";
  * and is untouched here. Shown once, gated on profile.trialNoticeSeen.
  */
 export function TrialWelcomeScreen() {
-  const { go, navigate, update } = useProfile();
+  const { profile, go, navigate, update } = useProfile();
 
   const start = () => {
     update({ trialNoticeSeen: true });
     go("dashboard");
-    navigate("home");
+    // Continue directly to the first action the student chose in onboarding.
+    switch (profile.studyPreference) {
+      case "practice":
+        navigate(profile.courses[0] ? "course-detail" : "add-course", { courseCode: profile.courses[0]?.code ?? null });
+        break;
+      case "cgpa":
+        navigate("cgpa");
+        break;
+      case "tutor":
+        navigate("chatbot");
+        break;
+      case "flashcards":
+        navigate("flashcards");
+        break;
+      case "reading":
+        navigate("library");
+        break;
+      default:
+        navigate("home");
+    }
   };
 
   return (
