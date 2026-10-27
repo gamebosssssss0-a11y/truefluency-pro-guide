@@ -61,30 +61,39 @@
 :root {
   --radius: 0.875rem;
 
-  /* Brand palette: deep academic ink, warm amber, cream, sand */
+  /* Blueprint aliases: one calm slate/teal system for every surface. */
+  --surface-base: #F4F7F8;
+  --surface-card: #FFFFFF;
+  --text-primary: #1E293B;
+  --text-secondary: #526171;
+  --brand-teal: #0F766E;
+  --state-success: #2F6B4F;
+  --state-error: #B42332;
+
+  /* Brand palette: slate, teal, and soft neutral surfaces */
   --cream: #F7F3EA;
   --sand: #F3E6C8;
   --ink: #1B2A4A;
 
-  --background: #F7F3EA;
-  --foreground: #243447;
-  --surface: #FBF7EE;
+  --background: var(--surface-base);
+  --foreground: var(--text-primary);
+  --surface: var(--surface-card);
 
-  --card: var(--surface);
-  --card-foreground: #1B2A4A;
-  --popover: var(--surface);
-  --popover-foreground: #1B2A4A;
+  --card: var(--surface-card);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-card);
+  --popover-foreground: var(--text-primary);
 
   --primary: #334155;
-  --primary-foreground: #F7F3EA;
+  --primary-foreground: #FFFFFF;
 
-  --secondary: oklch(0.94 0.02 85);
-  --secondary-foreground: #1B2A4A;
+  --secondary: #E8EEF0;
+  --secondary-foreground: var(--text-primary);
 
-  --muted: oklch(0.94 0.015 85);
-  --muted-foreground: #526171;
+  --muted: #E8EEF0;
+  --muted-foreground: var(--text-secondary);
 
-  --accent: #0F766E;
+  --accent: var(--brand-teal);
   --accent-foreground: #F7F3EA;
   --accent-on-sand: #0F766E;
 
@@ -92,10 +101,10 @@
   --destructive-foreground: #F7F3EA;
 
   --success: oklch(0.62 0.14 150);
-  --warning: #B86E0A;
+  --warning: #946200;
 
-  --border: #E4DCC8;
-  --input: oklch(0.9 0.015 85);
+  --border: #D8E1E4;
+  --input: #D8E1E4;
   --ring: #0F766E;
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
   --pill-text-l: 30%;
@@ -117,28 +126,35 @@
 
 /* Dark: navy page, raised navy cards, slate wash, and a teal accent. */
 .dark {
-  --background: #020A1A;
-  --foreground: #E2E8F0;
-  --card: #0E1A33;
+  --surface-base: #0F172A;
+  --surface-card: #172334;
+  --text-primary: #F1F5F9;
+  --text-secondary: #B6C2CF;
+  --brand-teal: #5EEAD4;
+  --state-success: #86D8A8;
+  --state-error: #FDA4AF;
+  --background: var(--surface-base);
+  --foreground: var(--text-primary);
+  --card: var(--surface-card);
   --surface: var(--card);
-  --card-foreground: #F7F3EA;
+  --card-foreground: var(--text-primary);
   --popover: #132240;
-  --popover-foreground: #F7F3EA;
+  --popover-foreground: var(--text-primary);
   --primary: #1E293B;
   --primary-foreground: #F7F3EA;
   --secondary: #132240;
   --secondary-foreground: #F7F3EA;
   --muted: #132240;
   --muted-foreground: #A8B3C2;
-  --accent: #2DD4BF;
+  --accent: var(--brand-teal);
   --accent-foreground: #020A1A;
   --accent-on-sand: #0F766E;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: #F7F3EA;
   --success: oklch(0.7 0.15 150);
   --warning: #B86E0A;
-  --border: #243656;
-  --input: #243656;
+  --border: #334155;
+  --input: #334155;
   --ring: #2DD4BF;
   --cream: #F7F3EA;
   --sand: #F3E6C8;
@@ -156,8 +172,8 @@
   }
 
   html, body {
-    background-color: #F7F3EA;
-    background-image: linear-gradient(165deg, #1B2A4A 0%, #3D5278 18%, #F3E6C8 46%, #F7F3EA 100%);
+    background-color: var(--background);
+    background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 5%, transparent), transparent 55%);
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -165,9 +181,19 @@
   }
 
   html.dark, html.dark body {
-    background-color: #020A1A;
-    background-image: linear-gradient(165deg, #020A1A 0%, #132240 40%, #1B2A4A 100%);
+    background-color: var(--background);
+    background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 7%, transparent), transparent 55%);
     background-attachment: fixed;
+  }
+
+  button, [role="button"], input, textarea, select, summary {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  details[open] > :not(summary) {
+    animation: detail-expand 250ms cubic-bezier(0.2, 0, 0, 1) both;
+    transform-origin: top;
   }
 
   h1, h2, h3, .font-display {
@@ -835,5 +861,31 @@
 @media (prefers-reduced-motion: no-preference) {
   :where([data-card], .study-card, .ui-card-enter) {
     backface-visibility: hidden;
+  }
+}
+
+
+/* Blueprint design tokens are also available to non-Tailwind surfaces. */
+@theme inline {
+  --color-surface-base: var(--surface-base);
+  --color-surface-card: var(--surface-card);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-brand-teal: var(--brand-teal);
+  --color-state-success: var(--state-success);
+  --color-state-error: var(--state-error);
+}
+
+@keyframes detail-expand {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
