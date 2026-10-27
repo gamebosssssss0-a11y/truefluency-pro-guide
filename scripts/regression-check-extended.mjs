@@ -149,13 +149,13 @@ test("splash and loading animations remain enabled and splash plays on every app
 
 test("chat thinking animation remains visible independently of the empty-thread branch", async () => {
   const chat = await read("../src/components/chatbot.tsx");
-  const threadBranchEnd = chat.indexOf("          {isSending && streamingBubbleId === null ? (");
-  const emptyBranch = chat.indexOf("          ) : null}", chat.indexOf("data-chat-thread"));
+  const indicator = chat.indexOf("          {isSending && streamingBubbleId === null ? (");
   const thinking = chat.indexOf("thinking-shimmer font-medium text-foreground");
   const anchor = chat.indexOf('<div ref={scrollAnchorRef} />');
-  assert.notEqual(threadBranchEnd, -1);
+  assert.notEqual(indicator, -1);
   assert.notEqual(thinking, -1);
-  assert.ok(thinking > emptyBranch, "thinking indicator must sit outside the messages/empty-state conditional");
+  assert.match(chat.slice(indicator - 30, indicator), /\\) : null\\}\\s*$/);
+  assert.ok(thinking > indicator, "thinking animation must be rendered in the independent send-status block");
   assert.ok(anchor > thinking, "thinking indicator must remain inside the scrollable thread");
   assert.match(chat, /aria-busy=\{isLoadingThread \|\| isSending\}/);
 });
