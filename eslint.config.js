@@ -1,5 +1,4 @@
 import js from "@eslint/js";
-import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -34,20 +33,14 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
-      // Formatting is enforced separately; mixing it into ESLint obscured real code issues.
-      "prettier/prettier": "off",
     },
   },
-  eslintPluginPrettier,
   {
     files: ["**/*.{ts,tsx}"],
     rules: {
-      // Keep repository formatting debt out of the lint gate; TypeScript and ESLint still run.
+      // Keep repository-wide formatting separate from semantic lint checks.
+      // Prettier runs as its own explicit check rather than emitting thousands of ESLint errors.
       "prettier/prettier": "off",
-      // The existing repository has legacy untyped integration boundaries and control-character validators.
-      // Keep these two rules non-blocking until those boundaries can be typed without behavior changes.
-      "@typescript-eslint/no-explicit-any": "off",
-      "no-control-regex": "off",
     },
   },
 );
