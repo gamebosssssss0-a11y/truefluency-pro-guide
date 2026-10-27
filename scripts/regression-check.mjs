@@ -20,7 +20,7 @@ test("analytics failures are swallowed by the server endpoint and call sites", a
 });
 
 test("admin analytics use Lagos half-open day bounds and deduplicate active users", async () => {
-  const migration = await read("../supabase/migrations/20261027150000_fix_admin_analytics_metrics.sql");
+  const migration = await read("../supabase/migrations/20261027160000_exclude_null_activity_users.sql");
   assert.match(migration, /lagos_today_start/);
   assert.match(migration, /lagos_tomorrow_start/);
   assert.match(migration, /created_at >= lagos_today_start and created_at < lagos_tomorrow_start/);
@@ -47,7 +47,7 @@ test("top-course counts aggregate uploads and submitted mocks independently", as
 });
 
 test("admin analytics RPC denies non-admin and anonymous callers", async () => {
-  const migration = await read("../supabase/migrations/20261027150000_fix_admin_analytics_metrics.sql");
+  const migration = await read("../supabase/migrations/20261027160000_exclude_null_activity_users.sql");
   assert.match(migration, /auth\.uid\(\) is null or not public\.has_role\(auth\.uid\(\), 'admin'\)/);
   assert.match(migration, /revoke execute on function public\.admin_dashboard_stats\(\) from public, anon/);
 });
