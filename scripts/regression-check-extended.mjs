@@ -260,6 +260,8 @@ test("chat history does not overwrite the active thread cache and tolerates per-
   assert.match(chat, /const requests = courseOptions\.map/);
   assert.match(chat, /setHistoryRows\(\(current\) => \[/);
   assert.match(chat, /const group = grouped\.get\(convKey\)/);
+  assert.match(chat, /historyRows\.length === 0 && historyLoading/);
+  assert.match(chat, /Loading more conversations…/);
   assert.doesNotMatch(chat, /Promise\.allSettled\(courseOptions\.map/);
   assert.match(chat, /Never seed the live-thread cache from this full history/);
   assert.doesNotMatch(chat, /const raw = \(await getCourseHistory\(course\)\)\.messages;\s*if \(!threadCache\.current\.has\(cacheMapKey\(course\)\)\) persistCache/);
