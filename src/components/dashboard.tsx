@@ -432,26 +432,26 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   );
 
   return (
-    <div className="reference-home min-h-screen">
+    <div className="reference-home min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
       <div className="reference-home__inner mx-auto max-w-md px-5 pb-8 pt-6">
         {/* Header */}
         <div className="reference-hero mb-5">
           <div className="reference-hero__label mb-4 flex items-center gap-2">
             <HeaderLogo />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#F7F3EA]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Home
             </span>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
-              <h1 className="reference-hero__title font-display text-2xl font-bold leading-tight text-[#F7F3EA]">
+              <h1 className="reference-hero__title font-display text-2xl font-bold leading-tight text-foreground">
                 {showFirstUseLayout ? "Welcome" : "Welcome back"},<br />{name}
               </h1>
-              {meta ? <p className="mt-2 text-sm text-[#F7F3EA]">{meta}</p> : null}
+              {meta ? <p className="mt-2 text-sm text-foreground">{meta}</p> : null}
               {subline ? (
-                <p className="mt-1 text-[12px] text-[#F7F3EA]">{subline}</p>
+                <p className="mt-1 text-[12px] text-foreground">{subline}</p>
               ) : null}
-              <p className="mt-1 text-[12px] text-[#F7F3EA]">
+              <p className="mt-1 text-[12px] text-foreground">
                 Your study home: upload a file, practise on it, revise it.
               </p>
             </div>
@@ -590,7 +590,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </>
         ) : null}
         {!showFirstUseLayout ? (
-          <p className="mt-8 text-center text-[11px] leading-relaxed text-[#F7F3EA] mix-blend-difference">
+          <p className="mt-8 text-center text-[11px] leading-relaxed text-foreground">
             Predictions are statistical estimates. Always cross-check against your official material.
           </p>
         ) : null}
