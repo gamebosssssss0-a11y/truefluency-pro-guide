@@ -1034,3 +1034,96 @@ html, body, html.dark, html.dark body {
   background-attachment: fixed;
   color: #F7F3EA;
 }
+
+
+/* Screenshot-matched LIGHT MODE: warm cream canvas, slate-blue header wash, amber actions. */
+:root {
+  color-scheme: light;
+  --surface-base: #F5EEDB;
+  --surface-card: #FBF7EE;
+  --text-primary: #1B2D4A;
+  --text-secondary: #626779;
+  --muted-foreground: #686B7A;
+  --brand-teal: #B8750A;
+  --background: #F5EEDB;
+  --foreground: #1B2D4A;
+  --surface: #FBF7EE;
+  --card: #FBF7EE;
+  --card-foreground: #1B2D4A;
+  --popover: #FBF7EE;
+  --popover-foreground: #1B2D4A;
+  --primary: #B8750A;
+  --primary-foreground: #111827;
+  --secondary: #F2E7C9;
+  --secondary-foreground: #1B2D4A;
+  --muted: #F2E7C9;
+  --muted-foreground: #686B7A;
+  --accent: #B8750A;
+  --accent-foreground: #111827;
+  --border: #E4DCCB;
+  --input: #D6CBB8;
+  --ring: #B8750A;
+  --cream: #FBF7EE;
+  --sand: #F2E7C9;
+  --ink: #1B2D4A;
+  --chat-page: #F5EEDB;
+  --chat-card: #FBF7EE;
+  --chat-foreground: #1B2D4A;
+}
+:root:not(.dark) html,
+html:not(.dark),
+html:not(.dark) body {
+  color-scheme: light;
+}
+html:not(.dark),
+html:not(.dark) body {
+  background-color: #F5EEDB;
+  background-image: radial-gradient(ellipse at 84% 5%, #33496B 0%, #64748B 28%, transparent 54%), linear-gradient(180deg, #344A6C 0%, #8490A0 24%, #F2E6C6 47%, #F5EEDB 72%, #F5EEDB 100%);
+  background-attachment: fixed;
+  color: #1B2D4A;
+}
+html:not(.dark) body {
+  min-height: 100%;
+}
+
+/* Dark mode remains a separate deep-navy and gold experience. */
+html.dark {
+  color-scheme: dark;
+  --surface-base: #061329;
+  --surface-card: #0E1E3B;
+  --text-primary: #F7F3EA;
+  --text-secondary: #C3D2EC;
+  --muted-foreground: #A9BBDD;
+  --brand-teal: #E7BD68;
+  --background: #061329;
+  --foreground: #F7F3EA;
+  --surface: #0E1E3B;
+  --card: #0E1E3B;
+  --card-foreground: #F7F3EA;
+  --popover: #102345;
+  --popover-foreground: #F7F3EA;
+  --primary: #E7BD68;
+  --primary-foreground: #061329;
+  --secondary: #14294B;
+  --secondary-foreground: #F7F3EA;
+  --muted: #14294B;
+  --muted-foreground: #A9BBDD;
+  --accent: #E7BD68;
+  --accent-foreground: #061329;
+  --border: #344C72;
+  --input: #52698C;
+  --ring: #E7BD68;
+  --cream: #F7F3EA;
+  --sand: #E7BD68;
+  --ink: #F7F3EA;
+  --chat-page: #061329;
+  --chat-card: #0E1E3B;
+  --chat-foreground: #F7F3EA;
+}
+html.dark,
+html.dark body {
+  background-color: #061329;
+  background-image: radial-gradient(ellipse at 85% 5%, #1A3158 0%, transparent 42%), linear-gradient(145deg, #061329 0%, #0B1C39 52%, #102345 100%);
+  background-attachment: fixed;
+  color: #F7F3EA;
+}
