@@ -1997,3 +1997,26 @@ html.dark .reference-home,
 html:not(.dark) .reference-home {
   background: none !important;
 }
+
+
+/* Bug-fix pass: let screens use the full viewport without clipping content. */
+html, body, #root { width:100%; min-width:0; max-width:100%; }
+body { overflow-x:clip; }
+[data-tab-swipe-stage] { width:100%; max-width:100%; min-width:0; overflow-x:clip !important; overflow-y:visible !important; }
+[data-root-tab], [data-root-tab] > *, .study-utility-page { width:100%; min-width:0; max-width:100%; }
+.study-utility-page > .mx-auto.max-w-md { width:100%; max-width:60rem; min-width:0; }
+.study-utility-page :is(.grid,.flex,.space-y-2,.space-y-3) > * { min-width:0; }
+.study-utility-page :is(input,select,textarea,canvas,img) { max-width:100%; }
+@media (max-width:767px) {
+  .study-utility-page > .mx-auto.max-w-md {
+    padding-left:max(1rem,env(safe-area-inset-left));
+    padding-right:max(1rem,env(safe-area-inset-right));
+  }
+}
+[data-cgpa-form="calculator"] .bg-navy { background-color:#102647 !important; color:#fff4d9 !important; }
+[data-cgpa-form="calculator"] .text-navy { color:#102647 !important; }
+.dark [data-cgpa-form="calculator"] .text-navy { color:#ffd66f !important; }
+[data-cgpa-form="calculator"] .bg-sand { background-color:#f3e7c9 !important; color:#1b2d4a !important; }
+[data-cgpa-form="calculator"] button[aria-pressed="true"] { outline:2px solid #e7bd68; outline-offset:1px; }
+[data-cgpa-form="goal-setter"] { padding-bottom:calc(5rem + env(safe-area-inset-bottom)); }
+[data-cgpa-form="goal-setter"] .mx-auto.max-w-md { padding-bottom:calc(7rem + env(safe-area-inset-bottom)); }
