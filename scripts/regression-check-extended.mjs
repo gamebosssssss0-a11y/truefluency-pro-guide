@@ -132,3 +132,18 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   await assert.rejects(() => read("../public/reference-home.html"));
   await assert.rejects(() => read("../public/reference-home-light.html"));
 });
+
+test("splash and loading animations remain enabled and splash plays on every app entry", async () => {
+  const styles = await read("../src/styles.css");
+  const splash = await read("../src/components/onboarding/splash.tsx");
+  const loader = await read("../src/components/loading-splash.tsx");
+  assert.doesNotMatch(styles, /\.sonic-mark-in[\s\S]*?animation:\s*none\s*!important/);
+  assert.doesNotMatch(styles, /Final calm-motion guard/);
+  assert.match(styles, /\.sonic-mark-in\s*\{\s*animation:\s*sonic-mark-in/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(splash, /truefluency-splash-seen|sessionStorage|SPLASH_HOLD_MS/);
+  assert.match(splash, /Plays on every app entry/);
+  assert.match(splash, /onDone=\{\(\) => advance\(\)\}/);
+  assert.match(loader, /sonic-mark-in/);
+  assert.match(loader, /onDone\?\.\(\)/);
+});
