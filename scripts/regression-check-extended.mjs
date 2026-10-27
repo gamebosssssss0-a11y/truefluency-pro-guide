@@ -193,3 +193,19 @@ test("chat account changes invalidate pending thread loads and stream callbacks"
   assert.match(chat, /authEpoch\.current !== sendAuthEpoch/);
   assert.match(chat, /authEpoch\.current === sendAuthEpoch/);
 });
+
+
+test("chat cache persistence cannot cross account switches", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(chat, /const expectedUid = currentUid\.current/);
+  assert.match(chat, /currentUid\.current !== expectedUid/);
+  assert.match(chat, /key !== `tf-chat-v1:\$\{expectedUid\}:\$\{scope\}`/);
+});
+
+test("peer-save quota course is required and must match the verified source", async () => {
+  const functions = await read("../src/lib/library.functions.ts");
+  const server = await read("../src/lib/library.server.ts");
+  assert.match(functions, /if \(!courseCode\) throw new Error\("Choose the course for this file and try again\."\)/);
+  assert.match(functions, /courseCode: data\.courseCode/);
+  assert.match(server, /source\.course_code\.trim\(\)\.toUpperCase\(\) !== opts\.courseCode\.trim\(\)\.toUpperCase\(\)/);
+});
