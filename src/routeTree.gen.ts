@@ -77,6 +77,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/s/$token': typeof STokenRoute
+  '/mock-share/$token': typeof MockShareTokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesById {
@@ -108,6 +109,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/chat-share/$token'
     | '/s/$token'
+    | '/mock-share/$token'
     | '/lovable/email/transactional/preview'
   id:
     | '__root__'
@@ -172,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/s/$token'
       fullPath: '/s/$token'
       preLoaderRoute: typeof STokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mock-share/$token': {
+      id: '/mock-share/$token'
+      path: '/mock-share/$token'
+      fullPath: '/mock-share/$token'
+      preLoaderRoute: typeof MockShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/transactional/preview': {
