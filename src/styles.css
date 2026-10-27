@@ -130,7 +130,7 @@
   --surface-card: #172334;
   --text-primary: #F1F5F9;
   --text-secondary: #B6C2CF;
-  --brand-teal: #5EEAD4;
+  --brand-teal: #F2C35E;
   --state-success: #86D8A8;
   --state-error: #FDA4AF;
   --background: var(--surface-base);
@@ -147,7 +147,7 @@
   --muted: #132240;
   --muted-foreground: #A8B3C2;
   --accent: var(--brand-teal);
-  --accent-foreground: #020A1A;
+  --accent-foreground: #061329;
   --accent-on-sand: #0F766E;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: #F7F3EA;
@@ -155,7 +155,7 @@
   --warning: #B86E0A;
   --border: #334155;
   --input: #334155;
-  --ring: #2DD4BF;
+  --ring: #F2C35E;
   --cream: #F7F3EA;
   --sand: #F3E6C8;
   --ink: #F7F3EA;

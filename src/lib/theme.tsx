@@ -19,23 +19,16 @@ function applyTheme(t: ThemeMode) {
  * profile so it applies before any session exists and never fights cloud sync.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>("light");
+  // The product's primary presentation is the navy-and-gold reference screen.
+  // Keep the initial state dark so the app never flashes a light background on startup.
+  const [theme, setThemeState] = useState<ThemeMode>("dark");
 
-  // Read after mount so server render and hydration always agree.
+  // Apply the reference presentation on every app open. Users can still switch
+  // manually from Settings for accessibility, but a saved light preference does
+  // not override the requested navy startup background.
   useEffect(() => {
-    let initial: ThemeMode | null = null;
-    try {
-      const saved = localStorage.getItem(KEY);
-      if (saved === "light" || saved === "dark") initial = saved;
-    } catch { /* ignore */ }
-    if (!initial) {
-      initial = typeof window !== "undefined"
-        && window.matchMedia?.("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    }
-    setThemeState(initial);
-    applyTheme(initial);
+    setThemeState("dark");
+    applyTheme("dark");
   }, []);
 
   const setTheme = (t: ThemeMode) => {
