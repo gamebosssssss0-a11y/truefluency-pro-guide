@@ -1885,100 +1885,115 @@ html.dark {
   --chat-foreground: var(--tf-cream);
 }
 
-/* The reference wallpaper is global, not attached to the Home component.
-   A fixed, non-interactive layer keeps it continuous behind every route. */
-html, body, #root {
+/* FINAL GLOBAL REFERENCE BACKGROUND
+   This is the only app-wide background definition. It mirrors the standalone
+   HTML references and intentionally avoids pseudo-element wallpapers, fixed
+   transforms, and route-specific background layers. */
+html,
+body,
+#root {
   min-height: 100%;
   width: 100%;
   max-width: none;
 }
-html, body {
-  background: var(--background) !important;
-  color: var(--foreground);
-}
-body {
-  position: relative;
-  isolation: isolate;
-  background-color: #061329 !important;
-  background-image:
-    radial-gradient(ellipse 78% 76% at 88% 78%, rgba(220, 167, 67, .28) 0%, rgba(220, 167, 67, .08) 35%, transparent 68%),
-    linear-gradient(180deg, #071A38 0%, #0B2448 46%, #1D344F 76%, #243C53 100%) !important;
-  background-attachment: fixed;
-}
-body::before {
-  content: none;
-}
-html:not(.dark) body::before {
-  content: none;
-}
-html:not(.dark) body {
-  background-color: #F7F0E2 !important;
-  background-image:
-    radial-gradient(ellipse 78% 76% at 88% 78%, rgba(224, 169, 65, .64) 0%, rgba(224, 169, 65, .18) 35%, transparent 68%),
-    linear-gradient(180deg, #263D60 0%, #3B506F 26%, #778394 51%, #C5BEAA 73%, #F2E6C8 100%) !important;
-}
-body::after {
-  content: "";
-  position: fixed;
-  z-index: 0;
-  left: -8%;
-  right: -8%;
-  top: min(48vh, 500px);
-  height: 76px;
-  pointer-events: none;
-  border-top: 3px solid #E7BD68;
-  border-radius: 50% 50% 0 0 / 30% 30% 0 0;
-  background: #061329;
-  box-shadow: 0 -10px 22px rgba(231, 189, 104, .14);
-  transform: rotate(-3deg);
-}
-html:not(.dark) body::after {
-  border-top-color: #E0A941;
-  background: #F7F0E2;
-  box-shadow: 0 -10px 24px rgba(224, 169, 65, .16);
-}
-#root, #app, [data-app-shell], [data-tab-swipe-stage], [data-root-tab], .app-stage, .app-stage-wide {
-  position: relative;
-  z-index: 1;
-  background: transparent !important;
+
+html:not(.dark) {
+  background: #f7f0e2 !important;
 }
 
-/* Screens may use their own readable content width, but their outer surface
-   must not be constrained to that width or clipped vertically. */
+html:not(.dark) body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: #1b2d4a;
+  background-color: #f7f0e2 !important;
+  background-image:
+    radial-gradient(ellipse 74% 72% at 88% 78%, rgba(224, 169, 65, .7), rgba(224, 169, 65, .15) 34%, transparent 68%),
+    linear-gradient(180deg, #263d60 0%, #3b506f 38%, #778394 68%, #f2e6c8 100%) !important;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: 100% 560px;
+  background-attachment: scroll;
+}
+
+html.dark {
+  background: #061329 !important;
+}
+
+html.dark body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: #fff4d9;
+  background-color: #061329 !important;
+  background-image:
+    radial-gradient(ellipse 84% 38% at 78% 31%, rgba(190, 132, 42, .25), transparent 68%),
+    radial-gradient(ellipse 100% 45% at 8% 5%, rgba(31, 59, 96, .7), transparent 74%),
+    linear-gradient(180deg, #07142a 0%, #102647 23%, #1b304d 38%, #1b2c43 52%, #10213b 68%, #09172d 100%) !important;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: 100% 560px;
+  background-attachment: scroll;
+}
+
+/* Legacy background layers are intentionally disabled. */
+html:not(.dark) body::before,
+html:not(.dark) body::after,
+html.dark body::before,
+html.dark body::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Route shells carry layout only. They do not paint their own page wallpaper. */
+#root,
+#app,
+[data-app-shell],
+[data-tab-swipe-stage],
+[data-root-tab],
+.app-stage,
+.app-stage-wide,
+.tab-swipe-stage {
+  position: relative;
+  z-index: 1;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
 [data-tab-swipe-stage] {
   width: 100%;
   min-height: calc(100dvh - 3.5rem);
   overflow-x: clip;
   overflow-y: visible;
 }
+
 [data-root-tab] {
   width: 100%;
   min-height: inherit;
 }
+
 .app-stage-wide {
   max-width: none;
   min-width: 0;
 }
-nav[aria-label="Desktop primary navigation"] {
+
+/* Keep the navigation dock readable without adding another page background. */
+nav[aria-label="Desktop primary navigation"],
+nav[aria-label="Mobile navigation"] {
   background: color-mix(in srgb, var(--background) 94%, transparent) !important;
   backdrop-filter: blur(16px);
 }
-nav[aria-label="Mobile navigation"] {
-  background: color-mix(in srgb, var(--background) 97%, transparent) !important;
-  backdrop-filter: blur(18px);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-html.dark nav[aria-label="Mobile navigation"],
-html.dark nav[aria-label="Desktop primary navigation"] {
+
+html.dark nav[aria-label="Desktop primary navigation"],
+html.dark nav[aria-label="Mobile navigation"] {
   border-color: rgba(49, 84, 125, .85) !important;
 }
-html:not(.dark) nav[aria-label="Mobile navigation"],
-html:not(.dark) nav[aria-label="Desktop primary navigation"] {
+
+html:not(.dark) nav[aria-label="Desktop primary navigation"],
+html:not(.dark) nav[aria-label="Mobile navigation"] {
   border-color: rgba(228, 220, 203, .95) !important;
 }
 
-/* Keep Home's inner content layout, but let the global wallpaper show through. */
 html.dark .reference-home,
 html:not(.dark) .reference-home {
-  background: transparent !important;
+  background: none !important;
 }
