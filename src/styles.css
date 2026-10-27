@@ -1465,3 +1465,41 @@ html.dark nav[aria-label="Primary navigation"] {
   background: rgba(6, 19, 41, .97) !important;
   border-top-color: #344C72 !important;
 }
+
+
+/* Layering fix for the shared cinematic gradient: keep it visible behind every
+   app route while preserving clickable content above it. */
+html:not(.dark) body::before,
+html.dark body::before {
+  z-index: 0 !important;
+}
+html:not(.dark) #root,
+html.dark #root {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+html:not(.dark) body::before {
+  height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 35% at 78% 39%, rgba(246, 204, 119, .74) 0%, rgba(232, 191, 111, .30) 35%, transparent 72%),
+    radial-gradient(ellipse 100% 42% at 10% 9%, rgba(55, 78, 114, .78) 0%, transparent 74%),
+    linear-gradient(180deg, #2C4264 0%, #3A506F 17%, #65758A 30%, #9B9F9D 37%, #D8CFB5 45%, #F3E7C9 53%, #F5EEDB 70%, #F5EEDB 100%) !important;
+}
+html.dark body::before {
+  height: 100vh;
+  background:
+    radial-gradient(ellipse 76% 35% at 78% 39%, rgba(184, 126, 40, .26) 0%, rgba(130, 88, 32, .10) 38%, transparent 72%),
+    radial-gradient(ellipse 100% 42% at 10% 8%, rgba(31, 59, 96, .68) 0%, transparent 74%),
+    linear-gradient(180deg, #07142A 0%, #102647 22%, #1B304D 36%, #1B2C43 47%, #10213B 62%, #09172D 100%) !important;
+}
+html:not(.dark) [data-tab-swipe-stage],
+html:not(.dark) [data-root-tab],
+html:not(.dark) .app-stage-wide,
+html.dark [data-tab-swipe-stage],
+html.dark [data-root-tab],
+html.dark .app-stage-wide {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+}
