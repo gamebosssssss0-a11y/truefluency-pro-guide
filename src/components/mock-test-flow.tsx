@@ -1034,15 +1034,16 @@ export function MockRunScreen() {
   }
 
   // Re-entering the runner starts a fresh active-time segment; paused time is never charged.
-  if (t.isPaused) {
-    const resumed = { ...t, isPaused: false, resumedAt: Date.now() };
+  useEffect(() => {
+    if (!t || (!t.isPaused && t.resumedAt)) return;
+    const resumed = {
+      ...t,
+      isPaused: false,
+      resumedAt: t.resumedAt ?? t.startedAt,
+    };
     testRef.current = resumed;
-    update({ inProgressTest: resumed });
-  } else if (!t.resumedAt) {
-    const resumed = { ...t, resumedAt: t.startedAt };
-    testRef.current = resumed;
-    update({ inProgressTest: resumed });
-  }
+    updateRef.current({ inProgressTest: resumed });
+  }, [t?.courseCode, t?.isPaused, t?.resumedAt, t?.startedAt]);
 
   const idx = t.currentIndex;
   const q = questions[idx];
