@@ -494,6 +494,7 @@ export async function saveSharedFile(opts: {
   recipientId: string;
   token?: string | undefined;
   materialId?: string | undefined;
+  courseCode: string;
 }): Promise<{ ok: true; materialId: string } | { ok: false; reason: string }> {
   const db = admin();
 
@@ -526,6 +527,13 @@ export async function saveSharedFile(opts: {
   }
 
   if (!source || !isOwnedMaterialPath(source.file_path, source.user_id)) {
+    return { ok: false, reason: REDEEM_MISS_MESSAGE };
+  }
+
+  // The client-supplied course is used for the free-save quota check. Require
+  // it to match the verified source row so a caller cannot omit or spoof it
+  // to bypass the per-course limit.
+  if (source.course_code.trim().toUpperCase() !== opts.courseCode.trim().toUpperCase()) {
     return { ok: false, reason: REDEEM_MISS_MESSAGE };
   }
 
