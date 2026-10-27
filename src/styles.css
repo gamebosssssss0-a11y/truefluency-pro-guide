@@ -625,8 +625,13 @@
   overscroll-behavior-x: contain;
 }
 
- .study-chat-screen {
-  height: calc(100dvh - 5rem);
+/* The root tab stage already reserves space for the persistent navigation.
+   Keep the chat viewport inside that stage instead of letting its own fixed
+   height extend behind the mobile tab bar. */
+.study-chat-screen {
+  height: calc(100dvh - 9rem - env(safe-area-inset-bottom));
+  min-height: 0;
+  min-width: 0;
 }
 
 .study-chat-screen.study-chat-embedded {
@@ -635,8 +640,30 @@
 }
 
 @media (min-width: 768px) {
-  .study-chat-screen {
-    height: calc(100dvh - 3rem);
+  .study-chat-screen:not(.study-chat-embedded) {
+    /* 3rem desktop navigation + 2rem stage padding. */
+    height: calc(100dvh - 5rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .study-chat-screen > div {
+    min-width: 0;
+  }
+
+  .study-chat-screen [data-chat-thread],
+  .study-chat-screen [data-chat-thread] > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .study-chat-screen [data-chat-thread] :is(p, li, blockquote, h1, h2, h3) {
+    overflow-wrap: anywhere;
+  }
+
+  .study-chat-screen [data-chat-thread] pre {
+    max-width: 100%;
+    overflow-x: auto;
   }
 }
 
@@ -1016,3 +1043,89 @@ nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"
 [data-cgpa-form="calculator"] button[aria-pressed="true"] { outline:2px solid var(--ring); outline-offset:2px; }
 [data-cgpa-form="goal-setter"] { padding-bottom:calc(6rem + env(safe-area-inset-bottom)); }
 [data-cgpa-form="goal-setter"] > .mx-auto.max-w-md { padding-bottom:calc(2rem + env(safe-area-inset-bottom)); }
+
+
+/* Final global theme and responsive safeguards.
+   Keep the brand's navy / slate / gold / cream identity, while avoiding
+   pure-white glare and ensuring muted text remains legible. */
+:root {
+  --surface-base: #F5F2EA;
+  --surface-card: #FFFD F8;
+  --text-primary: #172338;
+  --text-secondary: #465366;
+  --background: #F5F2EA;
+  --foreground: #172338;
+  --surface: #FFFD F8;
+  --card: #FFFD F8;
+  --card-foreground: #172338;
+  --popover: #FFFD F8;
+  --popover-foreground: #172338;
+  --primary: #1B2A4A;
+  --primary-foreground: #F7F3EA;
+  --secondary: #E7E4DC;
+  --secondary-foreground: #172338;
+  --muted: #E7E4DC;
+  --muted-foreground: #465366;
+  --accent: #B88732;
+  --accent-foreground: #172338;
+  --accent-on-sand: #65420D;
+  --border: #D0C9BA;
+  --input: #8C96A5;
+  --ring: #B88732;
+  --cream: #F5F2EA;
+  --sand: #E9DAB8;
+  --ink: #172338;
+  --chat-page: #F5F2EA;
+  --chat-card: #FFFD F8;
+  --chat-foreground: #172338;
+}
+html.dark {
+  color-scheme: dark;
+  --surface-base: #101827;
+  --surface-card: #1A2638;
+  --text-primary: #F5F2EA;
+  --text-secondary: #C5CCD6;
+  --background: #101827;
+  --foreground: #F5F2EA;
+  --surface: #1A2638;
+  --card: #1A2638;
+  --card-foreground: #F5F2EA;
+  --popover: #1A2638;
+  --popover-foreground: #F5F2EA;
+  --primary: #E0B458;
+  --primary-foreground: #172338;
+  --secondary: #253247;
+  --secondary-foreground: #F5F2EA;
+  --muted: #253247;
+  --muted-foreground: #C5CCD6;
+  --accent: #E0B458;
+  --accent-foreground: #172338;
+  --accent-on-sand: #F5D98E;
+  --border: #3B485A;
+  --input: #536176;
+  --ring: #E0B458;
+  --cream: #F5F2EA;
+  --sand: #3A3428;
+  --ink: #F5F2EA;
+  --chat-page: #101827;
+  --chat-card: #1A2638;
+  --chat-foreground: #F5F2EA;
+}
+html, body, #root {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+body {
+  overflow-x: clip;
+}
+:where(.study-chat-screen, .study-utility-page, [data-root-tab]) {
+  min-width: 0;
+  max-width: 100%;
+}
+:where(.study-chat-screen, .study-utility-page) :is(.flex, .grid) > * {
+  min-width: 0;
+}
+nav[aria-label="Mobile navigation"] {
+  padding-bottom: env(safe-area-inset-bottom);
+}
