@@ -873,7 +873,9 @@ export function MockRunScreen() {
   useEffect(() => {
     const pause = () => {
       const current = testRef.current;
-      if (!current || current.isPaused) return;
+      // Submission clears inProgressTest before async persistence finishes.
+      // The unmount cleanup must not pause and resurrect that submitted test.
+      if (!current || current.isPaused || submittedRef.current) return;
       const resumedAt = current.resumedAt ?? current.startedAt;
       const elapsedSec = (current.elapsedSec ?? 0) + Math.max(0, Math.floor((Date.now() - resumedAt) / 1000));
       const paused = { ...current, elapsedSec, resumedAt: undefined, isPaused: true };
