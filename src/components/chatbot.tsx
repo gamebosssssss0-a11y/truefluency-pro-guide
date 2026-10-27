@@ -439,7 +439,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     let alive = true;
     setHistoryError(null);
     setHistoryLoading(true);
-    void Promise.all(courseOptions.map(async (course) => {
+    void Promise.allSettled(courseOptions.map(async (course) => {
       const raw = (await getCourseHistory(course)).messages;
       // History is a collection of archived and active conversations, not the
       // current thread. Never seed the live-thread cache from this full history.
@@ -465,9 +465,19 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           messages: items,
         };
       });
-    })).then((rows) => {
-      if (alive) {
-        setHistoryRows(rows.flat());
+    })).then((results) => {
+      if (!alive) return;
+      const successfulRows = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+      const failures = results.filter((result) => result.status === "rejected");
+      setHistoryRows(successfulRows.flat());
+      // One unavailable course should not hide every other course's history.
+      if (failures.length > 0 && successfulRows.length === 0) {
+        const reason = failures[0].status === "rejected" ? failures[0].reason : null;
+        const message = reason instanceof Error ? reason.message : "Couldn't load chat history.";
+        setHistoryError(message);
+        toast.error(message);
+      } else if (failures.length > 0) {
+        toast.error("Some course histories couldn't load. The available conversations are shown.");
       }
     }).catch((error) => {
       if (alive) {
