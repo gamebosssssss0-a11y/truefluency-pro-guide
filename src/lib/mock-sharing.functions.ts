@@ -9,7 +9,7 @@ const cleanToken = (value: unknown) => {
 };
 const cleanAttemptId = (value: unknown) => {
   const id = typeof value === "string" ? value.trim() : "";
-  if (!id || id.length > 128 || /[\u0000-\u001f]/.test(id)) throw new Error("This completed mock could not be found.");
+  if (!id || id.length > 128) throw new Error("This completed mock could not be found.");
   return id;
 };
 function sharingReady() {
