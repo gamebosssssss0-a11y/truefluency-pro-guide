@@ -167,7 +167,8 @@ test("failed chat streams discard incomplete assistant text but preserve retryab
   assert.notEqual(catchStart, -1);
   assert.notEqual(catchEnd, -1);
   const failureHandler = chat.slice(catchStart, catchEnd);
-  assert.match(failureHandler, /streamId === null[\\s\\S]*?cur\.filter\(\(message\) => message\.id !== streamId\)/);
+  assert.ok(failureHandler.includes("streamId === null"));
+  assert.ok(failureHandler.includes("cur.filter((message) => message.id !== streamId)"));
   assert.match(failureHandler, /sendError: true/);
   assert.match(failureHandler, /retryCourse: course/);
   assert.match(failureHandler, /retryMode: sendMode/);
