@@ -183,3 +183,13 @@ test("admin permission failures are not misreported as zero paywall hits", async
   assert.match(admin, /gate in gateCounts \? gateCounts\[gate\] : "—"/);
   assert.doesNotMatch(admin, /countResult\.error \? 0 : countResult\.count/);
 });
+
+
+test("chat account changes invalidate pending thread loads and stream callbacks", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(chat, /const authEpoch = useRef\(0\)/);
+  assert.match(chat, /authEpoch\.current \+= 1/);
+  assert.match(chat, /loadToken\.current \+= 1/);
+  assert.match(chat, /authEpoch\.current !== sendAuthEpoch/);
+  assert.match(chat, /authEpoch\.current === sendAuthEpoch/);
+});
