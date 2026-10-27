@@ -233,3 +233,13 @@ test("mock test unmount cannot restore an attempt after submission", async () =>
   assert.match(flow, /submittedRef\.current = true/);
   assert.match(flow, /inProgressTest: null/);
 });
+
+
+test("peer share use limits are claimed atomically and failed claims roll back copies", async () => {
+  const server = await read("../src/lib/library.server.ts");
+  assert.match(server, /\.eq\("use_count", useCount\)/);
+  assert.match(server, /\.eq\("is_revoked", false\)/);
+  assert.match(server, /\.gt\("expires_at", new Date\(\)\.toISOString\(\)\)/);
+  assert.match(server, /\.lt\("use_count", useLimit\)/);
+  assert.match(server, /if \(claimError \|\| !claimed\) \{[\s\S]*\.delete\(\)\.eq\("id", inserted\.id\)[\s\S]*deleteObject\(destPath\)/);
+});
