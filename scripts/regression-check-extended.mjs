@@ -243,3 +243,28 @@ test("peer share use limits are claimed atomically and failed claims roll back c
   assert.match(server, /\.lt\("use_count", useLimit\)/);
   assert.match(server, /if \(claimError \|\| !claimed\) \{[\s\S]*\.delete\(\)\.eq\("id", inserted\.id\)[\s\S]*deleteObject\(destPath\)/);
 });
+
+
+test("theme follows the browser color scheme and does not force dark on app entry", async () => {
+  const theme = await read("../src/lib/theme.tsx");
+  const root = await read("../src/routes/__root.tsx");
+  assert.match(theme, /matchMedia\("\(prefers-color-scheme: dark\)"\)/);
+  assert.match(theme, /media\.addEventListener\?\.\("change", syncTheme\)/);
+  assert.doesNotMatch(theme, /setThemeState\("dark"\)|localStorage\.setItem\(KEY/);
+  assert.doesNotMatch(root, /<html lang="en" className="dark">/);
+});
+
+test("chat history does not overwrite the active thread cache and tolerates per-course failures", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(chat, /Promise\.allSettled\(courseOptions\.map/);
+  assert.match(chat, /Never seed the live-thread cache from this full history/);
+  assert.doesNotMatch(chat, /const raw = \(await getCourseHistory\(course\)\)\.messages;\s*if \(!threadCache\.current\.has\(cacheMapKey\(course\)\)\) persistCache/);
+});
+
+test("mobile chat composer uses the tab-nav-reserved viewport and message text wraps", async () => {
+  const styles = await read("../src/styles.css");
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(styles, /height: calc\(100dvh - 4\.5rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(chat, /whitespace-pre-wrap rounded-2xl[^\n]*\[overflow-wrap:anywhere\]/);
+  assert.match(chat, /w-full min-w-0 max-w-full break-words \[overflow-wrap:anywhere\]/);
+});
