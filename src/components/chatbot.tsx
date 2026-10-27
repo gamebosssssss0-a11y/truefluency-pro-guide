@@ -471,7 +471,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       const failures = results.filter((result) => result.status === "rejected");
       setHistoryRows(successfulRows.flat());
       // One unavailable course should not hide every other course's history.
-      if (failures.length > 0 && successfulRows.length === 0) {
+      if (failures.length > 0 && failures.length === results.length) {
         const reason = failures[0].status === "rejected" ? failures[0].reason : null;
         const message = reason instanceof Error ? reason.message : "Couldn't load chat history.";
         setHistoryError(message);
