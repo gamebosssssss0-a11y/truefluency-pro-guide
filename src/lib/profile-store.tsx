@@ -871,7 +871,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           if (keepCurrentDashboard) return;
           try {
             const returnTo = sessionStorage.getItem("returnTo");
-            if (returnTo && (returnTo.startsWith("/s/") || returnTo.startsWith("/chat-share/")) && !returnTo.startsWith("//")) {
+            if (returnTo && !returnTo.startsWith("//") && (returnTo.startsWith("/s/") || returnTo.startsWith("/chat-share/") || returnTo.startsWith("/mock-share/"))) {
               sessionStorage.removeItem("returnTo");
               window.location.assign(returnTo);
               return;
