@@ -209,3 +209,10 @@ test("peer-save quota course is required and must match the verified source", as
   assert.match(functions, /courseCode: data\.courseCode/);
   assert.match(server, /source\.course_code\.trim\(\)\.toUpperCase\(\) !== opts\.courseCode\.trim\(\)\.toUpperCase\(\)/);
 });
+
+
+test("mock answer counts do not treat missing legacy answers as answered", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /const answeredCount = t\.answers\.filter\(\(answer\) => answer !== null && answer !== undefined\)\.length/);
+  assert.match(flow, /const answered = t\.answers\.filter\(\(a\) => a !== null && a !== undefined\)\.length/);
+});
