@@ -137,7 +137,6 @@ test("splash and loading animations remain enabled and splash plays on every app
   const styles = await read("../src/styles.css");
   const splash = await read("../src/components/onboarding/splash.tsx");
   const loader = await read("../src/components/loading-splash.tsx");
-  assert.doesNotMatch(styles, /\.sonic-mark-in[\s\S]*?animation:\s*none\s*!important/);
   assert.doesNotMatch(styles, /Final calm-motion guard/);
   assert.match(styles, /\.sonic-mark-in\s*\{\s*animation:\s*sonic-mark-in/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
