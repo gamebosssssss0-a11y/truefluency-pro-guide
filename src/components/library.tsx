@@ -119,7 +119,7 @@ function formatFileDate(value: string): string {
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm transition-colors duration-200 ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm transition-colors duration-200 ui-card-enter ${className}`}>{children}</div>
   );
 }
 
