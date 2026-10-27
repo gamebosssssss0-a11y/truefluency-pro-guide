@@ -17,10 +17,11 @@ export function TrialWelcomeScreen() {
     go("dashboard");
     // Continue directly to the first action the student chose in onboarding.
     switch (profile.studyPreference) {
-      case "practice":
+      case "practice": {
         const firstCourse = profile.courses.find((course) => !course.code.toUpperCase().startsWith("GES")) ?? profile.courses[0];
         navigate(firstCourse ? "course-detail" : "add-course", { courseCode: firstCourse?.code ?? null });
         break;
+      }
       case "cgpa":
         navigate("cgpa");
         break;
