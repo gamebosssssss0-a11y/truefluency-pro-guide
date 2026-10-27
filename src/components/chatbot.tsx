@@ -1312,7 +1312,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           </div>
           {chatCapReached ? (
-            <p className="mt-1.5 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
               Today's chat usage is used up. It resets {formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.
             </p>
           ) : null}
