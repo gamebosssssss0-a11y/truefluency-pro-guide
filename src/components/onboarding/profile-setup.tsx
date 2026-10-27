@@ -206,7 +206,8 @@ export function CoursesScreen() {
       go("dashboard");
       switch (profile.studyPreference) {
         case "practice":
-          navigate(all[0] ? "course-detail" : "add-course", { courseCode: all[0]?.code ?? null });
+          const firstCourse = chosenDept[0] ?? manualCourses[0] ?? gesCourses[0];
+          navigate(firstCourse ? "course-detail" : "add-course", { courseCode: firstCourse?.code ?? null });
           break;
         case "cgpa": navigate("cgpa"); break;
         case "tutor": navigate("chatbot"); break;
