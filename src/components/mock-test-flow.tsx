@@ -1165,7 +1165,7 @@ export function MockRunScreen() {
           <section aria-label={`Question ${idx + 1}`} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{q.topic}</div>
-              <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}%</span>
+              <span role="progressbar" aria-label="Practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((idx + 1) / questions.length) * 100)} aria-valuetext={`Question ${idx + 1} of ${questions.length}`} className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}% complete</span>
             </div>
             <div className="break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground"><MathText>{q.question}</MathText></div>
 
