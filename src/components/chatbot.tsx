@@ -1183,25 +1183,25 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   </div>
                 ),
               )}
-              {isSending && streamingBubbleId === null ? (
-                <div className="flex w-full items-center gap-3 text-sm text-foreground">
-                  <span className="relative grid h-8 w-8 shrink-0 place-items-center">
-                    <LogoMark className="sonic-mark-loop h-8 w-8" />
-                    <span className="sonic-flare-loop left-1/2 top-1/2" />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "0px", "--dy": "-20px", "--po": 0.9, animationDelay: "0ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "17px", "--dy": "-10px", "--po": 0.82, animationDelay: "65ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "17px", "--dy": "10px", "--po": 0.88, animationDelay: "130ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "0px", "--dy": "20px", "--po": 0.78, animationDelay: "195ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
-                  </span>
-                  <span className="thinking-shimmer font-medium text-foreground">Thinking</span>
-                </div>
-              ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
                 <p className="text-[11px] text-muted-foreground">Read aloud isn't available in this browser.</p>
               ) : null}
             </>
+          ) : null}
+          {isSending && streamingBubbleId === null ? (
+            <div className="flex w-full items-center gap-3 text-sm text-foreground">
+              <span className="relative grid h-8 w-8 shrink-0 place-items-center">
+                <LogoMark className="sonic-mark-loop h-8 w-8" />
+                <span className="sonic-flare-loop left-1/2 top-1/2" />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "0px", "--dy": "-20px", "--po": 0.9, animationDelay: "0ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "17px", "--dy": "-10px", "--po": 0.82, animationDelay: "65ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "17px", "--dy": "10px", "--po": 0.88, animationDelay: "130ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "0px", "--dy": "20px", "--po": 0.78, animationDelay: "195ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
+              </span>
+              <span className="thinking-shimmer font-medium text-foreground">Thinking</span>
+            </div>
           ) : null}
           <div ref={scrollAnchorRef} />
         </div>
