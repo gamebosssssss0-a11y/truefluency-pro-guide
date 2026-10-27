@@ -263,7 +263,8 @@ test("chat history does not overwrite the active thread cache and tolerates per-
   assert.match(chat, /historyRows\.length === 0 && historyLoading/);
   assert.match(chat, /Loading more conversations…/);
   assert.doesNotMatch(chat, /Promise\.allSettled\(courseOptions\.map/);
-  assert.match(chat, /Never seed the live-thread cache from this full history/);
+  const historyEffect = chat.slice(chat.indexOf("const loadCourse"), chat.indexOf("const handleResumeConversation"));
+  assert.doesNotMatch(historyEffect, /persistCache/);
   assert.doesNotMatch(chat, /const raw = \(await getCourseHistory\(course\)\)\.messages;\s*if \(!threadCache\.current\.has\(cacheMapKey\(course\)\)\) persistCache/);
 });
 
