@@ -501,6 +501,7 @@ export async function saveSharedFile(opts: {
   let source: ResolvedShare["material"] | null = null;
   let shareId: string | null = null;
   let useCount = 0;
+  let useLimit = SHARE_MAX_USES;
 
   if (opts.token) {
     const resolved = await resolveShare(opts.token);
@@ -508,6 +509,7 @@ export async function saveSharedFile(opts: {
     source = resolved.material;
     shareId = resolved.share.id;
     useCount = resolved.share.use_count;
+    useLimit = resolved.share.max_uses;
   } else if (opts.materialId) {
     const { data } = await db
       .from("course_materials")
@@ -597,7 +599,7 @@ export async function saveSharedFile(opts: {
       .eq("use_count", useCount)
       .eq("is_revoked", false)
       .gt("expires_at", new Date().toISOString())
-      .lt("use_count", SHARE_MAX_USES)
+      .lt("use_count", useLimit)
       .select("id")
       .maybeSingle();
 
