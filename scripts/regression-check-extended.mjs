@@ -159,3 +159,17 @@ test("chat thinking animation remains visible independently of the empty-thread 
   assert.ok(anchor > thinking, "thinking indicator must remain inside the scrollable thread");
   assert.match(chat, /aria-busy=\{isLoadingThread \|\| isSending\}/);
 });
+
+test("failed chat streams discard incomplete assistant text but preserve retryable student messages", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  const catchStart = chat.indexOf("    } catch (error) {", chat.indexOf("const send = async"));
+  const catchEnd = chat.indexOf("    } finally {", catchStart);
+  assert.notEqual(catchStart, -1);
+  assert.notEqual(catchEnd, -1);
+  const failureHandler = chat.slice(catchStart, catchEnd);
+  assert.match(failureHandler, /streamId === null[\\s\\S]*?cur\.filter\(\(message\) => message\.id !== streamId\)/);
+  assert.match(failureHandler, /sendError: true/);
+  assert.match(failureHandler, /retryCourse: course/);
+  assert.match(failureHandler, /retryMode: sendMode/);
+  assert.match(failureHandler, /persistCache\(course, next\)/);
+});
