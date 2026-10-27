@@ -1127,3 +1127,240 @@ html.dark body {
   background-attachment: fixed;
   color: #F7F3EA;
 }
+
+
+/* TrueFluency reference treatment across every screen: navy-to-gold transition,
+   warm cream reading area, and consistent card/action tokens in light mode. */
+:root {
+  color-scheme: light;
+  --surface-base: #F5EEDB;
+  --surface-card: #FBF7EE;
+  --text-primary: #1B2D4A;
+  --text-secondary: #626779;
+  --muted-foreground: #686B7A;
+  --brand-teal: #B8750A;
+  --background: #F5EEDB;
+  --foreground: #1B2D4A;
+  --surface: #FBF7EE;
+  --card: #FBF7EE;
+  --card-foreground: #1B2D4A;
+  --popover: #FBF7EE;
+  --popover-foreground: #1B2D4A;
+  --primary: #B8750A;
+  --primary-foreground: #111827;
+  --secondary: #F2E7C9;
+  --secondary-foreground: #1B2D4A;
+  --muted: #F2E7C9;
+  --muted-foreground: #686B7A;
+  --accent: #B8750A;
+  --accent-foreground: #111827;
+  --border: #E4DCCB;
+  --input: #D6CBB8;
+  --ring: #B8750A;
+  --cream: #FBF7EE;
+  --sand: #F2E7C9;
+  --ink: #1B2D4A;
+  --chat-page: #F5EEDB;
+  --chat-card: #FBF7EE;
+  --chat-foreground: #1B2D4A;
+}
+html:not(.dark) {
+  color-scheme: light;
+  background: #F5EEDB;
+}
+html:not(.dark) body {
+  background-color: #F5EEDB !important;
+  background-image:
+    radial-gradient(ellipse at 80% 31%, rgba(246, 203, 112, .88) 0%, rgba(246, 203, 112, .35) 18%, transparent 40%),
+    radial-gradient(ellipse at 16% 8%, rgba(61, 88, 129, .95) 0%, transparent 43%),
+    linear-gradient(180deg, #132B50 0%, #30486B 16%, #65758A 29%, #C0BDAF 39%, #F2E5C4 49%, #F5EEDB 64%, #F5EEDB 100%) !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100vh !important;
+  color: #1B2D4A;
+  min-height: 100vh;
+}
+/* Make app shells transparent so the signature transition remains visible on all tabs. */
+html:not(.dark) #root,
+html:not(.dark) #app,
+html:not(.dark) main,
+html:not(.dark) .app-stage,
+html:not(.dark) [data-app-shell] {
+  background-color: transparent;
+}
+/* Normalize the common utility surfaces so no screen falls back to stark white. */
+html:not(.dark) .bg-white,
+html:not(.dark) [class~="bg-white"],
+html:not(.dark) .bg-card,
+html:not(.dark) [class~="bg-card"],
+html:not(.dark) .bg-popover,
+html:not(.dark) [class~="bg-popover"] {
+  background-color: #FBF7EE !important;
+  color: #1B2D4A;
+}
+html:not(.dark) .bg-slate-50,
+html:not(.dark) .bg-gray-50,
+html:not(.dark) .bg-stone-50,
+html:not(.dark) .bg-background,
+html:not(.dark) [class~="bg-background"] {
+  background-color: transparent !important;
+}
+html:not(.dark) .bg-slate-100,
+html:not(.dark) .bg-gray-100,
+html:not(.dark) .bg-stone-100,
+html:not(.dark) .bg-muted,
+html:not(.dark) [class~="bg-muted"],
+html:not(.dark) .bg-secondary,
+html:not(.dark) [class~="bg-secondary"] {
+  background-color: #F2E7C9 !important;
+}
+html:not(.dark) .text-foreground,
+html:not(.dark) [class~="text-foreground"],
+html:not(.dark) .text-slate-900,
+html:not(.dark) .text-gray-900,
+html:not(.dark) .text-stone-900 {
+  color: #1B2D4A;
+}
+html:not(.dark) .text-muted-foreground,
+html:not(.dark) [class~="text-muted-foreground"],
+html:not(.dark) .text-slate-500,
+html:not(.dark) .text-gray-500 {
+  color: #686B7A;
+}
+html:not(.dark) .border-border,
+html:not(.dark) [class~="border-border"],
+html:not(.dark) .border-slate-200,
+html:not(.dark) .border-gray-200 {
+  border-color: #E4DCCB !important;
+}
+/* Gold primary actions and active states stay coherent across practice, files, chat and account. */
+html:not(.dark) .bg-primary,
+html:not(.dark) [class~="bg-primary"] {
+  background-color: #B8750A !important;
+  color: #111827 !important;
+}
+html:not(.dark) .text-primary,
+html:not(.dark) [class~="text-primary"] {
+  color: #9A5A06;
+}
+html:not(.dark) .ring-ring,
+html:not(.dark) [class~="ring-ring"] {
+  --tw-ring-color: #B8750A;
+}
+/* Bottom navigation is a warm cream dock with a fine gold divider. */
+html:not(.dark) nav[aria-label],
+html:not(.dark) [data-bottom-nav],
+html:not(.dark) .bottom-navigation {
+  background-color: rgba(251, 247, 238, .96);
+  border-color: #E4DCCB;
+  backdrop-filter: blur(14px);
+}
+
+/* Dark mode: keep the full app on deep navy, with gold interaction states. */
+html.dark {
+  color-scheme: dark;
+  --surface-base: #061329;
+  --surface-card: #0E1E3B;
+  --text-primary: #F7F3EA;
+  --text-secondary: #C3D2EC;
+  --muted-foreground: #A9BBDD;
+  --brand-teal: #E7BD68;
+  --background: #061329;
+  --foreground: #F7F3EA;
+  --surface: #0E1E3B;
+  --card: #0E1E3B;
+  --card-foreground: #F7F3EA;
+  --popover: #102345;
+  --popover-foreground: #F7F3EA;
+  --primary: #E7BD68;
+  --primary-foreground: #061329;
+  --secondary: #14294B;
+  --secondary-foreground: #F7F3EA;
+  --muted: #14294B;
+  --muted-foreground: #A9BBDD;
+  --accent: #E7BD68;
+  --accent-foreground: #061329;
+  --border: #344C72;
+  --input: #52698C;
+  --ring: #E7BD68;
+  --cream: #F7F3EA;
+  --sand: #E7BD68;
+  --ink: #F7F3EA;
+  --chat-page: #061329;
+  --chat-card: #0E1E3B;
+  --chat-foreground: #F7F3EA;
+}
+html.dark body {
+  background-color: #061329 !important;
+  background-image:
+    radial-gradient(ellipse at 78% 32%, rgba(194, 137, 46, .28) 0%, transparent 32%),
+    radial-gradient(ellipse at 18% 6%, #19365F 0%, transparent 43%),
+    linear-gradient(180deg, #061329 0%, #0A1C38 42%, #0E1E3B 100%) !important;
+  background-attachment: fixed !important;
+  color: #F7F3EA;
+}
+html.dark #root,
+html.dark #app,
+html.dark main,
+html.dark .app-stage,
+html.dark [data-app-shell] {
+  background-color: transparent;
+}
+html.dark .bg-white,
+html.dark [class~="bg-white"],
+html.dark .bg-card,
+html.dark [class~="bg-card"],
+html.dark .bg-popover,
+html.dark [class~="bg-popover"] {
+  background-color: #0E1E3B !important;
+  color: #F7F3EA;
+}
+html.dark .bg-slate-50,
+html.dark .bg-gray-50,
+html.dark .bg-stone-50,
+html.dark .bg-background,
+html.dark [class~="bg-background"] {
+  background-color: transparent !important;
+}
+html.dark .bg-slate-100,
+html.dark .bg-gray-100,
+html.dark .bg-stone-100,
+html.dark .bg-muted,
+html.dark [class~="bg-muted"],
+html.dark .bg-secondary,
+html.dark [class~="bg-secondary"] {
+  background-color: #14294B !important;
+}
+html.dark .text-foreground,
+html.dark [class~="text-foreground"],
+html.dark .text-slate-900,
+html.dark .text-gray-900,
+html.dark .text-stone-900 {
+  color: #F7F3EA;
+}
+html.dark .text-muted-foreground,
+html.dark [class~="text-muted-foreground"] {
+  color: #A9BBDD;
+}
+html.dark .border-border,
+html.dark [class~="border-border"],
+html.dark .border-slate-200,
+html.dark .border-gray-200 {
+  border-color: #344C72 !important;
+}
+html.dark .bg-primary,
+html.dark [class~="bg-primary"] {
+  background-color: #E7BD68 !important;
+  color: #061329 !important;
+}
+html.dark .text-primary,
+html.dark [class~="text-primary"] {
+  color: #E7BD68;
+}
+html.dark nav[aria-label],
+html.dark [data-bottom-nav],
+html.dark .bottom-navigation {
+  background-color: rgba(6, 19, 41, .96);
+  border-color: #344C72;
+  backdrop-filter: blur(14px);
+}
