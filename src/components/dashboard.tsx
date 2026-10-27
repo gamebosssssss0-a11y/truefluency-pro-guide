@@ -16,7 +16,6 @@ import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-materials";
 import { getMyAvatar } from "@/lib/avatar";
-import { FirstRunTourHost } from "@/components/first-run-tour";
 import { lagosDay } from "@/lib/wat-day";
 import { getStreakState, type StreakState } from "@/lib/streak-state";
 import { UpgradeReminderSheet } from "@/components/upgrade";
@@ -596,7 +595,6 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </p>
         ) : null}
       </div>
-      <FirstRunTourHost />
     </div>
   );
 }
