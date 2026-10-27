@@ -154,8 +154,15 @@ function Router() {
       stage.dataset.swipeActive = "false";
     }
 
-    // New screens start at the top; in-progress study data remains in ProfileProvider.
-    window.scrollTo({ top: 0, behavior: "auto" });
+    // Reset document and nested screen scroll. Root tabs stay mounted for fast
+    // switching, so window.scrollTo alone does not reset the active screen.
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    stage?.querySelectorAll<HTMLElement>("[data-screen-scroll], [data-chat-thread], [data-pdf-scroll], [data-cgpa-scroll], [data-root-scroll], .overflow-y-auto, .overflow-auto").forEach((node) => {
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+    });
   }, [view]);
 
   useEffect(() => {
@@ -278,7 +285,7 @@ function Router() {
       <div
         data-tab-swipe-stage
         className={cn(
-          hidesTabBar(view) ? undefined : view === "chatbot" ? "overflow-hidden" : "pb-20 md:pb-8 overflow-x-hidden",
+          hidesTabBar(view) ? undefined : "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-8 overflow-x-clip",
           !examFocus && "app-stage-wide",
           "tab-swipe-stage relative overflow-x-hidden",
         )}
