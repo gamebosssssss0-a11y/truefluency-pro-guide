@@ -1111,13 +1111,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <>
               {messages.map((m) =>
                 m.from === "student" ? (
-                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[85%] break-words">
+                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[85%] break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
                       <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-border bg-card p-3.5 text-sm text-card-foreground">
+                    <div className="whitespace-pre-wrap rounded-2xl border border-border bg-card p-3.5 text-sm text-card-foreground [overflow-wrap:anywhere]">
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
@@ -1161,7 +1161,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     </div>
                   </div>
                 ) : m.from === "assistant" ? (
-                  <div key={m.id} className="w-full">
+                  <div key={m.id} className="w-full min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
                       <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1B2A4A]">
                         {displayCode(m.courseTag)}
