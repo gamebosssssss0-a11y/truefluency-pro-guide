@@ -87,6 +87,8 @@ test("same-day streak return stays active and expired streaks do not display sta
   const helper = await read("../src/lib/streak-state.ts");
   const store = await read("../src/lib/profile-store.tsx");
   assert.match(helper, /input\.lastActiveDate === today \|\| input\.lastActiveDate === yesterday/);
+  assert.match(helper, /adjacentDay\(today, -1\)/);
+  assert.match(helper, /adjacentDay\(today, -2\)/);
   assert.match(helper, /return \{ state: "none", days: 0 \}/);
   assert.match(store, /lastActiveDate: string \| null/);
   assert.match(store, /streakDays: number/);
