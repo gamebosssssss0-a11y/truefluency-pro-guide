@@ -1,40 +1,45 @@
--- Security hardening for subscription entitlements and exposed privileged functions.
--- Apply only after verifying billing mutations are handled by trusted server code/webhooks.
+-- Student-facing database hardening while preserving administrator read access.
+-- Server-side service_role workflows retain subscription writes.
 begin;
 
--- A user's subscription row is readable by that user, but entitlement fields must
--- never be writable through the public client API. Trusted service_role workflows
--- retain their elevated access (service_role bypasses RLS).
+-- Entitlements are readable by the owner and admins, but never writable by browser clients.
 drop policy if exists "Users can access own subscription" on public.subscriptions;
 create policy "Users can read own subscription"
-  on public.subscriptions
-  for select
-  to authenticated
+  on public.subscriptions for select to authenticated
   using ((select auth.uid()) = user_id);
+alter policy "Admins can read all subscriptions" on public.subscriptions to authenticated;
+alter policy "Admins can read all profiles" on public.profiles to authenticated;
+alter policy "Admins can view roles" on public.user_roles to authenticated;
+alter policy "Admins can read all mock attempts" on public.mock_attempts to authenticated;
+alter policy "own rows" on public.profiles to authenticated;
+alter policy "own rows" on public.mock_attempts to authenticated;
 
--- Admin read access remains explicit and read-only for authenticated clients.
--- The service role is reserved for trusted server-side billing and admin operations.
-revoke insert, update, delete on table public.subscriptions from anon, authenticated;
+revoke all privileges on table public.subscriptions from public, anon;
+revoke insert, update, delete, truncate, references, trigger
+  on table public.subscriptions from authenticated;
 grant select on table public.subscriptions to authenticated;
 
--- RPCs intended for internal trigger/server use should not be directly callable
--- by anonymous or signed-in clients. Trigger execution does not require granting
--- EXECUTE to API roles; function owner privileges apply to trigger invocation.
-revoke execute on function public.trg_index_material_chunks() from public, anon, authenticated;
+-- Prevent unauthenticated reads/writes on identity and role tables.
+revoke all privileges on table public.profiles from anon;
+revoke all privileges on table public.user_roles from anon;
 
--- has_role is used by policies/app role checks; keep it callable only by signed-in
--- users, not anon. The function must still validate the requested user/role safely.
+-- has_role is needed by authenticated admin policies; never expose it to anon/PUBLIC.
 revoke execute on function public.has_role(uuid, public.app_role) from public, anon;
-grant execute on function public.has_role(uuid, public.app_role) to authenticated;
+grant execute on function public.has_role(uuid, public.app_role) to authenticated, service_role;
+alter function public.has_role(uuid, public.app_role) set search_path = pg_catalog, public;
 
--- Admin dashboard RPC checks has_role internally. Remove anonymous execution and
--- retain authenticated execution so the function's internal admin check can run.
+-- Trigger-only indexing function is not a client RPC.
+revoke execute on function public.trg_index_material_chunks() from public, anon, authenticated, service_role;
+
+-- Keep admin dashboard RPC available to authenticated users because its body enforces
+-- admin membership before returning any aggregate. The browser must not lose admin access.
 revoke execute on function public.admin_dashboard_stats() from public, anon;
-grant execute on function public.admin_dashboard_stats() to authenticated;
+grant execute on function public.admin_dashboard_stats() to authenticated, service_role;
+alter function public.admin_dashboard_stats() set search_path = pg_catalog, public;
 
--- Flashcard rating RPC is an intended user action; its body must validate ownership
--- and allowed rating values. Keep signed-in access but remove anonymous execution.
+-- Rating is an intended signed-in action; its function validates auth, ownership,
+-- and the allowed rating values before inserting an event.
 revoke execute on function public.record_flashcard_rating(uuid, text) from public, anon;
-grant execute on function public.record_flashcard_rating(uuid, text) to authenticated;
+grant execute on function public.record_flashcard_rating(uuid, text) to authenticated, service_role;
 
 commit;
