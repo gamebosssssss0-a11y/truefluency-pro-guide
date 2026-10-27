@@ -736,3 +736,40 @@
 .dark .chat-assistant-actions button:hover {
   color: #F7F3EA;
 }
+
+
+/* Accessibility and mobile polish: additive only; preserves existing component layouts. */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--ring, #0F766E);
+  outline-offset: 3px;
+}
+
+:where(input, select, textarea) {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  /* Prevent mobile browser zoom on focus without changing desktop typography. */
+  :where(input, select, textarea) {
+    font-size: max(16px, 1em);
+  }
+
+  /* Keep the app usable on narrow Android screens and respect device insets. */
+  .app-stage,
+  .app-stage-wide {
+    min-width: 0;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
