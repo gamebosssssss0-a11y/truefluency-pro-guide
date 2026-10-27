@@ -88,6 +88,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/s/$token': typeof STokenRoute
+  '/mock-share/$token': typeof MockShareTokenRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRouteTypes {
