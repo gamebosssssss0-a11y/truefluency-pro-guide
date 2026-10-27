@@ -624,7 +624,7 @@ export function PdfViewer({
         data-screen-scroll
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className={expanded ? "min-w-0 flex-1 overflow-y-auto p-1" : "min-w-0 flex-1 overflow-hidden p-1"}
+        className="min-w-0 flex-1 overflow-y-auto p-1"
         style={!expanded && status === "ready" ? { touchAction: "pan-y pinch-zoom" } : undefined}
       >
         {status === "loading" ? (
