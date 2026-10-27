@@ -1053,7 +1053,11 @@ export function MockRunScreen() {
       <div className="study-utility-page min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
-          <p className="mt-6 text-sm text-muted-foreground">No test in progress.</p>
+          <section className="mt-6 rounded-2xl border border-border bg-card p-5">
+            <h1 className="font-display text-lg font-semibold text-foreground">No questions yet</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Start a practice set from one of your courses. Your progress will be saved as you go.</p>
+            <Button className="mt-4 w-full" onClick={() => navigate("mock-tests")}>Choose a practice set</Button>
+          </section>
         </div>
       </div>
     );
