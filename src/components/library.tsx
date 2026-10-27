@@ -101,9 +101,25 @@ function ReadyPill({ ready }: { ready: boolean }) {
   );
 }
 
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "Size unavailable";
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let size = bytes / 1024;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
+  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unit]}`;
+}
+
+function formatFileDate(value: string): string {
+  if (!value) return "Date unavailable";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-border bg-card p-4 text-card-foreground ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm transition-colors duration-200 ${className}`}>{children}</div>
   );
 }
 
@@ -459,6 +475,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                         <div className="flex items-center gap-2">
                           <TypeChip fileType={f.file_type} />
                           <span className="break-words text-sm font-semibold text-foreground">{f.file_name}</span>
+                          <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{formatFileSize(f.size_bytes)} · Added {formatFileDate(f.created_at)}</div>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <ReadyPill ready={f.readyForMocks} />
@@ -562,6 +579,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                     <div className="flex items-center gap-2">
                       <TypeChip fileType={it.file_type} />
                       <span className="break-words text-sm font-semibold text-foreground">{it.file_name}</span>
+                      <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{formatFileSize(it.size_bytes)} · Shared {formatFileDate(it.created_at)}</div>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
