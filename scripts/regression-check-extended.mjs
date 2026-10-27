@@ -111,7 +111,18 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
 
   assert.match(router, /document\.documentElement\.scrollTop = 0/);
   assert.match(router, /data-chat-thread/);
-  assert.match(chat, /if \(!active\)[\s\S]*?threadScrollRef\.current\.scrollTop = 0/);
+  assert.match(chat, /thread\.scrollTop = 0/);
+  assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
+  assert.match(chat, /line-clamp-2 whitespace-normal break-words text-left leading-4/);
+  assert.doesNotMatch(chat, /mix-blend-difference/);
+  assert.match(styles, /height: calc\(100dvh - 9rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /--accent: #E0B458/);
+  assert.match(styles, /--muted-foreground: #C5CCD6/);
+  assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
+  const upgrade = await read("../src/components/upgrade.tsx");
+  assert.doesNotMatch(upgrade, /mix-blend-difference/);
+  assert.match(upgrade, /standard price after the offer ends/);
+  assert.match(upgrade, /places remain/);
   assert.doesNotMatch(styles, /--tf-navy-950|FINAL GLOBAL REFERENCE BACKGROUND|TrueFluency reference treatment/);
   assert.doesNotMatch(calculator, /sticky top-0 z-20/);
   assert.match(goalSetter, /bottom-\[calc\(3\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
