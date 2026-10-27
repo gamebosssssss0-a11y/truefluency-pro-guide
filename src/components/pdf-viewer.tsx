@@ -241,6 +241,7 @@ export function PdfViewer({
 
   const load = useCallback(() => {
     let alive = true;
+    const cacheController = new AbortController();
     setStatus("loading");
     setDoc(null);
     void (async () => {
@@ -285,9 +286,14 @@ export function PdfViewer({
         if (!cached && fileKey) {
           void (async () => {
             try {
-              const res = await fetch(url);
+              const res = await fetch(url, { signal: cacheController.signal });
               if (!res.ok) return;
+              const declaredSize = Number(res.headers.get("content-length") ?? 0);
+              // Avoid retaining or caching oversized documents in the secondary byte cache.
+              if (declaredSize > 60 * 1024 * 1024) return;
               const buffer = await res.arrayBuffer();
+              if (buffer.byteLength > 60 * 1024 * 1024) return;
+              if (!alive) return;
               memoryCache = { key: fileKey, buffer };
               await putCachedPdf(fileKey, buffer);
             } catch {
@@ -303,6 +309,7 @@ export function PdfViewer({
     })();
     return () => {
       alive = false;
+      cacheController.abort();
       void taskRef.current?.destroy();
       taskRef.current = null;
     };
