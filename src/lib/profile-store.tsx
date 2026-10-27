@@ -39,6 +39,12 @@ export type InProgressTest = {
   questionCount: number;
   durationSec: number;
   startedAt: number;
+  /** Total active seconds already consumed, excluding paused time. */
+  elapsedSec?: number;
+  /** Timestamp when the current active segment began; absent while paused. */
+  resumedAt?: number;
+  /** Persisted pause state, including when the app is backgrounded. */
+  isPaused?: boolean;
   answers: (number | null)[];
   currentIndex: number;
   questionIds: number[];
