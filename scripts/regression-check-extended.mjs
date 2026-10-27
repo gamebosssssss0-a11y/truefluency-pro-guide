@@ -252,6 +252,7 @@ test("theme follows the browser color scheme and does not force dark on app entr
   assert.match(theme, /media\.addEventListener\?\.\("change", syncTheme\)/);
   assert.doesNotMatch(theme, /setThemeState\("dark"\)|localStorage\.setItem\(KEY/);
   assert.doesNotMatch(root, /<html lang="en" className="dark">/);
+  assert.match(root, /window\.matchMedia\('\(prefers-color-scheme: dark\)'\)/);
 });
 
 test("chat history does not overwrite the active thread cache and tolerates per-course failures", async () => {
