@@ -619,7 +619,9 @@ export function PdfViewer({
       </div>
 
       <div
-        ref={wrapRef}\n        data-pdf-scroll\n        data-screen-scroll
+        ref={wrapRef}
+        data-pdf-scroll
+        data-screen-scroll
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={expanded ? "min-w-0 flex-1 overflow-y-auto p-1" : "min-w-0 flex-1 overflow-hidden p-1"}
