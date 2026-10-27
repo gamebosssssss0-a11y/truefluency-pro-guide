@@ -62,18 +62,18 @@
   --radius: 0.875rem;
 
   /* Blueprint aliases: one calm slate/teal system for every surface. */
-  --surface-base: #F4F7F8;
+  --surface-base: #F8FAFC;
   --surface-card: #FFFFFF;
-  --text-primary: #1E293B;
-  --text-secondary: #526171;
-  --brand-teal: #0F766E;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --brand-teal: #0D9488;
   --state-success: #2F6B4F;
   --state-error: #B42332;
 
   /* Brand palette: slate, teal, and soft neutral surfaces */
-  --cream: #F7F3EA;
-  --sand: #F3E6C8;
-  --ink: #1B2A4A;
+  --cream: #F8FAFC;
+  --sand: #CCFBF1;
+  --ink: #0F172A;
 
   --background: var(--surface-base);
   --foreground: var(--text-primary);
@@ -84,18 +84,18 @@
   --popover: var(--surface-card);
   --popover-foreground: var(--text-primary);
 
-  --primary: #334155;
+  --primary: #0D9488;
   --primary-foreground: #FFFFFF;
 
-  --secondary: #E8EEF0;
+  --secondary: #F1F5F9;
   --secondary-foreground: var(--text-primary);
 
-  --muted: #E8EEF0;
+  --muted: #F1F5F9;
   --muted-foreground: var(--text-secondary);
 
   --accent: var(--brand-teal);
-  --accent-foreground: #F7F3EA;
-  --accent-on-sand: #0F766E;
+  --accent-foreground: #FFFFFF;
+  --accent-on-sand: #115E59;
 
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: #F7F3EA;
@@ -103,9 +103,9 @@
   --success: oklch(0.62 0.14 150);
   --warning: #946200;
 
-  --border: #D8E1E4;
-  --input: #D8E1E4;
-  --ring: #0F766E;
+  --border: #E2E8F0;
+  --input: #94A3B8;
+  --ring: #0D9488;
   /* Lightness for topic-pill text, so pills stay legible in both themes. */
   --pill-text-l: 30%;
 
@@ -118,7 +118,7 @@
   --good: #2F6B4F;
   --warn: #B86E0A;
   --bad: #8B2E2E;
-  --chat-page: #F7F3EA;
+  --chat-page: #F8FAFC;
   --chat-card: var(--surface);
   --chat-foreground: #1B2A4A;
 
@@ -173,7 +173,7 @@
 
   html, body {
     background-color: var(--background);
-    background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 5%, transparent), transparent 55%);
+    background-image: none;
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -182,7 +182,7 @@
 
   html.dark, html.dark body {
     background-color: var(--background);
-    background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 7%, transparent), transparent 55%);
+    background-image: none;
     background-attachment: fixed;
   }
 
@@ -827,7 +827,7 @@
 
 /* Accessibility contrast: keep muted copy readable and make focus unmistakable in both themes. */
 :root {
-  --muted-foreground: #475569;
+  --muted-foreground: #64748B;
 }
 .dark {
   --muted-foreground: #B6C2D2;
@@ -891,6 +891,40 @@
 }
 
 
+/* Specification-aligned light theme tokens. Keep cards solid and the canvas quiet. */
+:root {
+  --surface-base: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --muted-foreground: #64748B;
+  --brand-teal: #0D9488;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #0D9488;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #0D9488;
+  --accent-foreground: #FFFFFF;
+  --border: #E2E8F0;
+  --input: #94A3B8;
+  --ring: #0D9488;
+  --chat-page: #F8FAFC;
+  --chat-card: #FFFFFF;
+  --chat-foreground: #0F172A;
+}
+:root {
+  --color-feedback-error: #991B1B;
+}
+
 /* Calm, short screen and disclosure transitions. Reduced-motion overrides remain authoritative. */
 [data-tab-swipe-stage] > [data-root-tab] {
   animation: tf-screen-enter 200ms ease-out both;
@@ -901,4 +935,28 @@
 }
 details[open] > :not(summary) {
   animation: detail-expand 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+
+/* Final calm-motion guard: suppress decorative brand animations; retain short control transitions. */
+.quote-card-cycle,
+.splash-logo,
+.splash-glow,
+.sonic-mark-in,
+.sonic-mark-loop,
+.sonic-unfurl-path,
+.sonic-pulse,
+.sonic-dot,
+.sonic-flare,
+.sonic-flare-loop,
+.sonic-particle,
+.sonic-particle-loop,
+.sonic-text-1,
+.sonic-text-2 {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :where(button, [role="button"], a, input, select, textarea) {
+    transition-duration: 150ms;
+  }
 }
