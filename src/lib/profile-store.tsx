@@ -107,7 +107,8 @@ export type OnboardingStep =
 
 export type Goal = "pass" | "top-grades" | "catch-up";
 export type Timeline = "lt-week" | "2-4-weeks" | "gt-month" | "unsure";
-export type StudyPreference = "practice" | "flashcards" | "reading";
+/** First-action preference captured during onboarding and reused on Home. */
+export type StudyPreference = "practice" | "flashcards" | "reading" | "cgpa" | "tutor";
 
 /**
  * Local record of an account that has signed in on this device. It holds no
