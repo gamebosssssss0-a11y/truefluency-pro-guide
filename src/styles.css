@@ -1795,3 +1795,167 @@ html:not(.dark) [data-bottom-nav] {
   border-color: var(--tf-light-line) !important;
   color: #52617a;
 }
+
+
+/* App-wide reference theme: every route shares the same continuous canvas.
+   Keep the reference colours in the design tokens so existing Tailwind surfaces
+   (cards, inputs, dialogs, navigation and onboarding) inherit the palette. */
+:root {
+  --tf-navy-950: #061329;
+  --tf-navy-900: #071a38;
+  --tf-navy-850: #0b2448;
+  --tf-navy-800: #102647;
+  --tf-navy-700: #1b304d;
+  --tf-navy-card: #0a1f42;
+  --tf-navy-card-2: #0e2b59;
+  --tf-gold: #e7bd68;
+  --tf-gold-bright: #ffd66f;
+  --tf-cream: #fff4d9;
+  --tf-muted: #b8c7dc;
+  --tf-line: #31547d;
+  --tf-light-canvas: #f7f0e2;
+  --tf-light-card: #fbf7ee;
+  --tf-light-card-2: #f3e7c9;
+  --tf-light-gold: #c28725;
+  --tf-light-gold-bright: #a96b08;
+  --tf-light-ink: #1b2d4a;
+  --tf-light-muted: #5c6675;
+  --tf-light-line: #e4dccb;
+
+  --surface-base: var(--tf-light-canvas);
+  --surface-card: var(--tf-light-card);
+  --text-primary: var(--tf-light-ink);
+  --text-secondary: var(--tf-light-muted);
+  --cream: var(--tf-light-canvas);
+  --sand: var(--tf-light-card-2);
+  --ink: var(--tf-light-ink);
+  --background: var(--tf-light-canvas);
+  --foreground: var(--tf-light-ink);
+  --surface: var(--tf-light-card);
+  --card: var(--tf-light-card);
+  --card-foreground: var(--tf-light-ink);
+  --popover: var(--tf-light-card);
+  --popover-foreground: var(--tf-light-ink);
+  --primary: #263d60;
+  --primary-foreground: #fff4d9;
+  --secondary: #f3e7c9;
+  --secondary-foreground: var(--tf-light-ink);
+  --muted: #eee6d8;
+  --muted-foreground: var(--tf-light-muted);
+  --accent: var(--tf-light-gold);
+  --accent-foreground: #fffaf0;
+  --accent-on-sand: #80520b;
+  --border: var(--tf-light-line);
+  --input: #c7bda9;
+  --ring: var(--tf-light-gold);
+  --chat-page: var(--tf-light-canvas);
+  --chat-card: var(--tf-light-card);
+  --chat-foreground: var(--tf-light-ink);
+}
+
+html.dark {
+  --surface-base: var(--tf-navy-950);
+  --surface-card: var(--tf-navy-card);
+  --text-primary: var(--tf-cream);
+  --text-secondary: var(--tf-muted);
+  --cream: var(--tf-cream);
+  --sand: #213e67;
+  --ink: var(--tf-cream);
+  --background: var(--tf-navy-950);
+  --foreground: var(--tf-cream);
+  --surface: var(--tf-navy-card);
+  --card: var(--tf-navy-card);
+  --card-foreground: var(--tf-cream);
+  --popover: var(--tf-navy-card-2);
+  --popover-foreground: var(--tf-cream);
+  --primary: var(--tf-navy-800);
+  --primary-foreground: var(--tf-cream);
+  --secondary: var(--tf-navy-card-2);
+  --secondary-foreground: var(--tf-cream);
+  --muted: #132a49;
+  --muted-foreground: var(--tf-muted);
+  --accent: var(--tf-gold);
+  --accent-foreground: var(--tf-navy-950);
+  --accent-on-sand: #8b5106;
+  --border: var(--tf-line);
+  --input: #31547d;
+  --ring: var(--tf-gold-bright);
+  --chat-page: var(--tf-navy-950);
+  --chat-card: var(--tf-navy-card);
+  --chat-foreground: var(--tf-cream);
+}
+
+/* The reference wallpaper is global, not attached to the Home component.
+   A fixed, non-interactive layer keeps it continuous behind every route. */
+html, body, #root {
+  min-height: 100%;
+  width: 100%;
+  max-width: none;
+}
+html, body {
+  background: var(--background) !important;
+  color: var(--foreground);
+}
+body {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+}
+body::before {
+  content: "";
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 84% 38% at 78% 31%, rgba(190, 132, 42, .25), transparent 68%),
+    radial-gradient(ellipse 100% 45% at 8% 5%, rgba(31, 59, 96, .7), transparent 74%),
+    linear-gradient(180deg, #07142a 0%, #102647 23%, #1b304d 38%, #1b2c43 52%, #10213b 68%, #09172d 100%);
+}
+html:not(.dark) body::before {
+  background: #f7f0e2;
+}
+#root, [data-tab-swipe-stage], [data-root-tab], .app-stage-wide {
+  background: transparent !important;
+}
+
+/* Screens may use their own readable content width, but their outer surface
+   must not be constrained to that width or clipped vertically. */
+[data-tab-swipe-stage] {
+  width: 100%;
+  min-height: calc(100dvh - 3.5rem);
+  overflow-x: clip;
+  overflow-y: visible;
+}
+[data-root-tab] {
+  width: 100%;
+  min-height: inherit;
+}
+.app-stage-wide {
+  max-width: none;
+  min-width: 0;
+}
+nav[aria-label="Desktop primary navigation"] {
+  background: color-mix(in srgb, var(--background) 94%, transparent) !important;
+  backdrop-filter: blur(16px);
+}
+nav[aria-label="Mobile navigation"] {
+  background: color-mix(in srgb, var(--background) 97%, transparent) !important;
+  backdrop-filter: blur(18px);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+html.dark nav[aria-label="Mobile navigation"],
+html.dark nav[aria-label="Desktop primary navigation"] {
+  border-color: rgba(49, 84, 125, .85) !important;
+}
+html:not(.dark) nav[aria-label="Mobile navigation"],
+html:not(.dark) nav[aria-label="Desktop primary navigation"] {
+  border-color: rgba(228, 220, 203, .95) !important;
+}
+
+/* Keep Home's inner content layout, but let the global wallpaper show through. */
+html.dark .reference-home,
+html:not(.dark) .reference-home {
+  background: transparent !important;
+}
