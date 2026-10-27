@@ -177,6 +177,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // array reference on every streamed chunk too (the update uses .map to
   // grow one message's text), so this re-fires smoothly as a reply streams in.
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!active) {
+      if (threadScrollRef.current) threadScrollRef.current.scrollTop = 0;
+      return;
+    }
+    scrollAnchorRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+  }, [active, view]);
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
@@ -988,6 +996,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         </div>
         {/* Thread */}
         <div
+          ref={threadScrollRef}
+          data-chat-thread
+          data-screen-scroll
           data-swipe-lock
           role="log"
           aria-label="Study Chat messages"
