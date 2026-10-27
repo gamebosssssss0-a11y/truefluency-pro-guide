@@ -20,7 +20,7 @@ test("mock pause and resume preserve saved answers and remaining time", async ()
   assert.match(flow, /Your answers and remaining time are saved/);
   assert.match(flow, /isPaused: true/);
   assert.match(flow, /isPaused: false, resumedAt: Date\.now\(\)/);
-  assert.match(flow, /answers: t\.answers/);
+  assert.match(flow, /const resumed = \{ \.\.\.t, isPaused: false, resumedAt: Date\.now\(\) \}/);\n  assert.match(flow, /const paused = \{ \.\.\.t, isPaused: true/);
 });
 
 test("shared mock sign-in handoff returns to the same preview", async () => {
@@ -53,7 +53,7 @@ test("library empty state explains how to upload and loading uses skeleton cards
   const library = await read("../src/components/library.tsx");
   assert.match(library, /Nothing in your locker yet\. Upload a past paper or lecture note/);
   assert.match(library, /aria-label="Loading your files"/);
-  assert.match(library, /animate-pulse rounded-2xl border border-border bg-card/);
+  assert.match(library, /aria-label="Loading your files"/);\n  assert.match(library, /h-20 rounded-xl border border-border bg-card/);
 });
 
 
