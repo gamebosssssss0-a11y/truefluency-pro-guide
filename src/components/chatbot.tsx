@@ -1059,11 +1059,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 m.from === "student" ? (
                   <div key={m.id} className="ml-auto w-fit max-w-[85%]">
                     {m.courseTag ? (
-                      <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-[#1B2A4A]">
+                      <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] p-3.5 text-sm text-[#1B2A4A]">
+                    <div className="rounded-2xl border border-border bg-card p-3.5 text-sm text-card-foreground">
                       {m.imageUrl ? (
                         <img
                           src={m.imageUrl}
@@ -1087,7 +1087,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                           course: m.retryCourse ?? selected,
                           mode: m.retryMode ?? mode,
                         })}
-                        className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 font-semibold text-navy transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Retry message"
                         title="Retry message"
                       >
@@ -1097,7 +1097,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       <button
                         type="button"
                         onClick={() => void navigator.clipboard.writeText(m.text).then(() => toast.success("Message copied."), () => toast.error("Couldn't copy this message."))}
-                        className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 font-semibold text-navy transition hover:bg-sand"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         aria-label="Copy message"
                         title="Copy message"
                       >
@@ -1126,10 +1126,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                               if (isAppView(a.view)) navigate(a.view, { courseCode: selected });
                             }}
                             className={cn(
-                              "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                              "min-h-11 rounded-full px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                               a.label.toLowerCase().includes("mock test") || a.view === "mock-gen"
                                 ? "border border-amber bg-amber text-white hover:bg-amber/90"
-                                : "border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] hover:bg-[#E4DCC8]",
+                                : "border border-border bg-card text-card-foreground hover:bg-muted",
                             )}
                           >
                             {a.label} →
@@ -1138,15 +1138,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       </div>
                     ) : null}
                     <div className="chat-assistant-actions mt-2 flex w-full items-center gap-3 text-xs font-semibold">
-                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition hover:opacity-80">
+                      <button type="button" aria-label="Copy reply" title="Copy reply" onClick={() => void navigator.clipboard.writeText(plainText(cleanAssistantArtifacts(m.text))).then(() => toast.success("Reply copied."), () => toast.error("Couldn't copy this reply."))} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                         <Copy className="h-3.5 w-3.5" />
                         <span>Copy</span>
                       </button>
-                      <button type="button" onClick={() => toggleSpeak(m)} disabled={!speechAvailable} aria-label={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} title={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60">
+                      <button type="button" onClick={() => toggleSpeak(m)} disabled={!speechAvailable} aria-label={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} title={speechAvailable ? (speakingId === m.id ? "Stop reading" : "Read aloud") : "Read aloud isn't available in this browser"} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
                         {speakingId === m.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                         <span>{speakingId === m.id ? "Stop" : "Listen"}</span>
                       </button>
-                      <button type="button" aria-label="Share conversation" title="Share conversation" disabled={isSending} onClick={() => void handleOpenShare()} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60">
+                      <button type="button" aria-label="Share conversation" title="Share conversation" disabled={isSending} onClick={() => void handleOpenShare()} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
                         <Share2 className="h-3.5 w-3.5" />
                         <span>Share</span>
                       </button>
