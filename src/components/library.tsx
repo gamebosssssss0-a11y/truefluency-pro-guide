@@ -436,7 +436,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         </div>
 
         {rail === "locker" ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-3" aria-busy={locker === null} aria-label="My study files">
             <Button
               className="h-12 w-full bg-amber text-cream hover:bg-amber/90"
               onClick={() => {
@@ -458,7 +458,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {locker === null ? (
               lockerError ? (
                 <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
-              ) : <div role="status" aria-label="Loading your files" className="space-y-3"><div className="h-20 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-20 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-20 animate-pulse rounded-2xl border border-border bg-card" /></div>
+              ) : <div role="status" aria-label="Loading your files" className="space-y-3"><span className="sr-only">Loading your study files…</span><div aria-hidden="true" className="space-y-3"><div className="h-20 rounded-xl border border-border bg-card" /><div className="h-20 rounded-xl border border-border bg-card" /><div className="h-20 rounded-xl border border-border bg-card" /></div></div>
             ) : openFolder ? (
               <>
                 {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
@@ -549,7 +549,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {shelfOffline && shelf === null ? (
               <Card><p className="text-sm text-muted-foreground">{SHARING_OFFLINE_MESSAGE}</p></Card>
             ) : shelf === null ? (
-              <div role="status" aria-label="Loading course shelf" className="space-y-3"><div className="h-16 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-16 animate-pulse rounded-2xl border border-border bg-card" /><div className="h-16 animate-pulse rounded-2xl border border-border bg-card" /></div>
+              <div role="status" aria-label="Loading course shelf" aria-busy="true" className="space-y-3"><span className="sr-only">Loading published course materials…</span><div aria-hidden="true" className="space-y-3"><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /></div></div>
             ) : (
               <>
                 {shelfLoading ? <p className="text-xs text-muted-foreground" role="status">Updating course shelf…</p> : null}
