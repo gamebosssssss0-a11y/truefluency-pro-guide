@@ -347,8 +347,8 @@ export function CgpaGoalSetterScreen() {
   };
 
   return (
-    <div data-cgpa-form="goal-setter" className="study-utility-page study-page-blend min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-32 pt-6">
+    <div data-cgpa-form="goal-setter" className="study-utility-page min-h-screen">
+      <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-32 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
@@ -546,8 +546,8 @@ export function CgpaGoalSetterScreen() {
         ) : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-accent/40 bg-[#FFF8E7]/95 px-5 pt-3 backdrop-blur">
-        <div className="mx-auto max-w-md pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-background/95 px-4 pt-3 shadow-lg backdrop-blur md:bottom-0">
+        <div className="mx-auto w-full max-w-xl pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button
             size="lg"
             className="w-full bg-accent text-navy shadow-sm hover:bg-accent/90"

@@ -179,7 +179,7 @@ function ScrollPage({
     <div
       ref={(el) => register(pageNumber, el)}
       data-page={pageNumber}
-      className="mx-auto mb-2 flex justify-center"
+      className="mx-auto mb-2 flex w-full min-w-0 justify-center px-1"
       style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? estimatedPageHeight }}
     >
       {active || (distance <= 8 && hasPainted) ? (
@@ -620,9 +620,11 @@ export function PdfViewer({
 
       <div
         ref={wrapRef}
+        data-pdf-scroll
+        data-screen-scroll
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className={expanded ? "flex-1 overflow-y-auto p-1" : "flex-1 overflow-hidden p-1"}
+        className="min-w-0 flex-1 overflow-y-auto p-1"
         style={!expanded && status === "ready" ? { touchAction: "pan-y pinch-zoom" } : undefined}
       >
         {status === "loading" ? (
