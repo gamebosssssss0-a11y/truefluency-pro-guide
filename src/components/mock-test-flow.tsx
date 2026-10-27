@@ -26,6 +26,7 @@ import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
+import { createMockShare } from "@/lib/mock-sharing.functions";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = EXAM_MAX_QUESTIONS;
@@ -1448,6 +1449,7 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
 
 export function MockResultScreen() {
   const { profile, navigate } = useProfile();
+  const [sharing, setSharing] = useState(false);
   const { access } = useEntitlement();
   const streak = getStreakState(profile, access?.watToday);
   const attempt = profile.attempts.find((a) => a.id === profile.lastResultId);
@@ -1535,6 +1537,32 @@ export function MockResultScreen() {
           onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
         >
           Review answers
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="mt-2 w-full"
+          disabled={sharing || !attempt.questions?.length}
+          onClick={async () => {
+            setSharing(true);
+            try {
+              const result = await createMockShare({ data: { attemptId: attempt.id } });
+              if (!result.ok) {
+                toast.error(result.reason);
+                return;
+              }
+              const url = new URL("/mock-share/" + result.token, window.location.origin).toString();
+              await navigator.clipboard.writeText(url);
+              toast.success("Mock link copied", { description: "Anyone with the link can preview this mock." });
+            } catch {
+              toast.error("Couldn't create a share link. Please try again.");
+            } finally {
+              setSharing(false);
+            }
+          }}
+        >
+          <span className="mr-2">↗</span>{sharing ? "Creating link…" : "Share mock"}
         </Button>
 
 
