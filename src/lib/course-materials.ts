@@ -127,21 +127,33 @@ async function uploadViaPresignedPut(
   });
   // XMLHttpRequest rather than fetch: fetch can't report upload progress,
   // which left the bar frozen for the whole upload on a slow connection.
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", uploadUrl);
-    xhr.setRequestHeader("Content-Type", contentType);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
-    };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("Storage upload failed")));
-    xhr.onerror = () => reject(new TypeError("Failed to fetch"));
-    xhr.onabort = () => reject(new Error("Upload cancelled"));
-    xhr.send(payload);
-  });
-  const { exists } = await confirmMaterialUpload({ data: { path } });
-  if (!exists) throw new Error("Storage upload failed");
-  return path;
+  // The object path exists before the PUT starts, so clean it up on every
+  // failed PUT/confirmation path; otherwise a successful PUT followed by a
+  // lost confirmation response leaves an untracked object in storage.
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", contentType);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("Storage upload failed")));
+      xhr.onerror = () => reject(new TypeError("Failed to fetch"));
+      xhr.onabort = () => reject(new Error("Upload cancelled"));
+      xhr.send(payload);
+    });
+    const { exists } = await confirmMaterialUpload({ data: { path } });
+    if (!exists) throw new Error("Storage upload failed");
+    return path;
+  } catch (error) {
+    try {
+      await deleteMaterialFiles({ data: { paths: [path] } });
+    } catch (cleanupError) {
+      console.warn("[upload] couldn't remove unconfirmed storage object", cleanupError);
+    }
+    throw error;
+  }
 }
 
 function compressImage(file: File): Promise<Blob> {
