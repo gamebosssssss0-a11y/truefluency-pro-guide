@@ -317,6 +317,9 @@ export async function uploadCourseMaterial(opts: {
       .single();
     if (error) throw error;
     row = data as CourseMaterial;
+    void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+      recordAnalytics({ data: { eventName: "upload_created", courseCode, materialId: row!.id } })
+    ).catch(() => undefined);
   } catch (e) {
     console.error("[upload] db insert failed, rolling back storage", e);
     try {
@@ -583,6 +586,9 @@ export async function savePastedText(opts: {
       .select("*")
       .single();
     if (error) throw error;
+    void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+      recordAnalytics({ data: { eventName: "upload_created", courseCode, materialId: data.id } })
+    ).catch(() => undefined);
     emit({ kind: "done" });
     return data as CourseMaterial;
   } catch (e) {
