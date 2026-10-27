@@ -51,6 +51,30 @@ test("admin analytics RPC denies non-admin and anonymous callers", async () => {
   assert.match(migration, /revoke execute on function public\.admin_dashboard_stats\(\) from public, anon/);
 });
 
+test("mock sharing enforces ownership and strips answers from public previews", async () => {
+  const server = await read("../src/lib/mock-sharing.server.ts");
+  const functions = await read("../src/lib/mock-sharing.functions.ts");
+  assert.match(server, /\.eq\("id", attemptId\)\.eq\("user_id", ownerId\)/);
+  assert.match(server, /includeAnswers\s*\?\s*question\s*:/);
+  assert.match(server, /correct_index/);
+  assert.match(functions, /\.middleware\(\[requireSupabaseAuth\]\)/);
+});
+
+test("upload-to-practice is recorded independently and safely", async () => {
+  const mockFlow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(mockFlow, /eventName: "upload_practice"/);
+  assert.match(mockFlow, /eventName: "mock_started"/);
+  assert.match(mockFlow, /\.catch\(\(\) => undefined\)/);
+});
+
+test("mock resume state retains the correlated analytics session ID", async () => {
+  const profile = await read("../src/lib/profile-store.tsx");
+  const mockFlow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(profile, /analyticsSessionId: crypto\.randomUUID\(\)/);
+  assert.match(mockFlow, /const resume = \(\) =>/);
+  assert.match(mockFlow, /analyticsSessionId/);
+});
+
 test("billing entitlement writes remain server-controlled", async () => {
   const migration = await read("../supabase/migrations/20261027120000_harden_subscription_and_rpc_access.sql");
   assert.match(migration, /revoke insert, update, delete, truncate, references, trigger[\s\S]*?from authenticated/);
