@@ -115,7 +115,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
   assert.match(chat, /line-clamp-2 whitespace-normal break-words text-left leading-4/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
-  assert.match(styles, /height: calc\(100dvh - 9rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /height: calc\(100dvh - 4\.5rem - env\(safe-area-inset-bottom\)\)/);
   assert.match(styles, /--accent: #E0B458/);
   assert.match(styles, /--muted-foreground: #C5CCD6/);
   assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
