@@ -441,7 +441,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setHistoryLoading(true);
     void Promise.all(courseOptions.map(async (course) => {
       const raw = (await getCourseHistory(course)).messages;
-      if (!threadCache.current.has(cacheMapKey(course))) persistCache(course, toUiMessages(raw));
+      // History is a collection of archived and active conversations, not the
+      // current thread. Never seed the live-thread cache from this full history.
       // Grouped by conversation_id, not date — a row is now exactly one real
       // conversation, so it can be opened or deleted precisely. Legacy
       // messages saved before conversation_id was exposed (shouldn't exist
