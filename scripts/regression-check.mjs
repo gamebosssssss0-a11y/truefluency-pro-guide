@@ -32,7 +32,8 @@ test("mock completion uses correlated session IDs and distinct event IDs", async
   const mockFlow = await read("../src/components/mock-test-flow.tsx");
   const profile = await read("../src/lib/profile-store.tsx");
   assert.match(mockFlow, /analyticsSessionId = crypto\.randomUUID\(\)/);
-  assert.match(mockFlow, /attemptSaved && t\.analyticsSessionId/);\n  assert.match(mockFlow, /eventName: "mock_submitted"[\s\S]*?t\.analyticsSessionId!/);
+  assert.match(mockFlow, /attemptSaved && t\.analyticsSessionId/ );
+  assert.match(mockFlow, /eventName: "mock_submitted"[\s\S]*?t\.analyticsSessionId!/);
   assert.match(profile, /analyticsSessionId: crypto\.randomUUID\(\)/);
   assert.match(migration, /count\(distinct attempt_id\)/);
 });
