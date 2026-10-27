@@ -124,3 +124,11 @@ test("University of Ibadan A-F grade scale remains 5-0", async () => {
   assert.match(cgpa, /grade: "F", points: 0/);
   assert.match(cgpa, /export const MAX_POINTS = 5/);
 });
+
+
+test("library empty state explains how to upload and loading uses skeleton cards", async () => {
+  const library = await read("../src/components/library.tsx");
+  assert.match(library, /Nothing in your locker yet\. Upload a past paper or lecture note/);
+  assert.match(library, /aria-label="Loading your files"/);
+  assert.match(library, /animate-pulse rounded-2xl border border-border bg-card/);
+});
