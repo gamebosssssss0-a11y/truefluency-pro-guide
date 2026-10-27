@@ -6,7 +6,7 @@ import type { OnboardingStep } from "@/lib/profile-store";
 import {
   Target, Trophy, RefreshCcw,
   AlarmClock, CalendarDays, CalendarRange, HelpCircle,
-  ClipboardCheck, Layers, BookOpen,
+  ClipboardCheck, Layers, BookOpen, Calculator, MessageCircle,
   Check, ArrowLeft, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,9 +27,11 @@ const timelines: Option<Timeline>[] = [
 ];
 
 const prefs: Option<StudyPreference>[] = [
-  { value: "practice", label: "Practice questions", hint: "Mock tests with instant feedback.", icon: ClipboardCheck },
+  { value: "practice", label: "Practice past questions", hint: "Upload a paper or start a mock for your course.", icon: ClipboardCheck },
+  { value: "cgpa", label: "Check my CGPA", hint: "Open the CGPA calculator.", icon: Calculator },
+  { value: "tutor", label: "Get explanations / tutor help", hint: "Open Study Chat for help with a topic.", icon: MessageCircle },
   { value: "flashcards", label: "Flashcards / quick review", hint: "Bite-sized memory drills.", icon: Layers },
-  { value: "reading", label: "Reading through notes", hint: "Longer-form notes and slides.", icon: BookOpen },
+  { value: "reading", label: "Read my notes", hint: "Open your files and course materials.", icon: BookOpen },
 ];
 
 /* Position in the personalization sub-sequence (3 dots). */
