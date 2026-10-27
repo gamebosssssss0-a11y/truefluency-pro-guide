@@ -226,6 +226,7 @@ export function PdfViewer({
   const lastPageUpdateRef = useRef(0);
   const ignoreObserverUntilRef = useRef(0);
   const pageNavPointerRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pageAspect, setPageAspect] = useState(Math.SQRT2);
 
   pageRef.current = page;
@@ -493,6 +494,48 @@ export function PdfViewer({
     }
   };
 
+  // Horizontal swipes page through the PDF on touch devices. Vertical gestures
+  // remain native scrolling, and the expanded continuous reader keeps its scroll UX.
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (expanded || status !== "ready" || event.touches.length !== 1) {
+      touchStartRef.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || expanded || status !== "ready") return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    // Require a clear horizontal intent to avoid accidental page turns while scrolling.
+    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+    if (dx < 0 && pageRef.current < total) go(pageRef.current + 1);
+    else if (dx > 0 && pageRef.current > 1) go(pageRef.current - 1);
+  };
+
+  useEffect(() => {
+    if (status !== "ready" || expanded) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "ArrowRight" || event.key === "PageDown") {
+        event.preventDefault();
+        go(pageRef.current + 1);
+      } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        go(pageRef.current - 1);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [status, expanded, total]);
+
   const cancelLoad = () => {
     void taskRef.current?.destroy();
     taskRef.current = null;
@@ -556,7 +599,10 @@ export function PdfViewer({
 
       <div
         ref={wrapRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={expanded ? "flex-1 overflow-y-auto p-1" : "flex-1 overflow-hidden p-1"}
+        style={!expanded && status === "ready" ? { touchAction: "pan-y pinch-zoom" } : undefined}
       >
         {status === "loading" ? (
           <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
