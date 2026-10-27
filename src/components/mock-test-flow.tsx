@@ -997,7 +997,7 @@ export function MockRunScreen() {
       ).catch(() => undefined);
     }
 
-    const answeredCount = t.answers.filter((answer) => answer !== null).length;
+    const answeredCount = t.answers.filter((answer) => answer !== null && answer !== undefined).length;
     if (answeredCount >= 5) {
       try {
         const streak = await recordMockStreak({ data: { answeredCount } });
@@ -1086,7 +1086,7 @@ export function MockRunScreen() {
 
   const idx = t.currentIndex;
   const q = questions[idx];
-  const answered = t.answers.filter((a) => a !== null).length;
+  const answered = t.answers.filter((a) => a !== null && a !== undefined).length;
   const pct = Math.round((remaining / t.durationSec) * 100);
   const timerColor = pct <= 20 ? "text-destructive" : pct <= 50 ? "text-warning" : "text-primary";
 
