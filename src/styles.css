@@ -964,23 +964,8 @@ details[open] > :not(summary) {
 }
 
 
-/* Final calm-motion guard: suppress decorative brand animations; retain short control transitions. */
-.quote-card-cycle,
-.splash-logo,
-.splash-glow,
-.sonic-mark-in,
-.sonic-mark-loop,
-.sonic-unfurl-path,
-.sonic-pulse,
-.sonic-dot,
-.sonic-flare,
-.sonic-flare-loop,
-.sonic-particle,
-.sonic-particle-loop,
-.sonic-text-1,
-.sonic-text-2 {
-  animation: none !important;
-}
+/* Keep splash and loading motion enabled by default.
+   Reduced-motion preferences are handled by the dedicated media queries above. */
 @media (prefers-reduced-motion: no-preference) {
   :where(button, [role="button"], a, input, select, textarea) {
     transition-duration: 150ms;
