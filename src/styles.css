@@ -959,3 +959,78 @@ details[open] > :not(summary) {
     transition-duration: 150ms;
   }
 }
+
+
+/* TrueFluency navy-and-gold canvas: approved non-white brand background in both themes. */
+:root {
+  color-scheme: dark;
+  --surface-base: #07152E;
+  --surface-card: #102345;
+  --text-primary: #F7F3EA;
+  --text-secondary: #C3D2EC;
+  --muted-foreground: #A9BBDD;
+  --brand-teal: #E7BD68;
+  --background: #07152E;
+  --foreground: #F7F3EA;
+  --surface: #102345;
+  --card: #102345;
+  --card-foreground: #F7F3EA;
+  --popover: #102345;
+  --popover-foreground: #F7F3EA;
+  --primary: #E7BD68;
+  --primary-foreground: #07152E;
+  --secondary: #172D50;
+  --secondary-foreground: #F7F3EA;
+  --muted: #172D50;
+  --muted-foreground: #A9BBDD;
+  --accent: #E7BD68;
+  --accent-foreground: #07152E;
+  --border: #344C72;
+  --input: #52698C;
+  --ring: #E7BD68;
+  --cream: #F7F3EA;
+  --sand: #E7BD68;
+  --ink: #F7F3EA;
+  --chat-page: #07152E;
+  --chat-card: #102345;
+  --chat-foreground: #F7F3EA;
+}
+.dark {
+  color-scheme: dark;
+  --surface-base: #061329;
+  --surface-card: #0E1E3B;
+  --text-primary: #F7F3EA;
+  --text-secondary: #C3D2EC;
+  --muted-foreground: #A9BBDD;
+  --brand-teal: #E7BD68;
+  --background: #061329;
+  --foreground: #F7F3EA;
+  --surface: #0E1E3B;
+  --card: #0E1E3B;
+  --card-foreground: #F7F3EA;
+  --popover: #102345;
+  --popover-foreground: #F7F3EA;
+  --primary: #E7BD68;
+  --primary-foreground: #061329;
+  --secondary: #14294B;
+  --secondary-foreground: #F7F3EA;
+  --muted: #14294B;
+  --muted-foreground: #A9BBDD;
+  --accent: #E7BD68;
+  --accent-foreground: #061329;
+  --border: #344C72;
+  --input: #52698C;
+  --ring: #E7BD68;
+  --cream: #F7F3EA;
+  --sand: #E7BD68;
+  --ink: #F7F3EA;
+  --chat-page: #061329;
+  --chat-card: #0E1E3B;
+  --chat-foreground: #F7F3EA;
+}
+html, body, html.dark, html.dark body {
+  background-color: #07152E;
+  background-image: radial-gradient(ellipse at 85% 5%, #1A3158 0%, transparent 42%), linear-gradient(145deg, #061329 0%, #0B1C39 52%, #102345 100%);
+  background-attachment: fixed;
+  color: #F7F3EA;
+}
