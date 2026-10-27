@@ -1180,11 +1180,24 @@ export function MockRunScreen() {
                     onClick={() => setAnswer(i)}
                     className={cn("flex min-h-14 w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       isCorrectOption ? "border-success bg-success/10" : isWrongSelection ? "border-destructive bg-destructive/10" : on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
-                    <div className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
-                      on ? "border-accent bg-accent text-accent-foreground" : "border-border bg-muted/50 text-muted-foreground")}>
-                      {on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
+                    <div
+                      aria-hidden="true"
+                      className={cn(
+                        "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+                        isCorrectOption
+                          ? "border-success bg-success/10 text-success"
+                          : isWrongSelection
+                            ? "border-destructive bg-destructive/10 text-destructive"
+                            : on
+                              ? "border-accent bg-accent text-accent-foreground"
+                              : "border-border bg-muted/50 text-muted-foreground",
+                      )}
+                    >
+                      {isCorrectOption ? <Check className="h-3.5 w-3.5" /> : isWrongSelection ? <X className="h-3.5 w-3.5" /> : on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="min-w-0 break-words whitespace-pre-wrap text-base leading-7 text-foreground"><MathText>{opt}</MathText></span>
+                    <span className="min-w-0 flex-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground"><MathText>{opt}</MathText></span>
+                    {mode === "tutor" && locked && isCorrectOption ? <span className="sr-only">Correct answer</span> : null}
+                    {mode === "tutor" && locked && isWrongSelection ? <span className="sr-only">Your selected answer is incorrect</span> : null}
                   </button>
                 );
               })}
