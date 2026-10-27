@@ -739,7 +739,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
-        const next = cur.map((message) => message.id === messageId
+        // If the stream failed after emitting one or more chunks, discard its
+        // incomplete assistant bubble. Leaving it in the transcript makes a
+        // retry look like a second answer and can present truncated text as
+        // complete. The failed student message remains available to retry.
+        const withoutPartialReply = streamId === null
+          ? cur
+          : cur.filter((message) => message.id !== streamId);
+        const next = withoutPartialReply.map((message) => message.id === messageId
           ? {
             ...message,
             sendError: true,
