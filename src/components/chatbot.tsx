@@ -1359,12 +1359,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <SheetTitle>Study Chat history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>
           </SheetHeader>
-          {historyLoading ? <p className="py-6 text-sm text-muted-foreground">Loading history…</p> : historyError ? (
+          {historyRows.length === 0 && historyLoading ? (
+            <p className="py-6 text-sm text-muted-foreground">Loading history…</p>
+          ) : historyRows.length === 0 && historyError ? (
             <p className="py-6 text-sm text-muted-foreground">{historyError}</p>
           ) : historyRows.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
           ) : (
             <div className="mt-4 space-y-2">
+              {historyLoading ? <p role="status" className="text-xs text-muted-foreground">Loading more conversations…</p> : null}
               {historyRows.map((row) => {
                 const isExpanded = expandedConvId === row.conversationId;
                 const previewText = plainText(row.messages[row.messages.length - 1]?.content ?? "");
