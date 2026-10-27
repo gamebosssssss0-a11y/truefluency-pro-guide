@@ -624,6 +624,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       });
     }
     setIsSending(true);
+    // Shared with catch so partial assistant text can be removed after a stream failure.
+    let streamId: number | null = null;
 
     try {
       let imagePath: string | null = null;
@@ -663,7 +665,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // "grow existing bubble" branch on a list that never had it. Every
       // chunk then grew a bubble that didn't exist, so the reply streamed in
       // successfully from the backend and never appeared on screen.
-      let streamId: number | null = null;
       const { reply, moderated, actions, saved, usage: usageAfter } = await streamChatMessage(
         text,
         course,
