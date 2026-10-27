@@ -148,7 +148,10 @@ test("onboarding preferences are stored and offer real next actions", async () =
   const onboarding = await read("../src/components/onboarding/personalization.tsx");
   const dashboard = await read("../src/components/dashboard.tsx");
   const welcome = await read("../src/components/onboarding/trial-welcome.tsx");
+  const cloudSync = await read("../src/lib/cloud-sync.ts");
   assert.match(profile, /export type StudyPreference = "practice" \| "flashcards" \| "reading" \| "cgpa" \| "tutor"/);
+  assert.match(cloudSync, /study_preference: profile\.studyPreference/);
+  assert.match(cloudSync, /studyPreference: \(row\.study_preference as StudyPreference \| null\)/);
   assert.match(onboarding, /label: "Practice past questions"/);
   assert.match(onboarding, /label: "Check my CGPA"/);
   assert.match(onboarding, /label: "Get explanations \/ tutor help"/);
