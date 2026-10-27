@@ -101,7 +101,7 @@ function ChipShell({ children }: { children: React.ReactNode }) {
   return (
     <button
       onClick={() => navigate("upgrade")}
-      className="mb-5 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
+      className="reference-plan-chip mb-5 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
     >
       <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
         {children}
@@ -433,26 +433,26 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   );
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+    <div className="reference-home min-h-screen">
+      <div className="reference-home__inner mx-auto max-w-md px-5 pb-8 pt-6">
         {/* Header */}
-        <div className="mb-5">
-          <div className="mb-4 flex items-center gap-2">
+        <div className="reference-hero mb-5">
+          <div className="reference-hero__label mb-4 flex items-center gap-2">
             <HeaderLogo />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#F7F3EA] mix-blend-difference">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#F7F3EA]">
               Home
             </span>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold leading-tight text-[#F7F3EA] mix-blend-difference">
-                {showFirstUseLayout ? "Welcome" : "Welcome back"}, {name}
+              <h1 className="reference-hero__title font-display text-2xl font-bold leading-tight text-[#F7F3EA]">
+                {showFirstUseLayout ? "Welcome" : "Welcome back"},<br />{name}
               </h1>
-              {meta ? <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">{meta}</p> : null}
+              {meta ? <p className="mt-2 text-sm text-[#F7F3EA]">{meta}</p> : null}
               {subline ? (
-                <p className="mt-1 text-[12px] text-[#F7F3EA] mix-blend-difference">{subline}</p>
+                <p className="mt-1 text-[12px] text-[#F7F3EA]">{subline}</p>
               ) : null}
-              <p className="mt-1 text-[12px] text-[#F7F3EA] mix-blend-difference">
+              <p className="mt-1 text-[12px] text-[#F7F3EA]">
                 Your study home: upload a file, practise on it, revise it.
               </p>
             </div>
@@ -463,7 +463,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
                 className="h-11 w-11 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent/15 font-display text-lg font-semibold text-foreground">
+              <div className="reference-avatar grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent/15 font-display text-lg font-semibold text-foreground">
                 {name.charAt(0)}
               </div>
             )}
@@ -496,7 +496,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         {!showFirstUseLayout ? (
           <>
         {/* Streak: cloud-backed qualifying mock activity only. */}
-        <div className="mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+        <div className="reference-stat-card reference-streak mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
               <StreakGlyph state={streak.state} />
             </div>
@@ -521,7 +521,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         </div>
 
         {hydrated || access || cachedHome?.access || mocksToday > 0 ? (
-          <div className="mb-5 rounded-2xl border border-border bg-card p-3.5">
+          <div className="reference-stat-card reference-goal mb-5 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>

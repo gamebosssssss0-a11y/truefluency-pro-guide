@@ -1503,3 +1503,101 @@ html.dark .app-stage-wide {
   z-index: 1;
   background: transparent !important;
 }
+
+/* Reference home screen: a structured HTML composition rather than a flat
+   wallpaper. The hero owns the navy-to-slate field and the lower cards sit on
+   the same deep-blue canvas as the supplied screen. */
+html.dark .reference-home {
+  color: #F7F3EA;
+  background: transparent;
+}
+
+html.dark .reference-home__inner {
+  position: relative;
+  isolation: isolate;
+}
+
+html.dark .reference-hero {
+  position: relative;
+  isolation: isolate;
+  margin-inline: -1.25rem;
+  padding: 1.5rem 1.25rem 2.5rem;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 74% 72% at 88% 78%, rgba(220, 167, 67, .28) 0%, rgba(220, 167, 67, .08) 34%, transparent 68%),
+    linear-gradient(180deg, #071A38 0%, #0B2448 47%, #1D344F 76%, #243C53 100%);
+}
+
+html.dark .reference-hero::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: -8%;
+  right: -8%;
+  bottom: -4.15rem;
+  height: 7rem;
+  border-top: 3px solid #E7BD68;
+  border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+  background: #061329;
+  box-shadow: 0 -10px 22px rgba(231, 189, 104, .14);
+  transform: rotate(-3deg);
+}
+
+html.dark .reference-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+html.dark .reference-hero__label {
+  color: #E7BD68;
+}
+
+html.dark .reference-hero__title {
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(2rem, 8vw, 2.45rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+  color: #FFF4D9;
+}
+
+html.dark .reference-avatar {
+  border: 2px solid rgba(231, 189, 104, .75);
+  box-shadow: 0 0 0 4px rgba(231, 189, 104, .12);
+}
+
+html.dark .reference-plan-chip {
+  position: relative;
+  z-index: 2;
+  margin-top: -1.2rem;
+  border-color: #536B8D;
+  background: rgba(7, 26, 56, .82);
+  color: #F7F3EA;
+  backdrop-filter: blur(12px);
+}
+
+html.dark .reference-plan-chip span,
+html.dark .reference-plan-chip svg {
+  color: #F7F3EA;
+}
+
+html.dark .reference-home .reference-stat-card {
+  border-color: #31547D;
+  background: rgba(10, 31, 66, .9);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .12);
+}
+
+html.dark .reference-home .reference-streak {
+  border-left-color: #E7BD68;
+}
+
+html.dark .reference-home .reference-stat-card .bg-accent\/15 {
+  background: rgba(231, 189, 104, .22);
+}
+
+html.dark .reference-home .reference-stat-card .bg-sand {
+  background: #213E67;
+}
+
+html.dark .reference-home .reference-stat-card .bg-accent {
+  background: #E7BD68;
+}
