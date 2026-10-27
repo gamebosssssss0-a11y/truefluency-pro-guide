@@ -342,9 +342,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }));
 
   const persistCache = (course: string, thread: Message[]) => {
-    threadCache.current.set(cacheMapKey(course), thread);
-    void cacheKey(canonicalCourseCode(course)).then((key) => {
-      if (!key) return;
+    const expectedUid = currentUid.current;
+    const scope = canonicalCourseCode(course);
+    threadCache.current.set(cacheMapKey(scope), thread);
+    // Do not let an async getSession() resolve after sign-out and write the
+    // previous account's conversation into the next account's session cache.
+    if (!expectedUid) return;
+    void cacheKey(scope).then((key) => {
+      if (!key || currentUid.current !== expectedUid || key !== `tf-chat-v1:${expectedUid}:${scope}`) return;
       try { sessionStorage.setItem(key, JSON.stringify(thread.slice(-60))); }
       catch { /* optional cache */ }
     });
