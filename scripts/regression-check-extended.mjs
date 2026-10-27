@@ -99,3 +99,25 @@ test("Tutor Mode shows X on a wrong selection and check on the correct answer on
   assert.match(flow, /mode === "tutor" && locked && isWrongSelection/);
   assert.match(flow, /const mode: MockMode = t\?\.mode \?\? "exam"/);
 });
+
+test("screen navigation resets nested scroll, chat resets on exit, and mobile controls stay clear", async () => {
+  const router = await read("../src/routes/index.tsx");
+  const chat = await read("../src/components/chatbot.tsx");
+  const styles = await read("../src/styles.css");
+  const calculator = await read("../src/components/cgpa-calculator.tsx");
+  const goalSetter = await read("../src/components/cgpa-goal-setter.tsx");
+  const pdfViewer = await read("../src/components/pdf-viewer.tsx");
+  const dashboard = await read("../src/components/dashboard.tsx");
+
+  assert.match(router, /document\.documentElement\.scrollTop = 0/);
+  assert.match(router, /data-chat-thread/);
+  assert.match(chat, /if \(!active\)[\s\S]*?threadScrollRef\.current\.scrollTop = 0/);
+  assert.doesNotMatch(styles, /--tf-navy-950|FINAL GLOBAL REFERENCE BACKGROUND|TrueFluency reference treatment/);
+  assert.doesNotMatch(calculator, /sticky top-0 z-20/);
+  assert.match(goalSetter, /bottom-\[calc\(3\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(pdfViewer, /data-pdf-scroll/);
+  assert.match(pdfViewer, /className="min-w-0 flex-1 overflow-y-auto p-1"/);
+  assert.doesNotMatch(dashboard, /FirstRunTourHost/);
+  await assert.rejects(() => read("../public/reference-home.html"));
+  await assert.rejects(() => read("../public/reference-home-light.html"));
+});
