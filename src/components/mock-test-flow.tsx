@@ -849,25 +849,49 @@ export function MockRunScreen() {
   const [calcOpen, setCalcOpen] = useState(false);
   const submittedRef = useRef(false);
   const updateRef = useRef(update);
+  const testRef = useRef(t);
   updateRef.current = update;
+  testRef.current = t;
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
   }, []);
 
+  // Freeze the active-time clock whenever the runner is hidden or unmounted.
+  // A ref keeps this lifecycle listener independent of answer/index updates.
+  useEffect(() => {
+    const pause = () => {
+      const current = testRef.current;
+      if (!current || current.isPaused) return;
+      const resumedAt = current.resumedAt ?? current.startedAt;
+      const elapsedSec = (current.elapsedSec ?? 0) + Math.max(0, Math.floor((Date.now() - resumedAt) / 1000));
+      const paused = { ...current, elapsedSec, resumedAt: undefined, isPaused: true };
+      testRef.current = paused;
+      updateRef.current({ inProgressTest: paused });
+    };
+    const onVisibility = () => { if (document.visibilityState !== "visible") pause(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", pause);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", pause);
+      pause();
+    };
+  }, []);
+
+  // Persist current state periodically without changing the active-time baseline.
   useEffect(() => {
     if (!t) return;
-    const id = window.setInterval(() => {
-      updateRef.current({ inProgressTest: { ...t } });
-    }, 15_000);
+    const id = window.setInterval(() => updateRef.current({ inProgressTest: { ...testRef.current! } }), 15_000);
     return () => window.clearInterval(id);
-  }, [t]);
+  }, [Boolean(t)]);
 
   const remaining = useMemo(() => {
     if (!t) return 0;
-    const elapsed = Math.floor((now - t.startedAt) / 1000);
-    return Math.max(0, t.durationSec - elapsed);
+    const baseElapsed = t.elapsedSec ?? 0;
+    const activeSince = t.isPaused ? 0 : Math.max(0, Math.floor((now - (t.resumedAt ?? t.startedAt)) / 1000));
+    return Math.max(0, t.durationSec - baseElapsed - activeSince);
   }, [t, now]);
 
   // Use AI questions instead of hardcoded sampleQuestions
@@ -1007,6 +1031,17 @@ export function MockRunScreen() {
         </div>
       </div>
     );
+  }
+
+  // Re-entering the runner starts a fresh active-time segment; paused time is never charged.
+  if (t.isPaused) {
+    const resumed = { ...t, isPaused: false, resumedAt: Date.now() };
+    testRef.current = resumed;
+    update({ inProgressTest: resumed });
+  } else if (!t.resumedAt) {
+    const resumed = { ...t, resumedAt: t.startedAt };
+    testRef.current = resumed;
+    update({ inProgressTest: resumed });
   }
 
   const idx = t.currentIndex;
