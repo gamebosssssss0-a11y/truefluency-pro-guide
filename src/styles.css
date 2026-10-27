@@ -1050,15 +1050,15 @@ nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"
    pure-white glare and ensuring muted text remains legible. */
 :root {
   --surface-base: #F5F2EA;
-  --surface-card: #FFFD F8;
+  --surface-card: #FFFDF8;
   --text-primary: #172338;
   --text-secondary: #465366;
   --background: #F5F2EA;
   --foreground: #172338;
-  --surface: #FFFD F8;
-  --card: #FFFD F8;
+  --surface: #FFFDF8;
+  --card: #FFFDF8;
   --card-foreground: #172338;
-  --popover: #FFFD F8;
+  --popover: #FFFDF8;
   --popover-foreground: #172338;
   --primary: #1B2A4A;
   --primary-foreground: #F7F3EA;
@@ -1076,7 +1076,7 @@ nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"
   --sand: #E9DAB8;
   --ink: #172338;
   --chat-page: #F5F2EA;
-  --chat-card: #FFFD F8;
+  --chat-card: #FFFDF8;
   --chat-foreground: #172338;
 }
 html.dark {
