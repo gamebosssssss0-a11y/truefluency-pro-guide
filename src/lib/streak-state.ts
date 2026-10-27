@@ -30,5 +30,7 @@ export function getStreakState(
   // freeze_used_on records the day a freeze was applied. In the migration,
   // that is also last_active_date, so it is already handled as alive above.
   void input.freezeUsedOn;
-  return { state: "none", days: input.streakDays };
+  // A stale stored count is not a live streak. It is reset by the next
+  // qualifying server-side activity; until then, Home must not display it.
+  return { state: "none", days: 0 };
 }
