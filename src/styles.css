@@ -1364,3 +1364,104 @@ html.dark .bottom-navigation {
   border-color: #344C72;
   backdrop-filter: blur(14px);
 }
+
+
+/* FINAL SCREEN COMPOSITION: follow the actual in-app reference, not a generic
+   page wallpaper. Each screen gets the same navy header -> muted slate -> gold
+   transition -> cream content canvas, with the existing app layout untouched. */
+html:not(.dark),
+html:not(.dark) body {
+  background-color: #F5EEDB !important;
+  background-image: none !important;
+}
+html:not(.dark) body {
+  position: relative;
+  isolation: isolate;
+  background: #F5EEDB !important;
+}
+html:not(.dark) body::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0 0 auto;
+  height: min(74vh, 760px);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 83% 68%, rgba(224, 169, 65, .64) 0%, rgba(224, 169, 65, .24) 24%, transparent 47%),
+    linear-gradient(180deg, #263D60 0%, #3B506F 22%, #778394 43%, #C5BEAA 62%, #F2E6C8 82%, #F5EEDB 100%);
+}
+html:not(.dark) #root,
+html:not(.dark) [data-tab-swipe-stage],
+html:not(.dark) [data-root-tab],
+html:not(.dark) .app-stage-wide {
+  background: transparent !important;
+}
+html:not(.dark) [data-root-tab] > div,
+html:not(.dark) [data-root-tab] > section {
+  background-color: transparent;
+}
+/* Keep existing card geometry; only apply the screenshot's warm card material. */
+html:not(.dark) .surface-key-card,
+html:not(.dark) .surface-list-row,
+html:not(.dark) .surface-list-row-dashed,
+html:not(.dark) .surface-wash,
+html:not(.dark) [class*="rounded-2xl"][class*="border"] {
+  background-color: #FBF7EE;
+  border-color: #E4DCCB;
+}
+/* Header and introductory copy sit over the blue-to-gold field. */
+html:not(.dark) [data-root-tab] h1,
+html:not(.dark) [data-root-tab] h2 {
+  color: #1B2D4A;
+}
+html:not(.dark) [data-root-tab] .bg-background {
+  background-color: transparent !important;
+}
+/* Persistent navigation matches the screenshot's warm ivory dock. */
+html:not(.dark) [data-bottom-nav],
+html:not(.dark) nav[aria-label="Mobile primary navigation"],
+html:not(.dark) nav[aria-label="Primary navigation"] {
+  background: rgba(251, 247, 238, .97) !important;
+  border-top-color: #E4DCCB !important;
+}
+/* Dark mode uses the same composition in its own palette, never white surfaces. */
+html.dark,
+html.dark body {
+  background: #061329 !important;
+  background-image: none !important;
+}
+html.dark body {
+  position: relative;
+  isolation: isolate;
+}
+html.dark body::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0 0 auto;
+  height: min(74vh, 760px);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 82% 68%, rgba(194, 137, 46, .24) 0%, transparent 44%),
+    linear-gradient(180deg, #061329 0%, #10294D 28%, #203754 48%, #182A42 68%, #0E1E3B 100%);
+}
+html.dark #root,
+html.dark [data-tab-swipe-stage],
+html.dark [data-root-tab],
+html.dark .app-stage-wide {
+  background: transparent !important;
+}
+html.dark .surface-key-card,
+html.dark .surface-list-row,
+html.dark .surface-list-row-dashed,
+html.dark .surface-wash,
+html.dark [class*="rounded-2xl"][class*="border"] {
+  background-color: #0E1E3B;
+  border-color: #344C72;
+}
+html.dark [data-bottom-nav],
+html.dark nav[aria-label="Mobile primary navigation"],
+html.dark nav[aria-label="Primary navigation"] {
+  background: rgba(6, 19, 41, .97) !important;
+  border-top-color: #344C72 !important;
+}
