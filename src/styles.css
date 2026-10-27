@@ -989,65 +989,8 @@ details[open] > :not(summary) {
 
 
 
-/* Accessible neutral theme; HTML reference wallpaper and navy/gold overrides removed. */
-:root {
-  --surface-base:#F8FAFC; --surface-card:#FFFFFF; --text-primary:#0F172A; --text-secondary:#475569;
-  --background:#F8FAFC; --foreground:#0F172A; --surface:#FFFFFF; --card:#FFFFFF; --card-foreground:#0F172A;
-  --popover:#FFFFFF; --popover-foreground:#0F172A; --primary:#0F766E; --primary-foreground:#FFFFFF;
-  --secondary:#E2E8F0; --secondary-foreground:#0F172A; --muted:#F1F5F9; --muted-foreground:#475569;
-  --accent:#0D9488; --accent-foreground:#FFFFFF; --accent-on-sand:#115E59; --border:#CBD5E1; --input:#94A3B8; --ring:#0D9488;
-  --cream:#F8FAFC; --sand:#CCFBF1; --ink:#0F172A; --success:#166534; --warning:#92400E;
-  --navy:#1E293B; --amber:#B45309; --wine:#9F1239; --doc-blue:#1D4ED8; --ppt-amber:#B45309;
-  --good:#166534; --warn:#92400E; --bad:#B91C1C; --chat-page:#F8FAFC; --chat-card:#FFFFFF; --chat-foreground:#0F172A;
-}
-html.dark {
-  color-scheme:dark;
-  --surface-base:#0B1220; --surface-card:#111C2E; --text-primary:#F1F5F9; --text-secondary:#C1CBD8;
-  --background:#0B1220; --foreground:#F1F5F9; --surface:#111C2E; --card:#111C2E; --card-foreground:#F1F5F9;
-  --popover:#111C2E; --popover-foreground:#F1F5F9; --primary:#2DD4BF; --primary-foreground:#042F2E;
-  --secondary:#1E293B; --secondary-foreground:#F1F5F9; --muted:#1E293B; --muted-foreground:#B6C2D2;
-  --accent:#2DD4BF; --accent-foreground:#042F2E; --accent-on-sand:#99F6E4; --border:#334155; --input:#475569; --ring:#2DD4BF;
-  --cream:#0B1220; --sand:#164E63; --ink:#F1F5F9; --success:#86EFAC; --warning:#FCD34D;
-  --navy:#CBD5E1; --amber:#FBBF24; --wine:#FDA4AF; --doc-blue:#93C5FD; --ppt-amber:#FCD34D;
-  --good:#86EFAC; --warn:#FCD34D; --bad:#FDA4AF; --chat-page:#0B1220; --chat-card:#111C2E; --chat-foreground:#F1F5F9;
-}
-html, body, #root { width:100%; min-width:0; max-width:100%; margin:0; }
-html, body { min-height:100%; background:var(--background) !important; color:var(--foreground); }
-body { overflow-x:clip; }
-#root, #app, main, [data-app-shell], .app-stage, .app-stage-wide, .tab-swipe-stage,
-[data-tab-swipe-stage], [data-root-tab] { width:100%; min-width:0; max-width:100%; background:transparent; }
-[data-tab-swipe-stage] { min-height:calc(100dvh - 3.5rem); overflow-x:clip !important; overflow-y:visible !important; }
-[data-root-tab] { min-height:inherit; }
-.app-stage-wide { max-width:none; min-width:0; }
-.study-page-blend { background:transparent !important; }
-.study-utility-page { width:100%; min-width:0; max-width:100%; padding-bottom:calc(5.5rem + env(safe-area-inset-bottom)); }
-.study-utility-page > .mx-auto.max-w-md { width:100%; max-width:46rem; min-width:0; }
-.study-utility-page :is(.grid,.flex,.space-y-2,.space-y-3) > * { min-width:0; }
-.study-utility-page :is(input,select,textarea,canvas,img,svg) { max-width:100%; }
-@media (max-width:767px) {
-  .study-utility-page > .mx-auto.max-w-md { max-width:100%; padding-left:max(1rem,env(safe-area-inset-left)); padding-right:max(1rem,env(safe-area-inset-right)); }
-  [data-tab-swipe-stage] { min-height:calc(100dvh - 4rem); }
-}
-nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"] {
-  background:color-mix(in srgb,var(--background) 96%,transparent) !important;
-  border-color:var(--border) !important; backdrop-filter:blur(16px);
-}
-[data-cgpa-form="calculator"] .bg-navy { background:#1E293B !important; color:#F8FAFC !important; }
-[data-cgpa-form="calculator"] .text-navy { color:#1E293B !important; }
-.dark [data-cgpa-form="calculator"] .bg-navy { background:#334155 !important; color:#F1F5F9 !important; }
-.dark [data-cgpa-form="calculator"] .text-navy { color:#F1F5F9 !important; }
-[data-cgpa-form="calculator"] .bg-sand { background:#CCFBF1 !important; color:#134E4A !important; }
-.dark [data-cgpa-form="calculator"] .bg-sand { background:#164E63 !important; color:#ECFEFF !important; }
-[data-cgpa-form="calculator"] [role="progressbar"] { background:#E2E8F0; border:1px solid #94A3B8; }
-.dark [data-cgpa-form="calculator"] [role="progressbar"] { background:#1E293B; border-color:#64748B; }
-[data-cgpa-form="calculator"] button[aria-pressed="true"] { outline:2px solid var(--ring); outline-offset:2px; }
-[data-cgpa-form="goal-setter"] { padding-bottom:calc(6rem + env(safe-area-inset-bottom)); }
-[data-cgpa-form="goal-setter"] > .mx-auto.max-w-md { padding-bottom:calc(2rem + env(safe-area-inset-bottom)); }
-
-
-/* Final global theme and responsive safeguards.
-   Keep the brand's navy / slate / gold / cream identity, while avoiding
-   pure-white glare and ensuring muted text remains legible. */
+/* Global navy / slate / gold / cream palette. Cream surfaces are intentionally
+   softened rather than pure white; text tokens remain readable in either theme. */
 :root {
   --surface-base: #F5F2EA;
   --surface-card: #FFFDF8;
@@ -1075,6 +1018,16 @@ nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"
   --cream: #F5F2EA;
   --sand: #E9DAB8;
   --ink: #172338;
+  --success: #166534;
+  --warning: #92400E;
+  --navy: #1B2A4A;
+  --amber: #B88732;
+  --wine: #9F1239;
+  --doc-blue: #1D4ED8;
+  --ppt-amber: #B88732;
+  --good: #166534;
+  --warn: #92400E;
+  --bad: #B91C1C;
   --chat-page: #F5F2EA;
   --chat-card: #FFFDF8;
   --chat-foreground: #172338;
@@ -1107,6 +1060,16 @@ html.dark {
   --cream: #F5F2EA;
   --sand: #3A3428;
   --ink: #F5F2EA;
+  --success: #86EFAC;
+  --warning: #FCD34D;
+  --navy: #CBD5E1;
+  --amber: #FBBF24;
+  --wine: #FDA4AF;
+  --doc-blue: #93C5FD;
+  --ppt-amber: #FCD34D;
+  --good: #86EFAC;
+  --warn: #FCD34D;
+  --bad: #FDA4AF;
   --chat-page: #101827;
   --chat-card: #1A2638;
   --chat-foreground: #F5F2EA;
@@ -1115,17 +1078,110 @@ html, body, #root {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  margin: 0;
+}
+html, body {
+  min-height: 100%;
+  background: var(--background) !important;
+  color: var(--foreground);
 }
 body {
   overflow-x: clip;
 }
-:where(.study-chat-screen, .study-utility-page, [data-root-tab]) {
+#root, #app, main, [data-app-shell], .app-stage, .app-stage-wide, .tab-swipe-stage,
+[data-tab-swipe-stage], [data-root-tab] {
+  width: 100%;
   min-width: 0;
   max-width: 100%;
+  background: transparent;
 }
-:where(.study-chat-screen, .study-utility-page) :is(.flex, .grid) > * {
+[data-tab-swipe-stage] {
+  min-height: calc(100dvh - 3.5rem);
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+[data-root-tab] {
+  min-height: inherit;
+}
+.app-stage-wide {
+  max-width: none;
   min-width: 0;
+}
+.study-page-blend {
+  background: transparent !important;
+}
+.study-utility-page {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+.study-utility-page > .mx-auto.max-w-md {
+  width: 100%;
+  max-width: 46rem;
+  min-width: 0;
+}
+.study-utility-page :is(.grid, .flex, .space-y-2, .space-y-3) > * {
+  min-width: 0;
+}
+.study-utility-page :is(input, select, textarea, canvas, img, svg) {
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  .study-utility-page > .mx-auto.max-w-md {
+    max-width: 100%;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  [data-tab-swipe-stage] {
+    min-height: calc(100dvh - 4rem);
+  }
+}
+nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"] {
+  background: color-mix(in srgb, var(--background) 96%, transparent) !important;
+  border-color: var(--border) !important;
+  backdrop-filter: blur(16px);
 }
 nav[aria-label="Mobile navigation"] {
   padding-bottom: env(safe-area-inset-bottom);
+}
+[data-cgpa-form="calculator"] .bg-navy {
+  background: #1E293B !important;
+  color: #F8FAFC !important;
+}
+[data-cgpa-form="calculator"] .text-navy {
+  color: #1E293B !important;
+}
+.dark [data-cgpa-form="calculator"] .bg-navy {
+  background: #334155 !important;
+  color: #F1F5F9 !important;
+}
+.dark [data-cgpa-form="calculator"] .text-navy {
+  color: #F1F5F9 !important;
+}
+[data-cgpa-form="calculator"] .bg-sand {
+  background: #E9DAB8 !important;
+  color: #172338 !important;
+}
+.dark [data-cgpa-form="calculator"] .bg-sand {
+  background: #3A3428 !important;
+  color: #F5F2EA !important;
+}
+[data-cgpa-form="calculator"] [role="progressbar"] {
+  background: #E2E8F0;
+  border: 1px solid #94A3B8;
+}
+.dark [data-cgpa-form="calculator"] [role="progressbar"] {
+  background: #1E293B;
+  border-color: #64748B;
+}
+[data-cgpa-form="calculator"] button[aria-pressed="true"] {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+[data-cgpa-form="goal-setter"] {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+[data-cgpa-form="goal-setter"] > .mx-auto.max-w-md {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom));
 }
