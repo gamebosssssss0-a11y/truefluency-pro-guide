@@ -873,7 +873,9 @@ export function MockRunScreen() {
   useEffect(() => {
     const pause = () => {
       const current = testRef.current;
-      if (!current || current.isPaused) return;
+      // Submission clears inProgressTest before async persistence finishes.
+      // The unmount cleanup must not pause and resurrect that submitted test.
+      if (!current || current.isPaused || submittedRef.current) return;
       const resumedAt = current.resumedAt ?? current.startedAt;
       const elapsedSec = (current.elapsedSec ?? 0) + Math.max(0, Math.floor((Date.now() - resumedAt) / 1000));
       const paused = { ...current, elapsedSec, resumedAt: undefined, isPaused: true };
@@ -997,7 +999,7 @@ export function MockRunScreen() {
       ).catch(() => undefined);
     }
 
-    const answeredCount = t.answers.filter((answer) => answer !== null).length;
+    const answeredCount = t.answers.filter((answer) => answer !== null && answer !== undefined).length;
     if (answeredCount >= 5) {
       try {
         const streak = await recordMockStreak({ data: { answeredCount } });
@@ -1086,7 +1088,7 @@ export function MockRunScreen() {
 
   const idx = t.currentIndex;
   const q = questions[idx];
-  const answered = t.answers.filter((a) => a !== null).length;
+  const answered = t.answers.filter((a) => a !== null && a !== undefined).length;
   const pct = Math.round((remaining / t.durationSec) * 100);
   const timerColor = pct <= 20 ? "text-destructive" : pct <= 50 ? "text-warning" : "text-primary";
 

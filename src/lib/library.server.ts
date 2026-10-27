@@ -494,12 +494,14 @@ export async function saveSharedFile(opts: {
   recipientId: string;
   token?: string | undefined;
   materialId?: string | undefined;
+  courseCode: string;
 }): Promise<{ ok: true; materialId: string } | { ok: false; reason: string }> {
   const db = admin();
 
   let source: ResolvedShare["material"] | null = null;
   let shareId: string | null = null;
   let useCount = 0;
+  let useLimit = SHARE_MAX_USES;
 
   if (opts.token) {
     const resolved = await resolveShare(opts.token);
@@ -507,6 +509,7 @@ export async function saveSharedFile(opts: {
     source = resolved.material;
     shareId = resolved.share.id;
     useCount = resolved.share.use_count;
+    useLimit = resolved.share.max_uses;
   } else if (opts.materialId) {
     const { data } = await db
       .from("course_materials")
@@ -526,6 +529,13 @@ export async function saveSharedFile(opts: {
   }
 
   if (!source || !isOwnedMaterialPath(source.file_path, source.user_id)) {
+    return { ok: false, reason: REDEEM_MISS_MESSAGE };
+  }
+
+  // The client-supplied course is used for the free-save quota check. Require
+  // it to match the verified source row so a caller cannot omit or spoof it
+  // to bypass the per-course limit.
+  if (source.course_code.trim().toUpperCase() !== opts.courseCode.trim().toUpperCase()) {
     return { ok: false, reason: REDEEM_MISS_MESSAGE };
   }
 
@@ -579,10 +589,28 @@ export async function saveSharedFile(opts: {
   }
 
   if (shareId) {
-    await db
+    // Optimistic atomic claim: only one concurrent save can advance a given
+    // use_count value. Recheck revocation/expiry/capacity at commit time too;
+    // resolveShare alone is only a snapshot taken before the storage copy.
+    const { data: claimed, error: claimError } = await db
       .from("library_shares")
       .update({ use_count: useCount + 1 })
-      .eq("id", shareId);
+      .eq("id", shareId)
+      .eq("use_count", useCount)
+      .eq("is_revoked", false)
+      .gt("expires_at", new Date().toISOString())
+      .lt("use_count", useLimit)
+      .select("id")
+      .maybeSingle();
+
+    if (claimError || !claimed) {
+      // This copy lost the race, the link was revoked/expired, or the use
+      // limit was reached while copying. Roll back both rows and object so a
+      // failed claim never creates an unmetered peer copy.
+      await db.from("course_materials").delete().eq("id", inserted.id).eq("user_id", opts.recipientId);
+      await r2.deleteObject(destPath).catch(() => {});
+      return { ok: false, reason: REDEEM_MISS_MESSAGE };
+    }
   }
 
   return { ok: true, materialId: inserted.id };

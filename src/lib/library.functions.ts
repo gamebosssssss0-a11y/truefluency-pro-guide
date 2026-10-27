@@ -163,11 +163,15 @@ export const readOneFileLink = createServerFn({ method: "POST" })
 /** Copy a shared or shelf file into the caller's locker. No OCR, no re-extraction. */
 export const savePeerFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { token?: string; materialId?: string; courseCode?: string }) => ({
-    token: input?.token ? cleanToken(input.token) : undefined,
-    materialId: input?.materialId ? cleanId(input.materialId) : undefined,
-    courseCode: cleanText(input?.courseCode, 24),
-  }))
+  .inputValidator((input: { token?: string; materialId?: string; courseCode?: string }) => {
+    const courseCode = cleanText(input?.courseCode, 24);
+    if (!courseCode) throw new Error("Choose the course for this file and try again.");
+    return {
+      token: input?.token ? cleanToken(input.token) : undefined,
+      materialId: input?.materialId ? cleanId(input.materialId) : undefined,
+      courseCode,
+    };
+  })
   .handler(async ({ data, context }) => {
     if (!sharingLive()) return { ok: false as const, reason: SHARING_OFFLINE_MESSAGE };
 
@@ -194,6 +198,7 @@ export const savePeerFile = createServerFn({ method: "POST" })
       recipientId: context.userId,
       token: data.token,
       materialId: data.materialId,
+      courseCode: data.courseCode!,
     });
     if (!result.ok) return { ok: false as const, reason: result.reason };
     return { ok: true as const, materialId: result.materialId };

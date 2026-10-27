@@ -27,6 +27,7 @@ function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [gateCounts, setGateCounts] = useState<Record<string, number>>({});
+  const [gateCountsError, setGateCountsError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [settingsError, setSettingsError] = useState("");
@@ -64,9 +65,15 @@ function AdminPage() {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const counts = await Promise.all(GATES.map(async (gate) => {
         const countResult = await supabase.from("gate_hits").select("gate", { count: "exact", head: true }).eq("gate", gate).gte("created_at", since);
-        return [gate, countResult.error ? 0 : countResult.count ?? 0] as const;
+        return { gate, count: countResult.count ?? 0, error: countResult.error };
       }));
-      if (!cancelled) setGateCounts(Object.fromEntries(counts));
+      if (!cancelled) {
+        const failed = counts.some((item) => item.error);
+        setGateCountsError(failed
+          ? "Some paywall-hit counts could not be verified. Check admin permissions or the connection; unavailable counts are not shown as zero."
+          : null);
+        setGateCounts(Object.fromEntries(counts.filter((item) => !item.error).map((item) => [item.gate, item.count])));
+      }
     })();
     return () => { cancelled = true; };
   }, [reloadKey]);
@@ -159,8 +166,9 @@ function AdminPage() {
 
         <section className="rounded-2xl border border-border bg-card p-4">
           <h2 className="font-display text-xl font-semibold">Paywall hits · last 7 days</h2>
+          {gateCountsError ? <p role="alert" className="mt-2 text-sm text-destructive">{gateCountsError}</p> : null}
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {GATES.map((gate) => <div key={gate} className="rounded-xl bg-background p-3"><p className="text-[10px] leading-tight text-muted-foreground">{gate.replaceAll("_", " ")}</p><p className="mt-1 text-xl font-semibold">{gateCounts[gate] ?? 0}</p></div>)}
+            {GATES.map((gate) => <div key={gate} className="rounded-xl bg-background p-3"><p className="text-[10px] leading-tight text-muted-foreground">{gate.replaceAll("_", " ")}</p><p className="mt-1 text-xl font-semibold">{gate in gateCounts ? gateCounts[gate] : "—"}</p></div>)}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">Event metrics begin accumulating from this tracking update; historical events are not backfilled.</p>
         </section>

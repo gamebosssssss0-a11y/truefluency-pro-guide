@@ -179,14 +179,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const threadScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!active) {
-      if (threadScrollRef.current) threadScrollRef.current.scrollTop = 0;
-      return;
+    const thread = threadScrollRef.current;
+    if (!thread) return;
+    // Reset the chat's own scroll position when leaving or entering a screen.
+    // scrollIntoView() can also scroll the outer document, making the chat
+    // appear to float or leaving the next screen positioned halfway down.
+    thread.scrollTop = 0;
+    if (active && messages.length > 0) {
+      thread.scrollTop = thread.scrollHeight;
     }
-    scrollAnchorRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [active, view]);
+
   useEffect(() => {
-    scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const thread = threadScrollRef.current;
+    if (!thread) return;
+    // Keep streaming replies in view without scrolling the entire page.
+    thread.scrollTo({ top: thread.scrollHeight, behavior: "auto" });
   }, [messages]);
   // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
   // wiped outright on every auth change (see the effect below) — belt AND
@@ -199,12 +207,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // fix; the key scoping is the second layer in case a key is ever read
   // before that effect fires.
   const currentUid = useRef<string | null>(null);
+  const authEpoch = useRef(0);
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUid = session?.user.id ?? null;
       if (nextUid !== currentUid.current) {
+        authEpoch.current += 1;
+        loadToken.current += 1;
         threadCache.current.clear();
         setMessages([]);
+        setIsSending(false);
+        setStreamingBubbleId(null);
       }
       currentUid.current = nextUid;
     });
@@ -329,9 +342,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }));
 
   const persistCache = (course: string, thread: Message[]) => {
-    threadCache.current.set(cacheMapKey(course), thread);
-    void cacheKey(canonicalCourseCode(course)).then((key) => {
-      if (!key) return;
+    const expectedUid = currentUid.current;
+    const scope = canonicalCourseCode(course);
+    threadCache.current.set(cacheMapKey(scope), thread);
+    // Do not let an async getSession() resolve after sign-out and write the
+    // previous account's conversation into the next account's session cache.
+    if (!expectedUid) return;
+    void cacheKey(scope).then((key) => {
+      if (!key || currentUid.current !== expectedUid || key !== `tf-chat-v1:${expectedUid}:${scope}`) return;
       try { sessionStorage.setItem(key, JSON.stringify(thread.slice(-60))); }
       catch { /* optional cache */ }
     });
@@ -587,6 +605,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const pageToSend = retry ? retryPageAttachments.current.get(retry.messageId) ?? null : attachedPage;
     if (!course || (!text && !fileToSend)) return;
     if (isSending || isUploadingPhoto || isPreparingPhoto) return;
+    const sendAuthEpoch = authEpoch.current;
 
     // A photo on its own is a complete message: the AI reads it and helps with what is on it.
 
@@ -616,6 +635,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       });
     }
     setIsSending(true);
+    // Shared with catch so partial assistant text can be removed after a stream failure.
+    let streamId: number | null = null;
 
     try {
       let imagePath: string | null = null;
@@ -655,13 +676,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // "grow existing bubble" branch on a list that never had it. Every
       // chunk then grew a bubble that didn't exist, so the reply streamed in
       // successfully from the backend and never appeared on screen.
-      let streamId: number | null = null;
       const { reply, moderated, actions, saved, usage: usageAfter } = await streamChatMessage(
         text,
         course,
         sendMode,
         imagePath,
         (delta) => {
+          if (authEpoch.current !== sendAuthEpoch) return;
           if (streamId === null) {
             const id = nextId.current++;
             const createdAt = new Date().toISOString();
@@ -680,6 +701,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         },
         pageContext,
       );
+      if (authEpoch.current !== sendAuthEpoch) return;
 
       // One corrective pass once the full reply is known: the moderation
       // short-circuit path (blocked message, image rejected) isn't streamed
@@ -722,6 +744,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         void refreshAccess().catch((e) => console.warn("[chat] couldn't refresh access", e));
       }
     } catch (error) {
+      if (authEpoch.current !== sendAuthEpoch) return;
       // Logged so a failed send is visible in DevTools → Console with the real
       // reason (backend error text, network failure) instead of only the
       // generic "Couldn't send." under the message.
@@ -731,7 +754,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (fileToSend) retryFiles.current.set(messageId, fileToSend);
       if (pageToSend) retryPageAttachments.current.set(messageId, pageToSend);
       setMessages((cur) => {
-        const next = cur.map((message) => message.id === messageId
+        // If the stream failed after emitting one or more chunks, discard its
+        // incomplete assistant bubble. Leaving it in the transcript makes a
+        // retry look like a second answer and can present truncated text as
+        // complete. The failed student message remains available to retry.
+        const withoutPartialReply = streamId === null
+          ? cur
+          : cur.filter((message) => message.id !== streamId);
+        const next = withoutPartialReply.map((message) => message.id === messageId
           ? {
             ...message,
             sendError: true,
@@ -744,8 +774,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         return next;
       });
     } finally {
-      setIsSending(false);
-      setStreamingBubbleId(null);
+      if (authEpoch.current === sendAuthEpoch) {
+        setIsSending(false);
+        setStreamingBubbleId(null);
+      }
     }
   };
 
@@ -957,7 +989,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             title={selectedCourse?.name ? `${displayCode(selected)} · ${selectedCourse.name}` : displayCode(selected)}
             className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
           >
-            <span className="truncate">{selected ? `${displayCode(selected)}${selectedCourse?.name?.trim() ? ` · ${selectedCourse.name.trim()}` : ""}` : "Choose a course"}</span>
+            <span className="min-w-0 line-clamp-2 whitespace-normal break-words text-left leading-4">{selected ? `${displayCode(selected)}${selectedCourse?.name?.trim() ? ` · ${selectedCourse.name.trim()}` : ""}` : "Choose a course"}</span>
             <ChevronDown className="h-4 w-4 shrink-0 text-[#F3E6C8]" />
           </button>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -1024,7 +1056,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
-              <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[#F3E6C8] mix-blend-difference">
+              <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-accent">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#F3E6C8]" />
                 Your course, made clearer
               </div>
@@ -1035,7 +1067,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 {selected ? `Ask a question based on your uploaded ${placeholderCourse} notes, past questions, or slides.` : "Add a course and upload study materials to get grounded explanations."}
               </p>
               {selected ? (
-                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E4DCC8]/40 bg-[#F3E6C8]/15 px-2.5 py-1 text-xs text-[#FFF8E9]">
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E4DCC8]/40 bg-[#F3E6C8]/15 px-2.5 py-1 text-xs text-foreground">
                   <Check aria-hidden="true" className="h-3 w-3 text-[#F3E6C8]" />
                   Course notes connected
                 </span>
@@ -1055,8 +1087,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         <StarterIcon aria-hidden="true" className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-bold">{card.title}</span>
-                        <span className="mt-1 block truncate text-xs text-muted-foreground">{card.subtitle}</span>
+                        <span className="block whitespace-normal break-words text-xs font-bold">{card.title}</span>
+                        <span className="mt-1 block whitespace-normal break-words text-xs text-muted-foreground">{card.subtitle}</span>
                       </span>
                       <span aria-hidden="true" className="px-0.5 text-lg leading-none text-[#A08A64]">›</span>
                     </button>
@@ -1068,7 +1100,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <>
               {messages.map((m) =>
                 m.from === "student" ? (
-                  <div key={m.id} className="ml-auto w-fit max-w-[85%]">
+                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[85%] break-words">
                     {m.courseTag ? (
                       <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                         {displayCode(m.courseTag)}
@@ -1175,25 +1207,25 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   </div>
                 ),
               )}
-              {isSending && streamingBubbleId === null ? (
-                <div className="flex w-full items-center gap-3 text-sm text-foreground">
-                  <span className="relative grid h-8 w-8 shrink-0 place-items-center">
-                    <LogoMark className="sonic-mark-loop h-8 w-8" />
-                    <span className="sonic-flare-loop left-1/2 top-1/2" />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "0px", "--dy": "-20px", "--po": 0.9, animationDelay: "0ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "17px", "--dy": "-10px", "--po": 0.82, animationDelay: "65ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "17px", "--dy": "10px", "--po": 0.88, animationDelay: "130ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "0px", "--dy": "20px", "--po": 0.78, animationDelay: "195ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
-                    <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
-                  </span>
-                  <span className="thinking-shimmer font-medium text-[#F7F3EA] mix-blend-difference">Thinking</span>
-                </div>
-              ) : null}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
-                <p className="text-[11px] text-[#F3E6C8]/80 mix-blend-difference">Read aloud isn't available in this browser.</p>
+                <p className="text-[11px] text-muted-foreground">Read aloud isn't available in this browser.</p>
               ) : null}
             </>
+          ) : null}
+          {isSending && streamingBubbleId === null ? (
+            <div className="flex w-full items-center gap-3 text-sm text-foreground">
+              <span className="relative grid h-8 w-8 shrink-0 place-items-center">
+                <LogoMark className="sonic-mark-loop h-8 w-8" />
+                <span className="sonic-flare-loop left-1/2 top-1/2" />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "0px", "--dy": "-20px", "--po": 0.9, animationDelay: "0ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "17px", "--dy": "-10px", "--po": 0.82, animationDelay: "65ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "17px", "--dy": "10px", "--po": 0.88, animationDelay: "130ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "0px", "--dy": "20px", "--po": 0.78, animationDelay: "195ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
+                <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
+              </span>
+              <span className="thinking-shimmer font-medium text-foreground">Thinking</span>
+            </div>
           ) : null}
           <div ref={scrollAnchorRef} />
         </div>
@@ -1304,7 +1336,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           </div>
           {chatCapReached ? (
-            <p className="mt-1.5 text-[11px] text-[#F3E6C8]/80 mix-blend-difference">
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
               Today's chat usage is used up. It resets {formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.
             </p>
           ) : null}

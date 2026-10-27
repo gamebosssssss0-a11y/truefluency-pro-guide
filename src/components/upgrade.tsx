@@ -226,17 +226,17 @@ export function UpgradeScreen() {
         {step === "offer" ? (
           <>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">A calmer way to prepare</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-[#F7F3EA] mix-blend-difference">Full access to your next level.</h1>
-            <p className="mt-2 text-sm leading-relaxed text-[#F7F3EA] mix-blend-difference">Make every study session count with a little more room to practise.</p>
+            <h1 className="mt-2 font-display text-3xl font-bold text-foreground">Full access to your next level.</h1>
+            <p className="mt-2 text-sm leading-relaxed text-foreground">Make every study session count with a little more room to practise.</p>
             <div className="mt-5 rounded-2xl border-2 border-accent bg-accent/10 p-5">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Founding price" : "Core"}</span>
               <div className="mt-3 flex items-end gap-2"><span className="font-display text-4xl font-semibold">{formatNaira(corePrice)}</span><span className="pb-1 text-sm text-muted-foreground">/ month</span></div>
               {foundingOpen ? (
                 <>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    For the first {FOUNDING_USER_LIMIT} paying students{seatsLeft !== null ? ` · ${seatsLeft} of ${FOUNDING_USER_LIMIT} places left` : ""} · cancel any time
+                    Founding offer for the first {FOUNDING_USER_LIMIT} paying students{seatsLeft !== null ? ` · ${seatsLeft} of ${FOUNDING_USER_LIMIT} places remain` : ""} · cancel any time
                   </p>
-                  <div className="mt-3 flex items-baseline gap-2"><span className="font-display text-lg font-semibold text-muted-foreground line-through">{formatNaira(STANDARD_PRICE_NAIRA)}</span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">after the places are taken</span></div>
+                  <div className="mt-3 flex items-baseline gap-2"><span className="font-display text-lg font-semibold text-muted-foreground line-through">{formatNaira(STANDARD_PRICE_NAIRA)}</span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">standard price after the offer ends</span></div>
                 </>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">The founding places have all been taken · cancel any time</p>
@@ -256,8 +256,8 @@ export function UpgradeScreen() {
 
         {step === "plans" ? (
           <>
-            <h1 className="font-display text-3xl font-bold text-[#F7F3EA] mix-blend-difference">Choose what works for you.</h1>
-            <p className="mt-2 text-sm text-[#F7F3EA] mix-blend-difference">Start where you are. You can change your plan later. Your current plan is highlighted.</p>
+            <h1 className="font-display text-3xl font-bold text-foreground">Choose what works for you.</h1>
+            <p className="mt-2 text-sm text-foreground">Start where you are. You can change your plan later. Your current plan is highlighted.</p>
             <div className="mt-5 space-y-3">
               <article className={`rounded-2xl border p-4 ${currentPlan === "free" ? "border-accent bg-accent/10" : "border-border bg-card"}`}>
                 <div className="flex items-center justify-between gap-2">
@@ -302,7 +302,7 @@ export function UpgradeScreen() {
             <h1 className="mt-2 font-display text-3xl font-bold">{planName(selectedPlan)} plan</h1>
             <p className="mt-2 text-sm font-semibold text-foreground">
               {formatNaira(price)} for 30 days
-              {selectedPlan === "core" && foundingOpen ? ` · founding price, ${FOUNDING_USER_LIMIT} places in all` : ""}
+              {selectedPlan === "core" && foundingOpen ? ` · founding price${seatsLeft !== null ? ` · ${seatsLeft} places remain` : ""}` : ""}
             </p>
             <ul className="mt-5 space-y-3">{PLAN_FEATURES[selectedPlan].map((line) => <li key={line} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /><span>{line}</span></li>)}</ul>
 

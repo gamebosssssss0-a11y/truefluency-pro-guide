@@ -111,7 +111,18 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
 
   assert.match(router, /document\.documentElement\.scrollTop = 0/);
   assert.match(router, /data-chat-thread/);
-  assert.match(chat, /if \(!active\)[\s\S]*?threadScrollRef\.current\.scrollTop = 0/);
+  assert.match(chat, /thread\.scrollTop = 0/);
+  assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
+  assert.match(chat, /line-clamp-2 whitespace-normal break-words text-left leading-4/);
+  assert.doesNotMatch(chat, /mix-blend-difference/);
+  assert.match(styles, /height: calc\(100dvh - 9rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /--accent: #E0B458/);
+  assert.match(styles, /--muted-foreground: #C5CCD6/);
+  assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
+  const upgrade = await read("../src/components/upgrade.tsx");
+  assert.doesNotMatch(upgrade, /mix-blend-difference/);
+  assert.match(upgrade, /standard price after the offer ends/);
+  assert.match(upgrade, /places remain/);
   assert.doesNotMatch(styles, /--tf-navy-950|FINAL GLOBAL REFERENCE BACKGROUND|TrueFluency reference treatment/);
   assert.doesNotMatch(calculator, /sticky top-0 z-20/);
   assert.match(goalSetter, /bottom-\[calc\(3\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
@@ -120,4 +131,115 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.doesNotMatch(dashboard, /FirstRunTourHost/);
   await assert.rejects(() => read("../public/reference-home.html"));
   await assert.rejects(() => read("../public/reference-home-light.html"));
+});
+
+test("splash and loading animations remain enabled and splash plays on every app entry", async () => {
+  const styles = await read("../src/styles.css");
+  const splash = await read("../src/components/onboarding/splash.tsx");
+  const loader = await read("../src/components/loading-splash.tsx");
+  assert.doesNotMatch(styles, /Final calm-motion guard/);
+  assert.match(styles, /\.sonic-mark-in\s*\{\s*animation:\s*sonic-mark-in/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(splash, /truefluency-splash-seen|sessionStorage|SPLASH_HOLD_MS/);
+  assert.match(splash, /Plays on every app entry/);
+  assert.match(splash, /onDone=\{\(\) => advance\(\)\}/);
+  assert.match(loader, /sonic-mark-in/);
+  assert.match(loader, /onDone\?\.\(\)/);
+});
+
+test("chat thinking animation remains visible independently of the empty-thread branch", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  const indicator = chat.indexOf("          {isSending && streamingBubbleId === null ? (");
+  const thinking = chat.indexOf("thinking-shimmer font-medium text-foreground");
+  const anchor = chat.indexOf('<div ref={scrollAnchorRef} />');
+  assert.notEqual(indicator, -1);
+  assert.notEqual(thinking, -1);
+  assert.ok(chat.slice(indicator - 30, indicator).includes(") : null}"), "indicator must be outside the empty-thread conditional");
+  assert.ok(thinking > indicator, "thinking animation must be rendered in the independent send-status block");
+  assert.ok(anchor > thinking, "thinking indicator must remain inside the scrollable thread");
+  assert.match(chat, /aria-busy=\{isLoadingThread \|\| isSending\}/);
+});
+
+test("failed chat streams discard incomplete assistant text but preserve retryable student messages", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  const catchStart = chat.indexOf("    } catch (error) {", chat.indexOf("const send = async"));
+  const catchEnd = chat.indexOf("    } finally {", catchStart);
+  assert.notEqual(catchStart, -1);
+  assert.notEqual(catchEnd, -1);
+  const failureHandler = chat.slice(catchStart, catchEnd);
+  assert.ok(failureHandler.includes("streamId === null"));
+  assert.ok(failureHandler.includes("cur.filter((message) => message.id !== streamId)"));
+  assert.match(failureHandler, /sendError: true/);
+  assert.match(failureHandler, /retryCourse: course/);
+  assert.match(failureHandler, /retryMode: sendMode/);
+  assert.match(failureHandler, /persistCache\(course, next\)/);
+});
+
+
+test("admin permission failures are not misreported as zero paywall hits", async () => {
+  const admin = await read("../src/routes/admin.tsx");
+  assert.match(admin, /gateCountsError/);
+  assert.match(admin, /Some paywall-hit counts could not be verified/);
+  assert.match(admin, /gate in gateCounts \? gateCounts\[gate\] : "—"/);
+  assert.doesNotMatch(admin, /countResult\.error \? 0 : countResult\.count/);
+});
+
+
+test("chat account changes invalidate pending thread loads and stream callbacks", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(chat, /const authEpoch = useRef\(0\)/);
+  assert.match(chat, /authEpoch\.current \+= 1/);
+  assert.match(chat, /loadToken\.current \+= 1/);
+  assert.match(chat, /authEpoch\.current !== sendAuthEpoch/);
+  assert.match(chat, /authEpoch\.current === sendAuthEpoch/);
+});
+
+
+test("chat cache persistence cannot cross account switches", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(chat, /const expectedUid = currentUid\.current/);
+  assert.match(chat, /currentUid\.current !== expectedUid/);
+  assert.match(chat, /key !== `tf-chat-v1:\$\{expectedUid\}:\$\{scope\}`/);
+});
+
+test("peer-save quota course is required and must match the verified source", async () => {
+  const functions = await read("../src/lib/library.functions.ts");
+  const server = await read("../src/lib/library.server.ts");
+  assert.match(functions, /if \(!courseCode\) throw new Error\("Choose the course for this file and try again\."\)/);
+  assert.match(functions, /courseCode: data\.courseCode/);
+  assert.match(server, /source\.course_code\.trim\(\)\.toUpperCase\(\) !== opts\.courseCode\.trim\(\)\.toUpperCase\(\)/);
+});
+
+
+test("mock answer counts do not treat missing legacy answers as answered", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /const answeredCount = t\.answers\.filter\(\(answer\) => answer !== null && answer !== undefined\)\.length/);
+  assert.match(flow, /const answered = t\.answers\.filter\(\(a\) => a !== null && a !== undefined\)\.length/);
+});
+
+
+test("failed or unconfirmed storage PUTs attempt owner-scoped rollback", async () => {
+  const materials = await read("../src/lib/course-materials.ts");
+  const upload = materials.slice(materials.indexOf("async function uploadViaPresignedPut"), materials.indexOf("function compressImage"));
+  assert.match(upload, /try \{[\s\S]*confirmMaterialUpload\(\{ data: \{ path \} \}\)/);
+  assert.match(upload, /catch \(error\) \{[\s\S]*deleteMaterialFiles\(\{ data: \{ paths: \[path\] \} \}\)/);
+  assert.match(upload, /throw error;/);
+});
+
+
+test("mock test unmount cannot restore an attempt after submission", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /if \(!current \|\| current\.isPaused \|\| submittedRef\.current\) return/);
+  assert.match(flow, /submittedRef\.current = true/);
+  assert.match(flow, /inProgressTest: null/);
+});
+
+
+test("peer share use limits are claimed atomically and failed claims roll back copies", async () => {
+  const server = await read("../src/lib/library.server.ts");
+  assert.match(server, /\.eq\("use_count", useCount\)/);
+  assert.match(server, /\.eq\("is_revoked", false\)/);
+  assert.match(server, /\.gt\("expires_at", new Date\(\)\.toISOString\(\)\)/);
+  assert.match(server, /\.lt\("use_count", useLimit\)/);
+  assert.match(server, /if \(claimError \|\| !claimed\) \{[\s\S]*\.delete\(\)\.eq\("id", inserted\.id\)[\s\S]*deleteObject\(destPath\)/);
 });
