@@ -8,7 +8,7 @@
  * with Back/Next; full screen stacks the pages in a continuous scroll.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, ZoomIn, ZoomOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
@@ -90,6 +90,7 @@ function ScrollPage({
   active,
   distance,
   estimatedPageHeight,
+  zoom,
   register,
 }: {
   doc: PdfDoc;
@@ -98,6 +99,7 @@ function ScrollPage({
   active: boolean;
   distance: number;
   estimatedPageHeight: number;
+  zoom: number;
   register: (n: number, el: HTMLDivElement | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -113,11 +115,11 @@ function ScrollPage({
     void doc.getPage(pageNumber).then((p) => {
       if (cancelled) return;
       const base = p.getViewport({ scale: 1 });
-      const scale = Math.max(0.4, Math.min(2.5, boxWidth / base.width));
+      const scale = Math.max(0.4, Math.min(3, (boxWidth / base.width) * zoom));
       setPageHeight(Math.floor(p.getViewport({ scale }).height));
     }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [boxWidth, doc, pageNumber]);
+  }, [boxWidth, doc, pageNumber, zoom]);
 
   useEffect(() => {
     if (!active) return;
@@ -165,7 +167,7 @@ function ScrollPage({
         current?.cleanup?.();
       }
     };
-  }, [active, boxWidth, doc, pageNumber]);
+  }, [active, boxWidth, doc, pageNumber, zoom]);
 
   useEffect(() => {
     if (distance <= 8) return;
@@ -228,6 +230,7 @@ export function PdfViewer({
   const pageNavPointerRef = useRef(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pageAspect, setPageAspect] = useState(Math.SQRT2);
+  const [zoom, setZoom] = useState(1);
 
   pageRef.current = page;
 
@@ -355,7 +358,7 @@ export function PdfViewer({
         if (!canvas || !ctx || cancelled) return;
         const base = p.getViewport({ scale: 1 });
         const box = width || wrapRef.current?.clientWidth || 340;
-        const scale = Math.max(0.4, Math.min(2.5, (box - 8) / base.width));
+        const scale = Math.max(0.4, Math.min(3, ((box - 8) / base.width) * zoom));
         const viewport = p.getViewport({ scale });
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.floor(viewport.width * dpr);
@@ -385,7 +388,7 @@ export function PdfViewer({
       }
       current?.cleanup?.();
     };
-  }, [doc, page, status, total, width, expanded]);
+  }, [doc, page, status, total, width, expanded, zoom]);
 
   // Full screen: follow the page the student has scrolled to.
   useEffect(() => {
@@ -574,6 +577,17 @@ export function PdfViewer({
         <span className="shrink-0 text-[11px] text-muted-foreground">
           {status === "ready" ? `page ${page} / ${total}` : ""}
         </span>
+        {status === "ready" ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 0.6} onClick={() => setZoom((v) => Math.max(0.6, Math.round((v - 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <span className="min-w-10 text-center text-[11px] tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
+            <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= 2} onClick={() => setZoom((v) => Math.min(2, Math.round((v + 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
+              <ZoomIn className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
         <button
           type="button"
           aria-label={expanded ? "Exit full screen" : "Full screen"}
@@ -630,7 +644,8 @@ export function PdfViewer({
               width={width || 340}
               distance={Math.abs(n - page)}
               active={Math.abs(n - page) <= 4}
-              estimatedPageHeight={Math.max(1, Math.round(Math.max(120, (width || 340) - 8) * pageAspect))}
+              estimatedPageHeight={Math.max(1, Math.round(Math.max(120, (width || 340) - 8) * pageAspect * zoom))}
+              zoom={zoom}
               register={registerPage}
             />
           ))
