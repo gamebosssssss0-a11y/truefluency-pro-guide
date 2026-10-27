@@ -429,28 +429,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }, [selected, reloadNonce]);
 
   useEffect(() => {
-    // Re-fetches every time the sheet opens, on purpose — no "already loaded"
-    // latch. One used to exist here (historyLoaded, a useRef set true after
-    // the first successful load and never reset) which meant History showed
-    // its first-ever snapshot for the rest of the session: every message
-    // sent afterwards was genuinely saved server-side, just never visible
-    // here, because this effect refused to run again.
+    // Refresh whenever the history sheet opens. Render each course as soon as
+    // it arrives instead of waiting for the slowest course's network request.
     if (!historyOpen) return;
     let alive = true;
     setHistoryError(null);
+    setHistoryRows([]);
     setHistoryLoading(true);
-    void Promise.allSettled(courseOptions.map(async (course) => {
+
+    const loadCourse = async (course: string) => {
       const raw = (await getCourseHistory(course)).messages;
-      // History is a collection of archived and active conversations, not the
-      // current thread. Never seed the live-thread cache from this full history.
-      // Grouped by conversation_id, not date — a row is now exactly one real
-      // conversation, so it can be opened or deleted precisely. Legacy
-      // messages saved before conversation_id was exposed (shouldn't exist
-      // going forward) fall back to a per-course bucket rather than crashing.
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
         const convKey = message.conversation_id ?? `legacy:${course}`;
-        grouped.set(convKey, [...(grouped.get(convKey) ?? []), message]);
+        const group = grouped.get(convKey);
+        if (group) group.push(message);
+        else grouped.set(convKey, [message]);
       }
       return [...grouped.entries()].map(([conversationId, items]) => {
         const first = items[0];
@@ -465,29 +459,35 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           messages: items,
         };
       });
-    })).then((results) => {
+    };
+
+    let failureCount = 0;
+    const requests = courseOptions.map((course) =>
+      loadCourse(course).then((rows) => {
+        if (!alive) return;
+        setHistoryRows((current) => [
+          ...current.filter((row) => row.course !== course),
+          ...rows,
+        ]);
+      }).catch((error: unknown) => {
+        failureCount += 1;
+        if (alive && failureCount === courseOptions.length) {
+          const message = error instanceof Error ? error.message : "Couldn't load chat history.";
+          setHistoryError(message);
+          toast.error(message);
+        }
+      })
+    );
+
+    void Promise.all(requests).then(() => {
       if (!alive) return;
-      const successfulRows = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
-      const failures = results.filter((result) => result.status === "rejected");
-      setHistoryRows(successfulRows.flat());
-      // One unavailable course should not hide every other course's history.
-      if (failures.length > 0 && failures.length === results.length) {
-        const reason = failures[0].status === "rejected" ? failures[0].reason : null;
-        const message = reason instanceof Error ? reason.message : "Couldn't load chat history.";
-        setHistoryError(message);
-        toast.error(message);
-      } else if (failures.length > 0) {
+      if (failureCount > 0 && failureCount < courseOptions.length) {
         toast.error("Some course histories couldn't load. The available conversations are shown.");
-      }
-    }).catch((error) => {
-      if (alive) {
-        const message = error instanceof Error ? error.message : "Couldn't load chat history.";
-        setHistoryError(message);
-        toast.error(message);
       }
     }).finally(() => {
       if (alive) setHistoryLoading(false);
     });
+
     return () => { alive = false; };
   }, [historyOpen, profile.courses]);
 
