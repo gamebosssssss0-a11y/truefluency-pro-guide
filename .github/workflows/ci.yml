@@ -18,6 +18,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
+      - name: Critical workflow regression tests
+        run: bun run test:regression
       - run: bun run lint
       - name: Build (requires public Supabase configuration)
         run: bun run build
