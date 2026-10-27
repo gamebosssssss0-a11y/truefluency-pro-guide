@@ -141,3 +141,35 @@ test("mock practice empty state offers a clear next action", async () => {
   assert.match(flow, /No questions yet/);
   assert.match(flow, /Choose a practice set/);
 });
+
+
+test("onboarding preferences are stored and offer real next actions", async () => {
+  const profile = await read("../src/lib/profile-store.tsx");
+  const onboarding = await read("../src/components/onboarding/personalization.tsx");
+  const dashboard = await read("../src/components/dashboard.tsx");
+  const welcome = await read("../src/components/onboarding/trial-welcome.tsx");
+  assert.match(profile, /export type StudyPreference = "practice" \| "flashcards" \| "reading" \| "cgpa" \| "tutor"/);
+  assert.match(onboarding, /label: "Practice past questions"/);
+  assert.match(onboarding, /label: "Check my CGPA"/);
+  assert.match(onboarding, /label: "Get explanations \/ tutor help"/);
+  assert.match(dashboard, /profile\.studyPreference === "practice"/);
+  assert.match(dashboard, /profile\.studyPreference === "cgpa"/);
+  assert.match(dashboard, /profile\.studyPreference === "tutor"/);
+  assert.match(welcome, /case "practice":[\s\S]*?case "cgpa":[\s\S]*?case "tutor"/);
+});
+
+test("returning profiles with completed setup do not restart onboarding", async () => {
+  const store = await read("../src/lib/profile-store.tsx");
+  assert.match(store, /if \(syncedProfile\.setupComplete\)/);
+  assert.match(store, /setStep\("dashboard"\)/);
+});
+
+test("Tutor Mode shows X on a wrong selection and check on the correct answer only after selection", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /const isCorrectOption = mode === "tutor" && locked && i === q\.correct_index/);
+  assert.match(flow, /const isWrongSelection = mode === "tutor" && on && i !== q\.correct_index/);
+  assert.match(flow, /isCorrectOption \? <Check[\s\S]*?isWrongSelection \? <X/);
+  assert.match(flow, /mode === "tutor" && locked && isCorrectOption/);
+  assert.match(flow, /mode === "tutor" && locked && isWrongSelection/);
+  assert.match(flow, /const mode: MockMode = t\?\.mode \?\? "exam"/);
+});
