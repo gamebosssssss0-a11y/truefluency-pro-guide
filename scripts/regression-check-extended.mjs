@@ -225,3 +225,11 @@ test("failed or unconfirmed storage PUTs attempt owner-scoped rollback", async (
   assert.match(upload, /catch \(error\) \{[\s\S]*deleteMaterialFiles\(\{ data: \{ paths: \[path\] \} \}\)/);
   assert.match(upload, /throw error;/);
 });
+
+
+test("mock test unmount cannot restore an attempt after submission", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /if \(!current \|\| current\.isPaused \|\| submittedRef\.current\) return/);
+  assert.match(flow, /submittedRef\.current = true/);
+  assert.match(flow, /inProgressTest: null/);
+});
