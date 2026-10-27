@@ -216,3 +216,12 @@ test("mock answer counts do not treat missing legacy answers as answered", async
   assert.match(flow, /const answeredCount = t\.answers\.filter\(\(answer\) => answer !== null && answer !== undefined\)\.length/);
   assert.match(flow, /const answered = t\.answers\.filter\(\(a\) => a !== null && a !== undefined\)\.length/);
 });
+
+
+test("failed or unconfirmed storage PUTs attempt owner-scoped rollback", async () => {
+  const materials = await read("../src/lib/course-materials.ts");
+  const upload = materials.slice(materials.indexOf("async function uploadViaPresignedPut"), materials.indexOf("function compressImage"));
+  assert.match(upload, /try \{[\s\S]*confirmMaterialUpload\(\{ data: \{ path \} \}\)/);
+  assert.match(upload, /catch \(error\) \{[\s\S]*deleteMaterialFiles\(\{ data: \{ paths: \[path\] \} \}\)/);
+  assert.match(upload, /throw error;/);
+});
