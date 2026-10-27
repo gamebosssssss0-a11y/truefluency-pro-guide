@@ -251,8 +251,9 @@ export function MockGenerationScreen() {
 
         // Store the AI questions under this course code so a set generated for
         // one course can never be served during another course's test.
+        const analyticsSessionId = crypto.randomUUID();
         void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
-          recordAnalytics({ data: { eventName: "mock_started", courseCode: course.code, materialId: ready.id } })
+          recordAnalytics({ data: { eventName: "mock_started", courseCode: course.code, materialId: ready.id, attemptId: analyticsSessionId } })
         ).catch(() => undefined);
         void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
           recordAnalytics({ data: { eventName: "upload_practice", courseCode: course.code, materialId: ready.id } })
@@ -270,6 +271,7 @@ export function MockGenerationScreen() {
             questionCount: questions.length,
             durationSec: (settings?.minutes ?? 30) * 60,
             startedAt: Date.now(),
+            analyticsSessionId,
             answers: Array(questions.length).fill(null),
             currentIndex: 0,
             questionIds: questions.map((q) => q.id),
@@ -988,7 +990,7 @@ export function MockRunScreen() {
     // recorded this set (when it succeeded); counting it again on submit made
     // every finished mock cost TWO of a free student's daily sets.
     void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
-      recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: attempt.id } })
+      recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: t.analyticsSessionId ?? attempt.id } })
     ).catch(() => undefined);
 
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
