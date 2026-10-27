@@ -20,7 +20,8 @@ test("mock pause and resume preserve saved answers and remaining time", async ()
   assert.match(flow, /Your answers and remaining time are saved/);
   assert.match(flow, /isPaused: true/);
   assert.match(flow, /isPaused: false, resumedAt: Date\.now\(\)/);
-  assert.match(flow, /const resumed = \{ \.\.\.t, isPaused: false, resumedAt: Date\.now\(\) \}/);\n  assert.match(flow, /const paused = \{ \.\.\.current, elapsedSec, resumedAt: undefined, isPaused: true \}/);
+  assert.match(flow, /const resumed = \{ \.\.\.t, isPaused: false, resumedAt: Date\.now\(\) \}/);
+  assert.match(flow, /const paused = \{ \.\.\.current, elapsedSec, resumedAt: undefined, isPaused: true \}/);
 });
 
 test("shared mock sign-in handoff returns to the same preview", async () => {
