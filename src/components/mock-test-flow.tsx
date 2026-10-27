@@ -251,6 +251,13 @@ export function MockGenerationScreen() {
 
         // Store the AI questions under this course code so a set generated for
         // one course can never be served during another course's test.
+        void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+          recordAnalytics({ data: { eventName: "mock_started", courseCode: course.code, materialId: ready.id } })
+        ).catch(() => undefined);
+        void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+          recordAnalytics({ data: { eventName: "upload_practice", courseCode: course.code, materialId: ready.id } })
+        ).catch(() => undefined);
+
         update({
           aiQuestionsByCourse: {
             ...profile.aiQuestionsByCourse,
@@ -980,6 +987,9 @@ export function MockRunScreen() {
     // No daily-count write here any more. The generation service already
     // recorded this set (when it succeeded); counting it again on submit made
     // every finished mock cost TWO of a free student's daily sets.
+    void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
+      recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: attempt.id } })
+    ).catch(() => undefined);
 
     const answeredCount = t.answers.filter((answer) => answer !== null).length;
     if (answeredCount >= 5) {
