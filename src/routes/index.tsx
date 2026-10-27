@@ -142,7 +142,6 @@ function Router() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
-  const previousView = useRef(view);
 
   useLayoutEffect(() => {
     const stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");
@@ -157,7 +156,6 @@ function Router() {
 
     // New screens start at the top; in-progress study data remains in ProfileProvider.
     window.scrollTo({ top: 0, behavior: "auto" });
-    previousView.current = view;
   }, [view]);
 
   useEffect(() => {
