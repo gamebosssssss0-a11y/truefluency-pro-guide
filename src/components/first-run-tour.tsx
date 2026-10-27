@@ -38,7 +38,7 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
   const last = i === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/60 p-4 sm:place-items-center">
+    <div data-tour-overlay className="fixed inset-0 z-45 grid place-items-end overflow-y-auto bg-foreground/60 p-4 sm:place-items-center">
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-lg">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="on-sand grid h-11 w-11 place-items-center rounded-2xl bg-secondary text-secondary-foreground">
