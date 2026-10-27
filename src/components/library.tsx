@@ -413,11 +413,11 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       <div className="mx-auto max-w-md px-5 pb-28 pt-6 md:max-w-3xl">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#F7F3EA] mix-blend-difference">My Files</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-foreground">My Files</span>
         </div>
 
-        <h1 className="font-display text-2xl font-bold text-[#F7F3EA] mix-blend-difference">My files</h1>
-        <p className="mt-1 text-sm text-[#F7F3EA] mix-blend-difference">
+        <h1 className="font-display text-2xl font-bold text-foreground">My files</h1>
+        <p className="mt-1 text-sm text-foreground">
           Upload past papers and notes here. Your locker is private; the course shelf only shows
           what coursemates chose to publish.
         </p>
@@ -428,7 +428,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             <button
               key={r}
               onClick={() => { setRail(r); setOpenFolder(null); }}
-              className={rail === r ? "rounded-lg bg-amber py-2 text-sm font-semibold text-cream transition" : "rounded-lg py-2 text-sm font-semibold text-muted-foreground transition"}
+              className={rail === r ? "min-h-11 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" : "min-h-11 rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"}
             >
               {r === "locker" ? "My locker" : "Course shelf"}
             </button>
@@ -438,7 +438,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         {rail === "locker" ? (
           <div className="mt-4 space-y-3" aria-busy={locker === null} aria-label="My study files">
             <Button
-              className="h-12 w-full bg-amber text-cream hover:bg-amber/90"
+              className="min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={() => {
                 // Straight to the uploader for the course in front of the
                 // student: the open folder, then their active course, then the
