@@ -132,6 +132,13 @@ function RootTabs({ view }: { view: AppView }) {
           </div>
         );
       })}
+      {/* Mount Study Chat immediately so API warm-up and thread prefetch run
+          during app use, instead of starting only after the first tab click. */}
+      {!visited.includes("chatbot") && (
+        <div hidden aria-hidden="true" data-root-tab="chatbot-prefetch">
+          <ChatbotScreen active={false} />
+        </div>
+      )}
     </>
   );
 }
