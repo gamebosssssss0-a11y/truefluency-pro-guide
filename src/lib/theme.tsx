@@ -17,15 +17,26 @@ function applyTheme(t: ThemeMode) {
  * profile so it applies before any session exists and never fights cloud sync.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // The browser/OS color scheme is the source of truth. Do not persist or force
-  // a theme across app entries; also follow system changes while the app is open.
   const [theme, setThemeState] = useState<ThemeMode>(() =>
-    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light"
+    typeof window === "undefined"
+      ? "light"
+      : (() => {
+          try {
+            const saved = localStorage.getItem("truefluency-theme");
+            if (saved === "light" || saved === "dark") return saved;
+          } catch { /* storage is optional */ }
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        })()
   );
 
   useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("truefluency-theme")) return;
+    } catch { /* storage is optional */ }
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const syncTheme = () => {
       const next: ThemeMode = media.matches ? "dark" : "light";
@@ -37,12 +48,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener?.("change", syncTheme);
   }, []);
 
-  // Keep existing settings consumers compatible, but the system preference is
-  // authoritative instead of storing a conflicting manual theme override.
-  const setTheme = (_t: ThemeMode) => {
-    const next: ThemeMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  const setTheme = (next: ThemeMode) => {
     setThemeState(next);
     applyTheme(next);
+    try { localStorage.setItem("truefluency-theme", next); } catch { /* storage is optional */ }
   };
 
   return (

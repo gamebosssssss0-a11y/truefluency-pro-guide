@@ -402,8 +402,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         setIsLoadingThread(false);
       }
     }, 10000);
-    const isFirstLoadThisVisit = !hasStartedFreshThisSession();
-    const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(cacheMapKey(key));
+    // Use the hidden-tab prefetch immediately. The foreground refresh below
+    // still revalidates after the fresh-thread operation, but the student no
+    // longer waits on a blank loading screen while that request completes.
+    const cached = threadCache.current.get(cacheMapKey(key));
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
@@ -462,6 +464,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setHistoryError(null);
     setHistoryRows([]);
     setHistoryLoading(true);
+    const historyTimeoutId = window.setTimeout(() => {
+      if (alive) {
+        setHistoryLoading(false);
+        setHistoryError("History is taking too long to load. Please retry.");
+      }
+    }, 10000);
 
     const loadCourse = async (course: string) => {
       const raw = (await getCourseHistory(course)).messages;
@@ -511,10 +519,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         toast.error("Some course histories couldn't load. The available conversations are shown.");
       }
     }).finally(() => {
+      window.clearTimeout(historyTimeoutId);
       if (alive) setHistoryLoading(false);
     });
 
-    return () => { alive = false; };
+    return () => { alive = false; window.clearTimeout(historyTimeoutId); };
   }, [historyOpen, profile.courses]);
 
   const handleResumeConversation = async (conversationId: string) => {
@@ -1402,7 +1411,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           {historyRows.length === 0 && historyLoading ? (
             <p className="py-6 text-sm text-muted-foreground">Loading history…</p>
           ) : historyRows.length === 0 && historyError ? (
-            <p className="py-6 text-sm text-muted-foreground">{historyError}</p>
+            <div className="py-6 text-center">
+              <p className="text-sm text-muted-foreground">{historyError}</p>
+              <button type="button" onClick={() => { setHistoryOpen(false); window.setTimeout(() => setHistoryOpen(true), 0); }} className="mt-3 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Retry history</button>
+            </div>
           ) : historyRows.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No saved conversations yet.</p>
           ) : (
