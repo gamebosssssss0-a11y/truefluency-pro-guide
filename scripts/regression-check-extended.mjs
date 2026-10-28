@@ -275,3 +275,22 @@ test("mobile chat composer uses the tab-nav-reserved viewport and message text w
   assert.match(chat, /whitespace-pre-wrap rounded-2xl[^\n]*\[overflow-wrap:anywhere\]/);
   assert.match(chat, /w-full min-w-0 max-w-full break-words \[overflow-wrap:anywhere\]/);
 });
+
+
+test("Study Chat warms and prefetches its selected thread before the tab is opened", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  const router = await read("../src/routes/index.tsx");
+  assert.ok(router.includes("<ChatbotScreen active={false} />"));
+  assert.ok(chat.includes("if (!active) {"));
+  assert.ok(chat.includes("void warmBackend();"));
+  assert.ok(chat.includes("getCourseThread(key).then"));
+  assert.ok(chat.includes("[selected, reloadNonce, active]"));
+});
+
+test("chat history contrast is explicit and the chat column no longer caps width", async () => {
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.ok(chat.includes("text-[#465366]"));
+  assert.ok(chat.includes("max-w-[96%] break-words [overflow-wrap:anywhere]"));
+  assert.ok(chat.includes("w-full px-3 sm:px-4 md:pt-4"));
+  assert.ok(!chat.includes("max-w-[640px] px-4 sm:px-5 md:pt-4"));
+});
