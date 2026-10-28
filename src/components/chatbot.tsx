@@ -1036,7 +1036,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
-              disabled={isSending || isLoadingThread}
+              disabled={isSending}
               onClick={async () => {
                 const key = canonicalCourseCode(selected);
                 const previous = messages;
