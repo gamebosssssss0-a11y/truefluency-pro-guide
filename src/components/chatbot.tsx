@@ -94,6 +94,10 @@ type Message = {
   retryMode?: Mode;
 };
 
+// The app mounts a hidden ChatbotScreen to warm the backend before the user
+// opens Study Chat. Share its successful snapshot with the visible instance.
+const preloadedThreadCache = new Map<string, Message[]>();
+
 /** Starter prompts per mode — titles are display copy; values remain the submitted drafts. */
 const STARTERS: Record<Mode, { title: string; subtitle: string; value: string; icon: typeof BookOpen }[]> = {
   Explain: [
@@ -216,6 +220,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         authEpoch.current += 1;
         loadToken.current += 1;
         threadCache.current.clear();
+        preloadedThreadCache.clear();
         setMessages([]);
         setIsSending(false);
         setStreamingBubbleId(null);
@@ -388,6 +393,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         if (!alive) return;
         const painted = toUiMessages(thread);
         threadCache.current.set(cacheMapKey(key), painted);
+        preloadedThreadCache.set(key, painted);
       }).catch(() => {
         // Background prefetch is opportunistic; foreground loading handles errors.
       });
@@ -405,30 +411,19 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     // Use the hidden-tab prefetch immediately. The foreground refresh below
     // still revalidates after the fresh-thread operation, but the student no
     // longer waits on a blank loading screen while that request completes.
-    const cached = threadCache.current.get(cacheMapKey(key));
+    const cached = threadCache.current.get(cacheMapKey(key)) ?? preloadedThreadCache.get(key);
     if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
-    // Opening the chat screen should feel like opening a fresh conversation
-    // — old content stays reachable in History, not sitting here waiting to
-    // reappear. This fires exactly once per visit to this screen (not on
-    // every course switch within the same visit, which would archive real
-    // conversations just for tapping between course chips). archive_conversation
-    // is a safe no-op when there's nothing active yet, so this never errors
-    // out a normal load — best-effort, awaited so the fetch below sees the
-    // fresh thread rather than racing it.
-    const freshStart = hasStartedFreshThisSession()
-      ? Promise.resolve()
-      : startNewChatThread(key).catch(() => {
-          /* best-effort — worst case this visit resumes the old thread, same as before */
-        });
-    markStartedFreshThisSession();
-
-    void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
+    // Opening Study Chat is read-only. Do not archive/start a thread here:
+    // that extra round trip was the main reason the loading screen was slower
+    // than History. Archiving is explicit through New chat.
+    void getCourseThread(key).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
       setThreadLoadTimedOut(false);
       const painted = toUiMessages(thread);
       persistCache(key, painted);
+      preloadedThreadCache.set(key, painted);
       setMessages(painted);
     }).catch(async (error) => {
       if (!alive || loadToken.current !== token) return;
@@ -1291,7 +1286,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         </div>
 
         {/* Composer — sits clear of the bottom tab bar */}
-        <div className="mt-2 mb-2 shrink-0">
+        <div className="chat-composer mt-2 mb-2 shrink-0">
           {attachedPage ? (
             <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
               {attachedPage.previewUrl ? (

@@ -1299,3 +1299,31 @@ nav[aria-label="Mobile navigation"] {
     animation: none !important;
   }
 }
+
+
+/* Mobile chat geometry: the composer is a phone-chat control, not a card
+   floating in the middle of the page. */
+.study-chat-screen > div {
+  min-height: 0;
+  height: 100%;
+}
+
+.study-chat-screen [data-chat-thread] {
+  min-height: 0;
+  padding-bottom: 0.5rem;
+}
+
+.study-chat-screen [data-chat-thread] > [role="status"] {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.chat-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--background) 96%, transparent) 22%);
+}
