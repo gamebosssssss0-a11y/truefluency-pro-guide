@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs";
 import { readPaymentReturn } from "@/lib/billing-api";
+import { warmBackend } from "@/lib/backend-api";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -149,6 +150,14 @@ function Router() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
+
+  // Wake the chat backend as soon as the signed-in shell is available, rather
+  // than waiting for the student to tap Study Chat and then watching a blank
+  // loading state.
+  useEffect(() => {
+    if (step !== "dashboard" || !hydrated) return;
+    void warmBackend();
+  }, [step, hydrated]);
 
   useLayoutEffect(() => {
     const stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");

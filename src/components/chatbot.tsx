@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
+import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -168,6 +168,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [reloadNonce, setReloadNonce] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(() => Boolean(attachedPage?.courseCode ?? defaultCourse));
+  const [threadLoadTimedOut, setThreadLoadTimedOut] = useState(false);
   const threadCache = useRef(new Map<string, Message[]>());
   // No auto-scroll existed anywhere in this screen before — messages just
   // appeared below the fold with no way to see them without scrolling
@@ -394,6 +395,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
 
     const token = ++loadToken.current;
+    setThreadLoadTimedOut(false);
+    const timeoutId = window.setTimeout(() => {
+      if (alive && loadToken.current === token) {
+        setThreadLoadTimedOut(true);
+        setIsLoadingThread(false);
+      }
+    }, 10000);
     const isFirstLoadThisVisit = !hasStartedFreshThisSession();
     const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(cacheMapKey(key));
     if (cached) setMessages(cached);
@@ -416,6 +424,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
     void freshStart.then(() => getCourseThread(key)).then(({ messages: thread }) => {
       if (!alive || loadToken.current !== token) return;
+      setThreadLoadTimedOut(false);
       const painted = toUiMessages(thread);
       persistCache(key, painted);
       setMessages(painted);
@@ -436,11 +445,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           }
         } catch { /* unavailable cache */ }
       }
+      setThreadLoadTimedOut(true);
       toast.error(error instanceof Error ? error.message : "Couldn't load this conversation.");
     }).finally(() => {
+      window.clearTimeout(timeoutId);
       if (alive && loadToken.current === token) setIsLoadingThread(false);
     });
-    return () => { alive = false; };
+    return () => { alive = false; window.clearTimeout(timeoutId); };
   }, [selected, reloadNonce, active]);
 
   useEffect(() => {
@@ -1044,7 +1055,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <Plus aria-hidden="true" className="h-3 w-3" />
               New chat
             </button>
-            <button type="button" onClick={() => setHistoryOpen(true)} className="whitespace-nowrap rounded-full border border-[#E4DCC8]/45 px-2 py-1.5 text-[10px] font-semibold text-[#F7F3EA] transition hover:bg-[#1B2A4A]/60">History</button>
+            <button type="button" onClick={() => setHistoryOpen(true)} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-[10px] font-semibold text-foreground transition hover:bg-muted">
+              <HistoryIcon aria-hidden="true" className="h-3.5 w-3.5" />
+              <span>History</span>
+            </button>
             {capText ? (
               <span className="whitespace-nowrap rounded-full bg-[#F3E6C8] px-2 py-1.5 text-[10px] font-semibold text-[#1B2A4A]">
                 {capText}
@@ -1065,10 +1079,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           aria-busy={isLoadingThread || isSending}
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-3 touch-pan-y"
         >
-          {isLoadingThread && messages.length === 0 ? (
+          {threadLoadTimedOut && messages.length === 0 ? (
+            <div role="alert" aria-live="assertive" className="chat-load-state flex min-h-full flex-col items-center justify-center px-6 text-center">
+              <span className="chat-load-icon mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A]"><RotateCcw aria-hidden="true" className="h-7 w-7" /></span>
+              <p className="text-base font-semibold text-foreground">Conversation is taking too long</p>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">Your saved chat is safe. Retry the connection or open a fresh conversation.</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <button type="button" onClick={() => { setThreadLoadTimedOut(false); setReloadNonce((n) => n + 1); }} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Retry loading</button>
+                <button type="button" onClick={() => { setThreadLoadTimedOut(false); setMessages([]); setIsLoadingThread(false); void startNewChatThread(canonicalCourseCode(selected)).catch(() => undefined); }} className="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground">Start new chat</button>
+              </div>
+            </div>
+          ) : isLoadingThread && messages.length === 0 ? (
             <div role="status" aria-live="polite" className="flex min-h-full flex-col items-center justify-center px-6 text-center">
               <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A] shadow-[0_0_24px_rgba(184,110,10,0.24)]">
-                <Loader2 aria-hidden="true" className="h-7 w-7 animate-spin" />
+                <Loader2 aria-hidden="true" className="chat-spinner h-7 w-7" />
               </span>
               <p className="text-base font-semibold text-foreground">
                 Loading your conversation
@@ -1077,7 +1101,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 This can take a little while as we open {placeholderCourse} and load your saved conversation. Please keep this screen open.
               </p>
               <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-[#E4DCC8]/40">
-                <div className="h-full w-2/5 animate-pulse rounded-full bg-[#B86E0A]" />
+                <div className="chat-loading-progress h-full w-2/5 rounded-full bg-[#B86E0A]" />
               </div>
             </div>
           ) : !isLoadingThread && messages.length === 0 ? (
@@ -1182,7 +1206,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="text-base leading-6">
+                    <div className="chat-message-content text-base leading-6">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.actions && m.actions.length > 0 ? (
@@ -1250,7 +1274,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-amber" style={{ "--dx": "-17px", "--dy": "10px", "--po": 0.9, animationDelay: "260ms" } as CSSProperties} />
                 <span className="sonic-particle-loop left-1/2 top-1/2 h-1 w-1 bg-navy" style={{ "--dx": "-17px", "--dy": "-10px", "--po": 0.82, animationDelay: "325ms" } as CSSProperties} />
               </span>
-              <span className="thinking-shimmer font-medium text-foreground">Thinking</span>
+              <span className="chat-thinking-label font-medium">Thinking</span>
+              <span className="chat-thinking-dots" aria-hidden="true"><i /><i /><i /></span>
             </div>
           ) : null}
           <div ref={scrollAnchorRef} />
@@ -1293,7 +1318,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : null}
           <div className="rounded-[20px] border border-[#dfd1b8] bg-card p-2 shadow-[0_7px_17px_rgba(27,42,74,0.08),inset_0_0_0_1px_rgba(255,255,255,0.55)]">
-            <div className="mb-2 flex min-w-0 items-center justify-between gap-2 px-1">
+            <div className="chat-composer-meta mb-2 flex min-w-0 items-center justify-between gap-2 px-1">
               <div className="relative shrink-0">
                 <button
                   type="button"
@@ -1324,7 +1349,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   </div>
                 ) : null}
               </div>
-              <span className="flex min-w-0 flex-1 items-center justify-end gap-1 text-[11px] text-[#878170]">
+              <span className="chat-connected-context flex min-w-0 flex-1 items-center justify-end gap-1 text-[11px] text-[#878170]">
                 <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#477A5B]" />
                 <span className="truncate">{selected ? `Using ${placeholderCourse} notes` : "Add a course to connect notes"}</span>
               </span>
@@ -1351,7 +1376,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 }}
                 disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
                 placeholder={selected ? `Ask a question about ${placeholderCourse}…` : "Add a course first."}
-                className="max-h-40 min-h-10 min-w-[96px] flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
+                className="chat-composer-textarea max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
               />
               <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
                 <Mic className="h-4 w-4" />
