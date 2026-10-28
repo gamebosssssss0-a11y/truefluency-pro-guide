@@ -377,8 +377,23 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   useEffect(() => {
     if (!selected) { setMessages([]); setIsLoadingThread(false); return; }
     let alive = true;
-    const token = ++loadToken.current;
     const key = canonicalCourseCode(selected);
+
+    // Warm the API and prefetch the selected thread while the chatbot tab is
+    // hidden. Do not archive/create a fresh thread until the student opens it.
+    if (!active) {
+      void warmBackend();
+      void getCourseThread(key).then(({ messages: thread }) => {
+        if (!alive) return;
+        const painted = toUiMessages(thread);
+        threadCache.current.set(cacheMapKey(key), painted);
+      }).catch(() => {
+        // Background prefetch is opportunistic; foreground loading handles errors.
+      });
+      return () => { alive = false; };
+    }
+
+    const token = ++loadToken.current;
     const isFirstLoadThisVisit = !hasStartedFreshThisSession();
     const cached = isFirstLoadThisVisit ? undefined : threadCache.current.get(cacheMapKey(key));
     if (cached) setMessages(cached);
@@ -426,7 +441,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (alive && loadToken.current === token) setIsLoadingThread(false);
     });
     return () => { alive = false; };
-  }, [selected, reloadNonce]);
+  }, [selected, reloadNonce, active]);
 
   useEffect(() => {
     // Refresh whenever the history sheet opens. Render each course as soon as
@@ -989,7 +1004,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
-      <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "max-w-[640px] px-4 sm:px-5 md:pt-4"}`}>
+      <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4"}`}>
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#E4DCC8]/25 pb-2">
           <button
             type="button"
@@ -1111,7 +1126,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <>
               {messages.map((m) =>
                 m.from === "student" ? (
-                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[85%] break-words [overflow-wrap:anywhere]">
+                  <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[96%] break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
                       <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
                         {displayCode(m.courseTag)}
@@ -1405,10 +1420,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                               ? "rounded-xl border border-[#E4DCC8] bg-[#F3E6C8] p-3 text-[#1B2A4A]"
                               : "rounded-xl border border-border bg-background p-3 text-foreground"}
                           >
-                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <div className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${m.role === "user" ? "text-[#465366]" : "text-muted-foreground"}`}>
                               {m.role === "user" ? "You" : "Study Chat"}
                             </div>
-                            <div className="break-words text-sm leading-relaxed">
+                            <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
                               <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
                             </div>
                           </div>
