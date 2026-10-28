@@ -1420,7 +1420,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                               ? "rounded-xl border border-[#E4DCC8] bg-[#F3E6C8] p-3 text-[#1B2A4A]"
                               : "rounded-xl border border-border bg-background p-3 text-foreground"}
                           >
-                            <div className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${m.role === "user" ? "text-[#465366]" : "text-muted-foreground"}`}>
+                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: m.role === "user" ? "#334155" : "var(--muted-foreground)" }}>
                               {m.role === "user" ? "You" : "Study Chat"}
                             </div>
                             <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">

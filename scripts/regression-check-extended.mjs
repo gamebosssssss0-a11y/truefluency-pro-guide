@@ -115,7 +115,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
   assert.match(chat, /line-clamp-2 whitespace-normal break-words text-left leading-4/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
-  assert.match(styles, /height: calc\(100dvh - 4\.5rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /\.study-chat-screen\s*\{[\s\S]*?height: 100%/);
   assert.match(styles, /--accent: #E0B458/);
   assert.match(styles, /--muted-foreground: #C5CCD6/);
   assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
@@ -271,7 +271,7 @@ test("chat history does not overwrite the active thread cache and tolerates per-
 test("mobile chat composer uses the tab-nav-reserved viewport and message text wraps", async () => {
   const styles = await read("../src/styles.css");
   const chat = await read("../src/components/chatbot.tsx");
-  assert.match(styles, /height: calc\(100dvh - 4\.5rem - env\(safe-area-inset-bottom\)\)/);
+  assert.match(styles, /\.study-chat-screen\s*\{[\s\S]*?height: 100%/);
   assert.match(chat, /whitespace-pre-wrap rounded-2xl[^\n]*\[overflow-wrap:anywhere\]/);
   assert.match(chat, /w-full min-w-0 max-w-full break-words \[overflow-wrap:anywhere\]/);
 });
@@ -289,7 +289,7 @@ test("Study Chat warms and prefetches its selected thread before the tab is open
 
 test("chat history contrast is explicit and the chat column no longer caps width", async () => {
   const chat = await read("../src/components/chatbot.tsx");
-  assert.ok(chat.includes("text-[#465366]"));
+  assert.ok(chat.includes('style={{ color: m.role === "user" ? "#334155" : "var(--muted-foreground)" }}'));
   assert.ok(chat.includes("max-w-[96%] break-words [overflow-wrap:anywhere]"));
   assert.ok(chat.includes("w-full px-3 sm:px-4 md:pt-4"));
   assert.ok(!chat.includes("max-w-[640px] px-4 sm:px-5 md:pt-4"));

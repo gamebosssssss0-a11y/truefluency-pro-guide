@@ -631,7 +631,7 @@
 .study-chat-screen {
   /* The tab stage already reserves the bottom-nav space with its own padding.
      Subtracting that space here too made the composer hover well above the nav. */
-  height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
+  height: 100%;
   min-height: 0;
   min-width: 0;
 }
@@ -644,7 +644,7 @@
 @media (min-width: 768px) {
   .study-chat-screen:not(.study-chat-embedded) {
     /* 3rem desktop navigation + 2rem stage padding. */
-    height: calc(100dvh - 5rem);
+    height: 100%;
   }
 }
 
