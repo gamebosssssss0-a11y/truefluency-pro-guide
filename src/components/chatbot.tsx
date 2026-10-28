@@ -1019,7 +1019,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
-      <div className={`mx-auto flex h-full min-h-0 flex-col pb-2 pt-3 ${embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4"}`}>
+      <div className={`chat-layout mx-auto grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3 ${embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4"}`}>
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#E4DCC8]/25 pb-2">
           <button
             type="button"

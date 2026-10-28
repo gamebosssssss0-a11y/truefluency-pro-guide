@@ -1083,12 +1083,13 @@ body {
   background: transparent;
 }
 [data-tab-swipe-stage] {
-  min-height: calc(100dvh - 3.5rem);
+  min-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
   overflow-x: clip !important;
   overflow-y: visible !important;
 }
 [data-root-tab="chatbot"] {
-  height: calc(100dvh - 8rem - env(safe-area-inset-bottom));
+  /* TopNavBar is hidden on phones. Subtract only the fixed bottom tab bar. */
+  height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
   min-height: 0;
   overflow: hidden;
 }
@@ -1316,6 +1317,12 @@ nav[aria-label="Mobile navigation"] {
   height: 100%;
 }
 
+.study-chat-screen .chat-layout {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  min-width: 0;
+}
+
 .study-chat-screen [data-chat-thread] {
   min-height: 0;
   padding-bottom: 0.5rem;
@@ -1331,8 +1338,7 @@ nav[aria-label="Mobile navigation"] {
 }
 
 .chat-composer {
-  position: sticky;
-  bottom: 0;
+  position: relative;
   z-index: 5;
   margin-top: auto;
   padding-top: 0.5rem;
@@ -1341,6 +1347,10 @@ nav[aria-label="Mobile navigation"] {
 }
 
 @media (min-width: 768px) {
+  [data-tab-swipe-stage] {
+    min-height: calc(100dvh - 3.5rem);
+  }
+
   [data-root-tab="chatbot"] {
     height: calc(100dvh - 5.5rem);
   }
