@@ -1345,3 +1345,87 @@ nav[aria-label="Mobile navigation"] {
     height: calc(100dvh - 5.5rem);
   }
 }
+
+
+/* Shared responsive page geometry. Primary tabs use one mobile gutter instead
+   of accumulating different px-5/px-3 wrappers around the same content. */
+:root {
+  --tf-page-gutter: 16px;
+}
+
+[data-root-tab="home"],
+[data-root-tab="mock-tests"],
+[data-root-tab="chatbot"],
+[data-root-tab="account"] {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-root-tab="home"] .reference-home__inner,
+[data-root-tab="mock-tests"] .mx-auto.max-w-md,
+[data-root-tab="account"] .mx-auto.max-w-md {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-root-tab="home"] img,
+[data-root-tab="mock-tests"] img,
+[data-root-tab="chatbot"] img,
+[data-root-tab="account"] img,
+[data-root-tab="home"] input,
+[data-root-tab="mock-tests"] input,
+[data-root-tab="chatbot"] input,
+[data-root-tab="account"] input,
+[data-root-tab="home"] textarea,
+[data-root-tab="mock-tests"] textarea,
+[data-root-tab="chatbot"] textarea,
+[data-root-tab="account"] textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  [data-root-tab="home"] .reference-home__inner,
+  [data-root-tab="mock-tests"] .mx-auto.max-w-md,
+  [data-root-tab="account"] .mx-auto.max-w-md,
+  [data-root-tab="chatbot"] .study-chat-screen > div {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline: 0;
+    padding-inline: var(--tf-page-gutter);
+  }
+
+  [data-root-tab="home"] .reference-home__inner,
+  [data-root-tab="mock-tests"] .mx-auto.max-w-md,
+  [data-root-tab="account"] .mx-auto.max-w-md {
+    padding-bottom: max(2rem, calc(4.5rem + env(safe-area-inset-bottom)));
+  }
+
+  [data-root-tab="chatbot"] .study-chat-screen > div {
+    padding-bottom: 0;
+  }
+
+  [data-root-tab="home"] .reference-home__inner > *,
+  [data-root-tab="mock-tests"] .mx-auto.max-w-md > *,
+  [data-root-tab="account"] .mx-auto.max-w-md > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  [data-root-tab="home"] button,
+  [data-root-tab="mock-tests"] button,
+  [data-root-tab="chatbot"] button,
+  [data-root-tab="account"] button {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  [data-root-tab="home"] .reference-home__inner,
+  [data-root-tab="mock-tests"] .mx-auto.max-w-md,
+  [data-root-tab="account"] .mx-auto.max-w-md {
+    width: 100%;
+  }
+}
