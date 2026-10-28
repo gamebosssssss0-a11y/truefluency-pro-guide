@@ -441,7 +441,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (alive && loadToken.current === token) setIsLoadingThread(false);
     });
     return () => { alive = false; };
-  }, [selected, reloadNonce, active]
+  }, [selected, reloadNonce, active]);
 
   useEffect(() => {
     // Refresh whenever the history sheet opens. Render each course as soon as
