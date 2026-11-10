@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          attempt_id: string | null
+          course_code: string | null
+          created_at: string
+          event_name: string
+          id: string
+          material_id: string | null
+          user_id: string
+        }
+        Insert: {
+          attempt_id?: string | null
+          course_code?: string | null
+          created_at?: string
+          event_name: string
+          id?: string
+          material_id?: string | null
+          user_id: string
+        }
+        Update: {
+          attempt_id?: string | null
+          course_code?: string | null
+          created_at?: string
+          event_name?: string
+          id?: string
+          material_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           archived_at: string | null
@@ -48,6 +78,9 @@ export type Database = {
           course_code: string
           created_at: string | null
           id: string
+          memory: string | null
+          memory_upto: string | null
+          state: Json
           user_id: string
         }
         Insert: {
@@ -56,6 +89,9 @@ export type Database = {
           course_code: string
           created_at?: string | null
           id?: string
+          memory?: string | null
+          memory_upto?: string | null
+          state?: Json
           user_id: string
         }
         Update: {
@@ -64,6 +100,9 @@ export type Database = {
           course_code?: string
           created_at?: string | null
           id?: string
+          memory?: string | null
+          memory_upto?: string | null
+          state?: Json
           user_id?: string
         }
         Relationships: []
@@ -152,6 +191,30 @@ export type Database = {
           token?: string
           updated_at?: string
           visibility?: string
+        }
+        Relationships: []
+      }
+      chat_token_usage: {
+        Row: {
+          day: string
+          tokens: number
+          turns: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          tokens?: number
+          turns?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          tokens?: number
+          turns?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -281,6 +344,30 @@ export type Database = {
           material_id?: string | null
           topics?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      example_questions: {
+        Row: {
+          active: boolean
+          course_key: string
+          created_at: string
+          id: number
+          question: Json
+        }
+        Insert: {
+          active?: boolean
+          course_key: string
+          created_at?: string
+          id?: number
+          question: Json
+        }
+        Update: {
+          active?: boolean
+          course_key?: string
+          created_at?: string
+          id?: number
+          question?: Json
         }
         Relationships: []
       }
@@ -577,6 +664,100 @@ export type Database = {
           },
         ]
       }
+      material_questions: {
+        Row: {
+          answer: string | null
+          body: string
+          course_key: string
+          id: number
+          kind: string
+          label: string | null
+          material_id: string
+          options: Json | null
+          page: number | null
+          section: string | null
+          seq: number
+          stem: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          body: string
+          course_key: string
+          id?: number
+          kind: string
+          label?: string | null
+          material_id: string
+          options?: Json | null
+          page?: number | null
+          section?: string | null
+          seq: number
+          stem: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          body?: string
+          course_key?: string
+          id?: number
+          kind?: string
+          label?: string | null
+          material_id?: string
+          options?: Json | null
+          page?: number | null
+          section?: string | null
+          seq?: number
+          stem?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_questions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "course_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_scans: {
+        Row: {
+          blank_ranges: string | null
+          course_key: string
+          material_id: string
+          pages: number | null
+          question_count: number | null
+          scanned_at: string
+          user_id: string
+        }
+        Insert: {
+          blank_ranges?: string | null
+          course_key: string
+          material_id: string
+          pages?: number | null
+          question_count?: number | null
+          scanned_at?: string
+          user_id: string
+        }
+        Update: {
+          blank_ranges?: string | null
+          course_key?: string
+          material_id?: string
+          pages?: number | null
+          question_count?: number | null
+          scanned_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_scans_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: true
+            referencedRelation: "course_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mock_attempt_results: {
         Row: {
           course_code: string
@@ -800,6 +981,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_admin: boolean
           paid_until: string | null
           paying_user_number: number | null
           tier: string | null
@@ -810,6 +992,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          is_admin?: boolean
           paid_until?: string | null
           paying_user_number?: number | null
           tier?: string | null
@@ -820,6 +1003,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          is_admin?: boolean
           paid_until?: string | null
           paying_user_number?: number | null
           tier?: string | null
@@ -925,6 +1109,15 @@ export type Database = {
     }
     Functions: {
       admin_dashboard_stats: { Args: never; Returns: Json }
+      chat_token_usage_prune: { Args: never; Returns: number }
+      chat_tokens_add: {
+        Args: { p_day: string; p_tokens: number; p_user_id: string }
+        Returns: number
+      }
+      chat_turn_add: {
+        Args: { p_day: string; p_user_id: string }
+        Returns: number
+      }
       flashcard_rating_counts: {
         Args: { p_course_code: string }
         Returns: {

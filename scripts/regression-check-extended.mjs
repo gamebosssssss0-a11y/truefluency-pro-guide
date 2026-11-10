@@ -234,6 +234,48 @@ test("mock test unmount cannot restore an attempt after submission", async () =>
   assert.match(flow, /inProgressTest: null/);
 });
 
+test("mock generation and run share one back guard", async () => {
+  const router = await read("../src/routes/index.tsx");
+  assert.match(router, /const inExamView = view === "mock-run" \|\| view === "mock-gen"/);
+  assert.match(router, /\}, \[inExamView\]\)/);
+});
+
+test("in-progress mocks offer resume instead of discard copy", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /profile\.inProgressTest \? \([\s\S]*?test in progress[\s\S]*?Resume test/);
+  assert.doesNotMatch(flow, /Generating a new test will discard your current in-progress attempt/);
+});
+
+test("mock run provides an escape when saved questions are missing", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /if \(questions\.length === 0\)[\s\S]*?This test's questions weren't saved[\s\S]*?Discard and choose a new set/);
+  assert.match(flow, /const idx = Math\.min\(t\.currentIndex, questions\.length - 1\)/);
+});
+
+test("submitting incomplete mocks uses an in-app sheet instead of a browser confirm", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  assert.match(flow, /questions\.length - answered > 0\)[\s\S]*?setConfirmOpen\(true\)/);
+  assert.match(flow, /Go to first unanswered[\s\S]*?Submit anyway/);
+  assert.doesNotMatch(flow, /window\.confirm\(/);
+});
+
+test("mock result opens before cloud save and a failed save can be retried", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  const resultNavigation = flow.indexOf('navigate("mock-result", { courseCode: t.courseCode });');
+  const cloudSave = flow.indexOf("await pushMockAttempt(attempt)");
+  assert.ok(resultNavigation >= 0 && resultNavigation < cloudSave);
+  assert.match(flow, /label: "Retry"[\s\S]*?pushMockAttempt\(attempt\)/);
+});
+
+test("mock flow uses its dedicated content widths and counts legacy missing answers correctly", async () => {
+  const flow = await read("../src/components/mock-test-flow.tsx");
+  const router = await read("../src/routes/index.tsx");
+  assert.match(flow, /const SCREEN = "mx-auto w-full max-w-\[52rem\] px-4 sm:px-6"/);
+  assert.match(flow, /const PROSE = "max-w-\[42rem\]"/);
+  assert.match(flow, /answers\.filter\(\(a\) => a !== null && a !== undefined\)\.length/);
+  assert.match(router, /const flowScreen = examFocus \|\| view === "mock-config" \|\| view === "mock-result"/);
+});
+
 
 test("peer share use limits are claimed atomically and failed claims roll back copies", async () => {
   const server = await read("../src/lib/library.server.ts");

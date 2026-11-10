@@ -181,8 +181,11 @@ function Router() {
     });
   }, [view]);
 
+  // Keep one leave guard across generation and the active attempt. Transitioning
+  // from mock-gen to mock-run must not tear down and recreate the history entry.
+  const inExamView = view === "mock-run" || view === "mock-gen";
   useEffect(() => {
-    if (view !== "mock-run" && view !== "mock-gen") {
+    if (!inExamView) {
       setLeaveTestOpen(false);
       return;
     }
@@ -202,7 +205,7 @@ function Router() {
       window.removeEventListener("popstate", handlePopState);
       if (window.history.state?.__trueFluencyMockBackGuard) window.history.back();
     };
-  }, [view]);
+  }, [inExamView]);
   // Squad sends the student back to /?payment_ref=...: show the payment check instead of the home screen.
   useEffect(() => {
     if (authPending || step !== "dashboard") return;
@@ -289,9 +292,10 @@ function Router() {
     }
   })();
 
-  // Mock run and review stay a narrow single column at every width so the
-  // exam surface matches mobile exactly.
+  // Mock run and review stay a focused single column at every width.
   const examFocus = view === "mock-run" || view === "mock-gen" || view === "attempt-review";
+  // Each mock-flow screen sizes its own column and gutter.
+  const flowScreen = examFocus || view === "mock-config" || view === "mock-result";
   const currentRootTab = rootTabFor(view);
 
   return (
@@ -302,7 +306,7 @@ function Router() {
         data-tab-swipe-stage
         className={cn(
           hidesTabBar(view) ? undefined : "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-8 overflow-x-clip",
-          !examFocus && "app-stage-wide",
+          !flowScreen && "app-stage-wide",
           "tab-swipe-stage relative overflow-x-hidden",
         )}
       >

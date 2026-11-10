@@ -31,6 +31,11 @@ import { createMockShare } from "@/lib/mock-sharing.functions";
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = EXAM_MAX_QUESTIONS;
 
+/* Shared geometry for the mock-test screens. */
+const SCREEN = "mx-auto w-full max-w-[52rem] px-4 sm:px-6";
+const PROSE = "max-w-[42rem]";
+const STATUS = "mx-auto flex min-h-screen w-full max-w-[40rem] flex-col justify-center px-4 sm:px-6";
+
 /* ---------- types ---------- */
 
 export type AIQuestion = {
@@ -93,6 +98,18 @@ export function MockGenerationScreen() {
   const maxSourceFilesRef = useRef(maxSourceFiles(genAccess?.tier));
   maxSourceFilesRef.current = maxSourceFiles(genAccess?.tier);
   const quoteCycleStartedRef = useRef(Date.now());
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const aliveRef = useRef(true);
+  const navTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      if (navTimerRef.current !== null) window.clearTimeout(navTimerRef.current);
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -235,6 +252,10 @@ export function MockGenerationScreen() {
           throw new Error("No questions returned from AI");
         }
 
+        // The student may leave while generation is still running. Keep the
+        // backend job resumable, but do not save a test they chose to abandon.
+        if (!aliveRef.current) return;
+
         clearInterval(animId);
         setPct(100);
 
@@ -261,7 +282,7 @@ export function MockGenerationScreen() {
 
         update({
           aiQuestionsByCourse: {
-            ...profile.aiQuestionsByCourse,
+            ...profileRef.current.aiQuestionsByCourse,
             [course.code]: questions,
           },
           inProgressTest: {
@@ -284,13 +305,16 @@ export function MockGenerationScreen() {
         const quoteFinishDelay = reduceMotion
           ? 400
           : Math.max(400, QUOTE_CYCLE_MS - (elapsedInQuoteCycle % QUOTE_CYCLE_MS));
-        setTimeout(() => {
+        navTimerRef.current = window.setTimeout(() => {
+          if (!aliveRef.current) return;
           navigate("mock-run", { courseCode: course.code });
         }, quoteFinishDelay);
 
       } catch (e: unknown) {
         clearInterval(animId);
-        setError(e instanceof Error ? e.message : "Something went wrong generating your mock.");
+        if (aliveRef.current) {
+          setError(e instanceof Error ? e.message : "Something went wrong generating your mock.");
+        }
       } finally {
         inFlightRef.current = false;
       }
@@ -305,7 +329,7 @@ export function MockGenerationScreen() {
   if (refused) {
     return (
       <div className="study-utility-page min-h-screen">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+        <div className={STATUS}>
           <PaywallNotice
             feature="mock_sets"
             verdict={refused}
@@ -320,7 +344,7 @@ export function MockGenerationScreen() {
   if (error) {
     return (
       <div className="study-utility-page min-h-screen">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+        <div className={STATUS}>
           <ErrorCard
             onAction={() => {
               // Re-issue the same request rather than dumping the student back
@@ -341,7 +365,7 @@ export function MockGenerationScreen() {
 
   return (
     <div className="study-utility-page min-h-screen">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+      <div className={STATUS}>
         <div className="absolute left-5 top-6">
           <HeaderLogo />
         </div>
@@ -622,7 +646,7 @@ export function MockConfigScreen() {
 
   return (
     <div className="study-utility-page min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+      <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
@@ -790,22 +814,37 @@ export function MockConfigScreen() {
           </button>
         </div>
 
-        <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
-          <Zap className="mr-2 h-4 w-4" />
-          <span className="flex flex-col items-start leading-tight">
-            <span className="text-base font-semibold">Generate Mock Test</span>
-            <span className="text-[11px] font-normal opacity-90">
-              {count} questions · {minutes} min · {difficultyLabel}
-              {excluded.length > 0 ? ` · ${topicFocus.length} of ${ALL_TOPICS.length} topics` : ""}
+        {profile.inProgressTest ? (
+          <div className="mt-5 rounded-2xl border border-accent/40 bg-accent/10 p-4">
+            <div className="text-sm font-semibold text-foreground">
+              {canonicalCourseCode(profile.inProgressTest.courseCode)} test in progress
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your answers and remaining time are saved. Finish or submit that test before starting a new set.
+            </p>
+            <Button
+              size="lg"
+              className="mt-3 w-full"
+              onClick={() => {
+                const inProgress = profile.inProgressTest;
+                if (inProgress) navigate("mock-run", { courseCode: inProgress.courseCode });
+              }}
+            >
+              Resume test
+            </Button>
+          </div>
+        ) : (
+          <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
+            <Zap className="mr-2 h-4 w-4" />
+            <span className="flex flex-col items-start leading-tight">
+              <span className="text-base font-semibold">Generate Mock Test</span>
+              <span className="text-[11px] font-normal opacity-90">
+                {count} questions · {minutes} min · {difficultyLabel}
+                {excluded.length > 0 ? ` · ${topicFocus.length} of ${ALL_TOPICS.length} topics` : ""}
+              </span>
             </span>
-          </span>
-        </Button>
-
-        {profile.inProgressTest && profile.inProgressTest.courseCode === course.code ? (
-          <p className="mt-3 text-center text-[11px] text-muted-foreground">
-            Generating a new test will discard your current in-progress attempt.
-          </p>
-        ) : null}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -857,6 +896,7 @@ export function MockRunScreen() {
   const [now, setNow] = useState(Date.now());
   const [mapOpen, setMapOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const submittedRef = useRef(false);
   const updateRef = useRef(update);
   const testRef = useRef(t);
@@ -976,6 +1016,10 @@ export function MockRunScreen() {
       masteredCourses: mastered,
     });
 
+    // The result is saved locally first; display it while cloud persistence and
+    // the remaining follow-up work continue in the background.
+    navigate("mock-result", { courseCode: t.courseCode });
+
     // Two writes belong to a submitted mock, in the same handler:
     // 1. the attempt row (History reads this),
     // 2. the study streak when at least five answers were given.
@@ -987,7 +1031,18 @@ export function MockRunScreen() {
       attemptSaved = true;
     } catch (error) {
       console.error("[mock] attempt save failed", error);
-      toast.error("Couldn't save this test to your account.");
+      toast.error("Couldn't save this test to your account.", {
+        duration: 15000,
+        action: {
+          label: "Retry",
+          onClick: () => {
+            void import("@/lib/cloud-sync")
+              .then(({ pushMockAttempt }) => pushMockAttempt(attempt))
+              .then(() => toast.success("Test saved to your account."))
+              .catch(() => toast.error("Still couldn't save. Check your connection and try again."));
+          },
+        },
+      });
     }
 
     // No daily-count write here any more. The generation service already
@@ -1033,7 +1088,6 @@ export function MockRunScreen() {
     );
     if (answeredResults.length > 0) submitResults({ courseCode: t.courseCode, results: answeredResults });
 
-    navigate("mock-result", { courseCode: t.courseCode });
   };
 
   useEffect(() => {
@@ -1053,7 +1107,7 @@ export function MockRunScreen() {
   if (!t) {
     return (
       <div className="study-utility-page min-h-screen">
-        <div className="mx-auto max-w-md px-5 pt-6">
+        <div className={`${SCREEN} pt-6`}>
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <section className="mt-6 rounded-2xl border border-border bg-card p-5">
             <h1 className="font-display text-lg font-semibold text-foreground">No questions yet</h1>
@@ -1074,7 +1128,7 @@ export function MockRunScreen() {
     };
     return (
       <div className="study-utility-page min-h-screen">
-        <div className="mx-auto max-w-md px-5 pt-12">
+        <div className="mx-auto w-full max-w-[40rem] px-4 pt-12 sm:px-6">
           <section className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
             <h1 className="font-display text-xl font-semibold text-foreground">Your test is saved</h1>
             <p className="mt-2 text-sm text-muted-foreground">Your answers and remaining time are saved. The timer stays paused until you continue.</p>
@@ -1086,7 +1140,26 @@ export function MockRunScreen() {
     );
   }
 
-  const idx = t.currentIndex;
+  if (questions.length === 0) {
+    return (
+      <div className="study-utility-page min-h-screen">
+        <div className={`${SCREEN} pt-6`}>
+          <section className="mt-6 rounded-2xl border border-border bg-card p-5">
+            <h1 className="font-display text-lg font-semibold text-foreground">This test's questions weren't saved</h1>
+            <p className="mt-2 text-base text-muted-foreground">
+              We couldn't find the questions for this attempt on this device. You can discard it and start a new set.
+            </p>
+            <Button className="mt-4 w-full" onClick={() => { update({ inProgressTest: null }); navigate("mock-tests"); }}>
+              Discard and choose a new set
+            </Button>
+            <Button variant="outline" className="mt-2 w-full" onClick={() => navigate("home")}>Return home</Button>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  const idx = Math.min(t.currentIndex, questions.length - 1);
   const q = questions[idx];
   const answered = t.answers.filter((a) => a !== null && a !== undefined).length;
   const pct = Math.round((remaining / t.durationSec) * 100);
@@ -1106,12 +1179,9 @@ export function MockRunScreen() {
   const ss = remaining % 60;
 
   const submitWithWarning = () => {
-    const left = questions.length - answered;
-    if (left > 0) {
-      const ok = window.confirm(
-        `You still have ${left} unanswered question${left > 1 ? "s" : ""}. Submit anyway?`,
-      );
-      if (!ok) return;
+    if (questions.length - answered > 0) {
+      setConfirmOpen(true);
+      return;
     }
     void submit();
   };
@@ -1123,7 +1193,7 @@ export function MockRunScreen() {
 
   return (
     <div className="study-utility-page min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-24 pt-6">
+      <div className={`${SCREEN} pb-8 pt-6`}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <HeaderLogo />
@@ -1141,7 +1211,7 @@ export function MockRunScreen() {
             >
               <CalcIcon className="h-4 w-4" />
             </button>
-            <div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`} className={cn("rounded-xl border border-border bg-card px-3 py-2 font-display text-xl font-semibold tabular-nums shadow-sm", timerColor)}>
+            <div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`} className={cn("min-w-[4.5rem] rounded-xl border border-border bg-card px-3 py-2 text-center font-display text-xl font-semibold tabular-nums shadow-sm", timerColor)}>
               {mm}:{String(ss).padStart(2, "0")}
             </div>
           </div>
@@ -1164,12 +1234,12 @@ export function MockRunScreen() {
 
 
         {q ? (
-          <section aria-label={`Question ${idx + 1}`} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <section aria-label={`Question ${idx + 1}`} className="min-h-[24rem] rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{q.topic}</div>
               <span role="progressbar" aria-label="Practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((idx + 1) / questions.length) * 100)} aria-valuetext={`Question ${idx + 1} of ${questions.length}`} className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}% complete</span>
             </div>
-            <div className="break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground"><MathText>{q.question}</MathText></div>
+            <div className={`${PROSE} break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground`}><MathText>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -1213,7 +1283,7 @@ export function MockRunScreen() {
               const answerText = q.options[q.correct_index] ?? "the correct option";
               return (
                 <section
-                  className="mt-4 space-y-3 rounded-xl border border-border bg-background p-4"
+                  className={`mt-4 space-y-3 rounded-xl border border-border bg-background p-4 ${PROSE}`}
                   aria-live="polite"
                   aria-atomic="true"
                   aria-label="Answer feedback"
@@ -1272,7 +1342,7 @@ export function MockRunScreen() {
         ) : null}
 
         <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur">
-          <div className="mx-auto flex max-w-md items-center gap-2 px-5 py-3">
+          <div className={`${SCREEN} flex items-center gap-2 py-3`}>
             <Button variant="outline" size="lg" onClick={() => move(-1)} disabled={idx === 0} className="flex-1">
               <ChevronLeft className="mr-1 h-4 w-4" /> Prev
             </Button>
@@ -1301,6 +1371,18 @@ export function MockRunScreen() {
         ) : null}
 
         {calcOpen ? <CalculatorSheet onClose={() => setCalcOpen(false)} /> : null}
+        {confirmOpen ? (
+          <SubmitConfirmSheet
+            left={questions.length - answered}
+            onClose={() => setConfirmOpen(false)}
+            onReview={() => {
+              const first = t.answers.findIndex((answer) => answer === null || answer === undefined);
+              setConfirmOpen(false);
+              if (first >= 0) update({ inProgressTest: { ...t, currentIndex: first } });
+            }}
+            onSubmit={() => { setConfirmOpen(false); void submit(); }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -1315,7 +1397,7 @@ function QuestionMapSheet({ total, answers, current, onJump, onClose, onSubmit }
   onClose: () => void;
   onSubmit: () => void;
 }) {
-  const answered = answers.filter((a) => a !== null).length;
+  const answered = answers.filter((a) => a !== null && a !== undefined).length;
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
       <div
@@ -1352,6 +1434,34 @@ function QuestionMapSheet({ total, answers, current, onJump, onClose, onSubmit }
           {answered} answered · {total - answered} left
         </p>
         <Button size="lg" className="mt-3 w-full" onClick={onSubmit}>Submit test</Button>
+      </div>
+    </div>
+  );
+}
+
+function SubmitConfirmSheet({ left, onReview, onSubmit, onClose }: {
+  left: number;
+  onReview: () => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="submit-confirm-title"
+        className="mx-auto w-full max-w-md rounded-t-3xl border border-border bg-card p-5 shadow-lg"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="submit-confirm-title" className="text-lg font-semibold text-foreground">
+          {left} question{left > 1 ? "s" : ""} not answered
+        </h2>
+        <p className="mt-1 text-base text-muted-foreground">
+          Blank answers count as missed. Your answers are saved either way.
+        </p>
+        <Button size="lg" className="mt-4 w-full" onClick={onReview}>Go to first unanswered</Button>
+        <Button size="lg" variant="outline" className="mt-2 w-full" onClick={onSubmit}>Submit anyway</Button>
       </div>
     </div>
   );
@@ -1488,7 +1598,7 @@ export function MockResultScreen() {
   if (!attempt) {
     return (
       <div className="study-utility-page min-h-screen">
-        <div className="mx-auto max-w-md px-5 pt-6">
+        <div className={`${SCREEN} pt-6`}>
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No result to show.</p>
         </div>
@@ -1510,7 +1620,7 @@ export function MockResultScreen() {
 
   return (
     <div className="study-utility-page min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+      <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
         </div>
@@ -1623,7 +1733,7 @@ export function AttemptReviewScreen() {
   if (!attempt) {
     return (
       <div className="study-utility-page min-h-screen">
-        <div className="mx-auto max-w-md px-5 pt-6">
+        <div className={`${SCREEN} pt-6`}>
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">That attempt is no longer available.</p>
         </div>
@@ -1636,7 +1746,7 @@ export function AttemptReviewScreen() {
 
   return (
     <div className="study-utility-page min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-6">
+      <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <button
