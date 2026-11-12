@@ -42,6 +42,12 @@ import { useSwipeTabs } from "@/hooks/use-swipe-tabs";
 import { readPaymentReturn } from "@/lib/billing-api";
 import { warmBackend } from "@/lib/backend-api";
 
+const MemoHomeScreen = memo(HomeScreen);
+const MemoMockTestsScreen = memo(MockTestsScreen);
+const MemoLibraryScreen = memo(LibraryScreen);
+const MemoChatbotScreen = memo(ChatbotScreen);
+const MemoAccountScreen = memo(AccountScreen);
+
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
@@ -148,11 +154,11 @@ const RootTabs = memo(function RootTabs({
             className={preview ? "pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background" : undefined}
             style={preview && previewSide ? { left: previewSide === "right" ? "100%" : "-100%" } : undefined}
           >
-            {tab === "home" ? <HomeScreen active={active} />
-              : tab === "mock-tests" ? <MockTestsScreen active={active} />
-                : tab === "library" ? <LibraryScreen active={active} />
-                  : tab === "chatbot" ? <ChatbotScreen active={active} />
-                    : <AccountScreen />}
+            {tab === "home" ? <MemoHomeScreen active={active} />
+              : tab === "mock-tests" ? <MemoMockTestsScreen active={active} />
+                : tab === "library" ? <MemoLibraryScreen active={active} />
+                  : tab === "chatbot" ? <MemoChatbotScreen active={active} />
+                    : <MemoAccountScreen />}
           </div>
         );
       })}

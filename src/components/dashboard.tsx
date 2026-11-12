@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { useProfile } from "@/lib/profile-store";
+import { useProfileData } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight, Flame, Snowflake, Quote as QuoteIcon, Lightbulb, Calculator, Target,
@@ -96,7 +96,7 @@ function PlanChip() {
 }
 
 function ChipShell({ children }: { children: React.ReactNode }) {
-  const { navigate } = useProfile();
+  const { navigate } = useProfileData();
   return (
     <button
       onClick={() => navigate("upgrade")}
@@ -120,7 +120,7 @@ const TYPE_CHIP: Record<string, { label: string; color: string; textColor: strin
 
 /** Latest file this student uploaded themselves. Peer copies never appear here. */
 function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
-  const { navigate } = useProfile();
+  const { navigate } = useProfileData();
 
   if (!latest) return null;
   const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
@@ -171,7 +171,7 @@ function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
  * do next. It only points at screens that already exist.
  */
 function NextStepCard({ ownMaterials }: { ownMaterials: CourseMaterial[] | null }) {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const ownCount = ownMaterials?.length ?? null;
   const firstOwn = ownMaterials?.[0] ?? null;
 
@@ -281,7 +281,7 @@ function NextStepCard({ ownMaterials }: { ownMaterials: CourseMaterial[] | null 
 
 /** Cached prediction for the student's own uploads. Never triggers an analyze run. */
 function StrengthsCard() {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const entry = profile.courses
     .map((c) => ({ code: c.code, analysis: profile.courseTopicAnalysis[c.code] }))
     .find((x) => (x.analysis?.topics.length ?? 0) > 0);
@@ -313,7 +313,7 @@ function StrengthsCard() {
 }
 
 export function HomeScreen({ active = true }: { active?: boolean } = {}) {
-  const { profile, navigate, hydrated } = useProfile();
+  const { profile, navigate, hydrated } = useProfileData();
   const { access } = useEntitlement();
   const [reminderOpen, setReminderOpen] = useState(false);
   const [studyMaterials, setStudyMaterials] = useState<CourseMaterial[] | null>(null);
@@ -596,7 +596,7 @@ function QuickLink({
 }
 
 function CgpaStatusCard() {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const actual = profile.cgpaActual;
   const plan = profile.cgpaPlan;
 

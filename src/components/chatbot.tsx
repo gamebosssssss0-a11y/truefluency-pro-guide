@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
-import { useProfile } from "@/lib/profile-store";
+import { useNavigation, useProfileData } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
@@ -157,7 +157,8 @@ function speechSupported() {
 }
 
 export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment, active = true }: { embedded?: boolean; pageAttachment?: PageAttachment | null; active?: boolean } = {}) {
-  const { profile, activeCourseCode, navigate, view } = useProfile();
+  const { profile, activeCourseCode, navigate } = useProfileData();
+  const { view } = useNavigation();
   const { access, refresh: refreshAccess } = useEntitlement();
   // Opening the chat is the moment to wake a sleeping (free-plan) backend, so
   // it is already up by the time the first message is sent.

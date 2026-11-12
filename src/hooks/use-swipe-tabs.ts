@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useProfile, type AppView } from "@/lib/profile-store";
+import { useNavigation, type AppView } from "@/lib/profile-store";
 
 /** The five root tabs, in the order the tab bar shows them. */
 const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
@@ -17,7 +17,7 @@ function rootIndex(view: AppView): number {
 
 /** Root-tab gestures follow the finger, with the adjacent tab rendered beside the current one. */
 export function useSwipeTabs(enabled = true): SwipePreview | null {
-  const { view, navigate } = useProfile();
+  const { view, navigate } = useNavigation();
   const index = rootIndex(view);
   const navigateRef = useRef(navigate);
   const [preview, setPreview] = useState<SwipePreview | null>(null);

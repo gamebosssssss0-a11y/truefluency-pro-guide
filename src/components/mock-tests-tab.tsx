@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { canonicalCourseCode } from "@/lib/course-code";
-import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-store";
+import { useProfile, useProfileData, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { MathText } from "@/components/math-text";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +25,7 @@ import { maxSourceFiles } from "@/lib/entitlements";
 let practiceMaterialCache: Record<string, string | null> = {};
 
 export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const { access: planAccess } = useEntitlement();
   const sourceLimit = maxSourceFiles(planAccess?.tier);
   const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>(() => ({ ...practiceMaterialCache }));
@@ -226,7 +226,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
 }
 
 function AttemptRow({ attempt }: { attempt: MockAttempt }) {
-  const { navigate } = useProfile();
+  const { navigate } = useProfileData();
   return (
     <button
       onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
@@ -260,7 +260,7 @@ function AttemptRow({ attempt }: { attempt: MockAttempt }) {
 type HistoryTab = "attempts" | "progress";
 
 export function TestHistoryScreen() {
-  const { profile, navigate, update, activeCourseCode } = useProfile();
+  const { profile, navigate, update, activeCourseCode } = useProfileData();
   const [tab, setTab] = useState<HistoryTab>("attempts");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { useProfile } from "@/lib/profile-store";
+import { useProfileData } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -32,7 +32,7 @@ import { deleteAccount } from "@/lib/backend-api";
  * shown to coursemates on a file where they ticked "show my photo".
  */
 function AccountPhotoCard() {
-  const { profile } = useProfile();
+  const { profile } = useProfileData();
   const [url, setUrl] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -122,7 +122,7 @@ function AccountPhotoCard() {
 const extensionAvailable = false;
 
 export function AccountScreen() {
-  const { profile, navigate, update, resetSetup } = useProfile();
+  const { profile, navigate, update, resetSetup } = useProfileData();
   const { theme } = useTheme();
   const { access } = useEntitlement();
   const planLabel =
@@ -615,7 +615,7 @@ function Row({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: strin
 /* -------- All my uploads screen -------- */
 
 export function AllUploadsScreen() {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const [items, setItems] = useState<CourseMaterial[] | null>(null);
   const activeCodes = new Set(profile.courses.map((c) => c.code));
 

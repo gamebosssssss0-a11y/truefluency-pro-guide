@@ -25,7 +25,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAvatar } from "@/lib/avatar";
 import { deleteMaterial } from "@/lib/course-materials";
-import { useProfile, type AIQuestion } from "@/lib/profile-store";
+import { useProfileData, type AIQuestion } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { presignMaterialDownload } from "@/lib/storage.functions";
@@ -164,7 +164,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
-  const { navigate, profile, activeCourseCode, update } = useProfile();
+  const { navigate, profile, activeCourseCode, update } = useProfileData();
   const [rail, setRail] = useState<Rail>("locker");
   const [locker, setLocker] = useState<LockerFile[] | null>(null);
   const [lockerError, setLockerError] = useState(false);

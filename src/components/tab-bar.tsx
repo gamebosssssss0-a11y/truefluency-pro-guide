@@ -1,4 +1,4 @@
-import { useProfile, type AppView, type TabKey } from "@/lib/profile-store";
+import { useNavigation, type AppView, type TabKey } from "@/lib/profile-store";
 import { Home, ClipboardList, Library, MessageCircle, User } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ export function hidesTabBar(view: AppView): boolean {
  * tab bar, no extra items: this is a layout change, not a new feature.
  */
 export function TopNavBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
-  const { view, navigate } = useProfile();
+  const { view, navigate } = useNavigation();
   const active = tabForView(highlightedView ?? view);
 
   if (hidesTabBar(view)) return null;
@@ -112,7 +112,7 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
 }
 
 export function BottomTabBar() {
-  const { view, navigate } = useProfile();
+  const { view, navigate } = useNavigation();
   const active = tabForView(view);
   const activeIndex = TABS.findIndex((tab) => tab.key === active);
 

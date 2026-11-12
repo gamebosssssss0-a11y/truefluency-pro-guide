@@ -441,7 +441,11 @@ type Ctx = {
   resetSetup: () => void;
 };
 
-const StoreCtx = createContext<Ctx | null>(null);
+type ProfileDataCtx = Omit<Ctx, "step" | "view">;
+type NavigationCtx = Pick<Ctx, "step" | "view" | "navigate" | "go">;
+
+const ProfileDataContext = createContext<ProfileDataCtx | null>(null);
+const NavigationContext = createContext<NavigationCtx | null>(null);
 const KEY = "truefluency-profile-v2";
 const ONBOARDING_RESUME_STEPS: OnboardingStep[] = [
   "disclaimer", "disclaimer-blocked", "identity", "goal", "timeline", "study-pref",
@@ -608,6 +612,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const historySessionId = useRef<string | null>(null);
   const viewRef = useRef(view);
   viewRef.current = view;
+  const routeRef = useRef({ view, activeCourseCode, activeAttemptId, activeDeckId });
+  routeRef.current = { view, activeCourseCode, activeAttemptId, activeDeckId };
 
   useEffect(() => {
     let cancelled = false;
@@ -996,6 +1002,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(`${KEY}:onboarding-step`);
       } catch { /* ignore unavailable local storage */ }
       setView("home");
+      routeRef.current = { ...routeRef.current, view: "home" };
       writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
       try {
         if (sessionStorage.getItem("truefluency-google-oauth-floor-pending") === "1") {
@@ -1017,15 +1024,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     v: AppView,
     opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null; replace?: boolean },
   ) => {
-    const nextCourseCode = opts && "courseCode" in opts ? opts.courseCode ?? null : activeCourseCode;
-    const nextAttemptId = opts && "attemptId" in opts ? opts.attemptId ?? null : activeAttemptId;
-    const nextDeckId = opts && "deckId" in opts ? opts.deckId ?? null : activeDeckId;
+    const current = routeRef.current;
+    const nextCourseCode = opts && "courseCode" in opts ? opts.courseCode ?? null : current.activeCourseCode;
+    const nextAttemptId = opts && "attemptId" in opts ? opts.attemptId ?? null : current.activeAttemptId;
+    const nextDeckId = opts && "deckId" in opts ? opts.deckId ?? null : current.activeDeckId;
     if (
-      view === v &&
-      activeCourseCode === nextCourseCode &&
-      activeAttemptId === nextAttemptId &&
-      activeDeckId === nextDeckId
+      current.view === v &&
+      current.activeCourseCode === nextCourseCode &&
+      current.activeAttemptId === nextAttemptId &&
+      current.activeDeckId === nextDeckId
     ) return;
+    routeRef.current = { view: v, activeCourseCode: nextCourseCode, activeAttemptId: nextAttemptId, activeDeckId: nextDeckId };
     setView(v);
     writeAppLocation(v, {
       courseCode: nextCourseCode,
@@ -1035,7 +1044,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveCourseCode(nextCourseCode);
     setActiveAttemptId(nextAttemptId);
     setActiveDeckId(nextDeckId);
-  }, [view, activeCourseCode, activeAttemptId, activeDeckId]);
+  }, []);
   const resetSetup = useCallback(() => {
     setProfile(emptyProfile);
     setStep("splash");
@@ -1043,6 +1052,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveCourseCode(null);
     setActiveAttemptId(null);
     setActiveDeckId(null);
+    routeRef.current = { view: "home", activeCourseCode: null, activeAttemptId: null, activeDeckId: null };
     try {
       if (storageOwnerIdRef.current) {
         localStorage.removeItem(profileCacheKey(storageOwnerIdRef.current));
@@ -1058,10 +1068,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo<Ctx>(() => ({
+  const profileData = useMemo<ProfileDataCtx>(() => ({
     profile,
-    step,
-    view,
     activeCourseCode,
     activeAttemptId,
     activeDeckId,
@@ -1071,18 +1079,35 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     go,
     navigate,
     resetSetup,
-  }), [profile, step, view, activeCourseCode, activeAttemptId, activeDeckId, authPending, hydrated, update, go, navigate, resetSetup]);
+  }), [profile, activeCourseCode, activeAttemptId, activeDeckId, authPending, hydrated, update, go, navigate, resetSetup]);
+  const navigation = useMemo<NavigationCtx>(() => ({ step, view, navigate, go }), [step, view, navigate, go]);
 
   return (
-    <StoreCtx.Provider value={value}>
-      {hydrated ? children : null}
-    </StoreCtx.Provider>
+    <ProfileDataContext.Provider value={profileData}>
+      <NavigationContext.Provider value={navigation}>
+        {hydrated ? children : null}
+      </NavigationContext.Provider>
+    </ProfileDataContext.Provider>
   );
 }
 
 export function useProfile() {
-  const ctx = useContext(StoreCtx);
-  if (!ctx) throw new Error("useProfile must be used inside ProfileProvider");
+  const profile = useProfileData();
+  const navigation = useNavigation();
+  return { ...profile, ...navigation };
+}
+
+/** Read student data and stable actions without subscribing to route changes. */
+export function useProfileData() {
+  const ctx = useContext(ProfileDataContext);
+  if (!ctx) throw new Error("useProfileData must be used inside ProfileProvider");
+  return ctx;
+}
+
+/** Subscribe to route state without subscribing to student profile updates. */
+export function useNavigation() {
+  const ctx = useContext(NavigationContext);
+  if (!ctx) throw new Error("useNavigation must be used inside ProfileProvider");
   return ctx;
 }
 

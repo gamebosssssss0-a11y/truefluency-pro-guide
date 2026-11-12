@@ -126,7 +126,7 @@ The source report says the listed findings were open at `e1f12bb`. PR #55 is the
 Implemented on PR #55; preview and runtime verification are still pending:
 
 - H6: Home owns one materials request and shares its filtered results with its cards.
-- P1 (partial): provider callbacks and value are memoized, and root tabs are memoized. The screens still consume the combined profile/navigation context, so confirm hidden-tab render counts before considering P1 complete.
+- P1 (implementation): provider values are split between student data and route state; route actions are stable; the five root screens are memoized; Home, Practice, My Files, and Account subscribe to student data without subscribing to route changes. Chat alone subscribes to the current view because its thread lifecycle depends on it. Render-count profiling is still needed before calling the acceptance criterion verified.
 - P2: swipe progress paints the tab light in `requestAnimationFrame`; React state changes only when the neighboring tab or desktop highlight changes.
 - P3: Chat stays mounted as its keyed root tab; the separate prefetch instance was removed.
 - P4/P5: adjacent tabs warm during idle time and the swipe preview renders the actual mounted screen beside the current tab; the existing layout-effect stage reset is retained.
