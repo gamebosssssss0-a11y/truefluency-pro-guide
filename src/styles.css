@@ -784,6 +784,11 @@
 }
 
 @media (max-width: 767px) {
+  [data-mobile-tab-bar] {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+
   /* Prevent mobile browser zoom on focus without changing desktop typography. */
   :where(input, select, textarea) {
     font-size: max(16px, 1em);

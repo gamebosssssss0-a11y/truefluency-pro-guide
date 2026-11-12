@@ -65,7 +65,7 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
       aria-label="Desktop primary navigation"
       className="sticky top-0 z-40 hidden border-b border-border bg-background md:block"
     >
-      <div className="mx-auto flex w-full max-w-[60rem] items-center gap-6 px-6 py-3">
+      <div className="mx-auto flex w-full max-w-[52rem] items-center gap-6 px-6 py-3">
         <button
           type="button"
           onClick={() => navigate("home", { replace: true })}
@@ -122,10 +122,10 @@ export function BottomTabBar() {
     <nav
       aria-label="Mobile navigation"
       data-mobile-tab-bar=""
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <div
-        className="relative mx-auto flex max-w-md items-stretch"
+        className="relative mx-auto flex w-full max-w-[52rem] items-stretch"
       >
         <span
           aria-hidden="true"
@@ -151,7 +151,7 @@ export function BottomTabBar() {
               )}
             >
               <t.icon className={cn("h-5 w-5", on && "stroke-[2.5]")} />
-              <span className={cn("text-[10px] leading-none", on ? "font-semibold" : "font-medium")}>
+              <span className={cn("text-xs leading-none", on ? "font-semibold" : "font-medium")}>
                 {t.label}
               </span>
               <span className="h-0.5 w-6 rounded-full bg-transparent" />
