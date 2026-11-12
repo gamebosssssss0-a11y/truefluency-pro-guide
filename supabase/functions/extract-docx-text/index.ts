@@ -8,7 +8,7 @@
 // as { status: "failed", error }.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import mammoth from "https://esm.sh/mammoth@1.8.0";
+import * as mammoth from "https://esm.sh/mammoth@1.8.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

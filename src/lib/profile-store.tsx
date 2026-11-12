@@ -1114,9 +1114,17 @@ export function useNavigation() {
 /* ---------- Milestone helpers ---------- */
 export function averageForCourse(p: Profile, code: string): number | null {
   // Tiny attempts are useful as practice, but aren't a reliable course-level signal.
-  const rel = p.attempts.filter((a) => a.courseCode === code && (a.answers
-    ? a.answers.filter((answer) => answer !== null && answer !== undefined).length >= 5
-    : a.total >= 5));
+  const rel = p.attempts.filter((attempt) => {
+    if (attempt.courseCode !== code) return false;
+    const invalidIndexes = new Set([
+      ...(attempt.invalidQuestionIndexes ?? []),
+      ...(attempt.questions ?? []).flatMap((question, index) => question.confirmedInvalid ? [index] : []),
+    ]);
+    const validAnswerCount = attempt.answers
+      ? attempt.answers.filter((answer, index) => !invalidIndexes.has(index) && answer !== null && answer !== undefined).length
+      : Math.max(0, attempt.total - invalidIndexes.size);
+    return validAnswerCount >= 5;
+  });
   if (!rel.length) return null;
-  return Math.round(rel.reduce((s, a) => s + a.score, 0) / rel.length);
+  return Math.round(rel.reduce((sum, attempt) => sum + (Number.isFinite(attempt.score) ? attempt.score : 0), 0) / rel.length);
 }

@@ -370,6 +370,7 @@ export function FlashcardsReviewScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deckSourceFileName, setDeckSourceFileName] = useState<string | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressCardClickRef = useRef(false);
   const [reviewMode] = useState<"due" | "new" | "cram">(() => {
@@ -542,36 +543,50 @@ export function FlashcardsReviewScreen() {
           </div>
         ) : (
           <>
-            {/* One huge card; tap flips front → navy back */}
-            <button
-              type="button"
-              onPointerDown={(event) => { swipeStartRef.current = { x: event.clientX, y: event.clientY }; }}
-              onPointerUp={handleCardPointerUp}
-              onPointerCancel={() => { swipeStartRef.current = null; }}
-              onClick={() => setFlipped((wasFlipped) => {
-                if (suppressCardClickRef.current) return wasFlipped;
-                if (!wasFlipped) setHasRevealedAnswer(true);
-                return !wasFlipped;
-              })}
-              className={
-                "flex min-h-[22rem] w-full flex-col items-center justify-between rounded-3xl border p-8 text-center transition " +
-                (flipped ? "border-navy bg-navy" : "border-border bg-card")
-              }
-            >
-              <span className="flex-1" />
-              {flipped ? (
-                <div className="font-display text-xl font-semibold leading-relaxed text-cream"><RichText>{current.back}</RichText></div>
-              ) : (
-                <div className="font-display text-2xl font-semibold leading-snug text-foreground"><RichText>{current.front}</RichText></div>
-              )}
-              <span className={"mt-3 text-left text-[11px] " + (flipped ? "text-cream/65" : "text-muted-foreground")}>
-                {current.source_file_name || deckSourceFileName || "Course file"} · {current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}
-              </span>
-              <span className="flex-1" />
-              <span className={"text-xs " + (flipped ? "text-cream/60" : "text-muted-foreground")}>
-                {flipped ? "From your upload, not an official mark scheme." : "Tap to flip"}
-              </span>
-            </button>
+            {/* A two-sided card that flips without hiding its source details. */}
+            <div className="flashcard-3d-stage w-full">
+              <button
+                type="button"
+                aria-label={flipped ? "Show flashcard question" : "Show flashcard answer"}
+                aria-pressed={flipped}
+                onPointerDown={(event) => { swipeStartRef.current = { x: event.clientX, y: event.clientY }; }}
+                onPointerUp={handleCardPointerUp}
+                onPointerCancel={() => { swipeStartRef.current = null; }}
+                onClick={() => setFlipped((wasFlipped) => {
+                  if (suppressCardClickRef.current) return wasFlipped;
+                  if (!wasFlipped) setHasRevealedAnswer(true);
+                  return !wasFlipped;
+                })}
+                className={`flashcard-3d-card relative min-h-[22rem] w-full rounded-3xl text-center ${flipped ? "is-flipped" : ""}`}
+              >
+                <div
+                  aria-hidden={flipped}
+                  className="flashcard-face absolute inset-0 flex flex-col justify-between rounded-3xl border border-border bg-card p-8 text-foreground"
+                >
+                  <span className="flex-1" />
+                  <div className="font-display text-2xl font-semibold leading-snug"><RichText>{current.front}</RichText></div>
+                  <span className="flex-1" />
+                  <div className="flex items-center justify-between gap-2 text-left text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">{current.source_file_name || deckSourceFileName || "Course file"}</span>
+                    <span className="shrink-0">{current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}</span>
+                  </div>
+                  <span className="mt-2 text-xs text-muted-foreground">Tap to flip</span>
+                </div>
+                <div
+                  aria-hidden={!flipped}
+                  className="flashcard-face flashcard-back absolute inset-0 flex flex-col justify-between rounded-3xl border border-primary bg-primary p-8 text-primary-foreground"
+                >
+                  <span className="flex-1" />
+                  <div className="font-display text-xl font-semibold leading-relaxed text-cream"><RichText>{current.back}</RichText></div>
+                  <span className="flex-1" />
+                  <div className="flex items-center justify-between gap-2 text-left text-xs text-cream/70">
+                    <span className="min-w-0 truncate">{current.source_file_name || deckSourceFileName || "Course file"}</span>
+                    <span className="shrink-0">{current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}</span>
+                  </div>
+                  <span className="mt-2 text-xs text-cream/70">From your notes</span>
+                </div>
+              </button>
+            </div>
 
             {reviewMode === "cram" ? (
               <button type="button" onClick={movePastCramCard} className="mt-6 h-12 w-full rounded-full bg-amber text-sm font-semibold text-cream">Next</button>

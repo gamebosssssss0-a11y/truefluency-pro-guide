@@ -55,7 +55,7 @@ test("library empty state explains how to upload and loading uses skeleton cards
   assert.match(library, /Nothing in your locker yet\. Upload a past paper or lecture note/);
   assert.match(library, /aria-label="Loading your files"/);
   assert.match(library, /aria-label="Loading your files"/);
-  assert.match(library, /h-20 rounded-xl border border-border bg-card/);
+  assert.match(library, /locker-skeleton-row.*h-20.*rounded-xl.*border.*bg-card/);
 });
 
 
@@ -113,7 +113,8 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(router, /data-chat-thread/);
   assert.match(chat, /thread\.scrollTop = 0/);
   assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
-  assert.match(chat, /line-clamp-2 whitespace-normal break-words text-left leading-4/);
+  assert.match(chat, /whitespace-normal break-words text-left leading-4/);
+  assert.match(chat, /line-clamp-2/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
   assert.match(styles, /\.study-chat-screen\s*\{[\s\S]*?height: 100%/);
   assert.match(styles, /--accent: #E0B458/);
@@ -150,7 +151,7 @@ test("splash and loading animations remain enabled and splash plays on every app
 test("chat thinking animation remains visible independently of the empty-thread branch", async () => {
   const chat = await read("../src/components/chatbot.tsx");
   const indicator = chat.indexOf("          {isSending && streamingBubbleId === null ? (");
-  const thinking = chat.indexOf("thinking-shimmer font-medium text-foreground");
+  const thinking = chat.indexOf("chat-thinking-label font-medium");
   const anchor = chat.indexOf('<div ref={scrollAnchorRef} />');
   assert.notEqual(indicator, -1);
   assert.notEqual(thinking, -1);
@@ -322,7 +323,8 @@ test("mobile chat composer uses the tab-nav-reserved viewport and message text w
 test("Study Chat warms and prefetches its selected thread before the tab is opened", async () => {
   const chat = await read("../src/components/chatbot.tsx");
   const router = await read("../src/routes/index.tsx");
-  assert.ok(router.includes("<ChatbotScreen active={false} />"));
+  assert.match(router, /const active = activeTab === tab/);
+  assert.match(router, /tab === "chatbot" \? <MemoChatbotScreen active=\{active\} \/>/);
   assert.ok(chat.includes("if (!active) {"));
   assert.ok(chat.includes("void warmBackend();"));
   assert.ok(chat.includes("getCourseThread(key).then"));

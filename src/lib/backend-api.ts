@@ -363,7 +363,7 @@ export async function generateMock(
 
   const allowedSourceNames = new Set((input.sourceFiles ?? []).map((f) => f.fileName.trim().toLocaleLowerCase()));
   const questions: AIQuestion[] = raw
-    .map((q, i) => {
+    .map<AIQuestion | null>((q, i) => {
       const o = q as Partial<AIQuestion> & { correct_index?: unknown };
       const options: string[] = Array.isArray(o.options)
         ? (o.options as unknown[]).filter((x): x is string => typeof x === "string")
