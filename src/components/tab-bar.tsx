@@ -57,7 +57,6 @@ export function hidesTabBar(view: AppView): boolean {
 export function TopNavBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
   const { view, navigate } = useProfile();
   const active = tabForView(highlightedView ?? view);
-  const progress = swipeProgress ?? TABS.findIndex((tab) => tab.key === active);
 
   if (hidesTabBar(view)) return null;
 
@@ -112,15 +111,17 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
 
 }
 
-export function BottomTabBar({ highlightedView, swipeProgress, swipeIntensity }: { highlightedView?: AppView | null; swipeProgress?: number; swipeIntensity?: number } = {}) {
+export function BottomTabBar() {
   const { view, navigate } = useProfile();
-  const active = tabForView(highlightedView ?? view);
+  const active = tabForView(view);
+  const activeIndex = TABS.findIndex((tab) => tab.key === active);
 
   if (hidesTabBar(view)) return null;
 
   return (
     <nav
       aria-label="Mobile navigation"
+      data-mobile-tab-bar=""
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background md:hidden"
     >
       <div
@@ -128,11 +129,12 @@ export function BottomTabBar({ highlightedView, swipeProgress, swipeIntensity }:
       >
         <span
           aria-hidden="true"
-          className={cn("pointer-events-none absolute bottom-1 left-0 z-10 h-1 w-6 -translate-x-1/2 rounded-full bg-accent", swipeIntensity ? "transition-none" : "transition-[left,opacity,box-shadow] duration-200")}
+          data-tab-indicator
+          className="pointer-events-none absolute bottom-1 left-0 z-10 h-1 w-6 -translate-x-1/2 rounded-full bg-accent transition-[left,opacity,box-shadow] duration-200"
           style={{
-            left: `${(progress + 0.5) * 20}%`,
-            opacity: 0.35 + (swipeIntensity ?? 0) * 0.65,
-            boxShadow: `0 0 ${4 + (swipeIntensity ?? 0) * 10}px color-mix(in srgb, var(--accent) ${20 + (swipeIntensity ?? 0) * 50}%, transparent)`,
+            left: `${((activeIndex + 0.5) / TABS.length) * 100}%`,
+            opacity: 0.35,
+            boxShadow: "0 0 4px color-mix(in srgb, var(--accent) 20%, transparent)",
           }}
         />
         {TABS.map((t) => {

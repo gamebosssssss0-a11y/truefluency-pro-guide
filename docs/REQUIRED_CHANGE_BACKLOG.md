@@ -120,3 +120,16 @@ The report's recommendations are captured here as project work. Its suggested pa
 ## Audit note
 
 The source report says the listed findings were open at `e1f12bb`. PR #55 is the current implementation branch and overlaps several items. Before taking any item as unfinished, compare its acceptance criteria with the current branch and the report's evidence; preserve the source ID when recording its verified status.
+
+## Current branch progress
+
+Implemented on PR #55; preview and runtime verification are still pending:
+
+- H6: Home owns one materials request and shares its filtered results with its cards.
+- P1 (partial): provider callbacks and value are memoized, and root tabs are memoized. The screens still consume the combined profile/navigation context, so confirm hidden-tab render counts before considering P1 complete.
+- P2: swipe progress paints the tab light in `requestAnimationFrame`; React state changes only when the neighboring tab or desktop highlight changes.
+- P3: Chat stays mounted as its keyed root tab; the separate prefetch instance was removed.
+- P7: local profile serialization is debounced by 250 ms.
+- P8: the PDF viewer and embedded Chat are lazy-loaded when a file preview needs them.
+
+PR3's minimum-answer average and M3's actual generation-error message were already present on the current branch. M8 and the remaining Phase 0 rendering and skeleton items still need a flow-level audit.

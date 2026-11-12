@@ -4,9 +4,7 @@
  * library.functions.ts.
  */
 import { ErrorCard } from "@/components/error-card";
-import { PdfViewer } from "@/components/pdf-viewer";
-import { ChatbotScreen } from "@/components/chatbot";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
 } from "lucide-react";
@@ -35,6 +33,9 @@ import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
   savePeerFile, setMaterialPublished, SHARING_OFFLINE_MESSAGE,
 } from "@/lib/library.functions";
+
+const PdfViewer = lazy(() => import("@/components/pdf-viewer").then((module) => ({ default: module.PdfViewer })));
+const ChatbotScreen = lazy(() => import("@/components/chatbot").then((module) => ({ default: module.ChatbotScreen })));
 
 const READY_MIN_CHARS = 50;
 
@@ -809,16 +810,18 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
               ) : preview?.url && preview.file_type.toLowerCase() === "image" ? (
                 <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
               ) : preview?.url && preview.file_type.toLowerCase() === "pdf" ? (
-                <PdfViewer
-                  url={preview.url}
-                  fileName={preview.file_name}
-                  fileKey={preview.id}
-                  onClose={() => { setPreview(null); setPageExplanation(null); }}
-                  onCancel={() => { setPreview(null); setPageExplanation(null); }}
-                  onExplain={explainPageInChat}
-                  onRetry={retryPreview}
-                  explainPanelOpen={pageExplanation !== null}
-                />
+                <Suspense fallback={<div role="status" className="grid h-full place-items-center text-sm text-muted-foreground">Opening PDF viewer…</div>}>
+                  <PdfViewer
+                    url={preview.url}
+                    fileName={preview.file_name}
+                    fileKey={preview.id}
+                    onClose={() => { setPreview(null); setPageExplanation(null); }}
+                    onCancel={() => { setPreview(null); setPageExplanation(null); }}
+                    onExplain={explainPageInChat}
+                    onRetry={retryPreview}
+                    explainPanelOpen={pageExplanation !== null}
+                  />
+                </Suspense>
               ) : preview?.url ? (
                 <div className="grid h-full place-items-center bg-background p-6 text-center">
                   <p className="text-sm text-foreground">Preview isn't available for this file type.</p>
@@ -837,7 +840,9 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             </div>
             {pageExplanation ? (
               <div className="hidden min-h-0 w-[380px] shrink-0 overflow-hidden rounded-xl border border-border bg-background md:block">
-                <ChatbotScreen embedded pageAttachment={pageExplanation} />
+                <Suspense fallback={<div role="status" className="grid h-full place-items-center text-sm text-muted-foreground">Opening Study Chat…</div>}>
+                  <ChatbotScreen embedded pageAttachment={pageExplanation} />
+                </Suspense>
               </div>
             ) : null}
           </div>

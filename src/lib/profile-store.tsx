@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogEntry, Level } from "./uni-data";
 
@@ -744,9 +744,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const ownerId = storageOwnerIdRef.current;
     const email = profile.identity?.kind === "email" ? profile.identity.email : undefined;
     if (!ownerId && !email) return;
-    try {
-      localStorage.setItem(ownerId ? profileCacheKey(ownerId) : emailCacheKey(email!), JSON.stringify(profile));
-    } catch { /* ignore unavailable local storage */ }
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(ownerId ? profileCacheKey(ownerId) : emailCacheKey(email!), JSON.stringify(profile));
+      } catch { /* ignore unavailable local storage */ }
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [profile, hydrated]);
 
   /* ---------- Cloud sync ----------
@@ -975,12 +978,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [profile, hydrated]);
 
-  const update = (p: Partial<Profile>) => {
+  const update = useCallback((p: Partial<Profile>) => {
     const next = { ...profileRef.current, ...p };
     profileRef.current = next;
     setProfile(next);
-  };
-  const go = (s: OnboardingStep | "dashboard") => {
+  }, []);
+  const go = useCallback((s: OnboardingStep | "dashboard") => {
     stepRef.current = s;
     setStep(s);
     const ownerId = storageOwnerIdRef.current;
@@ -1009,8 +1012,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(`${KEY}:onboarding-step`, s);
       } catch { /* ignore unavailable local storage */ }
     }
-  };
-  const navigate = (
+  }, []);
+  const navigate = useCallback((
     v: AppView,
     opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null; replace?: boolean },
   ) => {
@@ -1032,8 +1035,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveCourseCode(nextCourseCode);
     setActiveAttemptId(nextAttemptId);
     setActiveDeckId(nextDeckId);
-  };
-  const resetSetup = () => {
+  }, [view, activeCourseCode, activeAttemptId, activeDeckId]);
+  const resetSetup = useCallback(() => {
     setProfile(emptyProfile);
     setStep("splash");
     setView("home");
@@ -1053,25 +1056,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-  };
+  }, []);
+
+  const value = useMemo<Ctx>(() => ({
+    profile,
+    step,
+    view,
+    activeCourseCode,
+    activeAttemptId,
+    activeDeckId,
+    authPending,
+    hydrated,
+    update,
+    go,
+    navigate,
+    resetSetup,
+  }), [profile, step, view, activeCourseCode, activeAttemptId, activeDeckId, authPending, hydrated, update, go, navigate, resetSetup]);
 
   return (
-    <StoreCtx.Provider
-      value={{
-        profile,
-        step,
-        view,
-        activeCourseCode,
-        activeAttemptId,
-        activeDeckId,
-        authPending,
-        hydrated,
-        update,
-        go,
-        navigate,
-        resetSetup,
-      }}
-    >
+    <StoreCtx.Provider value={value}>
       {hydrated ? children : null}
     </StoreCtx.Provider>
   );

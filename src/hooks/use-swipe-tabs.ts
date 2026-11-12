@@ -6,7 +6,7 @@ const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"]
 const SWIPE_THRESHOLD = 70;
 const TRANSITION_MS = 180;
 
-export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null; progress: number; intensity: number };
+export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null };
 
 /** Which root tab (if any) the current view is. Sub-screens are not swipeable. */
 function rootIndex(view: AppView): number {
@@ -36,8 +36,33 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     let deltaX = 0;
     let stage: HTMLElement | null = null;
     let settleTimer = 0;
+    let lightFrame = 0;
+    let lightProgress = index;
+    let lightIntensity = 0;
+    const paintTabLight = (progress: number, intensity: number, settle = false) => {
+      lightProgress = progress;
+      lightIntensity = intensity;
+      if (lightFrame) window.cancelAnimationFrame(lightFrame);
+      lightFrame = window.requestAnimationFrame(() => {
+        lightFrame = 0;
+        const indicator = document.querySelector<HTMLElement>("[data-tab-indicator]");
+        if (!indicator) return;
+        indicator.style.transition = settle
+          ? `left ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${TRANSITION_MS}ms ease, box-shadow ${TRANSITION_MS}ms ease`
+          : "none";
+        indicator.style.left = `${((lightProgress + 0.5) / ORDER.length) * 100}%`;
+        indicator.style.opacity = String(0.35 + lightIntensity * 0.65);
+        indicator.style.boxShadow = `0 0 ${4 + lightIntensity * 10}px color-mix(in srgb, var(--accent) ${20 + lightIntensity * 50}%, transparent)`;
+        if (settle) {
+          window.setTimeout(() => {
+            if (indicator.isConnected) indicator.style.transition = "";
+          }, TRANSITION_MS + 30);
+        }
+      });
+    };
     const restoreStage = (node: HTMLElement, removePreview = true) => {
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      paintTabLight(index, 0, !reduced);
       node.style.transition = reduced ? "none" : `transform ${TRANSITION_MS}ms ease`;
       node.style.transform = "translate3d(0, 0, 0)";
       node.dataset.swipeActive = "false";
@@ -91,14 +116,21 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const adjacentIndex = index + (dx < 0 ? 1 : -1);
       const adjacent = ORDER[adjacentIndex];
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (adjacent && !reduced) setPreview({
-        tab: adjacent,
-        side: dx < 0 ? "right" : "left",
-        highlightedTab: Math.abs(dx) >= window.innerWidth / 2 ? adjacent : null,
-        progress: Math.max(0, Math.min(ORDER.length - 1, index - Math.max(-1, Math.min(1, dx / SWIPE_THRESHOLD)))),
-        intensity: Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD),
-      });
-      else setPreview(null);
+      const progress = Math.max(0, Math.min(ORDER.length - 1, index - Math.max(-1, Math.min(1, dx / SWIPE_THRESHOLD))));
+      const intensity = Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD);
+      if (adjacent && !reduced) {
+        const side = dx < 0 ? "right" : "left";
+        const highlightedTab = Math.abs(dx) >= window.innerWidth / 2 ? adjacent : null;
+        // Keep React out of the per-pixel path. The tab light is painted in
+        // requestAnimationFrame; React only mounts the neighbor and crosses
+        // the active-tab highlight boundary.
+        setPreview((current) => current?.tab === adjacent && current.side === side && current.highlightedTab === highlightedTab
+          ? current
+          : { tab: adjacent, side, highlightedTab });
+        paintTabLight(progress, intensity);
+      } else {
+        setPreview((current) => current === null ? current : null);
+      }
       const resisted = adjacent ? dx : dx * 0.25;
       stage.style.transition = "none";
       stage.style.transform = reduced ? "" : `translate3d(${resisted}px, 0, 0)`;
@@ -113,7 +145,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const targetIndex = index + (deltaX < 0 ? 1 : -1);
       const target = ORDER[targetIndex];
       if (!horizontal || !target || Math.abs(deltaX) < SWIPE_THRESHOLD) {
-        if (horizontal && target) setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: null, progress: index, intensity: 0 });
+        if (horizontal && target) setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: null });
         restoreStage(node);
         return;
       }
@@ -126,7 +158,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         return;
       }
 
-      setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target, progress: targetIndex, intensity: 1 });
+      paintTabLight(targetIndex, 0, true);
+      setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target });
       node.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       node.style.transform = `translate3d(${outgoing * window.innerWidth}px, 0, 0)`;
       window.setTimeout(() => {
@@ -142,8 +175,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     const onCancel = () => {
       tracking = false;
       horizontal = false;
-      if (horizontal) setPreview({ tab: ORDER[index] ?? view, side: "left", highlightedTab: null, progress: index, intensity: 0 });
-      else setPreview(null);
+      setPreview(null);
       if (stage) restoreStage(stage);
     };
 
@@ -157,6 +189,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onCancel);
       window.clearTimeout(settleTimer);
+      if (lightFrame) window.cancelAnimationFrame(lightFrame);
       if (stage) {
         stage.style.transition = "";
         stage.style.transform = "";

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile, type AppView } from "@/lib/profile-store";
@@ -111,9 +111,12 @@ function SwipePreviewScreen({ view, side }: { view: AppView; side: "left" | "rig
   );
 }
 
-function RootTabs({ view }: { view: AppView }) {
+const RootTabs = memo(function RootTabs({ view }: { view: AppView }) {
   const activeTab = rootTabFor(view);
-  const [visited, setVisited] = useState<AppView[]>(() => [activeTab ?? "home"]);
+  const [visited, setVisited] = useState<AppView[]>(() => [
+    activeTab ?? "home",
+    ...(activeTab === "chatbot" ? [] : ["chatbot" as AppView]),
+  ]);
 
   useEffect(() => {
     if (activeTab && !visited.includes(activeTab)) setVisited((tabs) => [...tabs, activeTab]);
@@ -133,16 +136,9 @@ function RootTabs({ view }: { view: AppView }) {
           </div>
         );
       })}
-      {/* Mount Study Chat immediately so API warm-up and thread prefetch run
-          during app use, instead of starting only after the first tab click. */}
-      {!visited.includes("chatbot") && (
-        <div hidden aria-hidden="true" data-root-tab="chatbot-prefetch">
-          <ChatbotScreen active={false} />
-        </div>
-      )}
     </>
   );
-}
+});
 
 function Router() {
   const { step, view, profile, authPending, hydrated, go, navigate } = useProfile();
@@ -316,11 +312,7 @@ function Router() {
           <SwipePreviewScreen view={swipePreview.tab} side={swipePreview.side} />
         ) : null}
       </div>
-      <BottomTabBar
-        highlightedView={swipePreview?.highlightedTab}
-        swipeProgress={swipePreview?.progress}
-        swipeIntensity={swipePreview?.intensity}
-      />
+      <BottomTabBar />
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
