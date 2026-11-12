@@ -27,7 +27,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAvatar } from "@/lib/avatar";
 import { deleteMaterial } from "@/lib/course-materials";
-import { useProfile } from "@/lib/profile-store";
+import { useProfile, type AIQuestion } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { presignMaterialDownload } from "@/lib/storage.functions";
@@ -124,7 +124,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
-  const { navigate, profile, activeCourseCode } = useProfile();
+  const { navigate, profile, activeCourseCode, update } = useProfile();
   const [rail, setRail] = useState<Rail>("locker");
   const [locker, setLocker] = useState<LockerFile[] | null>(() => lockerDisplayCache);
   const [lockerError, setLockerError] = useState(false);
@@ -305,12 +305,43 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       return;
     }
     setBusy(false);
+    const normalizedName = file.file_name.trim().toLocaleLowerCase();
+    const markSourceRemoved = (questions?: AIQuestion[]) => questions?.map((question) => {
+      const sourceName = question.verification?.sourceFileName?.trim().toLocaleLowerCase();
+      return Boolean(normalizedName) && sourceName === normalizedName
+        ? { ...question, verification: { ...question.verification!, sourceUnavailable: true } }
+        : question;
+    });
+    update({
+      attempts: profile.attempts.map((attempt) => ({
+        ...attempt,
+        questions: canonicalCourseCode(attempt.courseCode) === canonicalCourseCode(file.course_code)
+          ? markSourceRemoved(attempt.questions)
+          : attempt.questions,
+      })),
+      inProgressTest: profile.inProgressTest
+        ? { ...profile.inProgressTest, questions: canonicalCourseCode(profile.inProgressTest.courseCode) === canonicalCourseCode(file.course_code)
+          ? markSourceRemoved(profile.inProgressTest.questions)
+          : profile.inProgressTest.questions }
+        : null,
+      aiQuestionsByCourse: Object.fromEntries(
+        Object.entries(profile.aiQuestionsByCourse).map(([course, questions]) => [
+          course,
+          canonicalCourseCode(course) === canonicalCourseCode(file.course_code)
+            ? markSourceRemoved(questions) ?? questions
+            : questions,
+        ]),
+      ),
+      courseTopicAnalysis: Object.fromEntries(
+        Object.entries(profile.courseTopicAnalysis).filter(([, analysis]) => analysis.materialId !== file.id),
+      ),
+    });
     const remaining = (locker ?? []).filter((item) => item.id !== file.id);
     lockerDisplayCache = remaining;
     setLocker(remaining);
     setDeleteTarget(null);
     setOwnerSheet(null);
-    toast.success("Removed from your locker.");
+    toast.success("Removed from your locker. Past results are saved and source citations are marked.");
     void loadLocker();
   };
 
@@ -660,7 +691,10 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{deleteTarget?.is_peer_copy ? "Remove your saved copy?" : "Remove this file?"}</AlertDialogTitle>
-            <AlertDialogDescription className="break-words">{deleteTarget?.file_name}</AlertDialogDescription>
+            <AlertDialogDescription className="break-words">
+              {deleteTarget?.file_name}
+              <span className="mt-2 block">This removes the file from future study. Past results stay saved; citations to this file will be marked as removed.</span>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
@@ -681,10 +715,16 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
           <DialogHeader>
             <DialogTitle className="text-foreground">Publish to your course shelf?</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Coursemates will be able to view this file inside the app. There is no download. You can
-              unpublish it at any time and it disappears from the shelf.
+              Review what will be shared, then confirm. You can unpublish it any time.
             </DialogDescription>
           </DialogHeader>
+          {publishTarget ? (
+            <div className="space-y-2 rounded-xl border border-border bg-background p-3 text-sm">
+              <div><span className="text-xs text-muted-foreground">File title</span><div className="break-words font-semibold text-foreground">{publishTarget.file_name}</div></div>
+              <div><span className="text-xs text-muted-foreground">Course</span><div className="font-semibold text-foreground">{canonicalCourseCode(publishTarget.course_code)}</div></div>
+              <div><span className="text-xs text-muted-foreground">Who can access it</span><div className="text-foreground">Students browsing this course shelf can view it in the app. Downloads are disabled.</div></div>
+            </div>
+          ) : null}
           <div className="space-y-3 rounded-xl border border-border bg-background p-3">
             <label className="flex items-start gap-3 text-sm text-foreground">
               <input

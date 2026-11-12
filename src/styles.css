@@ -782,6 +782,13 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  [aria-label="Mock result carousel"] > [aria-current] {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  [aria-label="Mock result carousel"] > :not([aria-current]) {
+    transform: none !important;
+  }
 }
 
 
@@ -1318,6 +1325,7 @@ nav[aria-label="Mobile navigation"] {
 }
 
 .study-chat-screen .chat-layout {
+  max-width: 68rem;
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 0;
   min-width: 0;

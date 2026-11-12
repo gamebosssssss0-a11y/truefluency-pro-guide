@@ -3,7 +3,7 @@ import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type Co
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,14 @@ export type AIQuestion = {
   options: string[];
   correct_index: number;
   explanation: string;
+  verification?: {
+    status: "verified" | "unverified" | "rejected";
+    checkedAgainstMaterial: boolean;
+    sourceFileName?: string;
+    sourceLocation?: string | null;
+  };
+  flagged?: boolean;
+  confirmedInvalid?: boolean;
 };
 
 /* ---------- helpers ---------- */
@@ -222,6 +230,7 @@ export function MockGenerationScreen() {
         const questions = await generateMock(
           {
             ...apiSource(ready),                       // one file, or the stand-in id plus the files ticked under "Study from"
+            sourceFiles: materials.filter((m) => (ready.selectedIds ?? [ready.id]).includes(m.id)).map((m) => ({ id: m.id, fileName: m.file_name })),
             courseCode: course.code,
             courseName: course.name,
             questionCount: allowedCount,
@@ -250,6 +259,11 @@ export function MockGenerationScreen() {
 
         if (!questions || questions.length === 0) {
           throw new Error("No questions returned from AI");
+        }
+        if (questions.length < allowedCount) {
+          toast.message(`Starting with ${questions.length} verified questions`, {
+            description: `Only questions checked against your selected files are included. Your score will use ${questions.length} questions.`,
+          });
         }
 
         // The student may leave while generation is still running. Keep the
@@ -297,6 +311,7 @@ export function MockGenerationScreen() {
             currentIndex: 0,
             questionIds: questions.map((q) => q.id),
             questions,
+            tutorRetryUsed: Array(questions.length).fill(false),
             source: "ai",
           },
         });
@@ -346,7 +361,14 @@ export function MockGenerationScreen() {
       <div className="study-utility-page min-h-screen">
         <div className={STATUS}>
           <ErrorCard
+            title={error.includes("verified questions") ? "Not enough verified questions" : "Mock didn't finish"}
+            body={error}
+            actionLabel={error.includes("verified questions") ? "Choose another file" : "Try again"}
             onAction={() => {
+              if (error.includes("verified questions")) {
+                navigate("mock-config", { courseCode: course?.code });
+                return;
+              }
               // Re-issue the same request rather than dumping the student back
               // on the config screen.
               fetchedRef.current = false;
@@ -987,8 +1009,9 @@ export function MockRunScreen() {
       topics,
       // Snapshot the exact questions and selections so the review screen can
       // replay this attempt without regenerating anything.
-      questions,
+      questions: questions.map((q, i) => ({ ...q, flagged: Boolean(q.flagged) })),
       answers: questions.map((_, i) => t.answers[i] ?? null),
+      flaggedQuestionIndexes: questions.flatMap((q, i) => q.flagged ? [i] : []),
       settings: profile.courseTestSettings[t.courseCode],
     };
 
@@ -1001,7 +1024,9 @@ export function MockRunScreen() {
     }
 
     const avg = (() => {
-      const rel = [...profile.attempts, attempt].filter((a) => a.courseCode === t.courseCode);
+      const rel = [...profile.attempts, attempt].filter((a) => a.courseCode === t.courseCode && (a.answers
+        ? a.answers.filter((answer) => answer !== null && answer !== undefined).length >= 5
+        : a.total >= 5));
       return rel.reduce((s, a) => s + a.score, 0) / rel.length;
     })();
     const mastered = profile.masteredCourses.slice();
@@ -1166,7 +1191,17 @@ export function MockRunScreen() {
   const timerColor = pct <= 20 ? "text-destructive" : pct <= 50 ? "text-warning" : "text-primary";
 
   const setAnswer = (a: number) => {
-    if (mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined) return;
+    const previous = t.answers[idx];
+    const retryUsed = t.tutorRetryUsed?.[idx] ?? false;
+    if (mode === "tutor" && previous !== null && previous !== undefined) {
+      const previousWasWrong = previous !== q.correct_index;
+      if (!previousWasWrong || retryUsed) return;
+      const retries = [...(t.tutorRetryUsed ?? Array(questions.length).fill(false))];
+      retries[idx] = true;
+      const next = [...t.answers]; next[idx] = a;
+      update({ inProgressTest: { ...t, answers: next, tutorRetryUsed: retries } });
+      return;
+    }
     const next = [...t.answers]; next[idx] = a;
     update({ inProgressTest: { ...t, answers: next } });
   };
@@ -1244,7 +1279,10 @@ export function MockRunScreen() {
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
                 const on = t.answers[idx] === i;
-                const locked = mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined;
+                const currentAnswer = t.answers[idx];
+                const canRetry = mode === "tutor" && currentAnswer !== null && currentAnswer !== undefined
+                  && currentAnswer !== q.correct_index && !(t.tutorRetryUsed?.[idx] ?? false);
+                const locked = mode === "tutor" && currentAnswer !== null && currentAnswer !== undefined && !canRetry;
                 const isCorrectOption = mode === "tutor" && locked && i === q.correct_index;
                 const isWrongSelection = mode === "tutor" && on && i !== q.correct_index;
                 return (
@@ -1294,6 +1332,11 @@ export function MockRunScreen() {
                     </span>
                     <h2 className="text-sm font-semibold text-foreground">{wasWrong ? "Not quite" : "Correct"}</h2>
                   </div>
+                  {wasWrong && !(t.tutorRetryUsed?.[idx] ?? false) ? (
+                    <p className="text-xs font-medium text-accent">Choose one more answer to retry before moving on.</p>
+                  ) : wasWrong && (t.tutorRetryUsed?.[idx] ?? false) ? (
+                    <p className="text-xs text-muted-foreground">Retry used. Continue when you’re ready.</p>
+                  ) : null}
                   <div>
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
@@ -1335,8 +1378,25 @@ export function MockRunScreen() {
             })() : null}
             <div className="mt-4 flex items-start justify-between gap-3">
               <AiGeneratedLabel />
-              {/* Optional: a question that is cut off, has two right answers, a wrong key ... can be reported right here. */}
-              <ReportQuestionButton compact courseCode={t.courseCode} question={q.question} options={q.options} markedIndex={q.correct_index} />
+              <div className="flex flex-col items-end gap-1">
+                {q.verification?.sourceFileName ? (
+                  <span className="max-w-48 text-right text-[10px] text-muted-foreground">
+                    {q.verification.sourceUnavailable ? "Source file removed: " : "Source: "}{q.verification.sourceFileName} · {q.verification.sourceLocation || "page unavailable"}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  aria-pressed={Boolean(q.flagged)}
+                  onClick={() => {
+                    const nextQuestions = [...questions];
+                    nextQuestions[idx] = { ...q, flagged: !q.flagged };
+                    update({ inProgressTest: { ...t, questions: nextQuestions } });
+                  }}
+                  className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium", q.flagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
+                >
+                  <Flag className="h-3 w-3" aria-hidden="true" />{q.flagged ? "Flagged for review" : "Flag for review"}
+                </button>
+              </div>
             </div>
           </section>
         ) : null}
@@ -1617,6 +1677,11 @@ export function MockResultScreen() {
     },
     { key: "needs", label: "Needs work", tone: "text-bad", topics: attempt.topics.filter((t) => t.score < 40) },
   ].filter((g) => g.topics.length > 0);
+  const topicQuestionCounts = new Map<string, number>();
+  for (const [i, question] of (attempt.questions ?? []).entries()) {
+    if (attempt.invalidQuestionIndexes?.includes(i) || question.confirmedInvalid) continue;
+    topicQuestionCounts.set(question.topic, (topicQuestionCounts.get(question.topic) ?? 0) + 1);
+  }
 
   return (
     <div className="study-utility-page min-h-screen">
@@ -1660,7 +1725,12 @@ export function MockResultScreen() {
                   <div className="mt-1 space-y-1">
                     {g.topics.map((t) => (
                       <div key={t.topic} className="flex items-start justify-between gap-3 text-sm">
-                        <span className="min-w-0 break-words text-foreground">{t.topic}</span>
+                        <span className="min-w-0 break-words text-foreground">
+                          {t.topic}
+                          {(topicQuestionCounts.get(t.topic) ?? 0) <= 1 ? (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">Not enough questions to assess this topic</span>
+                          ) : null}
+                        </span>
                         <span className={cn("shrink-0 font-semibold", g.tone)}>{t.score}%</span>
                       </div>
                     ))}
@@ -1677,7 +1747,7 @@ export function MockResultScreen() {
           className="mt-5 w-full bg-amber text-white hover:bg-amber/90"
           onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
         >
-          Review answers
+          {attempt.flaggedQuestionIndexes?.length ? `Review missed and flagged questions (${attempt.flaggedQuestionIndexes.length} flagged)` : "Review missed and flagged questions"}
         </Button>
 
         <Button
@@ -1743,6 +1813,43 @@ export function AttemptReviewScreen() {
 
   const questions = attempt.questions ?? [];
   const answers = attempt.answers ?? [];
+  const invalidIndexes = attempt.invalidQuestionIndexes ?? (attempt.questions ?? [])
+    .flatMap((question, i) => question.confirmedInvalid ? [i] : []);
+
+  const confirmInvalidQuestion = (questionIndex: number) => {
+    if (invalidIndexes.includes(questionIndex)) return;
+    const invalidQuestionIndexes = [...invalidIndexes, questionIndex];
+    const includedIndexes = questions.map((_, i) => i).filter((i) => !invalidQuestionIndexes.includes(i));
+    const correct = includedIndexes.filter((i) => answers[i] === questions[i].correct_index).length;
+    const total = includedIndexes.length;
+    const topicMap = new Map<string, { correct: number; total: number }>();
+    for (const i of includedIndexes) {
+      if (answers[i] === null || answers[i] === undefined) continue;
+      const topic = questions[i].topic;
+      const bucket = topicMap.get(topic) ?? { correct: 0, total: 0 };
+      bucket.total += 1;
+      if (answers[i] === questions[i].correct_index) bucket.correct += 1;
+      topicMap.set(topic, bucket);
+    }
+    const updatedAttempt: MockAttempt = {
+      ...attempt,
+      invalidQuestionIndexes,
+      questions: questions.map((question, i) => i === questionIndex ? { ...question, confirmedInvalid: true } : question),
+      correct,
+      total,
+      score: Math.round((correct / Math.max(1, total)) * 100),
+      topics: Array.from(topicMap, ([topic, result]) => ({ topic, score: Math.round((result.correct / result.total) * 100) })),
+    };
+    update({
+      attempts: profile.attempts.map((item) => item.id === attempt.id ? updatedAttempt : item),
+      lastResultId: profile.lastResultId === attempt.id ? attempt.id : profile.lastResultId,
+    });
+    void import("@/lib/cloud-sync").then(({ pushMockAttempt }) => pushMockAttempt(updatedAttempt)).catch((error) => {
+      console.error("[mock] updated invalid-question score failed to sync", error);
+      toast.error("The score was updated here but couldn't sync yet.");
+    });
+    toast.message("Result updated", { description: `Question ${questionIndex + 1} was confirmed invalid and removed from scoring.` });
+  };
 
   return (
     <div className="study-utility-page min-h-screen">
@@ -1818,6 +1925,7 @@ export function AttemptReviewScreen() {
           <div className="mt-5 space-y-3">
             {questions.map((q, i) => {
               const selected = answers[i] ?? null;
+              const invalid = invalidIndexes.includes(i);
               const isCorrect = selected === q.correct_index;
               return (
                 <div
@@ -1831,20 +1939,25 @@ export function AttemptReviewScreen() {
 
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                      Q{i + 1} · {q.topic}
+                      Q{i + 1} · {q.topic}{q.flagged ? " · Flagged" : ""}
                     </span>
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                        isCorrect ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+                        invalid ? "bg-warning/15 text-warning" : isCorrect ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
                       )}
                     >
-                      {isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                      {isCorrect ? "Correct" : "Incorrect"}
+                      {invalid ? <Flag className="h-3 w-3" /> : isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                      {invalid ? "Excluded from score" : isCorrect ? "Correct" : "Incorrect"}
                     </span>
                   </div>
 
                   <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText>{q.question}</MathText></div>
+                  {q.verification?.sourceFileName ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {q.verification.sourceUnavailable ? "Source file removed: " : "Source: "}{q.verification.sourceFileName} · {q.verification.sourceLocation || "page unavailable"}
+                    </p>
+                  ) : null}
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {
@@ -1904,6 +2017,7 @@ export function AttemptReviewScreen() {
                     question={q.question}
                     options={q.options}
                     markedIndex={q.correct_index}
+                    onVerified={() => confirmInvalidQuestion(i)}
                   />
 
                   {explanationsUnlocked && q.explanation?.trim() ? (
@@ -1976,10 +2090,11 @@ function ReviewMiniMap({
               key={`${q.id}-${i}`}
               type="button"
               onClick={() => onPick(i)}
-              aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}`}
+              aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}${q.flagged ? ", flagged for review" : ""}`}
               className={cn(
                 "grid h-8 place-items-center rounded-lg border bg-card text-[11px] font-semibold",
                 right ? "border-good/50 text-good" : "border-wine/50 text-wine",
+                q.flagged && "ring-1 ring-warning",
                 current === i && "ring-2 ring-amber ring-offset-1 ring-offset-cream",
               )}
             >

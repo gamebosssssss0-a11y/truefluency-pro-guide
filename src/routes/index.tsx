@@ -316,7 +316,11 @@ function Router() {
           <SwipePreviewScreen view={swipePreview.tab} side={swipePreview.side} />
         ) : null}
       </div>
-      <BottomTabBar highlightedView={swipePreview?.highlightedTab} />
+      <BottomTabBar
+        highlightedView={swipePreview?.highlightedTab}
+        swipeProgress={swipePreview?.progress}
+        swipeIntensity={swipePreview?.intensity}
+      />
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

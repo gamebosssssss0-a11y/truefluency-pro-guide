@@ -159,6 +159,7 @@ export function CgpaGoalSetterScreen() {
   const [currentUnits, setCurrentUnits] = useState(
     saved?.currentUnits ?? (actual ? String(actual.totalUnits) : ""),
   );
+  const [remainingCredits, setRemainingCredits] = useState(saved?.remainingCredits ?? "");
   const [targetCgpa, setTargetCgpa] = useState(saved?.targetCgpa ?? "");
   const [examDate, setExamDate] = useState(saved?.examDate ?? plan?.examDate ?? "");
   const [units, setUnits] = useState<Record<string, number>>(() => {
@@ -188,6 +189,19 @@ export function CgpaGoalSetterScreen() {
   const legacyDays = Number(legacyDaysRaw);
   const hasLegacyCountdown = !examDate && legacyDaysRaw !== "" && Number.isFinite(legacyDays);
   const inputDaysLeft = examDate && isDateISO(examDate) ? daysUntil(examDate) : null;
+  const pendingTermPreview = useMemo(() => {
+    if (!pendingPlan) return [];
+    const remaining = pendingPlan.plan.remainingCredits ?? pendingPlan.plan.semesterUnits;
+    const termLoad = Math.max(1, pendingPlan.plan.semesterUnits);
+    const terms: { number: number; credits: number }[] = [];
+    let left = remaining;
+    while (left > 0 && terms.length < 24) {
+      const credits = Math.min(left, termLoad);
+      terms.push({ number: terms.length + 1, credits });
+      left -= credits;
+    }
+    return terms;
+  }, [pendingPlan]);
 
   const feasibility = useMemo<Feasibility | null>(() => {
     if (
@@ -202,6 +216,9 @@ export function CgpaGoalSetterScreen() {
       !Number.isFinite(parsed.target) ||
       parsed.target <= 0 ||
       parsed.target > MAX_CGPA ||
+      !remainingCredits.trim() ||
+      !Number.isFinite(Number(remainingCredits)) ||
+      Number(remainingCredits) <= 0 ||
       rows.length === 0
     ) {
       return null;
@@ -215,16 +232,16 @@ export function CgpaGoalSetterScreen() {
     }
     const semesterUnits = selectedUnits.reduce((sum, value) => sum + value, 0);
     if (semesterUnits <= 0) return null;
-    const totalUnits = parsed.completedUnits + semesterUnits;
+    const totalUnits = parsed.completedUnits + Number(remainingCredits);
     const needed =
-      (parsed.target * totalUnits - parsed.cgpa * parsed.completedUnits) / semesterUnits;
+      (parsed.target * totalUnits - parsed.cgpa * parsed.completedUnits) / Number(remainingCredits);
     return {
       requiredSemesterGpa: needed,
-      maxAchievableCgpa: maxAchievableCgpa(parsed.cgpa, parsed.completedUnits, semesterUnits),
+      maxAchievableCgpa: maxAchievableCgpa(parsed.cgpa, parsed.completedUnits, Number(remainingCredits)),
       alreadyThere: needed <= 0,
       reachable: needed <= MAX_CGPA,
     };
-  }, [currentCgpa, currentUnits, parsed, rows, targetCgpa, units]);
+  }, [currentCgpa, currentUnits, parsed, remainingCredits, rows, targetCgpa, units]);
 
   const commitPlan = async (draft: PendingPlan) => {
     setSavingPlan(true);
@@ -276,6 +293,10 @@ export function CgpaGoalSetterScreen() {
       setError("Enter a target CGPA between 0.01 and 5.00.");
       return;
     }
+    if (!remainingCredits.trim() || !Number.isFinite(Number(remainingCredits)) || Number(remainingCredits) <= 0) {
+      setError("Enter the credit units you expect to complete before reaching this target.");
+      return;
+    }
     if (!examDate || !isDateISO(examDate)) {
       setError(
         "Pick your exam date before recalculating. A saved day count cannot be used to guess a date.",
@@ -301,6 +322,7 @@ export function CgpaGoalSetterScreen() {
     const built = buildCgpaPlan({
       currentCgpa: parsed.cgpa,
       currentUnits: parsed.completedUnits,
+      remainingCredits: Number(remainingCredits),
       targetCgpa: parsed.target,
       daysRemaining,
       courses: rows.map((course) => {
@@ -328,6 +350,7 @@ export function CgpaGoalSetterScreen() {
     const nextInputs: CgpaInputs = {
       currentCgpa,
       currentUnits,
+      remainingCredits,
       targetCgpa,
       daysRemaining: String(daysRemaining),
       examDate,
@@ -339,11 +362,7 @@ export function CgpaGoalSetterScreen() {
       previousPlan: plan,
     };
 
-    if (plan) {
-      setPendingPlan(draft);
-    } else {
-      void commitPlan(draft);
-    }
+    setPendingPlan(draft);
   };
 
   return (
@@ -361,8 +380,8 @@ export function CgpaGoalSetterScreen() {
 
         <h1 className="font-display text-3xl font-semibold text-navy">CGPA goal setter</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Set a target CGPA, see the grades it needs this semester, then get a daily study plan
-          built around them.
+          Enter your remaining credits, see the average GPA needed to reach your target, then preview
+          a term-by-term plan before saving it.
         </p>
 
         {actual ? (
@@ -404,6 +423,17 @@ export function CgpaGoalSetterScreen() {
               placeholder="e.g. 48"
               value={currentUnits}
               onChange={(event) => setCurrentUnits(event.target.value)}
+            />
+          </Field>
+          <Field label="Expected remaining credit units">
+            <Input
+              inputMode="numeric"
+              enterKeyHint="next"
+              data-cgpa-numeric="true"
+              onKeyDown={moveToNextNumericField}
+              placeholder="e.g. 72"
+              value={remainingCredits}
+              onChange={(event) => setRemainingCredits(event.target.value)}
             />
           </Field>
           <Field label="Target CGPA">
@@ -448,15 +478,15 @@ export function CgpaGoalSetterScreen() {
                 <span>Target already met. A steady semester can help maintain it.</span>
               ) : (
                 <span>
-                  Target feasible: needs {Math.max(0, feasibility.requiredSemesterGpa).toFixed(2)}
-                  semester GPA.
+                  Target feasible: needs a {Math.max(0, feasibility.requiredSemesterGpa).toFixed(2)}
+                  average across your remaining {remainingCredits} credits.
                 </span>
               )}
             </div>
           ) : (
             <div className="mt-3 rounded-2xl border border-accent/45 bg-accent/10 p-3.5 text-xs text-navy">
-              Highest possible CGPA this semester is {feasibility.maxAchievableCgpa.toFixed(2)}.
-              Your plan aims for that.
+              Highest reachable CGPA after {remainingCredits} credits is {feasibility.maxAchievableCgpa.toFixed(2)}.
+              The selected target is above that limit.
             </div>
           )
         ) : null}
@@ -555,7 +585,7 @@ export function CgpaGoalSetterScreen() {
             disabled={savingPlan}
           >
             <Calculator className="mr-1.5 h-4 w-4" />
-            {savingPlan ? "Saving plan…" : plan ? "Recalculate plan" : "Lock plan and begin Day 1"}
+            {savingPlan ? "Saving plan…" : plan ? "Preview plan changes" : "Preview goal plan"}
           </Button>
         </div>
       </div>
@@ -568,9 +598,16 @@ export function CgpaGoalSetterScreen() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace your current plan?</AlertDialogTitle>
+            <AlertDialogTitle>{plan ? "Replace your current plan?" : "Save this goal plan?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              Your previous plan is kept in your history.
+              {pendingPlan ? (
+                <span className="block space-y-1">
+                  <span className="block">Preview: {pendingPlan.plan.reachable ? `average ${pendingPlan.plan.requiredSemesterGpa.toFixed(2)} GPA across ${pendingPlan.plan.remainingCredits ?? pendingPlan.plan.semesterUnits} remaining credits` : `highest reachable CGPA ${maxAchievableCgpa(pendingPlan.plan.currentCgpa, pendingPlan.plan.currentUnits, pendingPlan.plan.remainingCredits ?? pendingPlan.plan.semesterUnits).toFixed(2)}`}.</span>
+                  <span className="block">The plan includes {pendingPlan.plan.courses.length} course targets and a study schedule for {pendingPlan.plan.daysRemaining} days.</span>
+                  <span className="block">Term preview: {pendingTermPreview.map((term) => `Term ${term.number}: ${term.credits} credits at ${pendingPlan.plan.reachable ? pendingPlan.plan.requiredSemesterGpa.toFixed(2) : "up to 5.00"} GPA`).join(" · ")}</span>
+                  {plan ? <span className="block">Your previous plan is kept in your history.</span> : null}
+                </span>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -583,7 +620,7 @@ export function CgpaGoalSetterScreen() {
                 if (pendingPlan) void commitPlan(pendingPlan);
               }}
             >
-              {savingPlan ? "Saving…" : "Replace plan"}
+              {savingPlan ? "Saving…" : plan ? "Replace plan" : "Save plan"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -660,7 +697,16 @@ function PlanOutput({
     grade,
     count: courses.filter((course) => course.requiredGrade === grade.grade).length,
   })).filter((item) => item.count > 0);
-  const maxAchievable = maxAchievableCgpa(plan.currentCgpa, plan.currentUnits, plan.semesterUnits);
+  const remainingCredits = plan.remainingCredits ?? plan.semesterUnits;
+  const maxAchievable = maxAchievableCgpa(plan.currentCgpa, plan.currentUnits, remainingCredits);
+  const termPreview: { term: number; credits: number }[] = [];
+  let creditsLeft = remainingCredits;
+  const termCreditLoad = Math.max(1, plan.semesterUnits);
+  while (creditsLeft > 0 && termPreview.length < 24) {
+    const credits = Math.min(termCreditLoad, creditsLeft);
+    termPreview.push({ term: termPreview.length + 1, credits });
+    creditsLeft -= credits;
+  }
   const createdTimestamp = plan.lockedAt ?? plan.createdAt;
   const createdLabel = Number.isFinite(createdTimestamp)
     ? new Date(createdTimestamp).toLocaleString()
@@ -706,11 +752,11 @@ function PlanOutput({
           <Target className="h-3.5 w-3.5" /> {classify(plan.targetCgpa)}
         </div>
         <div className="mt-2 font-display text-2xl font-semibold leading-tight">
-          Target semester GPA: {plan.requiredSemesterGpa.toFixed(2)}
+          Required average GPA: {plan.requiredSemesterGpa.toFixed(2)}
         </div>
         <div className="mt-1 text-xs text-primary-foreground/80">
           From {plan.currentCgpa.toFixed(2)} to {plan.targetCgpa.toFixed(2)} across{" "}
-          {plan.semesterUnits} new units · {daysLeft} {daysLeft === 1 ? "day" : "days"}{" "}
+          {remainingCredits} expected remaining units · {daysLeft} {daysLeft === 1 ? "day" : "days"}{" "}
           {plan.examDate ? "until exam" : "remaining in saved plan"}.
         </div>
         {gradeCounts.length > 0 ? (
@@ -756,8 +802,7 @@ function PlanOutput({
 
       {!plan.reachable ? (
         <div className="mt-3 rounded-2xl border border-accent/50 bg-accent/10 p-3.5 text-xs text-navy">
-          Highest possible CGPA this semester is {maxAchievable.toFixed(2)}. Your plan aims for that
-          best available outcome.
+          Highest reachable CGPA after {remainingCredits} credits is {maxAchievable.toFixed(2)}. The selected target is above that limit.
         </div>
       ) : plan.alreadyThere ? (
         <div className="mt-3 rounded-2xl border border-primary/20 bg-primary/10 p-3.5 text-xs text-navy">
@@ -766,11 +811,26 @@ function PlanOutput({
         </div>
       ) : (
         <div className="mt-3 rounded-2xl border border-border bg-card p-3.5 text-xs text-foreground shadow-sm">
-          You need a semester GPA of{" "}
+          You need an average GPA of{" "}
           <span className="font-semibold">{plan.requiredSemesterGpa.toFixed(2)}</span> across{" "}
-          {plan.semesterUnits} units to reach {plan.targetCgpa.toFixed(2)}.
+          {remainingCredits} remaining credits to reach {plan.targetCgpa.toFixed(2)}.
         </div>
       )}
+
+      <h3 className="mb-2 mt-6 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <ListChecks className="h-3.5 w-3.5" /> Term-by-term preview
+      </h3>
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        Assumes each term carries about {termCreditLoad} credits and you maintain a similar GPA each term.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {termPreview.map((term) => (
+          <div key={term.term} className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 text-xs">
+            <span className="font-medium text-foreground">Term {term.term} · {term.credits} credits</span>
+            <span className="font-semibold text-navy">{plan.reachable ? plan.requiredSemesterGpa.toFixed(2) : "Up to 5.00"} GPA</span>
+          </div>
+        ))}
+      </div>
 
       <h3 className="mb-2 mt-6 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <ListChecks className="h-3.5 w-3.5" /> Daily execution schedule

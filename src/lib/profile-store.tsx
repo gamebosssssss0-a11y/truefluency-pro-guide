@@ -27,6 +27,10 @@ export type MockAttempt = {
   answers?: (number | null)[];
   /** Settings used, so "Retake This Test" can regenerate with the same setup. */
   settings?: CourseTestSettings;
+  /** Question positions the student flagged during the attempt. */
+  flaggedQuestionIndexes?: number[];
+  /** Questions confirmed invalid after review are retained for audit but excluded from scoring. */
+  invalidQuestionIndexes?: number[];
 };
 
 export type MockMode = "tutor" | "exam";
@@ -52,6 +56,8 @@ export type InProgressTest = {
   questionIds: number[];
   /** Snapshot the exact generated set so an in-progress test survives refresh. */
   questions?: AIQuestion[];
+  /** Tutor mode grants one answer change after incorrect feedback per question. */
+  tutorRetryUsed?: boolean[];
   /** "ai" = questions live in profile.aiQuestionsByCourse[courseCode]; "sample" = built-in bank. */
   source?: "ai" | "sample";
 } | null;
@@ -77,6 +83,19 @@ export type AIQuestion = {
   options: string[];
   correct_index: number;
   explanation: string;
+  /** Present only when the generator verified the key against selected course material. */
+  verification?: {
+    status: "verified" | "unverified" | "rejected";
+    checkedAgainstMaterial: boolean;
+    sourceFileName?: string;
+    sourceLocation?: string | null;
+    /** Historical citation retained after a student removes the source file. */
+    sourceUnavailable?: boolean;
+  };
+  /** Local flag retained in the attempt snapshot for post-test review. */
+  flagged?: boolean;
+  /** Set when post-test review confirms the item should not affect its score. */
+  confirmedInvalid?: boolean;
 };
 
 /** Stored result of a real "Analyze Upload" run, keyed by course code. */
@@ -155,6 +174,7 @@ export type TabKey = "home" | "mock-tests" | "library" | "chatbot" | "account";
 export type CgpaInputs = {
   currentCgpa: string;
   currentUnits: string;
+  remainingCredits?: string;
   targetCgpa: string;
   daysRemaining: string;
   examDate?: string;
@@ -184,6 +204,8 @@ export type CgpaPlan = {
   targetCgpa: number;
   daysRemaining: number;
   semesterUnits: number;
+  /** Credits the student expects to complete before the target checkpoint. */
+  remainingCredits?: number;
   /** Semester GPA needed across this semester's units to hit the target. */
   requiredSemesterGpa: number;
   reachable: boolean;
@@ -220,8 +242,17 @@ export type CgpaActual = {
   cumulativeCgpa: number;
   totalUnits: number;
   classification: string;
+  /** Grade scale used for this result. Older saved results were UI 5.0. */
+  scale?: "ui-5" | "four-point";
+  label?: string;
   /** Saved semesters (session + term), newest first. */
   semesters?: CgpaSemester[];
+};
+
+export type CgpaCalculation = {
+  id: string;
+  label: string;
+  result: CgpaActual;
 };
 
 /* ---------- Profile ---------- */
@@ -268,6 +299,8 @@ export type Profile = {
   cgpaInputs: CgpaInputs | null;
   cgpaPlan: CgpaPlan | null;
   cgpaActual: CgpaActual | null;
+  /** Explicitly saved CGPA calculations, editable by updating the same id. */
+  cgpaCalculationHistory: CgpaCalculation[];
   /** True once the onboarding CGPA-goal introduction has been shown. */
   cgpaIntroSeen: boolean;
   /**
@@ -319,6 +352,7 @@ const emptyProfile: Profile = {
   cgpaInputs: null,
   cgpaPlan: null,
   cgpaActual: null,
+  cgpaCalculationHistory: [],
   cgpaIntroSeen: false,
   trialNoticeSeen: false,
   cgpaCalcCourses: null,
@@ -375,6 +409,7 @@ export function sanitizeProfile(raw: unknown): Profile {
     courseTestSettings: asRecord<CourseTestSettings>(p.courseTestSettings),
     courseTopicAnalysis: asRecord<CourseTopicAnalysis>(p.courseTopicAnalysis),
     aiQuestionsByCourse: byCourse,
+    cgpaCalculationHistory: asArray<CgpaCalculation>(p.cgpaCalculationHistory),
     lastActiveDate:
       typeof p.lastActiveDate === "string"
         ? p.lastActiveDate
@@ -1050,7 +1085,10 @@ export function useProfile() {
 
 /* ---------- Milestone helpers ---------- */
 export function averageForCourse(p: Profile, code: string): number | null {
-  const rel = p.attempts.filter((a) => a.courseCode === code);
+  // Tiny attempts are useful as practice, but aren't a reliable course-level signal.
+  const rel = p.attempts.filter((a) => a.courseCode === code && (a.answers
+    ? a.answers.filter((answer) => answer !== null && answer !== undefined).length >= 5
+    : a.total >= 5));
   if (!rel.length) return null;
   return Math.round(rel.reduce((s, a) => s + a.score, 0) / rel.length);
 }

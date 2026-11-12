@@ -57,6 +57,7 @@ export function hidesTabBar(view: AppView): boolean {
 export function TopNavBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
   const { view, navigate } = useProfile();
   const active = tabForView(highlightedView ?? view);
+  const progress = swipeProgress ?? TABS.findIndex((tab) => tab.key === active);
 
   if (hidesTabBar(view)) return null;
 
@@ -111,7 +112,7 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
 
 }
 
-export function BottomTabBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
+export function BottomTabBar({ highlightedView, swipeProgress, swipeIntensity }: { highlightedView?: AppView | null; swipeProgress?: number; swipeIntensity?: number } = {}) {
   const { view, navigate } = useProfile();
   const active = tabForView(highlightedView ?? view);
 
@@ -122,7 +123,18 @@ export function BottomTabBar({ highlightedView }: { highlightedView?: AppView | 
       aria-label="Mobile navigation"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background md:hidden"
     >
-      <div className="mx-auto flex max-w-md items-stretch">
+      <div
+        className="relative mx-auto flex max-w-md items-stretch"
+      >
+        <span
+          aria-hidden="true"
+          className={cn("pointer-events-none absolute bottom-1 left-0 z-10 h-1 w-6 -translate-x-1/2 rounded-full bg-accent", swipeIntensity ? "transition-none" : "transition-[left,opacity,box-shadow] duration-200")}
+          style={{
+            left: `${(progress + 0.5) * 20}%`,
+            opacity: 0.35 + (swipeIntensity ?? 0) * 0.65,
+            boxShadow: `0 0 ${4 + (swipeIntensity ?? 0) * 10}px color-mix(in srgb, var(--accent) ${20 + (swipeIntensity ?? 0) * 50}%, transparent)`,
+          }}
+        />
         {TABS.map((t) => {
           const on = active === t.key;
           return (
@@ -140,12 +152,7 @@ export function BottomTabBar({ highlightedView }: { highlightedView?: AppView | 
               <span className={cn("text-[10px] leading-none", on ? "font-semibold" : "font-medium")}>
                 {t.label}
               </span>
-              <span
-                className={cn(
-                  "h-0.5 w-6 rounded-full transition-colors",
-                  on ? "bg-accent" : "bg-transparent",
-                )}
-              />
+              <span className="h-0.5 w-6 rounded-full bg-transparent" />
             </button>
           );
         })}

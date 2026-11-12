@@ -6,7 +6,7 @@ const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"]
 const SWIPE_THRESHOLD = 70;
 const TRANSITION_MS = 180;
 
-export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null };
+export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null; progress: number; intensity: number };
 
 /** Which root tab (if any) the current view is. Sub-screens are not swipeable. */
 function rootIndex(view: AppView): number {
@@ -95,6 +95,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         tab: adjacent,
         side: dx < 0 ? "right" : "left",
         highlightedTab: Math.abs(dx) >= window.innerWidth / 2 ? adjacent : null,
+        progress: Math.max(0, Math.min(ORDER.length - 1, index - Math.max(-1, Math.min(1, dx / SWIPE_THRESHOLD)))),
+        intensity: Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD),
       });
       else setPreview(null);
       const resisted = adjacent ? dx : dx * 0.25;
@@ -111,7 +113,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const targetIndex = index + (deltaX < 0 ? 1 : -1);
       const target = ORDER[targetIndex];
       if (!horizontal || !target || Math.abs(deltaX) < SWIPE_THRESHOLD) {
-        if (horizontal && target) setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: null });
+        if (horizontal && target) setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: null, progress: index, intensity: 0 });
         restoreStage(node);
         return;
       }
@@ -124,7 +126,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         return;
       }
 
-      setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target });
+      setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target, progress: targetIndex, intensity: 1 });
       node.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       node.style.transform = `translate3d(${outgoing * window.innerWidth}px, 0, 0)`;
       window.setTimeout(() => {
@@ -140,6 +142,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     const onCancel = () => {
       tracking = false;
       horizontal = false;
+      if (horizontal) setPreview({ tab: ORDER[index] ?? view, side: "left", highlightedTab: null, progress: index, intensity: 0 });
+      else setPreview(null);
       if (stage) restoreStage(stage);
     };
 

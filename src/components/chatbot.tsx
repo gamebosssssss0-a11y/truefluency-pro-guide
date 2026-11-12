@@ -5,13 +5,13 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw } from "lucide-react";
+import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, getChatUsage, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage, type ChatUsage } from "@/lib/chat-api";
+import { getCourseThread, getCourseHistory, getChatUsage, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage, type ChatSource, type ChatUsage } from "@/lib/chat-api";
 import { ChatUsageRing } from "@/components/chat-usage-ring";
 import { createOrUpdateChatShare, getChatShareState, revokeChatShare, type ChatShareVisibility } from "@/lib/chat-sharing.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ import { canonicalCourseCode } from "@/lib/course-code";
 import { formatResetTime, nextChatReset } from "@/lib/entitlements";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 /** Sent to the backend as-is; chat.py validates against MODE_INSTRUCTIONS. */
 const MODES = ["Explain", "Quiz me", "Work a problem"] as const;
@@ -92,6 +93,10 @@ type Message = {
   sendErrorText?: string;
   retryCourse?: string;
   retryMode?: Mode;
+  /** Stable across a retry so the service can safely de-duplicate the send. */
+  requestId?: string;
+  sources?: ChatSource[];
+  grounded?: boolean;
 };
 
 // The app mounts a hidden ChatbotScreen to warm the backend before the user
@@ -219,6 +224,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (nextUid !== currentUid.current) {
         authEpoch.current += 1;
         loadToken.current += 1;
+        streamAbortRef.current?.abort();
+        streamAbortRef.current = null;
+        stopRequestedRef.current = false;
         threadCache.current.clear();
         preloadedThreadCache.clear();
         setMessages([]);
@@ -242,10 +250,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const [showFullCourseTitle, setShowFullCourseTitle] = useState(false);
   const imageUrls = useRef(new Set<string>());
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; conversationId: string; messages: ChatMessage[] }[]>([]);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ conversationId: string; course: string; title: string } | null>(null);
   const [resumingConvId, setResumingConvId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -285,6 +295,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const dictationRef = useRef<DictationRecognition | null>(null);
   const retryFiles = useRef(new Map<number, File>());
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const stopRequestedRef = useRef(false);
   const nextId = useRef(1);
   const loadToken = useRef(0);
   // SessionStorage-backed, not a plain useRef, and on purpose: this screen
@@ -345,6 +357,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     from: message.role === "user" ? "student" : "assistant",
     text: message.content,
     createdAt: message.created_at,
+    sources: message.sources,
+    grounded: message.grounded,
   }));
 
   const persistCache = (course: string, thread: Message[]) => {
@@ -374,6 +388,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setSelected(key);
     navigate(view, { courseCode: key });
     setAttachedPage(null);
+    setShowFullCourseTitle(false);
     setMessages(threadCache.current.get(cacheMapKey(key)) ?? []);
     setDraft("");
     setPhotoFile(null);
@@ -637,7 +652,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
   const send = async (
     override?: string,
-    retry?: { messageId: number; course: string; mode: Mode },
+    retry?: { messageId: number; course: string; mode: Mode; requestId?: string },
   ) => {
     const text = (override ?? draft).trim();
     const course = retry?.course ?? selected;
@@ -656,11 +671,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       return;
     }
 
+    const requestId = retry?.requestId ?? crypto.randomUUID();
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    stopRequestedRef.current = false;
+
     const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : pageToSend?.previewUrl;
     const messageId = retry?.messageId ?? nextId.current++;
     if (retry) {
       setMessages((cur) => cur.map((message) => message.id === messageId
-        ? { ...message, sendError: undefined, sendErrorText: undefined }
+        ? { ...message, requestId, sendError: undefined, sendErrorText: undefined }
         : message));
     } else {
       setMessages((cur) => {
@@ -670,6 +690,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           text,
           createdAt: new Date().toISOString(),
           imageUrl: previewUrl,
+          requestId,
         }];
         persistCache(course, next);
         return next;
@@ -717,7 +738,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // "grow existing bubble" branch on a list that never had it. Every
       // chunk then grew a bubble that didn't exist, so the reply streamed in
       // successfully from the backend and never appeared on screen.
-      const { reply, moderated, actions, saved, usage: usageAfter } = await streamChatMessage(
+      const { reply, moderated, actions, saved, usage: usageAfter, stopped, sources, grounded } = await streamChatMessage(
         text,
         course,
         sendMode,
@@ -741,6 +762,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           setMessages((cur) => cur.map((msg) => (msg.id === id ? { ...msg, text: msg.text + delta } : msg)));
         },
         pageContext,
+        { signal: controller.signal, idempotencyKey: requestId },
       );
       if (authEpoch.current !== sendAuthEpoch) return;
 
@@ -759,16 +781,21 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               from: moderated ? ("notice" as const) : ("assistant" as const),
               text: moderated ? `Can't help with that|${reply}` : reply,
               actions: moderated ? undefined : actions,
+              sources: moderated ? undefined : sources,
+              grounded: moderated ? undefined : grounded,
             }
             : msg));
         const next = saved ? finalized : [...finalized, {
           id: nextId.current++,
           from: "notice" as const,
-          text: "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
+          text: stopped
+            ? "Partial answer|Generation stopped before the server saved a complete reply. This partial answer is kept in this session."
+            : "Not saved|This reply couldn't be saved to your history, so it may be gone after a refresh.",
         }];
         persistCache(course, next);
         return next;
       });
+      if (stopped) toast.message("Response stopped", { description: "The partial answer is kept in this conversation." });
       if (draft.trim() === text) setDraft("");
       if (fileToSend && photoFile === fileToSend) {
         setPhotoFile(null);
@@ -786,6 +813,21 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       }
     } catch (error) {
       if (authEpoch.current !== sendAuthEpoch) return;
+      if (stopRequestedRef.current) {
+        setMessages((cur) => {
+          const next = cur.map((message) => message.id === messageId
+            ? { ...message, sendError: undefined, sendErrorText: undefined }
+            : message);
+          persistCache(course, next);
+          return next;
+        });
+        if (draft.trim() === text) setDraft("");
+        retryFiles.current.delete(messageId);
+        retryPageAttachments.current.delete(messageId);
+        if (pageToSend) setAttachedPage(null);
+        toast.message("Response stopped", { description: "Any partial answer stays in this conversation." });
+        return;
+      }
       // Logged so a failed send is visible in DevTools → Console with the real
       // reason (backend error text, network failure) instead of only the
       // generic "Couldn't send." under the message.
@@ -809,6 +851,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             sendErrorText: error instanceof Error ? error.message : undefined,
             retryCourse: course,
             retryMode: sendMode,
+            requestId,
           }
           : message);
         persistCache(course, next);
@@ -818,8 +861,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (authEpoch.current === sendAuthEpoch) {
         setIsSending(false);
         setStreamingBubbleId(null);
+        if (streamAbortRef.current === controller) streamAbortRef.current = null;
+        stopRequestedRef.current = false;
       }
     }
+  };
+
+  const stopGeneration = () => {
+    if (!isSending || isUploadingPhoto) return;
+    stopRequestedRef.current = true;
+    streamAbortRef.current?.abort();
   };
 
   const toggleSpeak = (m: Message) => {
@@ -1016,21 +1067,42 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const selectedCourse = profile.courses.find(
     (course) => canonicalCourseCode(course.code) === canonicalCourseCode(selected),
   );
+  const fullCourseTitle = selectedCourse?.name?.trim() ?? "";
+  const shortCourseTitle = fullCourseTitle.length > 22 ? `${fullCourseTitle.slice(0, 20).trimEnd()}…` : fullCourseTitle;
+  const latestAssistantReply = [...messages].reverse().find((message) => message.from === "assistant");
+  const sourcePanelVisible = !embedded && Boolean(latestAssistantReply?.sources?.length);
+  const sourceLocation = (source: ChatSource) => source.page ? `Page ${source.page}` : source.section || source.location || "Page unavailable";
 
   return (
     <div className={`study-chat-screen min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
-      <div className={`chat-layout mx-auto grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3 ${embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4"}`}>
+      <div className={cn("chat-layout mx-auto grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#E4DCC8]/25 pb-2">
+          <button
+            type="button"
+            onClick={() => setShowFullCourseTitle((current) => !current)}
+            disabled={isSending || courseOptions.length === 0}
+            aria-expanded={showFullCourseTitle}
+            aria-label={selected ? `Show ${showFullCourseTitle ? "short" : "full"} course title for ${displayCode(selected)}` : "Choose a course"}
+            title={fullCourseTitle || displayCode(selected)}
+            className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
+          >
+            <span className={cn("min-w-0 whitespace-normal break-words text-left leading-4", showFullCourseTitle ? "line-clamp-none" : "line-clamp-2")}>
+              {selected ? <>
+                {displayCode(selected)}{shortCourseTitle ? ` · ` : ""}
+                <span className="md:hidden">{showFullCourseTitle ? fullCourseTitle : shortCourseTitle}</span>
+                <span className="hidden md:inline">{fullCourseTitle}</span>
+              </> : "Choose a course"}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => setCoursePickerOpen(true)}
             disabled={isSending || courseOptions.length === 0}
             aria-haspopup="dialog"
-            aria-label={selected ? `Current course ${displayCode(selected)}${selectedCourse?.name ? `: ${selectedCourse.name}` : ""}; change course` : "Choose a course"}
-            title={selectedCourse?.name ? `${displayCode(selected)} · ${selectedCourse.name}` : displayCode(selected)}
-            className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
+            aria-label="Change course"
+            title="Change course"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] text-[#F7F3EA] disabled:opacity-60"
           >
-            <span className="min-w-0 line-clamp-2 whitespace-normal break-words text-left leading-4">{selected ? `${displayCode(selected)}${selectedCourse?.name?.trim() ? ` · ${selectedCourse.name.trim()}` : ""}` : "Choose a course"}</span>
             <ChevronDown className="h-4 w-4 shrink-0 text-[#F3E6C8]" />
           </button>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -1049,6 +1121,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 try {
                   await startNewChatThread(key);
                   persistCache(key, []); // now genuinely correct: the server thread is really empty
+                  setMode("Explain");
                 } catch (error) {
                   setMessages(previous); // the old thread is still live server-side — don't hide it on a failed archive
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
@@ -1070,6 +1143,21 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             ) : null}
           </div>
         </div>
+        {sourcePanelVisible && latestAssistantReply ? (
+          <aside aria-label="Sources for the latest answer" className="hidden min-h-0 overflow-y-auto rounded-2xl border border-border bg-card p-4 md:col-start-2 md:row-start-1 md:row-span-3 md:block">
+            <h2 className="font-display text-sm font-semibold text-foreground">Sources</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Course material used for the latest answer.</p>
+            <ul className="mt-3 space-y-2">
+              {latestAssistantReply.sources?.map((source, index) => (
+                <li key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="rounded-xl border border-border bg-background p-3">
+                  <p className="break-words text-xs font-semibold text-foreground">{source.fileName}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{sourceLocation(source)}</p>
+                  {source.excerpt ? <p className="mt-2 break-words text-xs leading-relaxed text-foreground">{source.excerpt}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </aside>
+        ) : null}
         {/* Thread */}
         <div
           ref={threadScrollRef}
@@ -1183,6 +1271,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                           messageId: m.id,
                           course: m.retryCourse ?? selected,
                           mode: m.retryMode ?? mode,
+                          requestId: m.requestId,
                         })}
                         className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Retry message"
@@ -1213,6 +1302,24 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     <div className="chat-message-content text-base leading-6">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
+                    {m.sources?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5 md:hidden" aria-label="Answer sources">
+                        {m.sources.map((source, index) => (
+                          <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] text-foreground">
+                            <FileText aria-hidden="true" className="h-3 w-3 shrink-0 text-accent" />
+                            <span className="truncate">{source.fileName} · {sourceLocation(source)}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : m.grounded === false ? (
+                      <p role="note" className="mt-2 rounded-lg border border-warning/40 bg-warning/10 px-2.5 py-2 text-xs text-foreground">
+                        General explanation · your selected course files don’t cover this answer.
+                      </p>
+                    ) : m.grounded === true ? (
+                      <p role="note" className="mt-2 rounded-lg border border-warning/40 bg-warning/10 px-2.5 py-2 text-xs text-foreground">
+                        No file or page citation was returned for this answer.
+                      </p>
+                    ) : null}
                     {m.actions && m.actions.length > 0 ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {m.actions.map((a) => (
@@ -1385,9 +1492,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
                 <Mic className="h-4 w-4" />
               </button>
-              <button type="button" onClick={() => send()} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
-                <Send className="h-5 w-5" />
-              </button>
+              {isSending ? (
+                <button type="button" onClick={stopGeneration} disabled={isUploadingPhoto} aria-label="Stop response generation" title="Stop generation" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-50">
+                  <Square className="h-4 w-4 fill-current" />
+                </button>
+              ) : (
+                <button type="button" onClick={() => send()} disabled={!selected || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                  <Send className="h-5 w-5" />
+                </button>
+              )}
             </div>
           </div>
           {chatCapReached ? (
@@ -1437,7 +1550,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         type="button"
                         aria-label="Delete this conversation"
                         disabled={deletingConvId === row.conversationId}
-                        onClick={() => void handleDeleteConversation(row.conversationId, row.course)}
+                        onClick={() => setDeleteTarget({ conversationId: row.conversationId, course: row.course, title: row.title })}
                         className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1458,6 +1571,19 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
                               <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
                             </div>
+                            {m.role === "assistant" && m.sources?.length ? (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {m.sources.map((source, index) => (
+                                  <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="rounded-full border border-border bg-card px-2 py-1 text-[10px] text-foreground">
+                                    {source.fileName} · {sourceLocation(source)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : m.role === "assistant" && m.grounded === false ? (
+                              <p className="mt-2 text-xs text-muted-foreground">General explanation · course files don’t cover this answer.</p>
+                            ) : m.role === "assistant" && m.grounded === true ? (
+                              <p className="mt-2 text-xs text-warning">No file or page citation was returned for this answer.</p>
+                            ) : null}
                           </div>
                         ))}
                         <button
@@ -1564,6 +1690,32 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           <button type="button" onClick={() => setAttachOpen(false)} className="mt-4 w-full rounded-xl border border-border py-3 text-sm font-semibold">Close</button>
         </SheetContent>
       </Sheet>
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !deletingConvId) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{deleteTarget?.title || "Study chat"}” will be permanently removed from your saved Study Chat history. This only deletes this conversation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingConvId !== null}>Keep conversation</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!deleteTarget || deletingConvId !== null}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                if (!deleteTarget) return;
+                const target = deleteTarget;
+                setDeleteTarget(null);
+                void handleDeleteConversation(target.conversationId, target.course);
+              }}
+            >
+              Delete conversation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

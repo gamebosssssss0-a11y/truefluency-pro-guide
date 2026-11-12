@@ -1,5 +1,5 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { useProfile, type CgpaActual, type CgpaSemester } from "@/lib/profile-store";
+import { useProfile, type CgpaActual, type CgpaSemester, type CgpaCalculation } from "@/lib/profile-store";
 import { CLASSIFICATION_BANDS, GRADE_SCALE, classify, PROBATION_THRESHOLD } from "@/lib/cgpa";
 import { HeaderLogo } from "@/components/brand";
 import { Button } from "@/components/ui/button";
@@ -22,25 +22,44 @@ import { canonicalCourseCode } from "@/lib/course-code";
  */
 
 type Mode = "percent" | "letter";
+type Scale = "ui-5" | "four-point";
 
-const LETTERS = GRADE_SCALE.map((g) => g.grade);
+const FOUR_POINT_SCALE = [
+  { grade: "A", points: 4, percent: "90 to 100%", min: 90 },
+  { grade: "B", points: 3, percent: "80 to 89.99%", min: 80 },
+  { grade: "C", points: 2, percent: "70 to 79.99%", min: 70 },
+  { grade: "D", points: 1, percent: "60 to 69.99%", min: 60 },
+  { grade: "F", points: 0, percent: "Below 60%", min: 0 },
+];
+const scaleBands = (scale: Scale) => scale === "ui-5" ? GRADE_SCALE : FOUR_POINT_SCALE;
 
-function pointsForPercent(percent: number): number {
-  const band = GRADE_SCALE.find((g) => percent >= g.min);
+const LETTERS = (scale: Scale) => scaleBands(scale).map((g) => g.grade);
+
+function pointsForPercent(percent: number, scale: Scale): number {
+  const band = scaleBands(scale).find((g) => percent >= g.min);
   return band ? band.points : 0;
 }
 
-function gradeForPercent(percent: number): string {
-  const band = GRADE_SCALE.find((g) => percent >= g.min);
+function gradeForPercent(percent: number, scale: Scale): string {
+  const band = scaleBands(scale).find((g) => percent >= g.min);
   return band ? band.grade : "F";
 }
 
-function pointsForLetter(letter: string): number {
-  return GRADE_SCALE.find((g) => g.grade === letter)?.points ?? 0;
+function pointsForLetter(letter: string, scale: Scale): number {
+  return scaleBands(scale).find((g) => g.grade === letter)?.points ?? 0;
 }
 
 /** Mid-band percentage used when the student only knows their letter grade. */
-function percentForLetter(letter: string): number {
+function percentForLetter(letter: string, scale: Scale): number {
+  if (scale === "four-point") {
+    switch (letter) {
+      case "A": return 95;
+      case "B": return 85;
+      case "C": return 75;
+      case "D": return 65;
+      default: return 30;
+    }
+  }
   switch (letter) {
     case "A":
       return 85;
@@ -85,6 +104,7 @@ export function CgpaCalculatorScreen() {
   const { profile, navigate, update } = useProfile();
   const saved = profile.cgpaActual;
 
+  const [scale, setScale] = useState<Scale>(saved?.scale ?? "ui-5");
   const [mode, setMode] = useState<Mode>("percent");
   const [priorCgpa, setPriorCgpa] = useState(saved ? String(saved.priorCgpa) : "");
   const [priorUnits, setPriorUnits] = useState(saved ? String(saved.priorUnits) : "");
@@ -102,7 +122,7 @@ export function CgpaCalculatorScreen() {
     profile.courses.forEach((c) => {
       const code = canonicalCourseCode(c.code);
       const score = saved?.scores?.[code] ?? saved?.scores?.[c.code];
-      base[code] = score !== undefined ? gradeForPercent(score) : "";
+      base[code] = score !== undefined ? gradeForPercent(score, saved?.scale ?? "ui-5") : "";
     });
     return base;
   });
@@ -120,7 +140,10 @@ export function CgpaCalculatorScreen() {
     return base;
   });
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<CgpaActual | null>(saved);
+  const [result, setResult] = useState<CgpaActual | null>(null);
+  const [calculatedKey, setCalculatedKey] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [calculationLabel, setCalculationLabel] = useState("");
   const [session, setSession] = useState("");
   const [term, setTerm] = useState<"1st" | "2nd">("1st");
 
@@ -136,21 +159,23 @@ export function CgpaCalculatorScreen() {
         percent = raw === "" || raw === undefined ? null : Number(raw);
       } else {
         const letter = letters[code];
-        percent = letter ? percentForLetter(letter) : null;
+        percent = letter ? percentForLetter(letter, scale) : null;
       }
       const points =
         percent === null
           ? null
           : mode === "letter"
-            ? pointsForLetter(letters[code])
-            : pointsForPercent(percent);
+            ? pointsForLetter(letters[code], scale)
+            : pointsForPercent(percent, scale);
       return { course: c, units: u, percent, points };
     });
-  }, [rows, units, percents, letters, mode]);
+  }, [rows, units, percents, letters, mode, scale]);
 
   const semesters = useMemo(
-    () => profile.cgpaActual?.semesters ?? [],
-    [profile.cgpaActual?.semesters],
+    () => profile.cgpaActual?.scale === scale || (!profile.cgpaActual?.scale && scale === "ui-5")
+      ? profile.cgpaActual?.semesters ?? []
+      : [],
+    [profile.cgpaActual?.semesters, profile.cgpaActual?.scale, scale],
   );
 
   const liveResult = useMemo<LiveCgpaResult | null>(() => {
@@ -159,7 +184,7 @@ export function CgpaCalculatorScreen() {
     if (
       !Number.isFinite(prior) ||
       prior < 0 ||
-      prior > 5 ||
+      prior > (scale === "ui-5" ? 5 : 4) ||
       !Number.isFinite(priorU) ||
       priorU < 0
     ) {
@@ -190,7 +215,7 @@ export function CgpaCalculatorScreen() {
       validCourseCount: validRows.length,
       selectedCourseCount: rows.length,
     };
-  }, [perCourse, priorCgpa, priorUnits, rows.length]);
+  }, [perCourse, priorCgpa, priorUnits, rows.length, scale]);
 
   const savedPreviewMatches = Boolean(
     result &&
@@ -199,6 +224,7 @@ export function CgpaCalculatorScreen() {
     Math.abs(result.cumulativeCgpa - liveResult.cumulativeCgpa) < 0.000001 &&
     result.totalUnits === liveResult.totalUnits,
   );
+  const currentCalculationKey = JSON.stringify({ scale, mode, priorCgpa, priorUnits, rows: perCourse.map((row) => [canonicalCourseCode(row.course.code), row.percent, row.points, row.units]) });
 
   const calculate = () => {
     if (rows.length === 0) {
@@ -207,9 +233,10 @@ export function CgpaCalculatorScreen() {
     }
     const prior = priorCgpa === "" ? 0 : Number(priorCgpa);
     const priorU = priorUnits === "" ? 0 : Number(priorUnits);
-    if (!Number.isFinite(prior) || prior < 0 || prior > 5) {
+    const maxPoints = scale === "ui-5" ? 5 : 4;
+    if (!Number.isFinite(prior) || prior < 0 || prior > maxPoints) {
       setError(
-        "Previous CGPA must be between 0.00 and 5.00. Leave it blank if this is your first semester.",
+        `Previous CGPA must be between 0.00 and ${maxPoints.toFixed(2)}. Leave it blank if this is your first semester.`,
       );
       return;
     }
@@ -264,16 +291,52 @@ export function CgpaCalculatorScreen() {
       semesterGpa,
       cumulativeCgpa: cumulative,
       totalUnits,
-      classification: classify(cumulative),
+      classification: scale === "ui-5" ? classify(cumulative) : "Classification depends on your institution",
+      scale,
     };
     setResult(next);
-    update({ cgpaActual: { ...next, semesters } });
+    setCalculatedKey(currentCalculationKey);
+  };
+
+  const saveCalculation = () => {
+    if (!result || calculatedKey !== currentCalculationKey) return;
+    const id = editingId ?? `cgpa-${Date.now()}`;
+    const label = calculationLabel.trim() || result.label || `CGPA calculation ${new Date().toLocaleDateString()}`;
+    const savedResult = { ...result, label };
+    const entry: CgpaCalculation = { id, label, result: savedResult };
+    const history = profile.cgpaCalculationHistory ?? [];
+    update({
+      ...(scale === "ui-5" ? { cgpaActual: { ...savedResult, semesters } } : {}),
+      cgpaCalculationHistory: editingId
+        ? history.map((item) => item.id === editingId ? entry : item)
+        : [entry, ...history],
+    });
+    setResult(savedResult);
+    setEditingId(id);
+    setCalculationLabel(label);
+  };
+
+  const openCalculation = (entry: CgpaCalculation) => {
+    const value = entry.result;
+    const selectedScale = value.scale ?? "ui-5";
+    setEditingId(entry.id);
+    setCalculatedKey(null);
+    setCalculationLabel(entry.label);
+    setResult(value);
+    setScale(selectedScale);
+    setPriorCgpa(String(value.priorCgpa));
+    setPriorUnits(String(value.priorUnits));
+    setPercents(Object.fromEntries(Object.entries(value.scores).map(([code, score]) => [code, String(score)])));
+    setLetters(Object.fromEntries(Object.entries(value.scores).map(([code, score]) => [code, gradeForPercent(score, selectedScale)])));
+    setUnits(Object.fromEntries(Object.entries(value.units)));
+    const selectedCodes = Object.keys(value.scores).map(canonicalCourseCode);
+    update({ cgpaCalcCourses: [...new Set([...(profile.cgpaCalcCourses ?? profile.courses.map((course) => course.code)), ...selectedCodes].map(canonicalCourseCode))] });
   };
 
   /* ---------- Saved semesters (inside the existing cgpa_actual field) ---------- */
 
   const writeSemesters = (list: CgpaSemester[]) => {
-    const base = result ?? profile.cgpaActual;
+    const base = profile.cgpaActual;
     if (!base) return;
     const next: CgpaActual = { ...base, semesters: list };
     setResult(next);
@@ -329,7 +392,7 @@ export function CgpaCalculatorScreen() {
     setLetters((l) => {
       const next = { ...l };
       s.courses.forEach((c) => {
-        next[canonicalCourseCode(c.code)] = gradeForPercent(c.percent);
+        next[canonicalCourseCode(c.code)] = gradeForPercent(c.percent, scale);
       });
       return next;
     });
@@ -371,21 +434,41 @@ export function CgpaCalculatorScreen() {
             <ArrowLeft className="h-4 w-4" /> Account
           </button>
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-[10px] font-medium text-navy">
-            <ShieldCheck className="h-3 w-3" /> Built for the UI 5.0 scale
+            <ShieldCheck className="h-3 w-3" /> Select your grading scale
           </span>
         </div>
 
         <ResultBlock
           result={liveResult}
-          hasSavedResult={Boolean(result)}
-          savedPreviewMatches={savedPreviewMatches}
+          scale={scale}
+          hasSavedResult={Boolean(saved && (saved.scale ?? "ui-5") === "ui-5" && scale === "ui-5")}
+          savedPreviewMatches={Boolean(saved && liveResult && Math.abs(saved.cumulativeCgpa - liveResult.cumulativeCgpa) < 0.000001 && saved.totalUnits === liveResult.totalUnits)}
         />
 
         <h1 className="font-display text-3xl font-semibold text-foreground">CGPA calculator</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Enter what you actually scored and this works out your semester GPA and your new
-          cumulative CGPA on the 0.00 to 5.00 scale.
+          cumulative CGPA on the selected scale.
         </p>
+
+        <label className="mt-4 block rounded-2xl border border-border bg-card p-3.5">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Grading scale</span>
+          <select
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+            value={scale}
+            onChange={(event) => {
+              const nextScale = event.target.value as Scale;
+              setScale(nextScale);
+              setResult(null);
+              setCalculatedKey(null);
+              setEditingId(null);
+            }}
+          >
+            <option value="ui-5">University of Ibadan · 5.0</option>
+            <option value="four-point">Generic 4.0 · confirm with your institution</option>
+          </select>
+          {scale === "four-point" ? <span className="mt-1 block text-[11px] text-muted-foreground">Generic 4.0 bands are estimates. Confirm your institution’s grade boundaries before relying on this result.</span> : null}
+        </label>
 
         {/* Mode switch */}
         <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1">
@@ -530,13 +613,13 @@ export function CgpaCalculatorScreen() {
                           {row?.percent !== null &&
                           row?.percent !== undefined &&
                           !Number.isNaN(row.percent)
-                            ? `${gradeForPercent(row.percent)} · ${pointsForPercent(row.percent).toFixed(2)} points`
+                            ? `${gradeForPercent(row.percent, scale)} · ${pointsForPercent(row.percent, scale).toFixed(2)} points`
                             : "0 to 100"}
                         </span>
                       </>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
-                        {LETTERS.map((l) => {
+                        {LETTERS(scale).map((l) => {
                           const on = letters[canonicalCourseCode(c.code)] === l;
                           return (
                             <button
@@ -569,7 +652,7 @@ export function CgpaCalculatorScreen() {
                   row.percent <= 100 ? (
                     <p className="mt-2 text-[10px] font-medium text-navy/70">
                       {mode === "percent"
-                        ? `Entering ${row.percent}% → Grade ${gradeForPercent(row.percent)} (${row.points.toFixed(1)} GP)`
+                        ? `Entering ${row.percent}% → Grade ${gradeForPercent(row.percent, scale)} (${row.points.toFixed(1)} GP)`
                         : `Grade ${letters[canonicalCourseCode(c.code)]} (${row.points.toFixed(1)} GP)`}
                     </p>
                   ) : null}
@@ -587,8 +670,41 @@ export function CgpaCalculatorScreen() {
         ) : null}
 
         <Button size="lg" className="mt-4 w-full" onClick={calculate}>
-          <Calculator className="mr-1.5 h-4 w-4" /> Save result
+          <Calculator className="mr-1.5 h-4 w-4" /> Calculate preview
         </Button>
+        {result ? (
+          <div className="mt-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
+            <label className="block text-xs font-semibold text-foreground" htmlFor="cgpa-label">Optional semester or custom label</label>
+            <Input id="cgpa-label" className="mt-2" placeholder="e.g. 2026/2027 · First semester" value={calculationLabel} onChange={(event) => setCalculationLabel(event.target.value)} />
+            <Button size="lg" className="mt-2 w-full" disabled={calculatedKey !== currentCalculationKey} onClick={saveCalculation}>
+              {editingId ? "Update saved calculation" : "Save calculation"}
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="mb-2 mt-6 flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saved calculations</h2>
+          {(result || editingId) ? (
+            <Button size="sm" variant="ghost" onClick={() => { setResult(null); setEditingId(null); setCalculatedKey(null); setCalculationLabel(""); }}>
+              New calculation
+            </Button>
+          ) : null}
+        </div>
+        {(profile.cgpaCalculationHistory ?? []).length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center text-xs text-muted-foreground">Calculations stay as previews until you save one.</div>
+        ) : (
+          <div className="space-y-2">
+            {profile.cgpaCalculationHistory.map((entry) => (
+              <div key={entry.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-foreground">{entry.label}</div>
+                  <div className="text-[11px] text-muted-foreground">CGPA {entry.result.cumulativeCgpa.toFixed(2)} · {entry.result.totalUnits} credits · {entry.result.scale === "four-point" ? "4.0" : "5.0"} scale</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => openCalculation(entry)}>Edit</Button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <Accordion
           type="single"
@@ -597,7 +713,7 @@ export function CgpaCalculatorScreen() {
         >
           <AccordionItem value="calculation" className="border-0">
             <AccordionTrigger className="py-3 text-xs font-semibold text-navy hover:no-underline">
-              How UI CGPA is calculated
+              How this CGPA is calculated
             </AccordionTrigger>
             <AccordionContent className="space-y-2 text-xs leading-relaxed text-muted-foreground">
               <p>
@@ -613,7 +729,7 @@ export function CgpaCalculatorScreen() {
                 ÷ the total units across both semesters. Each semester is weighted by its credit
                 load, not averaged evenly.
               </p>
-              <p>Results are shown to two decimal places.</p>
+              <p>Results are shown to two decimal places. Letter-grade percentages use the midpoint of each displayed band; grade points come directly from the selected scale.</p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -669,14 +785,14 @@ export function CgpaCalculatorScreen() {
             className="mt-3 w-full"
             size="lg"
             variant="outline"
-            disabled={!result || session.trim() === ""}
+            disabled={!result || result.scale !== "ui-5" || calculatedKey !== currentCalculationKey || (profile.cgpaActual?.scale ?? "ui-5") !== "ui-5" || session.trim() === ""}
             onClick={saveSemester}
           >
             Save {term} semester
           </Button>
-          {!result ? (
+          {!profile.cgpaActual ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Save a result first, then save this semester to your history.
+              Save a calculation first, then save this semester to your history.
             </p>
           ) : null}
         </div>
@@ -749,10 +865,10 @@ export function CgpaCalculatorScreen() {
         {/* Grade scale reference */}
         <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            UI grade scale
+            {scale === "ui-5" ? "UI 5.0 grade scale" : "Generic 4.0 grade scale"}
           </div>
           <div className="space-y-1">
-            {GRADE_SCALE.map((g) => (
+            {scaleBands(scale).map((g) => (
               <div key={g.grade} className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">{g.percent}</span>
                 <span className="font-semibold text-foreground">
@@ -769,19 +885,21 @@ export function CgpaCalculatorScreen() {
 
 function ResultBlock({
   result,
+  scale,
   hasSavedResult,
   savedPreviewMatches,
 }: {
   result: LiveCgpaResult | null;
+  scale: Scale;
   hasSavedResult: boolean;
   savedPreviewMatches: boolean;
 }) {
   const { navigate } = useProfile();
-  const maxScale = CLASSIFICATION_BANDS[CLASSIFICATION_BANDS.length - 1].max;
+  const maxScale = scale === "ui-5" ? CLASSIFICATION_BANDS[CLASSIFICATION_BANDS.length - 1].max : 4;
   const position = result
     ? Math.max(0, Math.min(100, (result.cumulativeCgpa / maxScale) * 100))
     : 0;
-  const nextBand = result
+  const nextBand = result && scale === "ui-5"
     ? CLASSIFICATION_BANDS.find((band) => band.min > result.cumulativeCgpa)
     : undefined;
 
@@ -829,8 +947,10 @@ function ResultBlock({
         {result ? (
           <div className="mt-3 border-t border-primary-foreground/15 pt-3">
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-semibold">{classify(result.cumulativeCgpa)}</span>
-              {nextBand ? (
+              <span className="font-semibold">{scale === "ui-5" ? classify(result.cumulativeCgpa) : "Classification varies by institution"}</span>
+              {scale !== "ui-5" ? (
+                <span className="text-right text-primary-foreground/75">CGPA on a 4.00 scale</span>
+              ) : nextBand ? (
                 <span className="text-right text-primary-foreground/75">
                   {(nextBand.min - result.cumulativeCgpa).toFixed(2)} points to {nextBand.label} (
                   {nextBand.min.toFixed(2)})
@@ -842,7 +962,7 @@ function ResultBlock({
                 </span>
               )}
             </div>
-            <div
+            {scale === "ui-5" ? <div
               role="meter"
               aria-label="Classification progress"
               aria-valuemin={0}
@@ -873,7 +993,7 @@ function ResultBlock({
                 className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-white shadow"
                 style={{ left: `${position}%` }}
               />
-            </div>
+            </div> : null}
             {result.validCourseCount < result.selectedCourseCount ? (
               <p className="mt-2 text-[10px] text-primary-foreground/65">
                 Preview uses {result.validCourseCount} of {result.selectedCourseCount} selected
@@ -888,7 +1008,7 @@ function ResultBlock({
         )}
       </section>
 
-      {result && result.cumulativeCgpa > 0 && result.cumulativeCgpa < PROBATION_THRESHOLD ? (
+      {scale === "ui-5" && result && result.cumulativeCgpa > 0 && result.cumulativeCgpa < PROBATION_THRESHOLD ? (
         <div className="mt-3 rounded-2xl border border-border bg-secondary/60 p-3.5 text-xs text-foreground">
           A CGPA below {PROBATION_THRESHOLD.toFixed(2)} sits under the academic probation threshold
           at UI. It is recoverable, and the goal setter can build a plan to lift it.

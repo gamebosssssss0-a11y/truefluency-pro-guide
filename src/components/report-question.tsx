@@ -19,6 +19,7 @@ export function ReportQuestionButton({
   options,
   markedIndex,
   compact = false,
+  onVerified,
 }: {
   courseCode: string;
   materialId?: string | null;
@@ -27,6 +28,8 @@ export function ReportQuestionButton({
   markedIndex?: number | null;
   /** A small "Report" flag for use while the test is running, instead of the longer label used in the review. */
   compact?: boolean;
+  /** Called only when the review service confirms this report as invalid. */
+  onVerified?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -39,6 +42,7 @@ export function ReportQuestionButton({
     setSending(true);
     try {
       const out = await reportQuestion({ courseCode, materialId, question, options, markedIndex, reason, note });
+      if (out.verified) onVerified?.();
       setSent(true);
       setOpen(false);
       toast.success(out.status === "already_reported" ? "You've already reported this one" : "Thanks, we'll avoid it", {
