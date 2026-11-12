@@ -135,5 +135,6 @@ Implemented on PR #55; preview and runtime verification are still pending:
 - P6: My Files uses a row-shaped loading skeleton; the latest locker metadata is cached by signed-in user for fast return and offline fallback. Cached entries exclude storage paths and extracted course text, and request sequencing prevents stale account responses replacing the active list.
 - M8: The current result-first submit flow keeps the result locally and offers a save retry using the same attempt ID; `pushMockAttempt` upserts on `(user_id, id)`, so retry is idempotent. Resetting the runner's guard is not needed because the submitted test is already cleared before persistence.
 - G3 (partial): phone tab labels now meet the 12 px minimum, the bar uses the available width, and both side and bottom safe-area insets are respected. The tabs already hide for mock run and generation; contrast and flow-level visual review remain.
+- C1 (implementation): Chat now declares a `minmax(0, 1fr)` phone column and constrains its layout width; the source panel adds a second bounded column only on desktop. A 360 px visual check is still pending.
 
 PR3's minimum-answer average and M3's actual generation-error message were already present on the current branch. The remaining Phase 0 rendering and skeleton items still need a flow-level audit.
