@@ -132,5 +132,6 @@ Implemented on PR #55; preview and runtime verification are still pending:
 - P4/P5: adjacent tabs warm during idle time and the swipe preview renders the actual mounted screen beside the current tab; the existing layout-effect stage reset is retained.
 - P7: local profile serialization is debounced by 250 ms.
 - P8: the PDF viewer and embedded Chat are lazy-loaded when a file preview needs them.
+- P6: My Files uses a row-shaped loading skeleton; the latest locker metadata is cached by signed-in user for fast return and offline fallback. Cached entries exclude storage paths and extracted course text, and request sequencing prevents stale account responses replacing the active list.
 
 PR3's minimum-answer average and M3's actual generation-error message were already present on the current branch. M8 and the remaining Phase 0 rendering and skeleton items still need a flow-level audit.

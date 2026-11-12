@@ -4,7 +4,7 @@
  * library.functions.ts.
  */
 import { ErrorCard } from "@/components/error-card";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
 } from "lucide-react";
@@ -55,7 +55,46 @@ type LockerFile = {
   readyForMocks: boolean;
 };
 
-let lockerDisplayCache: LockerFile[] | null = null;
+type CachedLockerFile = Omit<LockerFile, "file_path">;
+
+function lockerCacheKey(userId: string): string {
+  return `truefluency-locker-v1:${userId}`;
+}
+
+function readLockerCache(userId: string): LockerFile[] | null {
+  try {
+    const raw = window.localStorage.getItem(lockerCacheKey(userId));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const files = parsed.filter((item): item is CachedLockerFile =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      typeof item.id === "string" &&
+      typeof item.course_code === "string" &&
+      typeof item.file_name === "string" &&
+      typeof item.file_type === "string" &&
+      typeof item.size_bytes === "number" &&
+      typeof item.created_at === "string" &&
+      typeof item.published === "boolean" &&
+      typeof item.is_peer_copy === "boolean" &&
+      (typeof item.peer_alias === "string" || item.peer_alias === null) &&
+      typeof item.readyForMocks === "boolean",
+    );
+    return files.map((file) => ({ ...file, file_path: "" }));
+  } catch {
+    return null;
+  }
+}
+
+function writeLockerCache(userId: string, files: LockerFile[]): void {
+  try {
+    const metadata: CachedLockerFile[] = files.map(({ file_path: _filePath, ...file }) => file);
+    window.localStorage.setItem(lockerCacheKey(userId), JSON.stringify(metadata));
+  } catch {
+    // Storage can be unavailable or full; the network list remains authoritative.
+  }
+}
 
 type ShelfItem = {
   id: string;
@@ -127,8 +166,10 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const { navigate, profile, activeCourseCode, update } = useProfile();
   const [rail, setRail] = useState<Rail>("locker");
-  const [locker, setLocker] = useState<LockerFile[] | null>(() => lockerDisplayCache);
+  const [locker, setLocker] = useState<LockerFile[] | null>(null);
   const [lockerError, setLockerError] = useState(false);
+  const lockerRequestRef = useRef(0);
+  const lockerOwnerRef = useRef<string | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const [shelf, setShelf] = useState<{ items: ShelfItem[]; courses: { course_code: string; count: number }[] } | null>(null);
@@ -156,15 +197,24 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
 
   const loadLocker = useCallback(async () => {
+    const requestId = ++lockerRequestRef.current;
     try {
-      const { data: session } = await supabase.auth.getSession();
-      const uid = session.session?.user.id;
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const uid = authData.user?.id;
+      if (requestId !== lockerRequestRef.current) return;
       if (!uid) {
-        lockerDisplayCache = [];
+        lockerOwnerRef.current = null;
         setLocker([]);
         setLockerError(false);
         return;
       }
+      const previousOwner = lockerOwnerRef.current;
+      const cachedFiles = readLockerCache(uid);
+      lockerOwnerRef.current = uid;
+      if (cachedFiles !== null) setLocker(cachedFiles);
+      else if (previousOwner !== uid) setLocker(null);
+      setLockerError(false);
       const { data, error } = await supabase
         .from("course_materials")
         .select(
@@ -186,11 +236,12 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         peer_alias: r.peer_alias,
         readyForMocks: (r.extracted_content ?? "").trim().length >= READY_MIN_CHARS,
       }));
-      lockerDisplayCache = files;
+      if (requestId !== lockerRequestRef.current || lockerOwnerRef.current !== uid) return;
+      writeLockerCache(uid, files);
       setLocker(files);
       setLockerError(false);
     } catch {
-      setLockerError(true);
+      if (requestId === lockerRequestRef.current) setLockerError(true);
     }
   }, []);
 
@@ -338,7 +389,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       ),
     });
     const remaining = (locker ?? []).filter((item) => item.id !== file.id);
-    lockerDisplayCache = remaining;
+    if (lockerOwnerRef.current) writeLockerCache(lockerOwnerRef.current, remaining);
     setLocker(remaining);
     setDeleteTarget(null);
     setOwnerSheet(null);
@@ -490,7 +541,23 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {locker === null ? (
               lockerError ? (
                 <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
-              ) : <div role="status" aria-label="Loading your files" className="space-y-3"><span className="sr-only">Loading your study files…</span><div aria-hidden="true" className="space-y-3"><div className="h-20 rounded-xl border border-border bg-card" /><div className="h-20 rounded-xl border border-border bg-card" /><div className="h-20 rounded-xl border border-border bg-card" /></div></div>
+              ) : (
+                <div role="status" aria-label="Loading your files" className="space-y-3">
+                  <span className="sr-only">Loading your study files…</span>
+                  <div aria-hidden="true" className="space-y-3">
+                    {[0, 1, 2].map((row) => (
+                      <div key={row} className="locker-skeleton-row flex h-20 items-center gap-3 rounded-xl border border-border bg-card px-4">
+                        <div className="locker-skeleton-block h-10 w-10 shrink-0 rounded-lg" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="locker-skeleton-block h-3 w-2/5 rounded" />
+                          <div className="locker-skeleton-block h-2.5 w-1/4 rounded" />
+                        </div>
+                        <div className="locker-skeleton-block h-6 w-20 rounded-full" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
             ) : openFolder ? (
               <>
                 {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
