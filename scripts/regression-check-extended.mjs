@@ -55,7 +55,7 @@ test("library empty state explains how to upload and loading uses skeleton cards
   assert.match(library, /Nothing in your locker yet\. Upload a past paper or lecture note/);
   assert.match(library, /aria-label="Loading your files"/);
   assert.match(library, /aria-label="Loading your files"/);
-  assert.match(library, /h-20 rounded-xl border border-border bg-card/);
+  assert.match(library, /locker-skeleton-row.*h-20.*rounded-xl.*border.*bg-card/);
 });
 
 

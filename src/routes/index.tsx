@@ -150,6 +150,7 @@ const RootTabs = memo(function RootTabs({
             key={tab}
             hidden={!active && !preview}
             aria-hidden={!active}
+            inert={!active ? true : undefined}
             data-root-tab={tab}
             className={preview ? "pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background" : undefined}
             style={preview && previewSide ? { left: previewSide === "right" ? "100%" : "-100%" } : undefined}

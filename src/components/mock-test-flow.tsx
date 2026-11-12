@@ -50,6 +50,7 @@ export type AIQuestion = {
     checkedAgainstMaterial: boolean;
     sourceFileName?: string;
     sourceLocation?: string | null;
+    sourceUnavailable?: boolean;
   };
   flagged?: boolean;
   confirmedInvalid?: boolean;
@@ -919,6 +920,7 @@ export function MockRunScreen() {
   const [mapOpen, setMapOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [questionDirection, setQuestionDirection] = useState<"next" | "prev" | "none">("none");
   const submittedRef = useRef(false);
   const updateRef = useRef(update);
   const testRef = useRef(t);
@@ -1192,6 +1194,7 @@ export function MockRunScreen() {
 
   const setAnswer = (a: number) => {
     const previous = t.answers[idx];
+    if (a === previous) return;
     const retryUsed = t.tutorRetryUsed?.[idx] ?? false;
     if (mode === "tutor" && previous !== null && previous !== undefined) {
       const previousWasWrong = previous !== q.correct_index;
@@ -1207,6 +1210,8 @@ export function MockRunScreen() {
   };
   const move = (delta: number) => {
     const nextIdx = Math.max(0, Math.min(questions.length - 1, idx + delta));
+    if (nextIdx === idx) return;
+    setQuestionDirection(delta > 0 ? "next" : "prev");
     update({ inProgressTest: { ...t, currentIndex: nextIdx } });
   };
 
@@ -1222,6 +1227,7 @@ export function MockRunScreen() {
   };
 
   const jumpTo = (target: number) => {
+    if (target !== idx) setQuestionDirection(target > idx ? "next" : "prev");
     update({ inProgressTest: { ...t, currentIndex: target } });
     setMapOpen(false);
   };
@@ -1269,7 +1275,14 @@ export function MockRunScreen() {
 
 
         {q ? (
-          <section aria-label={`Question ${idx + 1}`} className="min-h-[24rem] rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <section
+            key={`question-${idx}`}
+            aria-label={`Question ${idx + 1}`}
+            className={cn(
+              "min-h-[24rem] rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6",
+              questionDirection === "next" ? "animate-question-next" : questionDirection === "prev" ? "animate-question-prev" : "",
+            )}
+          >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{q.topic}</div>
               <span role="progressbar" aria-label="Practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((idx + 1) / questions.length) * 100)} aria-valuetext={`Question ${idx + 1} of ${questions.length}`} className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}% complete</span>
@@ -1288,7 +1301,7 @@ export function MockRunScreen() {
                 return (
                   <button key={i} type="button" aria-pressed={on} aria-disabled={locked}
                     onClick={() => setAnswer(i)}
-                    className={cn("flex min-h-14 w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                    className={cn("group flex min-h-14 w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition duration-150 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       isCorrectOption ? "border-success bg-success/10" : isWrongSelection ? "border-destructive bg-destructive/10" : on ? "border-accent bg-accent/10" : "border-border hover:border-accent/50")}>
                     <div
                       aria-hidden="true"
@@ -1321,7 +1334,7 @@ export function MockRunScreen() {
               const answerText = q.options[q.correct_index] ?? "the correct option";
               return (
                 <section
-                  className={`mt-4 space-y-3 rounded-xl border border-border bg-background p-4 ${PROSE}`}
+                  className={`animate-explanation-unfurl mt-4 space-y-3 rounded-xl border border-border bg-background p-4 ${PROSE}`}
                   aria-live="polite"
                   aria-atomic="true"
                   aria-label="Answer feedback"
@@ -1505,6 +1518,14 @@ function SubmitConfirmSheet({ left, onReview, onSubmit, onClose }: {
   onSubmit: () => void;
   onClose: () => void;
 }) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
       <div
