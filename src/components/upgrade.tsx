@@ -435,4 +435,3 @@ export function UpgradeReminderSheet({ open, onOpenChange }: { open: boolean; on
     </Sheet>
   );
 }
-
