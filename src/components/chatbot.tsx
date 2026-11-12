@@ -1128,12 +1128,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
                 }
               }}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-[#ead6ae] bg-[#F3E6C8] px-2.5 py-1.5 text-[10px] font-semibold text-[#784c12] transition hover:bg-[#ead6ae] disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[#ead6ae] bg-[#F3E6C8] px-2.5 py-1.5 text-xs font-semibold text-[#784c12] transition hover:bg-[#ead6ae] disabled:opacity-60"
             >
               <Plus aria-hidden="true" className="h-3 w-3" />
               New chat
             </button>
-            <button type="button" onClick={() => setHistoryOpen(true)} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-[10px] font-semibold text-foreground transition hover:bg-muted">
+            <button type="button" onClick={() => setHistoryOpen(true)} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted">
               <HistoryIcon aria-hidden="true" className="h-3.5 w-3.5" />
               <span>History</span>
             </button>
@@ -1423,7 +1423,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   setPhotoName(null);
                 }}
                 aria-label="Remove photo"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -1438,7 +1438,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   aria-expanded={modeMenuOpen}
                   onClick={() => setModeMenuOpen((open) => !open)}
                   aria-label={`Reply mode: ${mode}`}
-                  className="inline-flex h-8 min-w-[84px] items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-[11px] font-semibold text-[#1B2A4A]"
+                  className="inline-flex min-h-11 min-w-[84px] items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-xs font-semibold text-[#1B2A4A]"
                 >
                   <span>{mode === "Work a problem" ? "Work" : mode}</span>
                   <ChevronDown className="h-3.5 w-3.5" />
@@ -1469,7 +1469,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <ChatUsageRing usage={usage} className="shrink-0" />
             </div>
             <div className="flex min-w-0 items-end gap-1">
-              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
+              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
                 <Plus className="h-3.5 w-3.5" />
               </button>
               <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void pickPhoto(f); }} />
@@ -1488,17 +1488,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 }}
                 disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
                 placeholder={selected ? `Ask a question about ${placeholderCourse}…` : "Add a course first."}
-                className="chat-composer-textarea max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
+                className="chat-composer-textarea max-h-40 min-h-11 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
               />
-              <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
+              <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
                 <Mic className="h-4 w-4" />
               </button>
               {isSending ? (
-                <button type="button" onClick={stopGeneration} disabled={isUploadingPhoto} aria-label="Stop response generation" title="Stop generation" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-50">
+                <button type="button" onClick={stopGeneration} disabled={isUploadingPhoto} aria-label="Stop response generation" title="Stop generation" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-50">
                   <Square className="h-4 w-4 fill-current" />
                 </button>
               ) : (
-                <button type="button" onClick={() => send()} disabled={!selected || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                <button type="button" onClick={() => send()} disabled={!selected || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
                   <Send className="h-5 w-5" />
                 </button>
               )}
