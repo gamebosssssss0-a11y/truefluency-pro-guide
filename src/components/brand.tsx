@@ -1,4 +1,4 @@
-import { useProfile } from "@/lib/profile-store";
+import { useProfileData } from "@/lib/profile-store";
 import { LogoMark } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * screen as a constant brand anchor; tapping it returns to Home.
  */
 export function HeaderLogo({ className }: { className?: string }) {
-  const { navigate } = useProfile();
+  const { navigate } = useProfileData();
   return (
     <button
       type="button"

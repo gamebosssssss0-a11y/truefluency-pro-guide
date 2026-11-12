@@ -75,6 +75,7 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
     !!local?.lastActiveDate && (!rowLastActiveDate || local.lastActiveDate > rowLastActiveDate);
   const streakDatesMatch = !!local?.lastActiveDate && local.lastActiveDate === rowLastActiveDate;
 
+  const rawCgpaActual = row.cgpa_actual as ({ calculationHistory?: unknown } & Partial<CgpaActual>) | null;
   const snapshot: Partial<Profile> = {
     goal: (row.goal as Goal | null) ?? null,
     timeline: (row.timeline as Timeline | null) ?? null,
@@ -107,7 +108,12 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
     masteredCourses: (row.mastered_courses as unknown as string[]) ?? [],
     cgpaInputs: (row.cgpa_inputs as unknown as CgpaInputs) ?? null,
     cgpaPlan: (row.cgpa_plan as unknown as CgpaPlan) ?? null,
-    cgpaActual: (row.cgpa_actual as unknown as CgpaActual) ?? null,
+    cgpaActual: rawCgpaActual && typeof rawCgpaActual.cumulativeCgpa === "number"
+      ? (rawCgpaActual as CgpaActual)
+      : null,
+    cgpaCalculationHistory: Array.isArray(rawCgpaActual?.calculationHistory)
+      ? (rawCgpaActual.calculationHistory as Profile["cgpaCalculationHistory"])
+      : [],
   };
 
   if (coursesRes.error) {
@@ -148,19 +154,24 @@ export async function loadCloudProfile(local?: Partial<Profile> | null): Promise
       attemptsRes.error.message,
     );
   } else {
-    const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => ({
-      id: a.id,
-      courseCode: a.course_code ?? "",
-      courseTitle: a.course_title ?? "",
-      score: a.score ?? 0,
-      correct: a.correct ?? 0,
-      total: a.total ?? 0,
-      submittedAt: new Date(a.submitted_at ?? 0).getTime(),
-      topics: (a.topics as unknown as MockAttempt["topics"]) ?? [],
-      questions: (a.questions as unknown as AIQuestion[]) ?? undefined,
-      answers: (a.answers as unknown as (number | null)[]) ?? undefined,
-      settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
-    }));
+    const attempts: MockAttempt[] = (attemptsRes.data ?? []).map((a) => {
+      const questions = (a.questions as unknown as AIQuestion[]) ?? undefined;
+      return {
+        id: a.id,
+        courseCode: a.course_code ?? "",
+        courseTitle: a.course_title ?? "",
+        score: a.score ?? 0,
+        correct: a.correct ?? 0,
+        total: a.total ?? 0,
+        submittedAt: new Date(a.submitted_at ?? 0).getTime(),
+        topics: (a.topics as unknown as MockAttempt["topics"]) ?? [],
+        questions,
+        flaggedQuestionIndexes: questions?.flatMap((q, i) => q.flagged ? [i] : []),
+        invalidQuestionIndexes: questions?.flatMap((q, i) => q.confirmedInvalid ? [i] : []),
+        answers: (a.answers as unknown as (number | null)[]) ?? undefined,
+        settings: (a.settings as unknown as CourseTestSettings) ?? undefined,
+      };
+    });
     // History is append-only from the student's point of view: union local and
     // server by attempt id, and never let an empty server list erase local rows.
     const localAttempts = local?.attempts ?? [];
@@ -275,7 +286,10 @@ export async function pushCloudProfile(profile: Profile): Promise<boolean> {
         mastered_courses: profile.masteredCourses,
         cgpa_inputs: profile.cgpaInputs as never,
         cgpa_plan: profile.cgpaPlan as never,
-        cgpa_actual: profile.cgpaActual as never,
+        cgpa_actual: {
+          ...(profile.cgpaActual ?? {}),
+          calculationHistory: profile.cgpaCalculationHistory,
+        } as never,
       },
       { onConflict: "user_id" },
     );

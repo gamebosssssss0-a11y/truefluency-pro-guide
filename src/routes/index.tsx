@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, useProfile, type AppView } from "@/lib/profile-store";
@@ -41,6 +41,12 @@ import {
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs";
 import { readPaymentReturn } from "@/lib/billing-api";
 import { warmBackend } from "@/lib/backend-api";
+
+const MemoHomeScreen = memo(HomeScreen);
+const MemoMockTestsScreen = memo(MockTestsScreen);
+const MemoLibraryScreen = memo(LibraryScreen);
+const MemoChatbotScreen = memo(ChatbotScreen);
+const MemoAccountScreen = memo(AccountScreen);
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -86,63 +92,79 @@ function rootTabFor(view: AppView): AppView | null {
   return null;
 }
 
-function SwipePreviewScreen({ view, side }: { view: AppView; side: "left" | "right" }) {
-  const title = view === "mock-tests" ? "Practice"
-    : view === "library" ? "My Files"
-      : view === "chatbot" ? "Study Chat"
-        : view === "account" ? "Account" : "Home";
-  return (
-    <div
-      aria-hidden="true"
-      data-swipe-lock=""
-      className="pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background"
-      style={{ left: side === "right" ? "100%" : "-100%" }}
-    >
-      <div className="mx-auto max-w-md px-5 pt-6">
-        <div className="mb-5 h-4 w-24 rounded bg-muted" />
-        <h2 className="mb-3 font-display text-xl font-semibold text-foreground">{title}</h2>
-        <div className="space-y-3">
-          <div className="h-28 rounded-2xl border border-border bg-card" />
-          <div className="h-16 rounded-2xl border border-border bg-card" />
-          <div className="h-16 rounded-2xl border border-border bg-card" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RootTabs({ view }: { view: AppView }) {
+const RootTabs = memo(function RootTabs({
+  view,
+  previewTab,
+  previewSide,
+}: {
+  view: AppView;
+  previewTab: AppView | null;
+  previewSide: "left" | "right" | null;
+}) {
   const activeTab = rootTabFor(view);
-  const [visited, setVisited] = useState<AppView[]>(() => [activeTab ?? "home"]);
+  const [visited, setVisited] = useState<AppView[]>(() => [
+    activeTab ?? "home",
+    ...(activeTab === "chatbot" ? [] : ["chatbot" as AppView]),
+  ]);
+
+  useEffect(() => {
+    if (!activeTab) return;
+    const index = ROOT_TABS.indexOf(activeTab);
+    const neighbors = [ROOT_TABS[index - 1], ROOT_TABS[index + 1]].filter(
+      (tab): tab is AppView => Boolean(tab),
+    );
+    const warmNeighbors = () => {
+      setVisited((tabs) => neighbors.every((tab) => tabs.includes(tab))
+        ? tabs
+        : [...tabs, ...neighbors.filter((tab) => !tabs.includes(tab))]);
+    };
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(warmNeighbors, { timeout: 900 });
+      return () => idleWindow.cancelIdleCallback?.(handle);
+    }
+    const timer = window.setTimeout(warmNeighbors, 250);
+    return () => window.clearTimeout(timer);
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab && !visited.includes(activeTab)) setVisited((tabs) => [...tabs, activeTab]);
   }, [activeTab, visited]);
 
+  const tabsToRender = [...new Set([
+    ...visited,
+    ...(activeTab ? [activeTab] : []),
+    ...(previewTab ? [previewTab] : []),
+  ])];
+
   return (
     <>
-      {(activeTab && !visited.includes(activeTab) ? [...visited, activeTab] : visited).map((tab) => {
+      {tabsToRender.map((tab) => {
         const active = activeTab === tab;
+        const preview = !active && previewTab === tab;
         return (
-          <div key={tab} hidden={!active} aria-hidden={!active} data-root-tab={tab}>
-            {tab === "home" ? <HomeScreen active={active} />
-              : tab === "mock-tests" ? <MockTestsScreen active={active} />
-                : tab === "library" ? <LibraryScreen active={active} />
-                  : tab === "chatbot" ? <ChatbotScreen active={active} />
-                    : <AccountScreen />}
+          <div
+            key={tab}
+            hidden={!active && !preview}
+            aria-hidden={!active}
+            data-root-tab={tab}
+            className={preview ? "pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background" : undefined}
+            style={preview && previewSide ? { left: previewSide === "right" ? "100%" : "-100%" } : undefined}
+          >
+            {tab === "home" ? <MemoHomeScreen active={active} />
+              : tab === "mock-tests" ? <MemoMockTestsScreen active={active} />
+                : tab === "library" ? <MemoLibraryScreen active={active} />
+                  : tab === "chatbot" ? <MemoChatbotScreen active={active} />
+                    : <MemoAccountScreen />}
           </div>
         );
       })}
-      {/* Mount Study Chat immediately so API warm-up and thread prefetch run
-          during app use, instead of starting only after the first tab click. */}
-      {!visited.includes("chatbot") && (
-        <div hidden aria-hidden="true" data-root-tab="chatbot-prefetch">
-          <ChatbotScreen active={false} />
-        </div>
-      )}
     </>
   );
-}
+});
 
 function Router() {
   const { step, view, profile, authPending, hydrated, go, navigate } = useProfile();
@@ -310,13 +332,10 @@ function Router() {
           "tab-swipe-stage relative overflow-x-hidden",
         )}
       >
-        <RootTabs view={view} />
+        <RootTabs view={view} previewTab={swipePreview?.tab ?? null} previewSide={swipePreview?.side ?? null} />
         {!currentRootTab ? screen : null}
-        {swipePreview ? (
-          <SwipePreviewScreen view={swipePreview.tab} side={swipePreview.side} />
-        ) : null}
       </div>
-      <BottomTabBar highlightedView={swipePreview?.highlightedTab} />
+      <BottomTabBar />
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

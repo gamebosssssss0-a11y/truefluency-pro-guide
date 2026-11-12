@@ -91,6 +91,7 @@ export type PlanCourseInput = {
 export function buildCgpaPlan(opts: {
   currentCgpa: number;
   currentUnits: number;
+  remainingCredits?: number;
   targetCgpa: number;
   daysRemaining: number;
   courses: PlanCourseInput[];
@@ -98,12 +99,13 @@ export function buildCgpaPlan(opts: {
   const { currentCgpa, currentUnits, targetCgpa, daysRemaining, courses } = opts;
 
   const semesterUnits = courses.reduce((s, c) => s + c.units, 0);
-  const totalUnits = currentUnits + semesterUnits;
+  const remainingCredits = opts.remainingCredits ?? semesterUnits;
+  const totalUnits = currentUnits + remainingCredits;
 
   // Required semester quality points so that (currentTQP + x) / totalTCU = target
   const currentTqp = currentCgpa * currentUnits;
   const requiredTqp = targetCgpa * totalUnits - currentTqp;
-  const requiredSemesterGpa = semesterUnits > 0 ? requiredTqp / semesterUnits : 0;
+  const requiredSemesterGpa = remainingCredits > 0 ? requiredTqp / remainingCredits : 0;
 
   const alreadyThere = requiredSemesterGpa <= 0;
   const reachable = requiredSemesterGpa <= MAX_POINTS + 1e-9;
@@ -151,6 +153,7 @@ export function buildCgpaPlan(opts: {
     targetCgpa,
     daysRemaining,
     semesterUnits,
+    remainingCredits,
     requiredSemesterGpa: Math.max(0, requiredSemesterGpa),
     reachable,
     alreadyThere,

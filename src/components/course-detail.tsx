@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useProfile, averageForCourse, type CourseTopicAnalysis } from "@/lib/profile-store";
+import { useProfile, averageForCourse, type AIQuestion, type CourseTopicAnalysis } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
   Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw, RefreshCw,
@@ -271,7 +274,7 @@ function CoursePrimaryActions({
         </p>
       ) : null}
       <div className="col-span-2">
-        <UploadButton courseCode={courseCode} />
+        <UploadButton courseCode={courseCode} courseName={courseName} />
       </div>
       <div className="col-span-2">
         <PasteTextButton courseCode={courseCode} />
@@ -279,7 +282,7 @@ function CoursePrimaryActions({
     </div>
   ) : (
     <div className="mt-5 space-y-2">
-      <UploadButton courseCode={courseCode} />
+      <UploadButton courseCode={courseCode} courseName={courseName} />
       <PasteTextButton courseCode={courseCode} />
       {analyzeButton}
       <Button size="lg" className="w-full" disabled>
@@ -519,14 +522,18 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
 const HIDDEN_INPUT_CLASS =
   "absolute h-px w-px overflow-hidden opacity-0 -z-10 left-0 top-0 pointer-events-none";
 
-function UploadButton({ courseCode }: { courseCode: string }) {
-  const { profile } = useProfile();
+function UploadButton({ courseCode, courseName }: { courseCode: string; courseName: string }) {
+  const { profile, update } = useProfile();
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = `upload-${courseCode.replace(/[^a-zA-Z0-9-]/g, "")}`;
   const [stage, setStage] = useState<UploadStage | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<CourseMaterial | null>(null);
+  const [pendingReplaceId, setPendingReplaceId] = useState<string | null>(null);
+  const [pendingReplaceName, setPendingReplaceName] = useState<string | null>(null);
   const [dupOpen, setDupOpen] = useState(false);
-  const [lastError, setLastError] = useState<{ file: File } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lastError, setLastError] = useState<{ file: File; replaceId?: string | null; replaceName?: string | null } | null>(null);
   const [noResponse, setNoResponse] = useState(false);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastStageKind = useRef<UploadStage["kind"] | null>(null);
@@ -549,7 +556,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
   };
 
 
-  const runUpload = async (file: File) => {
+  const runUpload = async (file: File, replaceId?: string | null, replaceName?: string | null) => {
     console.info("[upload] runUpload start", { name: file.name, courseCode });
     setLastError(null);
     const refreshList = () => {
@@ -601,6 +608,45 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         },
       });
       console.info("[upload] runUpload success", { id: result.id, status: result.extraction_status });
+      if (replaceId) {
+        try {
+          await deleteMaterial({ id: replaceId });
+          const removedName = replaceName?.trim().toLocaleLowerCase();
+          const markSourceRemoved = (questions?: AIQuestion[]) => questions?.map((question) =>
+            Boolean(removedName) && question.verification?.sourceFileName?.trim().toLocaleLowerCase() === removedName
+              ? { ...question, verification: { ...question.verification!, sourceUnavailable: true } }
+              : question,
+          );
+          update({
+            attempts: profile.attempts.map((attempt) => ({
+              ...attempt,
+              questions: canonicalCourseCode(attempt.courseCode) === canonicalCourseCode(courseCode)
+                ? markSourceRemoved(attempt.questions)
+                : attempt.questions,
+            })),
+            inProgressTest: profile.inProgressTest
+              ? { ...profile.inProgressTest, questions: canonicalCourseCode(profile.inProgressTest.courseCode) === canonicalCourseCode(courseCode)
+                ? markSourceRemoved(profile.inProgressTest.questions)
+                : profile.inProgressTest.questions }
+              : null,
+            aiQuestionsByCourse: Object.fromEntries(
+              Object.entries(profile.aiQuestionsByCourse).map(([course, questions]) => [
+                course,
+                canonicalCourseCode(course) === canonicalCourseCode(courseCode) ? markSourceRemoved(questions) ?? questions : questions,
+              ]),
+            ),
+            courseTopicAnalysis: Object.fromEntries(
+              Object.entries(profile.courseTopicAnalysis).filter(([, analysis]) => analysis.materialId !== replaceId),
+            ),
+          });
+          toast.success("Replaced the earlier copy.");
+        } catch (replaceError) {
+          console.error("[upload] new copy uploaded but old duplicate could not be removed", replaceError);
+          toast.message("Your new file uploaded, but the earlier copy is still in your locker.", {
+            description: "You can remove the earlier copy from My Files.",
+          });
+        }
+      }
       const t = result.file_type;
       if (t === "pdf" || t === "docx" || t === "pptx") {
         toast.success(`Uploaded to ${courseCode}. Reading its text…`);
@@ -610,7 +656,7 @@ function UploadButton({ courseCode }: { courseCode: string }) {
       refreshList();
     } catch (err) {
       console.error("[upload] runUpload caught error", err);
-      setLastError({ file });
+      setLastError({ file, replaceId, replaceName });
       try {
         toast.error((err as Error)?.message || "Upload failed");
       } catch (toastErr) {
@@ -647,17 +693,22 @@ function UploadButton({ courseCode }: { courseCode: string }) {
         const dup = await findDuplicateMaterial({ courseCode, fileName: file.name });
         if (dup) {
           setPendingFile(file);
+          setDuplicateTarget(dup);
           setDupOpen(true);
           return;
         }
       } catch (dupErr) {
-        console.error("[upload] duplicate check failed, proceeding with upload", dupErr);
+        console.error("[upload] duplicate check failed; upload held for safety", dupErr);
+        throw new Error("We couldn't check whether this file is already in the course locker. Try selecting it again.");
       }
 
-      void runUpload(file);
+      setPendingFile(file);
+      setDuplicateTarget(null);
+      setPendingReplaceId(null);
+      setPendingReplaceName(null);
+      setConfirmOpen(true);
     } catch (outer) {
       console.error("[upload] onFile outer catch", outer);
-      if (file) setLastError({ file });
       try {
         toast.error((outer as Error)?.message || "Couldn't start the upload. Please try again.");
       } catch { /* ignore */ }
@@ -716,35 +767,77 @@ function UploadButton({ courseCode }: { courseCode: string }) {
             <div className="font-semibold text-destructive">Upload didn't go through</div>
             <div className="text-muted-foreground">Try a smaller file or check your connection.</div>
           </div>
-          <Button size="sm" variant="outline" onClick={() => void runUpload(lastError.file)}>
+          <Button size="sm" variant="outline" onClick={() => void runUpload(lastError.file, lastError.replaceId, lastError.replaceName)}>
             <RotateCw className="mr-1 h-3 w-3" /> Retry
           </Button>
         </div>
       ) : null}
 
 
-      <AlertDialog open={dupOpen} onOpenChange={setDupOpen}>
+      <AlertDialog open={dupOpen} onOpenChange={(open) => { setDupOpen(open); if (!open) setDuplicateTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Already uploaded</AlertDialogTitle>
+            <AlertDialogTitle>File with this name already exists</AlertDialogTitle>
             <AlertDialogDescription>
-              You've already uploaded "{pendingFile?.name}" for this course. Upload anyway, or skip?
+              “{pendingFile?.name}” is already in {courseCode}. Choose whether to keep both copies or replace the existing one.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingFile(null)}>Skip</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setPendingFile(null); setDuplicateTarget(null); }}>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={() => { setPendingReplaceId(null); setPendingReplaceName(null); setDupOpen(false); setConfirmOpen(true); }}>
+              Keep both
+            </Button>
             <AlertDialogAction
               onClick={() => {
-                const f = pendingFile;
-                setPendingFile(null);
-                if (f) void runUpload(f);
+                setPendingReplaceId(duplicateTarget?.id ?? null);
+                setPendingReplaceName(duplicateTarget?.file_name ?? null);
+                setDuplicateTarget(null);
+                setDupOpen(false);
+                setConfirmOpen(true);
               }}
             >
-              Upload anyway
+              Replace existing
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={confirmOpen} onOpenChange={(open) => { if (!open) { setConfirmOpen(false); setPendingFile(null); setPendingReplaceId(null); setPendingReplaceName(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Review upload</DialogTitle>
+            <DialogDescription>Check the file and destination before it is uploaded.</DialogDescription>
+          </DialogHeader>
+          {pendingFile ? (
+            <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3 text-sm">
+              <div><span className="text-muted-foreground">File</span><div className="break-all font-semibold text-foreground">{pendingFile.name}</div></div>
+              <div><span className="text-muted-foreground">Course</span><div className="font-semibold text-foreground">{courseCode}{courseName ? ` · ${courseName}` : ""}</div></div>
+              <div><span className="text-muted-foreground">Size</span><div className="font-medium text-foreground">{(pendingFile.size / 1024 / 1024).toFixed(2)} MB</div></div>
+              <div className="text-xs leading-relaxed text-muted-foreground">
+                {/\.(pdf|docx|pptx)$/i.test(pendingFile.name)
+                  ? "We’ll upload the file, extract its text, and show its reading status. When extraction is ready, you can choose Analyze for mocks."
+                  : "We’ll upload the file to this course locker. This file type can be viewed, but its text won’t be used to generate mock questions."}
+              </div>
+              {pendingReplaceId ? <div className="rounded-lg bg-accent/10 p-2 text-xs text-foreground">After this upload succeeds, “{pendingReplaceName}” will be removed from future study. Past result citations will be marked as removed.</div> : null}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setConfirmOpen(false); setPendingFile(null); setPendingReplaceId(null); setPendingReplaceName(null); }}>Cancel</Button>
+            <Button onClick={() => {
+              const file = pendingFile;
+              const replaceId = pendingReplaceId;
+              const replaceName = pendingReplaceName;
+              setConfirmOpen(false);
+              setPendingFile(null);
+              setPendingReplaceId(null);
+              setPendingReplaceName(null);
+              if (file) void runUpload(file, replaceId, replaceName);
+            }} disabled={!pendingFile || busy}>
+              Upload file
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

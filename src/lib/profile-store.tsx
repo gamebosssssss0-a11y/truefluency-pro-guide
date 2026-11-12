@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogEntry, Level } from "./uni-data";
 
@@ -27,6 +27,10 @@ export type MockAttempt = {
   answers?: (number | null)[];
   /** Settings used, so "Retake This Test" can regenerate with the same setup. */
   settings?: CourseTestSettings;
+  /** Question positions the student flagged during the attempt. */
+  flaggedQuestionIndexes?: number[];
+  /** Questions confirmed invalid after review are retained for audit but excluded from scoring. */
+  invalidQuestionIndexes?: number[];
 };
 
 export type MockMode = "tutor" | "exam";
@@ -52,6 +56,8 @@ export type InProgressTest = {
   questionIds: number[];
   /** Snapshot the exact generated set so an in-progress test survives refresh. */
   questions?: AIQuestion[];
+  /** Tutor mode grants one answer change after incorrect feedback per question. */
+  tutorRetryUsed?: boolean[];
   /** "ai" = questions live in profile.aiQuestionsByCourse[courseCode]; "sample" = built-in bank. */
   source?: "ai" | "sample";
 } | null;
@@ -77,6 +83,19 @@ export type AIQuestion = {
   options: string[];
   correct_index: number;
   explanation: string;
+  /** Present only when the generator verified the key against selected course material. */
+  verification?: {
+    status: "verified" | "unverified" | "rejected";
+    checkedAgainstMaterial: boolean;
+    sourceFileName?: string;
+    sourceLocation?: string | null;
+    /** Historical citation retained after a student removes the source file. */
+    sourceUnavailable?: boolean;
+  };
+  /** Local flag retained in the attempt snapshot for post-test review. */
+  flagged?: boolean;
+  /** Set when post-test review confirms the item should not affect its score. */
+  confirmedInvalid?: boolean;
 };
 
 /** Stored result of a real "Analyze Upload" run, keyed by course code. */
@@ -155,6 +174,7 @@ export type TabKey = "home" | "mock-tests" | "library" | "chatbot" | "account";
 export type CgpaInputs = {
   currentCgpa: string;
   currentUnits: string;
+  remainingCredits?: string;
   targetCgpa: string;
   daysRemaining: string;
   examDate?: string;
@@ -184,6 +204,8 @@ export type CgpaPlan = {
   targetCgpa: number;
   daysRemaining: number;
   semesterUnits: number;
+  /** Credits the student expects to complete before the target checkpoint. */
+  remainingCredits?: number;
   /** Semester GPA needed across this semester's units to hit the target. */
   requiredSemesterGpa: number;
   reachable: boolean;
@@ -220,8 +242,17 @@ export type CgpaActual = {
   cumulativeCgpa: number;
   totalUnits: number;
   classification: string;
+  /** Grade scale used for this result. Older saved results were UI 5.0. */
+  scale?: "ui-5" | "four-point";
+  label?: string;
   /** Saved semesters (session + term), newest first. */
   semesters?: CgpaSemester[];
+};
+
+export type CgpaCalculation = {
+  id: string;
+  label: string;
+  result: CgpaActual;
 };
 
 /* ---------- Profile ---------- */
@@ -268,6 +299,8 @@ export type Profile = {
   cgpaInputs: CgpaInputs | null;
   cgpaPlan: CgpaPlan | null;
   cgpaActual: CgpaActual | null;
+  /** Explicitly saved CGPA calculations, editable by updating the same id. */
+  cgpaCalculationHistory: CgpaCalculation[];
   /** True once the onboarding CGPA-goal introduction has been shown. */
   cgpaIntroSeen: boolean;
   /**
@@ -319,6 +352,7 @@ const emptyProfile: Profile = {
   cgpaInputs: null,
   cgpaPlan: null,
   cgpaActual: null,
+  cgpaCalculationHistory: [],
   cgpaIntroSeen: false,
   trialNoticeSeen: false,
   cgpaCalcCourses: null,
@@ -375,6 +409,7 @@ export function sanitizeProfile(raw: unknown): Profile {
     courseTestSettings: asRecord<CourseTestSettings>(p.courseTestSettings),
     courseTopicAnalysis: asRecord<CourseTopicAnalysis>(p.courseTopicAnalysis),
     aiQuestionsByCourse: byCourse,
+    cgpaCalculationHistory: asArray<CgpaCalculation>(p.cgpaCalculationHistory),
     lastActiveDate:
       typeof p.lastActiveDate === "string"
         ? p.lastActiveDate
@@ -406,7 +441,11 @@ type Ctx = {
   resetSetup: () => void;
 };
 
-const StoreCtx = createContext<Ctx | null>(null);
+type ProfileDataCtx = Omit<Ctx, "step" | "view">;
+type NavigationCtx = Pick<Ctx, "step" | "view" | "navigate" | "go">;
+
+const ProfileDataContext = createContext<ProfileDataCtx | null>(null);
+const NavigationContext = createContext<NavigationCtx | null>(null);
 const KEY = "truefluency-profile-v2";
 const ONBOARDING_RESUME_STEPS: OnboardingStep[] = [
   "disclaimer", "disclaimer-blocked", "identity", "goal", "timeline", "study-pref",
@@ -573,6 +612,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const historySessionId = useRef<string | null>(null);
   const viewRef = useRef(view);
   viewRef.current = view;
+  const routeRef = useRef({ view, activeCourseCode, activeAttemptId, activeDeckId });
+  routeRef.current = { view, activeCourseCode, activeAttemptId, activeDeckId };
 
   useEffect(() => {
     let cancelled = false;
@@ -709,9 +750,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const ownerId = storageOwnerIdRef.current;
     const email = profile.identity?.kind === "email" ? profile.identity.email : undefined;
     if (!ownerId && !email) return;
-    try {
-      localStorage.setItem(ownerId ? profileCacheKey(ownerId) : emailCacheKey(email!), JSON.stringify(profile));
-    } catch { /* ignore unavailable local storage */ }
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(ownerId ? profileCacheKey(ownerId) : emailCacheKey(email!), JSON.stringify(profile));
+      } catch { /* ignore unavailable local storage */ }
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [profile, hydrated]);
 
   /* ---------- Cloud sync ----------
@@ -940,12 +984,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [profile, hydrated]);
 
-  const update = (p: Partial<Profile>) => {
+  const update = useCallback((p: Partial<Profile>) => {
     const next = { ...profileRef.current, ...p };
     profileRef.current = next;
     setProfile(next);
-  };
-  const go = (s: OnboardingStep | "dashboard") => {
+  }, []);
+  const go = useCallback((s: OnboardingStep | "dashboard") => {
     stepRef.current = s;
     setStep(s);
     const ownerId = storageOwnerIdRef.current;
@@ -958,6 +1002,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(`${KEY}:onboarding-step`);
       } catch { /* ignore unavailable local storage */ }
       setView("home");
+      routeRef.current = { ...routeRef.current, view: "home" };
       writeAppLocation("home", {}, true, historySessionId.current ?? undefined);
       try {
         if (sessionStorage.getItem("truefluency-google-oauth-floor-pending") === "1") {
@@ -974,20 +1019,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(`${KEY}:onboarding-step`, s);
       } catch { /* ignore unavailable local storage */ }
     }
-  };
-  const navigate = (
+  }, []);
+  const navigate = useCallback((
     v: AppView,
     opts?: { courseCode?: string | null; attemptId?: string | null; deckId?: string | null; replace?: boolean },
   ) => {
-    const nextCourseCode = opts && "courseCode" in opts ? opts.courseCode ?? null : activeCourseCode;
-    const nextAttemptId = opts && "attemptId" in opts ? opts.attemptId ?? null : activeAttemptId;
-    const nextDeckId = opts && "deckId" in opts ? opts.deckId ?? null : activeDeckId;
+    const current = routeRef.current;
+    const nextCourseCode = opts && "courseCode" in opts ? opts.courseCode ?? null : current.activeCourseCode;
+    const nextAttemptId = opts && "attemptId" in opts ? opts.attemptId ?? null : current.activeAttemptId;
+    const nextDeckId = opts && "deckId" in opts ? opts.deckId ?? null : current.activeDeckId;
     if (
-      view === v &&
-      activeCourseCode === nextCourseCode &&
-      activeAttemptId === nextAttemptId &&
-      activeDeckId === nextDeckId
+      current.view === v &&
+      current.activeCourseCode === nextCourseCode &&
+      current.activeAttemptId === nextAttemptId &&
+      current.activeDeckId === nextDeckId
     ) return;
+    routeRef.current = { view: v, activeCourseCode: nextCourseCode, activeAttemptId: nextAttemptId, activeDeckId: nextDeckId };
     setView(v);
     writeAppLocation(v, {
       courseCode: nextCourseCode,
@@ -997,14 +1044,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveCourseCode(nextCourseCode);
     setActiveAttemptId(nextAttemptId);
     setActiveDeckId(nextDeckId);
-  };
-  const resetSetup = () => {
+  }, []);
+  const resetSetup = useCallback(() => {
     setProfile(emptyProfile);
     setStep("splash");
     setView("home");
     setActiveCourseCode(null);
     setActiveAttemptId(null);
     setActiveDeckId(null);
+    routeRef.current = { view: "home", activeCourseCode: null, activeAttemptId: null, activeDeckId: null };
     try {
       if (storageOwnerIdRef.current) {
         localStorage.removeItem(profileCacheKey(storageOwnerIdRef.current));
@@ -1018,39 +1066,57 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-  };
+  }, []);
+
+  const profileData = useMemo<ProfileDataCtx>(() => ({
+    profile,
+    activeCourseCode,
+    activeAttemptId,
+    activeDeckId,
+    authPending,
+    hydrated,
+    update,
+    go,
+    navigate,
+    resetSetup,
+  }), [profile, activeCourseCode, activeAttemptId, activeDeckId, authPending, hydrated, update, go, navigate, resetSetup]);
+  const navigation = useMemo<NavigationCtx>(() => ({ step, view, navigate, go }), [step, view, navigate, go]);
 
   return (
-    <StoreCtx.Provider
-      value={{
-        profile,
-        step,
-        view,
-        activeCourseCode,
-        activeAttemptId,
-        activeDeckId,
-        authPending,
-        hydrated,
-        update,
-        go,
-        navigate,
-        resetSetup,
-      }}
-    >
-      {hydrated ? children : null}
-    </StoreCtx.Provider>
+    <ProfileDataContext.Provider value={profileData}>
+      <NavigationContext.Provider value={navigation}>
+        {hydrated ? children : null}
+      </NavigationContext.Provider>
+    </ProfileDataContext.Provider>
   );
 }
 
 export function useProfile() {
-  const ctx = useContext(StoreCtx);
-  if (!ctx) throw new Error("useProfile must be used inside ProfileProvider");
+  const profile = useProfileData();
+  const navigation = useNavigation();
+  return { ...profile, ...navigation };
+}
+
+/** Read student data and stable actions without subscribing to route changes. */
+export function useProfileData() {
+  const ctx = useContext(ProfileDataContext);
+  if (!ctx) throw new Error("useProfileData must be used inside ProfileProvider");
+  return ctx;
+}
+
+/** Subscribe to route state without subscribing to student profile updates. */
+export function useNavigation() {
+  const ctx = useContext(NavigationContext);
+  if (!ctx) throw new Error("useNavigation must be used inside ProfileProvider");
   return ctx;
 }
 
 /* ---------- Milestone helpers ---------- */
 export function averageForCourse(p: Profile, code: string): number | null {
-  const rel = p.attempts.filter((a) => a.courseCode === code);
+  // Tiny attempts are useful as practice, but aren't a reliable course-level signal.
+  const rel = p.attempts.filter((a) => a.courseCode === code && (a.answers
+    ? a.answers.filter((answer) => answer !== null && answer !== undefined).length >= 5
+    : a.total >= 5));
   if (!rel.length) return null;
   return Math.round(rel.reduce((s, a) => s + a.score, 0) / rel.length);
 }

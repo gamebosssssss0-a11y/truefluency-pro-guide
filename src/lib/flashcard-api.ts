@@ -45,6 +45,9 @@ export type Flashcard = {
   front: string;
   back: string;
   source_excerpt: string | null;
+  source_file_name?: string | null;
+  source_page?: number | null;
+  source_section?: string | null;
   stability: number | null;
   difficulty: number | null;
   reps: number;

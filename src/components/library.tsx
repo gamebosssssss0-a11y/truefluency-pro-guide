@@ -4,9 +4,7 @@
  * library.functions.ts.
  */
 import { ErrorCard } from "@/components/error-card";
-import { PdfViewer } from "@/components/pdf-viewer";
-import { ChatbotScreen } from "@/components/chatbot";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
 } from "lucide-react";
@@ -27,7 +25,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAvatar } from "@/lib/avatar";
 import { deleteMaterial } from "@/lib/course-materials";
-import { useProfile } from "@/lib/profile-store";
+import { useProfileData, type AIQuestion } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { presignMaterialDownload } from "@/lib/storage.functions";
@@ -35,6 +33,9 @@ import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
   savePeerFile, setMaterialPublished, SHARING_OFFLINE_MESSAGE,
 } from "@/lib/library.functions";
+
+const PdfViewer = lazy(() => import("@/components/pdf-viewer").then((module) => ({ default: module.PdfViewer })));
+const ChatbotScreen = lazy(() => import("@/components/chatbot").then((module) => ({ default: module.ChatbotScreen })));
 
 const READY_MIN_CHARS = 50;
 
@@ -54,7 +55,46 @@ type LockerFile = {
   readyForMocks: boolean;
 };
 
-let lockerDisplayCache: LockerFile[] | null = null;
+type CachedLockerFile = Omit<LockerFile, "file_path">;
+
+function lockerCacheKey(userId: string): string {
+  return `truefluency-locker-v1:${userId}`;
+}
+
+function readLockerCache(userId: string): LockerFile[] | null {
+  try {
+    const raw = window.localStorage.getItem(lockerCacheKey(userId));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const files = parsed.filter((item): item is CachedLockerFile =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      typeof item.id === "string" &&
+      typeof item.course_code === "string" &&
+      typeof item.file_name === "string" &&
+      typeof item.file_type === "string" &&
+      typeof item.size_bytes === "number" &&
+      typeof item.created_at === "string" &&
+      typeof item.published === "boolean" &&
+      typeof item.is_peer_copy === "boolean" &&
+      (typeof item.peer_alias === "string" || item.peer_alias === null) &&
+      typeof item.readyForMocks === "boolean",
+    );
+    return files.map((file) => ({ ...file, file_path: "" }));
+  } catch {
+    return null;
+  }
+}
+
+function writeLockerCache(userId: string, files: LockerFile[]): void {
+  try {
+    const metadata: CachedLockerFile[] = files.map(({ file_path: _filePath, ...file }) => file);
+    window.localStorage.setItem(lockerCacheKey(userId), JSON.stringify(metadata));
+  } catch {
+    // Storage can be unavailable or full; the network list remains authoritative.
+  }
+}
 
 type ShelfItem = {
   id: string;
@@ -124,10 +164,12 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
-  const { navigate, profile, activeCourseCode } = useProfile();
+  const { navigate, profile, activeCourseCode, update } = useProfileData();
   const [rail, setRail] = useState<Rail>("locker");
-  const [locker, setLocker] = useState<LockerFile[] | null>(() => lockerDisplayCache);
+  const [locker, setLocker] = useState<LockerFile[] | null>(null);
   const [lockerError, setLockerError] = useState(false);
+  const lockerRequestRef = useRef(0);
+  const lockerOwnerRef = useRef<string | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
 
   const [shelf, setShelf] = useState<{ items: ShelfItem[]; courses: { course_code: string; count: number }[] } | null>(null);
@@ -155,15 +197,24 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
 
   const loadLocker = useCallback(async () => {
+    const requestId = ++lockerRequestRef.current;
     try {
-      const { data: session } = await supabase.auth.getSession();
-      const uid = session.session?.user.id;
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const uid = authData.user?.id;
+      if (requestId !== lockerRequestRef.current) return;
       if (!uid) {
-        lockerDisplayCache = [];
+        lockerOwnerRef.current = null;
         setLocker([]);
         setLockerError(false);
         return;
       }
+      const previousOwner = lockerOwnerRef.current;
+      const cachedFiles = readLockerCache(uid);
+      lockerOwnerRef.current = uid;
+      if (cachedFiles !== null) setLocker(cachedFiles);
+      else if (previousOwner !== uid) setLocker(null);
+      setLockerError(false);
       const { data, error } = await supabase
         .from("course_materials")
         .select(
@@ -185,11 +236,12 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         peer_alias: r.peer_alias,
         readyForMocks: (r.extracted_content ?? "").trim().length >= READY_MIN_CHARS,
       }));
-      lockerDisplayCache = files;
+      if (requestId !== lockerRequestRef.current || lockerOwnerRef.current !== uid) return;
+      writeLockerCache(uid, files);
       setLocker(files);
       setLockerError(false);
     } catch {
-      setLockerError(true);
+      if (requestId === lockerRequestRef.current) setLockerError(true);
     }
   }, []);
 
@@ -305,12 +357,43 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       return;
     }
     setBusy(false);
+    const normalizedName = file.file_name.trim().toLocaleLowerCase();
+    const markSourceRemoved = (questions?: AIQuestion[]) => questions?.map((question) => {
+      const sourceName = question.verification?.sourceFileName?.trim().toLocaleLowerCase();
+      return Boolean(normalizedName) && sourceName === normalizedName
+        ? { ...question, verification: { ...question.verification!, sourceUnavailable: true } }
+        : question;
+    });
+    update({
+      attempts: profile.attempts.map((attempt) => ({
+        ...attempt,
+        questions: canonicalCourseCode(attempt.courseCode) === canonicalCourseCode(file.course_code)
+          ? markSourceRemoved(attempt.questions)
+          : attempt.questions,
+      })),
+      inProgressTest: profile.inProgressTest
+        ? { ...profile.inProgressTest, questions: canonicalCourseCode(profile.inProgressTest.courseCode) === canonicalCourseCode(file.course_code)
+          ? markSourceRemoved(profile.inProgressTest.questions)
+          : profile.inProgressTest.questions }
+        : null,
+      aiQuestionsByCourse: Object.fromEntries(
+        Object.entries(profile.aiQuestionsByCourse).map(([course, questions]) => [
+          course,
+          canonicalCourseCode(course) === canonicalCourseCode(file.course_code)
+            ? markSourceRemoved(questions) ?? questions
+            : questions,
+        ]),
+      ),
+      courseTopicAnalysis: Object.fromEntries(
+        Object.entries(profile.courseTopicAnalysis).filter(([, analysis]) => analysis.materialId !== file.id),
+      ),
+    });
     const remaining = (locker ?? []).filter((item) => item.id !== file.id);
-    lockerDisplayCache = remaining;
+    if (lockerOwnerRef.current) writeLockerCache(lockerOwnerRef.current, remaining);
     setLocker(remaining);
     setDeleteTarget(null);
     setOwnerSheet(null);
-    toast.success("Removed from your locker.");
+    toast.success("Removed from your locker. Past results are saved and source citations are marked.");
     void loadLocker();
   };
 
@@ -458,7 +541,23 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {locker === null ? (
               lockerError ? (
                 <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
-              ) : <div role="status" aria-label="Loading your files" className="space-y-3"><span className="sr-only">Loading your study files…</span><div aria-hidden="true" className="space-y-3"><div className="h-20 rounded-xl border border-border bg-card" /><div className="h-20 rounded-xl border border-border bg-card" /><div className="h-20 rounded-xl border border-border bg-card" /></div></div>
+              ) : (
+                <div role="status" aria-label="Loading your files" className="space-y-3">
+                  <span className="sr-only">Loading your study files…</span>
+                  <div aria-hidden="true" className="space-y-3">
+                    {[0, 1, 2].map((row) => (
+                      <div key={row} className="locker-skeleton-row flex h-20 items-center gap-3 rounded-xl border border-border bg-card px-4">
+                        <div className="locker-skeleton-block h-10 w-10 shrink-0 rounded-lg" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="locker-skeleton-block h-3 w-2/5 rounded" />
+                          <div className="locker-skeleton-block h-2.5 w-1/4 rounded" />
+                        </div>
+                        <div className="locker-skeleton-block h-6 w-20 rounded-full" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
             ) : openFolder ? (
               <>
                 {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
@@ -660,7 +759,10 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{deleteTarget?.is_peer_copy ? "Remove your saved copy?" : "Remove this file?"}</AlertDialogTitle>
-            <AlertDialogDescription className="break-words">{deleteTarget?.file_name}</AlertDialogDescription>
+            <AlertDialogDescription className="break-words">
+              {deleteTarget?.file_name}
+              <span className="mt-2 block">This removes the file from future study. Past results stay saved; citations to this file will be marked as removed.</span>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
@@ -681,10 +783,16 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
           <DialogHeader>
             <DialogTitle className="text-foreground">Publish to your course shelf?</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Coursemates will be able to view this file inside the app. There is no download. You can
-              unpublish it at any time and it disappears from the shelf.
+              Review what will be shared, then confirm. You can unpublish it any time.
             </DialogDescription>
           </DialogHeader>
+          {publishTarget ? (
+            <div className="space-y-2 rounded-xl border border-border bg-background p-3 text-sm">
+              <div><span className="text-xs text-muted-foreground">File title</span><div className="break-words font-semibold text-foreground">{publishTarget.file_name}</div></div>
+              <div><span className="text-xs text-muted-foreground">Course</span><div className="font-semibold text-foreground">{canonicalCourseCode(publishTarget.course_code)}</div></div>
+              <div><span className="text-xs text-muted-foreground">Who can access it</span><div className="text-foreground">Students browsing this course shelf can view it in the app. Downloads are disabled.</div></div>
+            </div>
+          ) : null}
           <div className="space-y-3 rounded-xl border border-border bg-background p-3">
             <label className="flex items-start gap-3 text-sm text-foreground">
               <input
@@ -769,16 +877,18 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
               ) : preview?.url && preview.file_type.toLowerCase() === "image" ? (
                 <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
               ) : preview?.url && preview.file_type.toLowerCase() === "pdf" ? (
-                <PdfViewer
-                  url={preview.url}
-                  fileName={preview.file_name}
-                  fileKey={preview.id}
-                  onClose={() => { setPreview(null); setPageExplanation(null); }}
-                  onCancel={() => { setPreview(null); setPageExplanation(null); }}
-                  onExplain={explainPageInChat}
-                  onRetry={retryPreview}
-                  explainPanelOpen={pageExplanation !== null}
-                />
+                <Suspense fallback={<div role="status" className="grid h-full place-items-center text-sm text-muted-foreground">Opening PDF viewer…</div>}>
+                  <PdfViewer
+                    url={preview.url}
+                    fileName={preview.file_name}
+                    fileKey={preview.id}
+                    onClose={() => { setPreview(null); setPageExplanation(null); }}
+                    onCancel={() => { setPreview(null); setPageExplanation(null); }}
+                    onExplain={explainPageInChat}
+                    onRetry={retryPreview}
+                    explainPanelOpen={pageExplanation !== null}
+                  />
+                </Suspense>
               ) : preview?.url ? (
                 <div className="grid h-full place-items-center bg-background p-6 text-center">
                   <p className="text-sm text-foreground">Preview isn't available for this file type.</p>
@@ -797,7 +907,9 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             </div>
             {pageExplanation ? (
               <div className="hidden min-h-0 w-[380px] shrink-0 overflow-hidden rounded-xl border border-border bg-background md:block">
-                <ChatbotScreen embedded pageAttachment={pageExplanation} />
+                <Suspense fallback={<div role="status" className="grid h-full place-items-center text-sm text-muted-foreground">Opening Study Chat…</div>}>
+                  <ChatbotScreen embedded pageAttachment={pageExplanation} />
+                </Suspense>
               </div>
             ) : null}
           </div>

@@ -4,7 +4,7 @@
  * This file used to be UI-only (no AI, no persistence); it now generates
  * real decks from the student's uploaded material and reviews real cards.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +70,7 @@ export function FlashcardsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [dueCounts, setDueCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
+  const [deckSourceFileName, setDeckSourceFileName] = useState<string | null>(null);
   const loadDeckRequest = useRef(0);
   // The course's files, for the "Study from" picker (the choice itself is remembered per course).
   const [courseFiles, setCourseFiles] = useState<CourseFile[] | null>(null);
@@ -362,11 +363,15 @@ export function FlashcardsReviewScreen() {
   const { activeCourseCode, activeDeckId, navigate } = useProfile();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [index, setIndex] = useState(0);
+  const [reviewedCount, setReviewedCount] = useState(0);
+  const [totalCards, setTotalCards] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [hasRevealedAnswer, setHasRevealedAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressCardClickRef = useRef(false);
   const [reviewMode] = useState<"due" | "new" | "cram">(() => {
     const stored = typeof window !== "undefined" ? sessionStorage.getItem("truefluency-flashcard-mode") : null;
     if (typeof window !== "undefined") sessionStorage.removeItem("truefluency-flashcard-mode");
@@ -374,8 +379,22 @@ export function FlashcardsReviewScreen() {
   });
 
   const code = activeCourseCode ? displayCode(activeCourseCode) : "Notes";
-  const current = cards[index];
-  const sessionComplete = cards.length > 0 && index >= cards.length;
+  const current = cards[0];
+  const sessionKey = activeDeckId ? `truefluency-flashcard-session:${activeDeckId}:${reviewMode}` : null;
+  const sessionComplete = totalCards > 0 && cards.length === 0;
+
+  useEffect(() => {
+    if (!activeDeckId) return;
+    let cancelled = false;
+    void listDecks().then(async (allDecks) => {
+      const deck = allDecks.find((item) => item.id === activeDeckId);
+      if (!deck?.material_id) return null;
+      const files = await listCourseFiles(deck.course_code);
+      return files.find((file) => file.id === deck.material_id)?.file_name ?? null;
+    }).then((fileName) => { if (!cancelled) setDeckSourceFileName(fileName); })
+      .catch(() => { if (!cancelled) setDeckSourceFileName(null); });
+    return () => { cancelled = true; };
+  }, [activeDeckId]);
 
   useEffect(() => {
     if (!activeDeckId) {
@@ -384,19 +403,30 @@ export function FlashcardsReviewScreen() {
       return;
     }
     setIsLoading(true);
-    (reviewMode === "due" ? getDeckCards(activeDeckId, { dueOnly: true }) : getDeckCards(activeDeckId))
+    const savedSession = sessionKey ? (() => {
+      try { return JSON.parse(localStorage.getItem(sessionKey) || "null") as { cardIds: string[]; reviewedCount: number; totalCards: number } | string[] | null; }
+      catch { return null; }
+    })() : null;
+    const savedQueue = Array.isArray(savedSession) ? savedSession : savedSession?.cardIds;
+    setError(null);
+    (savedQueue ? getDeckCards(activeDeckId) : reviewMode === "due" ? getDeckCards(activeDeckId, { dueOnly: true }) : getDeckCards(activeDeckId))
       .then((loaded) => {
-        const list = reviewMode === "new"
+        const initialList = reviewMode === "new"
           ? loaded.filter((card) => card.last_reviewed_at === null || card.reps === 0).slice(0, 15)
           : loaded;
+        const byId = new Map((savedQueue ? loaded : initialList).map((card) => [card.id, card]));
+        const list = savedQueue ? savedQueue.flatMap((id) => byId.has(id) ? [byId.get(id)!] : []) : initialList;
+        if (!savedQueue && sessionKey) localStorage.setItem(sessionKey, JSON.stringify({ cardIds: list.map((card) => card.id), reviewedCount: 0, totalCards: list.length }));
         setCards(list);
         setIndex(0);
+        setReviewedCount(!Array.isArray(savedSession) && savedSession ? savedSession.reviewedCount : 0);
+        setTotalCards(!Array.isArray(savedSession) && savedSession ? savedSession.totalCards : list.length);
         setFlipped(false);
         setHasRevealedAnswer(false);
       })
       .catch((e) => setError((e as Error)?.message || "Couldn't load this deck."))
       .finally(() => setIsLoading(false));
-  }, [activeDeckId, reviewMode]);
+  }, [activeDeckId, reviewMode, sessionKey]);
 
   const grade = async (rating: 1 | 2 | 3 | 4) => {
     if (!current || isGrading || reviewMode === "cram") return;
@@ -414,12 +444,58 @@ export function FlashcardsReviewScreen() {
       }
     } catch (e) {
       console.error("[flashcards] review failed to save", e);
-    } finally {
+      toast.error("Your rating wasn't saved. Try again before leaving this card.");
       setIsGrading(false);
-      setFlipped(false);
-      setHasRevealedAnswer(false);
-      setIndex((i) => i + 1);
+      return;
     }
+    const future = cards.slice(1);
+    const retryAt = Math.min(2, future.length);
+    const remaining = rating === 1
+      ? [...future.slice(0, retryAt), current, ...future.slice(retryAt)]
+      : future;
+    const nextReviewed = reviewedCount + 1;
+    const nextTotal = totalCards + (rating === 1 ? 1 : 0);
+    setCards(remaining);
+    setIndex(0);
+    setReviewedCount(nextReviewed);
+    setTotalCards(nextTotal);
+    if (sessionKey) {
+      try {
+        if (remaining.length) localStorage.setItem(sessionKey, JSON.stringify({ cardIds: remaining.map((card) => card.id), reviewedCount: nextReviewed, totalCards: nextTotal }));
+        else localStorage.removeItem(sessionKey);
+      } catch { /* review scheduling has already been saved remotely */ }
+    }
+    setFlipped(false);
+    setHasRevealedAnswer(false);
+    setIsGrading(false);
+  };
+
+  const movePastCramCard = () => {
+    const remaining = cards.slice(1);
+    const nextReviewed = reviewedCount + 1;
+    setCards(remaining);
+    setIndex(0);
+    setReviewedCount(nextReviewed);
+    if (sessionKey) {
+      try {
+        if (remaining.length) localStorage.setItem(sessionKey, JSON.stringify({ cardIds: remaining.map((card) => card.id), reviewedCount: nextReviewed, totalCards }));
+        else localStorage.removeItem(sessionKey);
+      } catch { /* cram navigation still works without a saved queue */ }
+    }
+    setFlipped(false);
+    setHasRevealedAnswer(false);
+  };
+
+  const handleCardPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || !flipped || reviewMode === "cram") return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    suppressCardClickRef.current = true;
+    window.setTimeout(() => { suppressCardClickRef.current = false; }, 0);
+    void grade(dx < 0 ? 1 : 3);
   };
 
   return (
@@ -434,7 +510,7 @@ export function FlashcardsReviewScreen() {
           </button>
           {current ? (
             <span className="text-sm font-semibold text-foreground">
-              {code} · {index + 1} of {cards.length}
+              {code} · {reviewedCount + 1} of {totalCards}
             </span>
           ) : null}
         </div>
@@ -469,7 +545,11 @@ export function FlashcardsReviewScreen() {
             {/* One huge card; tap flips front → navy back */}
             <button
               type="button"
+              onPointerDown={(event) => { swipeStartRef.current = { x: event.clientX, y: event.clientY }; }}
+              onPointerUp={handleCardPointerUp}
+              onPointerCancel={() => { swipeStartRef.current = null; }}
               onClick={() => setFlipped((wasFlipped) => {
+                if (suppressCardClickRef.current) return wasFlipped;
                 if (!wasFlipped) setHasRevealedAnswer(true);
                 return !wasFlipped;
               })}
@@ -484,6 +564,9 @@ export function FlashcardsReviewScreen() {
               ) : (
                 <div className="font-display text-2xl font-semibold leading-snug text-foreground"><RichText>{current.front}</RichText></div>
               )}
+              <span className={"mt-3 text-left text-[11px] " + (flipped ? "text-cream/65" : "text-muted-foreground")}>
+                {current.source_file_name || deckSourceFileName || "Course file"} · {current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}
+              </span>
               <span className="flex-1" />
               <span className={"text-xs " + (flipped ? "text-cream/60" : "text-muted-foreground")}>
                 {flipped ? "From your upload, not an official mark scheme." : "Tap to flip"}
@@ -491,22 +574,22 @@ export function FlashcardsReviewScreen() {
             </button>
 
             {reviewMode === "cram" ? (
-              <button type="button" onClick={() => { setFlipped(false); setHasRevealedAnswer(false); setIndex((currentIndex) => currentIndex + 1); }} className="mt-6 h-12 w-full rounded-full bg-amber text-sm font-semibold text-cream">Next</button>
+              <button type="button" onClick={movePastCramCard} className="mt-6 h-12 w-full rounded-full bg-amber text-sm font-semibold text-cream">Next</button>
             ) : hasRevealedAnswer ? (
               <div className="mt-6 grid grid-cols-2 gap-3">
-                {([
-                  ["Again", 1], ["Hard", 2], ["Good", 3], ["Easy", 4],
-                ] as const).map(([label, rating]) => (
-                  <button key={label} type="button" onClick={() => void grade(rating)} disabled={isGrading}
-                    className="h-12 rounded-full border-2 border-border text-sm font-semibold text-foreground disabled:opacity-60">
-                    {label}
-                  </button>
-                ))}
+                <button type="button" onClick={() => void grade(1)} disabled={isGrading}
+                  className="h-12 rounded-full border-2 border-border text-sm font-semibold text-foreground disabled:opacity-60">
+                  Again
+                </button>
+                <button type="button" onClick={() => void grade(3)} disabled={isGrading}
+                  className="h-12 rounded-full bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60">
+                  Got it
+                </button>
               </div>
             ) : null}
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Tap card to see the answer.
+              {reviewMode === "cram" ? "Tap to flip · swipe to move between cards" : hasRevealedAnswer ? "Swipe left for Again · right for Got it" : "Tap to see the answer."}
             </p>
           </>
         )}

@@ -257,38 +257,58 @@ export function UpgradeScreen() {
         {step === "plans" ? (
           <>
             <h1 className="font-display text-3xl font-bold text-foreground">Choose what works for you.</h1>
-            <p className="mt-2 text-sm text-foreground">Start where you are. You can change your plan later. Your current plan is highlighted.</p>
-            <div className="mt-5 space-y-3">
-              <article className={`rounded-2xl border p-4 ${currentPlan === "free" ? "border-accent bg-accent/10" : "border-border bg-card"}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-display text-xl font-semibold">Free</h2>
-                  {currentPlan === "free" ? <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold uppercase">Current plan</span> : null}
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">₦0 / always</p>
-                <ul className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <li>{FREE_DAILY_LIMITS.mock_sets} mock sets / day</li>
-                  <li>{FREE_MAX_QUESTIONS} questions / set</li>
+            <p className="mt-2 text-sm text-foreground">Review your current plan, then compare the plans available to you.</p>
+            <section aria-labelledby="current-plan-heading" className="mt-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Your current plan</p>
+              <h2 id="current-plan-heading" className="mt-1 font-display text-xl font-semibold">
+                {access?.tier === "trial" ? "Core trial" : planName(currentPlan)}
+              </h2>
+              {activePlan && status?.period_end ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {status.auto_renew
+                    ? `Renews ${formatDate(status.period_end)} for ${formatNaira(status.renewal_price_naira ?? (activePlan === "core" ? corePrice : examPrice))}. Cancel before renewal to stop the next charge.`
+                    : `Paid through ${formatDate(status.period_end)}. It will not renew automatically.`}
+                </p>
+              ) : access?.tier === "trial" ? (
+                <p className="mt-1 text-sm text-muted-foreground">Your trial is active{access.trialEndsAt ? ` through ${formatDate(access.trialEndsAt)}` : ""}. Choose a paid plan below when you’re ready.</p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">No payment is active. Free access stays available until you choose a paid plan.</p>
+              )}
+              {currentPlan === "free" ? (
+                <ul className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                  <li>{FREE_DAILY_LIMITS.mock_sets} mock sets per day</li>
+                  <li>{FREE_MAX_QUESTIONS} questions per set</li>
                   <li>Balanced difficulty</li>
-                  <li>No WHY explanations</li>
+                  <li>No full “why” explanations</li>
                   <li>No peer-save</li>
                   <li>{filesLine("free")}</li>
                   <li>{CHAT_USAGE_LINE.free}</li>
-                  <li>{FREE_DAILY_LIMITS.flashcard_decks} flashcard decks / day</li>
+                  <li>{FREE_DAILY_LIMITS.flashcard_decks} flashcard decks per day</li>
                 </ul>
-              </article>
-              {(["core", "exam"] as BillingPlan[]).map((plan) => (
-                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setStep("review"); }} className={`w-full rounded-2xl border p-4 text-left transition hover:bg-accent/10 ${currentPlan === plan ? "border-accent bg-accent/10" : "border-border bg-card"}`}>
+              ) : currentPlan ? (
+                <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                  {PLAN_FEATURES[currentPlan].map((line) => <li key={line}>✓ {line}</li>)}
+                </ul>
+              ) : null}
+              {activePlan && !status?.auto_renew ? (
+                <Button className="mt-4 w-full" onClick={() => { setSelectedPlan(activePlan); setStep("review"); }}>Renew {planName(activePlan)}</Button>
+              ) : null}
+            </section>
+            <h2 className="mt-6 text-sm font-semibold text-foreground">Available plans</h2>
+            <div className="mt-3 space-y-3">
+              {(["core", "exam"] as BillingPlan[]).filter((plan) => plan !== activePlan).map((plan) => (
+                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setStep("review"); }} className="w-full rounded-2xl border border-border bg-card p-4 text-left transition hover:border-accent/60 hover:bg-accent/5">
                   <div className="flex items-center justify-between gap-2">
                     <h2 className="font-display text-xl font-semibold">{planName(plan)}</h2>
                     <span className="text-sm font-semibold">{formatNaira(plan === "core" ? corePrice : examPrice)} / month</span>
                   </div>
-                  {currentPlan === plan ? <p className="mt-1 text-xs font-semibold text-accent">Current plan</p> : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {plan === "core" ? (foundingOpen ? `Founding price for the first ${FOUNDING_USER_LIMIT} paying students${seatsLeft !== null ? ` · ${seatsLeft} left` : ""}` : "Standard price") : "Available plan"}
-                    </p>
-                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {plan === "core" && foundingOpen
+                      ? `Founding price for eligible students${seatsLeft !== null ? ` · ${seatsLeft} places remain` : ""}`
+                      : plan === "core" ? "Standard price" : "Available plan"}
+                  </p>
                   <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{PLAN_FEATURES[plan].map((line) => <li key={line}>✓ {line}</li>)}</ul>
-                  <span className="mt-3 inline-flex text-xs font-semibold text-accent">{currentPlan === plan ? `Renew ${planName(plan)}` : `Select ${planName(plan)}`}</span>
+                  <span className="mt-3 inline-flex text-xs font-semibold text-accent">Choose {planName(plan)}</span>
                 </button>
               ))}
             </div>
@@ -304,6 +324,11 @@ export function UpgradeScreen() {
               {formatNaira(price)} for 30 days
               {selectedPlan === "core" && foundingOpen ? ` · founding price${seatsLeft !== null ? ` · ${seatsLeft} places remain` : ""}` : ""}
             </p>
+            {selectedPlan === "core" && foundingOpen ? (
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Eligible students pay {formatNaira(corePrice)} now. The regular price is {formatNaira(STANDARD_PRICE_NAIRA)} per month after the founding offer ends or its places are filled.
+              </p>
+            ) : null}
             <ul className="mt-5 space-y-3">{PLAN_FEATURES[selectedPlan].map((line) => <li key={line} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /><span>{line}</span></li>)}</ul>
 
             <fieldset className="mt-5 space-y-2" aria-label="How do you want to pay?">
@@ -317,6 +342,29 @@ export function UpgradeScreen() {
                 </button>
               ))}
             </fieldset>
+
+            <dl className="mt-5 divide-y divide-border rounded-xl border border-border bg-background px-3.5">
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-muted-foreground">Amount due now</dt>
+                <dd className="font-semibold text-foreground">{formatNaira(price)}</dd>
+              </div>
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-muted-foreground">Next renewal</dt>
+                <dd className="text-right font-medium text-foreground">
+                  {autoRenew
+                    ? `${formatNaira(price)} on ${formatDate(new Date(Date.now() + 30 * 86_400_000).toISOString())} (estimated)`
+                    : "No automatic renewal; access lasts 30 days"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-muted-foreground">Cancellation</dt>
+                <dd className="text-right text-foreground">
+                  {autoRenew
+                    ? "Cancel any time before renewal; access continues through the paid period."
+                    : "No cancellation needed. This purchase will not renew."}
+                </dd>
+              </div>
+            </dl>
 
             <p className="mt-4 rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">
               You pay on Squad’s secure page; we never see your card number. Your plan starts only after Squad confirms the payment.

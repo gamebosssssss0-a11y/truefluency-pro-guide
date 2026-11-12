@@ -22,6 +22,27 @@ function base(): string {
 
 /** A "jump to a feature" chip the assistant suggested (validated server-side). */
 export type ChatAction = { key: string; label: string; view: string };
+export type ChatSource = { fileName: string; page?: number; section?: string; location?: string; excerpt?: string };
+
+function normalizeChatSources(value: unknown): ChatSource[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): ChatSource[] => {
+    if (!item || typeof item !== "object") return [];
+    const source = item as Record<string, unknown>;
+    const fileName = typeof source.file_name === "string" ? source.file_name.trim()
+      : typeof source.fileName === "string" ? source.fileName.trim() : "";
+    if (!fileName) return [];
+    const pageValue = source.page;
+    const sectionValue = source.section;
+    const page = Number.isInteger(pageValue) && Number(pageValue) > 0 ? Number(pageValue) : undefined;
+    const section = typeof sectionValue === "string" && sectionValue.trim() ? sectionValue.trim().slice(0, 160) : undefined;
+    const locationValue = source.location;
+    const location = typeof locationValue === "string" && locationValue.trim() ? locationValue.trim().slice(0, 160) : undefined;
+    const excerptValue = source.excerpt;
+    const excerpt = typeof excerptValue === "string" && excerptValue.trim() ? excerptValue.trim().slice(0, 320) : undefined;
+    return [{ fileName, page, section, location, excerpt }];
+  }).slice(0, 8);
+}
 
 /** How much of today's Study Chat allowance is used. Drawn as a small ring; contains no token counts the student must read. */
 export type ChatUsage = {
@@ -81,6 +102,8 @@ export type ChatMessage = {
    * or deleted precisely. Absent on live-thread reads, where it's implied
    * by the single active conversation already being viewed. */
   conversation_id?: string;
+  sources?: ChatSource[];
+  grounded?: boolean;
 };
 
 /**
@@ -100,6 +123,8 @@ export async function sendChatMessage(
   moderated?: boolean;
   actions: ChatAction[];
   saved: boolean;
+  sources: ChatSource[];
+  grounded?: boolean;
 }> {
   const url = `${base()}/chat`;
   const controller = new AbortController();
@@ -131,6 +156,8 @@ export async function sendChatMessage(
       moderated?: boolean;
       actions?: ChatAction[];
       saved?: boolean;
+      sources?: unknown;
+      grounded?: boolean;
     };
     return {
       conversationId: data.conversation_id,
@@ -138,6 +165,8 @@ export async function sendChatMessage(
       moderated: data.moderated,
       actions: Array.isArray(data.actions) ? data.actions : [],
       saved: data.saved !== false,
+      sources: normalizeChatSources(data.sources),
+      grounded: data.grounded,
     };
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw new Error("Study chat timed out. Try again.");
@@ -165,7 +194,10 @@ export async function getCourseThread(
     throw new Error(readErrorDetail(text, res.status));
   }
   const data = (await res.json()) as { conversation_id: string; messages: ChatMessage[] };
-  return { conversationId: data.conversation_id, messages: data.messages ?? [] };
+  return { conversationId: data.conversation_id, messages: (data.messages ?? []).map((message) => ({
+    ...message,
+    sources: normalizeChatSources(message.sources),
+  })) };
 }
 
 /**
@@ -184,7 +216,10 @@ export async function getCourseHistory(
     throw new Error(readErrorDetail(text, res.status));
   }
   const data = (await res.json()) as { messages: ChatMessage[] };
-  return { messages: data.messages ?? [] };
+  return { messages: (data.messages ?? []).map((message) => ({
+    ...message,
+    sources: normalizeChatSources(message.sources),
+  })) };
 }
 
 /**
@@ -230,6 +265,7 @@ export async function streamChatMessage(
   onDelta: (deltaText: string) => void,
   /** "Explain this page" text — sent separately so it doesn't count toward the message length limit. */
   pageContext?: string | null,
+  options?: { signal?: AbortSignal; idempotencyKey?: string },
 ): Promise<{
   conversationId?: string;
   reply: string;
@@ -237,6 +273,9 @@ export async function streamChatMessage(
   actions: ChatAction[];
   saved: boolean;
   usage?: ChatUsage;
+  stopped?: boolean;
+  sources?: ChatSource[];
+  grounded?: boolean;
 }> {
   const url = `${base()}/chat`;
   const auth = await authHeader();
@@ -249,14 +288,15 @@ export async function streamChatMessage(
       mode,
       image_path: imagePath || undefined,
       page_context: pageContext || undefined,
+      // Stable across retries so the service can de-duplicate a request whose
+      // response was lost after it was already saved.
+      idempotency_key: options?.idempotencyKey,
     }),
+    signal: options?.signal,
   };
 
-  // One automatic retry, only for a failure BEFORE any reply started: the
-  // server is waking from sleep (the free Render plan sleeps when idle and
-  // answers 502/503/504 or drops the connection for the first seconds), or
-  // the network blinked. Nothing has been saved or charged at that point, so
-  // repeating the request is safe; a reply that already started is never repeated.
+  // One automatic retry for a transient failure. The idempotency key must be
+  // honored by the service so a lost response cannot create a second message.
   let res: Response | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -293,6 +333,8 @@ export async function streamChatMessage(
       moderated?: boolean;
       actions?: ChatAction[];
       saved?: boolean;
+      sources?: unknown;
+      grounded?: boolean;
     };
     onDelta(data.reply);
     return {
@@ -301,6 +343,8 @@ export async function streamChatMessage(
       moderated: data.moderated,
       actions: Array.isArray(data.actions) ? data.actions : [],
       saved: data.saved !== false,
+      sources: normalizeChatSources(data.sources),
+      grounded: data.grounded,
     };
   }
 
@@ -312,42 +356,57 @@ export async function streamChatMessage(
   let saved = true;
   let usage: ChatUsage | undefined;
   let streamError: string | null = null;
+  let sources: ChatSource[] = [];
+  let grounded: boolean | undefined;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    // SSE messages are separated by a blank line.
-    let boundary: number;
-    while ((boundary = buffer.indexOf("\n\n")) !== -1) {
-      const rawEvent = buffer.slice(0, boundary);
-      buffer = buffer.slice(boundary + 2);
-      const line = rawEvent.split("\n").find((l) => l.startsWith("data: "));
-      if (!line) continue;
-      let parsed: { delta?: string; done?: boolean; actions?: ChatAction[]; saved?: boolean; error?: string; usage?: ChatUsage };
-      try {
-        parsed = JSON.parse(line.slice("data: ".length));
-      } catch {
-        continue; // a malformed chunk shouldn't kill an otherwise-working stream
-      }
-      if (parsed.error) {
-        streamError = parsed.error;
-      } else if (parsed.delta) {
-        fullReply += parsed.delta;
-        onDelta(parsed.delta);
-      } else if (parsed.done) {
-        actions = Array.isArray(parsed.actions) ? parsed.actions : [];
-        saved = parsed.saved !== false;
-        if (parsed.usage && typeof parsed.usage.percent === "number") usage = parsed.usage;
+      // SSE messages are separated by a blank line.
+      let boundary: number;
+      while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+        const rawEvent = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const line = rawEvent.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        let parsed: { delta?: string; done?: boolean; actions?: ChatAction[]; saved?: boolean; error?: string; usage?: ChatUsage; sources?: unknown; grounded?: boolean };
+        try {
+          parsed = JSON.parse(line.slice("data: ".length));
+        } catch {
+          continue; // a malformed chunk shouldn't kill an otherwise-working stream
+        }
+        if (parsed.error) {
+          streamError = parsed.error;
+        } else if (parsed.delta) {
+          fullReply += parsed.delta;
+          onDelta(parsed.delta);
+        } else if (parsed.done) {
+          actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+          saved = parsed.saved !== false;
+          if (parsed.usage && typeof parsed.usage.percent === "number") usage = parsed.usage;
+          sources = normalizeChatSources(parsed.sources);
+          grounded = parsed.grounded;
+        }
       }
     }
+  } catch (error) {
+    if (options?.signal?.aborted && fullReply.trim()) {
+      return { reply: fullReply, moderated: false, actions: [], saved: false, usage, stopped: true };
+    }
+    throw error;
+  }
+
+  if (options?.signal?.aborted && fullReply.trim()) {
+    return { reply: fullReply, moderated: false, actions: [], saved: false, usage, stopped: true };
   }
 
   if (streamError) throw new Error(streamError);
   if (!fullReply.trim()) throw new Error("The study chat had a problem. Please try again.");
 
-  return { reply: fullReply, moderated: false, actions, saved, usage };
+  return { reply: fullReply, moderated: false, actions, saved, usage, sources, grounded };
 }
 
 /**

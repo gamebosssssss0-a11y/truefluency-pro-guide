@@ -31,10 +31,12 @@ Build on existing mock attempt and flashcard-rating data. Report accuracy, pract
 
 ## UI quality checklist
 - Preserve route names, navigation, auth/onboarding, and student/admin workflows.
-- Use the existing cream/ink/amber brand tokens and existing UI primitives.
+- Preserve the current page background and brand direction; use existing UI primitives and accessible theme tokens.
 - Prioritize narrow Android viewports, readable type, consistent spacing, accessible focus/contrast, clear primary actions, and loading/empty/error states.
 - Check dashboard, flashcards, mock exam run/results, library, account/settings, and admin pages in the existing app preview.
 - Do not publish/deploy until CI passes and the preview has been manually checked.
+
+The detailed, phased UX and correctness backlog is in [REQUIRED_CHANGE_BACKLOG.md](./REQUIRED_CHANGE_BACKLOG.md). Its findings are from commit `e1f12bb` and must be audited against the current branch before treating any item as unfinished.
 
 ## Deployment note
 The security hardening has been applied directly to the connected Supabase database and verified with simulated authenticated-admin and student-role checks. The matching SQL migration is included in the draft GitHub PR for version control; because the live changes were applied via SQL, confirm migration history before attempting to apply the file elsewhere. No subscription data was changed or deleted. Never put a service-role key in client code or CI variables exposed to builds.

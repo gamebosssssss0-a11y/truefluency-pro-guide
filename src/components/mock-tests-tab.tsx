@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { canonicalCourseCode } from "@/lib/course-code";
-import { useProfile, averageForCourse, type MockAttempt } from "@/lib/profile-store";
+import { useProfile, useProfileData, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { MathText } from "@/components/math-text";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  ArrowLeft, BookOpen, ChevronDown, ChevronRight, History, Search, Sparkles, Zap, RotateCcw,
+  ArrowLeft, BookOpen, ChevronDown, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
@@ -25,7 +25,7 @@ import { maxSourceFiles } from "@/lib/entitlements";
 let practiceMaterialCache: Record<string, string | null> = {};
 
 export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const { access: planAccess } = useEntitlement();
   const sourceLimit = maxSourceFiles(planAccess?.tier);
   const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>(() => ({ ...practiceMaterialCache }));
@@ -78,7 +78,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+      <div className="mx-auto max-w-5xl px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
@@ -226,7 +226,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
 }
 
 function AttemptRow({ attempt }: { attempt: MockAttempt }) {
-  const { navigate } = useProfile();
+  const { navigate } = useProfileData();
   return (
     <button
       onClick={() => navigate("attempt-review", { attemptId: attempt.id })}
@@ -260,16 +260,42 @@ function AttemptRow({ attempt }: { attempt: MockAttempt }) {
 type HistoryTab = "attempts" | "progress";
 
 export function TestHistoryScreen() {
-  const { profile, navigate, update, activeCourseCode } = useProfile();
+  const { profile, navigate, update, activeCourseCode } = useProfileData();
   const [tab, setTab] = useState<HistoryTab>("attempts");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
+  const [activeAttemptIndex, setActiveAttemptIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const all = useMemo(
     () => [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt),
     [profile.attempts],
   );
   const filtered = courseFilter === "all" ? all : all.filter((a) => a.courseCode === courseFilter);
+  useEffect(() => {
+    setActiveAttemptIndex(0);
+    cardRefs.current[0]?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+  }, [courseFilter]);
+  const moveAttempt = (delta: number) => {
+    const next = Math.max(0, Math.min(filtered.length - 1, activeAttemptIndex + delta));
+    setActiveAttemptIndex(next);
+    cardRefs.current[next]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
+  };
+  const syncCarouselIndex = () => {
+    const track = carouselRef.current;
+    if (!track) return;
+    const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+    let nearest = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    cardRefs.current.slice(0, filtered.length).forEach((card, i) => {
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const distance = Math.abs(rect.left + rect.width / 2 - center);
+      if (distance < nearestDistance) { nearest = i; nearestDistance = distance; }
+    });
+    setActiveAttemptIndex(nearest);
+  };
   const courseCodes = Array.from(new Set(all.map((a) => a.courseCode)));
 
   return (
@@ -324,12 +350,35 @@ export function TestHistoryScreen() {
               ))}
             </div>
 
-            <div className="mt-4 space-y-2.5">
-              {filtered.map((a) => {
+            {filtered.length > 0 ? (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">{activeAttemptIndex + 1} of {filtered.length}</span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon" aria-label="Previous result" onClick={() => moveAttempt(-1)} disabled={activeAttemptIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="icon" aria-label="Next result" onClick={() => moveAttempt(1)} disabled={activeAttemptIndex >= filtered.length - 1}><ChevronRight className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+                <div
+                  ref={carouselRef}
+                  onScroll={syncCarouselIndex}
+                  className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-[8%] pb-3 [perspective:1000px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  aria-label="Mock result carousel"
+                >
+              {filtered.map((a, cardIndex) => {
                 const sortedTopics = [...a.topics].sort((left, right) => left.score - right.score);
                 const showAllTopics = expandedTopics.has(a.id);
                 return (
-                <div key={a.id} className="rounded-2xl border border-border bg-card p-4">
+                <div
+                  key={a.id}
+                  ref={(node) => { cardRefs.current[cardIndex] = node; }}
+                  className="w-[84%] shrink-0 snap-center rounded-2xl border border-border bg-card p-4 shadow-sm transition-[transform,opacity] duration-200 md:w-[72%] lg:w-[58%]"
+                  style={{
+                    transform: `perspective(900px) rotateY(${Math.max(-1, Math.min(1, cardIndex - activeAttemptIndex)) * -9}deg) scale(${cardIndex === activeAttemptIndex ? 1 : 0.95})`,
+                    opacity: Math.abs(cardIndex - activeAttemptIndex) > 1 ? 0.76 : 1,
+                  }}
+                  aria-current={cardIndex === activeAttemptIndex ? "true" : undefined}
+                >
                   <div className="flex items-start gap-3">
                     <div
                       className={cn(
@@ -430,7 +479,9 @@ export function TestHistoryScreen() {
                 </div>
                 );
               })}
-            </div>
+                </div>
+              </div>
+            ) : null}
           </>
         ) : (
           <ProgressPanel profile={profile} activeCourseCode={activeCourseCode} navigate={navigate} update={update} />

@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { useProfile } from "@/lib/profile-store";
+import { useProfileData } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight, Flame, Snowflake, Quote as QuoteIcon, Lightbulb, Calculator, Target,
@@ -96,7 +96,7 @@ function PlanChip() {
 }
 
 function ChipShell({ children }: { children: React.ReactNode }) {
-  const { navigate } = useProfile();
+  const { navigate } = useProfileData();
   return (
     <button
       onClick={() => navigate("upgrade")}
@@ -119,29 +119,8 @@ const TYPE_CHIP: Record<string, { label: string; color: string; textColor: strin
 };
 
 /** Latest file this student uploaded themselves. Peer copies never appear here. */
-function ContinueFileCard() {
-  const { navigate } = useProfile();
-  const [latest, setLatest] = useState<CourseMaterial | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    const loadLatest = () => {
-      void listAllUserMaterials()
-      .then((items) => {
-        const own = items.filter(
-          (m) => !(m as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy,
-        );
-        if (live) setLatest(own[0] ?? null);
-      })
-      .catch((e) => console.warn("[home] couldn't read uploads", e));
-    };
-    loadLatest();
-    window.addEventListener("course-materials-refresh", loadLatest);
-    return () => {
-      live = false;
-      window.removeEventListener("course-materials-refresh", loadLatest);
-    };
-  }, []);
+function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
+  const { navigate } = useProfileData();
 
   if (!latest) return null;
   const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
@@ -191,33 +170,10 @@ function ContinueFileCard() {
  * One clear instruction at the top of Home, so nobody has to work out what to
  * do next. It only points at screens that already exist.
  */
-function NextStepCard() {
-  const { profile, navigate } = useProfile();
-  const [ownCount, setOwnCount] = useState<number | null>(null);
-  const [firstOwn, setFirstOwn] = useState<CourseMaterial | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    const loadNextStepMaterials = () => {
-      void listAllUserMaterials()
-      .then((items) => {
-        const own = items.filter(
-          (m) => !(m as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy,
-        );
-        if (!live) return;
-        setOwnCount(own.length);
-        setFirstOwn(own[0] ?? null);
-      })
-      // A failed read must never be read as "this student has no files".
-      .catch((e) => { console.warn("[home] couldn't read uploads", e); });
-    };
-    loadNextStepMaterials();
-    window.addEventListener("course-materials-refresh", loadNextStepMaterials);
-    return () => {
-      live = false;
-      window.removeEventListener("course-materials-refresh", loadNextStepMaterials);
-    };
-  }, []);
+function NextStepCard({ ownMaterials }: { ownMaterials: CourseMaterial[] | null }) {
+  const { profile, navigate } = useProfileData();
+  const ownCount = ownMaterials?.length ?? null;
+  const firstOwn = ownMaterials?.[0] ?? null;
 
   const lastAttempt = [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt)[0];
 
@@ -325,7 +281,7 @@ function NextStepCard() {
 
 /** Cached prediction for the student's own uploads. Never triggers an analyze run. */
 function StrengthsCard() {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const entry = profile.courses
     .map((c) => ({ code: c.code, analysis: profile.courseTopicAnalysis[c.code] }))
     .find((x) => (x.analysis?.topics.length ?? 0) > 0);
@@ -357,17 +313,17 @@ function StrengthsCard() {
 }
 
 export function HomeScreen({ active = true }: { active?: boolean } = {}) {
-  const { profile, navigate, hydrated } = useProfile();
+  const { profile, navigate, hydrated } = useProfileData();
   const { access } = useEntitlement();
   const [reminderOpen, setReminderOpen] = useState(false);
-  const [hasStudyMaterials, setHasStudyMaterials] = useState<boolean | null>(null);
+  const [studyMaterials, setStudyMaterials] = useState<CourseMaterial[] | null>(null);
   useEffect(() => {
     let live = true;
     const loadStudyMaterials = () => {
       void listAllUserMaterials()
         .then((items) => {
           if (!live) return;
-          setHasStudyMaterials(items.some((item) => !(item as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy));
+          setStudyMaterials(items);
         })
         .catch((error) => console.warn("[home] couldn't check study materials", error));
     };
@@ -378,6 +334,12 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
       window.removeEventListener("course-materials-refresh", loadStudyMaterials);
     };
   }, []);
+  const ownMaterials = useMemo(
+    () => studyMaterials?.filter((item) => !(item as CourseMaterial & { is_peer_copy?: boolean }).is_peer_copy) ?? null,
+    [studyMaterials],
+  );
+  const hasStudyMaterials = ownMaterials === null ? null : ownMaterials.length > 0;
+  const latestOwnMaterial = ownMaterials?.[0] ?? null;
   /** First name only, in title case: never the full legal name, never ALL-CAPS. */
   const name = (() => {
     const raw = (profile.identity?.name ?? "").trim();
@@ -471,7 +433,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
 
         {showFirstUseLayout ? (
           <section aria-label="Your first study step">
-            <NextStepCard />
+            <NextStepCard ownMaterials={ownMaterials} />
             {isNewStudent ? (
               <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
                 After this step, add a past paper or notes to practise from your own course material.
@@ -479,7 +441,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
             ) : null}
           </section>
         ) : (
-          <NextStepCard />
+          <NextStepCard ownMaterials={ownMaterials} />
         )}
 
         {!showFirstUseLayout ? (
@@ -547,7 +509,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           <HomeRowLink label="Test history" onClick={() => navigate("test-history")} />
         </div>
 
-        <ContinueFileCard />
+        <ContinueFileCard latest={latestOwnMaterial} />
         <StrengthsCard />
 
         {/* Two columns from CGPA down where there's room. */}
@@ -634,7 +596,7 @@ function QuickLink({
 }
 
 function CgpaStatusCard() {
-  const { profile, navigate } = useProfile();
+  const { profile, navigate } = useProfileData();
   const actual = profile.cgpaActual;
   const plan = profile.cgpaPlan;
 
