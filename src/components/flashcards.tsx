@@ -370,6 +370,7 @@ export function FlashcardsReviewScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGrading, setIsGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deckSourceFileName, setDeckSourceFileName] = useState<string | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressCardClickRef = useRef(false);
   const [reviewMode] = useState<"due" | "new" | "cram">(() => {
