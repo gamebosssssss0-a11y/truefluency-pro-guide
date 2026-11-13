@@ -171,7 +171,7 @@ export function SonicUnfurlLoader({
           </p>
         ) : null}
         {tapHint ? (
-          <p className="mt-6 text-[11px]" style={{ color: "#6B7280" }}>{tapHint}</p>
+          <p className="mt-6 text-xs" style={{ color: "#6B7280" }}>{tapHint}</p>
         ) : null}
       </div>
     </div>

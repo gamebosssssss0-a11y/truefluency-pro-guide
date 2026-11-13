@@ -87,7 +87,7 @@ function AccountPhotoCard() {
         )}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-foreground">Your photo</div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             Optional. Square crop. Coursemates see it only on files where you tick the box.
           </div>
         </div>
@@ -299,7 +299,7 @@ export function AccountScreen() {
         <div className="surface-key-card mt-5 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-foreground">Your plan</span>
-            <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+            <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
               {planLabel}
             </span>
           </div>
@@ -338,7 +338,7 @@ export function AccountScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Browser extension</div>
-            <div className="text-[11px] text-muted-foreground">See availability and install instructions.</div>
+            <div className="text-xs text-muted-foreground">See availability and install instructions.</div>
           </div>
         </button>
         <AlertDialog open={extensionOpen} onOpenChange={setExtensionOpen}>
@@ -369,7 +369,7 @@ export function AccountScreen() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-foreground">{t.label}</div>
-                <div className="text-[11px] text-muted-foreground">{t.blurb}</div>
+                <div className="text-xs text-muted-foreground">{t.blurb}</div>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -389,7 +389,7 @@ export function AccountScreen() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-foreground">All my uploads</div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Every file you've uploaded, across every course.
               </div>
             </div>
@@ -404,7 +404,7 @@ export function AccountScreen() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-foreground">Add a course</div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Anything your department list missed.
               </div>
             </div>
@@ -424,12 +424,12 @@ export function AccountScreen() {
               <User className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Identity</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Identity</div>
               <div className="truncate text-sm font-medium text-foreground">
                 {profile.identity?.name ?? "Not set"}
               </div>
               {profile.identity?.email ? (
-                <div className="truncate text-[11px] text-muted-foreground">{profile.identity.email}</div>
+                <div className="truncate text-xs text-muted-foreground">{profile.identity.email}</div>
               ) : null}
             </div>
             <span className="inline-flex min-h-11 items-center gap-1 px-1 text-sm font-medium text-accent">
@@ -457,7 +457,7 @@ export function AccountScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">System theme</div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Follows your browser or device preference ({theme === "dark" ? "dark" : "light"}).
             </div>
           </div>
@@ -475,7 +475,7 @@ export function AccountScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Review the disclaimer</div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Study aid, not a substitute for lectures.
             </div>
           </div>
@@ -489,7 +489,7 @@ export function AccountScreen() {
         <Button variant="outline" className="w-full" onClick={() => setSignOutOpen(true)}>
           <LogOut className="mr-2 h-4 w-4" /> Sign out
         </Button>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-xs text-muted-foreground">
           Your profile, courses, uploads and test history stay saved to your account and come back
           when you sign in again, on this phone or any other.
         </p>
@@ -509,7 +509,7 @@ export function AccountScreen() {
         >
           <RotateCcw className="mr-2 h-4 w-4" /> Reset profile
         </Button>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-xs text-muted-foreground">
           Keeps your uploaded files. Only clears profile and course selection.
         </p>
 
@@ -520,7 +520,7 @@ export function AccountScreen() {
         <Button variant="destructive" className="w-full" onClick={() => { setDeleteStep(1); setDeleteAllOpen(true); }}>
           <Trash2 className="mr-2 h-4 w-4" /> Delete all my data
         </Button>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-xs text-muted-foreground">
           Permanently deletes your uploaded past papers, slides, pasted notes, and profile. If you have a paid plan it is cancelled and your saved card is removed, so you are never charged again.
         </p>
 
@@ -604,9 +604,9 @@ function Row({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: strin
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
         <div className="truncate text-sm font-medium text-foreground">{value}</div>
-        {sub ? <div className="truncate text-[11px] text-muted-foreground">{sub}</div> : null}
+        {sub ? <div className="truncate text-xs text-muted-foreground">{sub}</div> : null}
       </div>
     </div>
   );
@@ -675,7 +675,7 @@ export function AllUploadsScreen() {
                       {code}
                     </h2>
                     {!isActive ? (
-                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Previous selection
                       </span>
                     ) : null}

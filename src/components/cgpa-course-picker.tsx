@@ -81,7 +81,7 @@ export function CgpaCoursePicker({
       {open ? (
         <div className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
           {helper ? (
-            <p className="mb-3 text-[11px] text-muted-foreground">{helper}</p>
+            <p className="mb-3 text-xs text-muted-foreground">{helper}</p>
           ) : null}
           <AddCourseFlow
             existing={selected}

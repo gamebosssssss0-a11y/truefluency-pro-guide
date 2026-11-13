@@ -10,7 +10,7 @@ export function AiGeneratedLabel({ className }: { className?: string }) {
   return (
     <p
       className={
-        "flex items-center gap-1.5 text-[11px] italic leading-relaxed text-muted-foreground " +
+        "flex items-center gap-1.5 text-xs italic leading-relaxed text-muted-foreground " +
         (className ?? "")
       }
     >
@@ -53,7 +53,7 @@ export function TopicPill({
     <span
       className={
         "inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-2xl border font-medium " +
-        (big ? "px-3 py-1.5 text-xs" : "px-2.5 py-1 text-[11px]")
+        (big ? "px-3 py-1.5 text-xs" : "px-2.5 py-1 text-xs")
       }
       style={{
         borderColor: `hsl(${hue} 70% 55% / 0.35)`,
@@ -72,7 +72,7 @@ export function TopicPill({
       <span className="min-w-0 break-words">{label}</span>
       <span className="opacity-75">{strengthLabel(strength)}</span>
       {showPercent ? (
-        <span className="whitespace-nowrap text-[9px] opacity-55">
+        <span className="whitespace-nowrap text-xs opacity-55">
           {Math.round(Math.max(0, Math.min(1, strength)) * 100)}%
         </span>
       ) : null}
@@ -127,7 +127,7 @@ export function CourseDescription({ text, className }: { text: string; className
             setExpanded((current) => !current);
           }}
           onKeyDown={(event) => event.stopPropagation()}
-          className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-accent hover:text-accent/80"
+          className="mt-1 inline-flex items-center gap-0.5 text-xs font-medium text-accent hover:text-accent/80"
           aria-expanded={expanded}
         >
           {expanded ? "Read less" : "Read more"}

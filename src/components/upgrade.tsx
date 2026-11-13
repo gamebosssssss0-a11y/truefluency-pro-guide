@@ -203,7 +203,7 @@ export function UpgradeScreen() {
             {status.receipts.map((r) => (
               <li key={r.ref} className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
                 <span>{formatDate(r.paid_at)} · {planName(r.plan)} · {formatNaira(r.amount_naira)}</span>
-                <span className="font-mono text-[10px]">{r.ref}</span>
+                <span className="font-mono text-xs">{r.ref}</span>
               </li>
             ))}
           </ul>
@@ -229,14 +229,14 @@ export function UpgradeScreen() {
             <h1 className="mt-2 font-display text-3xl font-bold text-foreground">Full access to your next level.</h1>
             <p className="mt-2 text-sm leading-relaxed text-foreground">Make every study session count with a little more room to practise.</p>
             <div className="mt-5 rounded-2xl border-2 border-accent bg-accent/10 p-5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Founding price" : "Core"}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Founding price" : "Core"}</span>
               <div className="mt-3 flex items-end gap-2"><span className="font-display text-4xl font-semibold">{formatNaira(corePrice)}</span><span className="pb-1 text-sm text-muted-foreground">/ month</span></div>
               {foundingOpen ? (
                 <>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Founding offer for the first {FOUNDING_USER_LIMIT} paying students{seatsLeft !== null ? ` · ${seatsLeft} of ${FOUNDING_USER_LIMIT} places remain` : ""} · cancel any time
                   </p>
-                  <div className="mt-3 flex items-baseline gap-2"><span className="font-display text-lg font-semibold text-muted-foreground line-through">{formatNaira(STANDARD_PRICE_NAIRA)}</span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">standard price after the offer ends</span></div>
+                  <div className="mt-3 flex items-baseline gap-2"><span className="font-display text-lg font-semibold text-muted-foreground line-through">{formatNaira(STANDARD_PRICE_NAIRA)}</span><span className="text-xs uppercase tracking-wider text-muted-foreground">standard price after the offer ends</span></div>
                 </>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">The founding places have all been taken · cancel any time</p>
@@ -250,7 +250,7 @@ export function UpgradeScreen() {
             <Button className="mt-5 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"}</Button>
             <Button variant="outline" className="mt-3 h-12 w-full" onClick={() => navigate("support")}>Ask us about payment</Button>
             <Button variant="ghost" className="mt-2 w-full" onClick={() => setStep("plans")}>Compare plans</Button>
-            {status && !live ? <p className="mt-2 text-center text-[11px] text-muted-foreground">Payments aren’t live yet. Nothing will be charged.</p> : null}
+            {status && !live ? <p className="mt-2 text-center text-xs text-muted-foreground">Payments aren’t live yet. Nothing will be charged.</p> : null}
           </>
         ) : null}
 
@@ -259,7 +259,7 @@ export function UpgradeScreen() {
             <h1 className="font-display text-3xl font-bold text-foreground">Choose what works for you.</h1>
             <p className="mt-2 text-sm text-foreground">Review your current plan, then compare the plans available to you.</p>
             <section aria-labelledby="current-plan-heading" className="mt-5 rounded-2xl border border-border bg-card p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Your current plan</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-accent">Your current plan</p>
               <h2 id="current-plan-heading" className="mt-1 font-display text-xl font-semibold">
                 {access?.tier === "trial" ? "Core trial" : planName(currentPlan)}
               </h2>
@@ -312,7 +312,7 @@ export function UpgradeScreen() {
                 </button>
               ))}
             </div>
-            <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">{EVERY_PLAN_LINE}</p>
+            <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">{EVERY_PLAN_LINE}</p>
           </>
         ) : null}
 

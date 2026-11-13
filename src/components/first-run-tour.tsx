@@ -47,7 +47,7 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             Skip tour <X className="ml-0.5 inline h-3 w-3" />
           </button>

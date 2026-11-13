@@ -121,7 +121,7 @@ function SharedMockPage() {
               <div className="space-y-4">
                 {mock.questions.map((question, index) => (
                   <article key={question.id ?? index} className="rounded-xl border border-border bg-background p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Question {index + 1}{question.topic ? " · " + question.topic : ""}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question {index + 1}{question.topic ? " · " + question.topic : ""}</p>
                     <div className="mt-2 text-sm font-medium leading-6"><MathText>{question.question}</MathText></div>
                     <ol className="mt-3 space-y-2">
                       {question.options.map((option, optionIndex) => (

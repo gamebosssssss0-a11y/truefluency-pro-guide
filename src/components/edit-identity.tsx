@@ -120,7 +120,7 @@ export function EditIdentityScreen() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder={isGuest ? "Add an email to secure your account" : "you@example.com"}
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Used to restore your data. Changing it here updates your profile, not your sign-in method.
             </p>
           </div>
@@ -176,7 +176,7 @@ export function EditIdentityScreen() {
         </div>
 
         {coursesWillReset ? (
-          <p className="mt-3 rounded-2xl border border-warning/40 bg-warning/10 p-3 text-[11px] leading-relaxed text-foreground">
+          <p className="mt-3 rounded-2xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-foreground">
             Changing your department or level clears your current course selection, since the course
             list is different. Your uploaded files and test history are kept.
           </p>

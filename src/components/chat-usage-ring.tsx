@@ -31,7 +31,7 @@ export function ChatUsageRing({ usage, className }: { usage: ChatUsage | null; c
         <button
           type="button"
           aria-label={`Chat usage: ${pct}% used today. Tap for details.`}
-          className={`inline-flex h-7 items-center gap-1 rounded-full px-1.5 text-[11px] font-medium text-[#878170] transition hover:bg-secondary ${className ?? ""}`}
+          className={`inline-flex h-7 items-center gap-1 rounded-full px-1.5 text-xs font-medium text-[#878170] transition hover:bg-secondary ${className ?? ""}`}
         >
           <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" className="-rotate-90">
             <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} className="stroke-[#E4DCC8]" />
@@ -52,7 +52,7 @@ export function ChatUsageRing({ usage, className }: { usage: ChatUsage | null; c
         <p className="mt-1 text-xs font-medium text-foreground">
           {pct >= 100 ? "Used up. " : ""}Resets {resetText(usage.resets_at)}.
         </p>
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
           Long chats use more. Start a new chat for a new topic.
           {usage.plan === "free" ? " Core gives 2x more." : usage.plan === "core" || usage.plan === "trial" ? " Exam gives 2x more again." : ""}
         </p>

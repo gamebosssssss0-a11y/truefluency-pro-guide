@@ -132,26 +132,26 @@ function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
     <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <div
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-bold"
           style={{ backgroundColor: chip.color, color: chip.textColor }}
         >
           {chip.label}
         </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold text-foreground">Continue your file</div>
-          <div className="break-words text-[11px] text-muted-foreground">
+          <div className="break-words text-xs text-muted-foreground">
             {canonicalCourseCode(latest.course_code)} · {latest.file_name}
           </div>
           {processing ? (
-            <div role="status" className="mt-0.5 text-[11px] font-medium text-accent-foreground">
+            <div role="status" className="mt-0.5 text-xs font-medium text-accent-foreground">
               Reading your upload…
             </div>
           ) : processingFailed ? (
-            <div className="mt-0.5 text-[11px] text-destructive">
+            <div className="mt-0.5 text-xs text-destructive">
               We couldn’t read it yet. Open it to retry.
             </div>
           ) : latest.extraction_status === "success" ? (
-            <div className="mt-0.5 text-[11px] text-muted-foreground">Text ready to analyze.</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">Text ready to analyze.</div>
           ) : null}
         </div>
       </div>
@@ -295,7 +295,7 @@ function StrengthsCard() {
         <h2 className="text-sm font-semibold text-foreground">Your strengths</h2>
         <button
           onClick={() => navigate("course-detail", { courseCode: entry.code })}
-          className="shrink-0 text-[11px] font-medium text-accent hover:text-accent/80"
+          className="shrink-0 text-xs font-medium text-accent hover:text-accent/80"
         >
           Refresh topics
         </button>
@@ -305,7 +305,7 @@ function StrengthsCard() {
           <TopicPill key={t.topic} label={t.topic} strength={t.confidence} />
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">
+      <p className="mt-3 text-xs text-muted-foreground">
         {canonicalCourseCode(entry.code)} · from your own uploads, not official exam forecasts.
       </p>
     </div>
@@ -463,7 +463,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">Current streak</div>
-              <div className="break-words text-[11px] leading-4 text-muted-foreground">
+              <div className="break-words text-xs leading-4 text-muted-foreground">
                 {streak.state === "frozen"
                   ? "Frozen: you missed yesterday. Complete a mock today to keep your streak."
                   : streak.state === "none"
@@ -477,7 +477,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               <div className="font-display text-xl font-semibold text-accent">
                 {streak.days}
               </div>
-              <div className="text-[10px] tracking-wider text-muted-foreground">{streak.days === 1 ? "day" : "days"}</div>
+              <div className="text-xs tracking-wider text-muted-foreground">{streak.days === 1 ? "day" : "days"}</div>
             </div>
         </div>
 
@@ -486,7 +486,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   {mocksToday >= 2 ? "Daily target reached." : "Mock sets completed today"}
                 </div>
               </div>
@@ -538,7 +538,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-foreground">Flashcards</div>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   15-card decks from your upload
                 </div>
               </div>
@@ -552,7 +552,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           </>
         ) : null}
         {!showFirstUseLayout ? (
-          <p className="mt-8 text-center text-[11px] leading-relaxed text-foreground">
+          <p className="mt-8 text-center text-xs leading-relaxed text-foreground">
             Predictions are statistical estimates. Always cross-check against your official material.
           </p>
         ) : null}
@@ -620,7 +620,7 @@ function CgpaStatusCard() {
             ) : null}
           </div>
         ) : (
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             Work out where you stand, then set a target.
           </div>
         )}
@@ -628,7 +628,7 @@ function CgpaStatusCard() {
       {actual && plan ? (
         <span
           className={cn(
-            "shrink-0 text-[11px] font-semibold",
+            "shrink-0 text-xs font-semibold",
             actual.cumulativeCgpa >= plan.targetCgpa ? "text-success" : "text-destructive",
           )}
         >
@@ -690,7 +690,7 @@ function RotatingWisdomCard({ active }: { active: boolean }) {
             className="pointer-events-none absolute -left-4 -top-3 h-14 w-14 text-accent/25"
             aria-hidden="true"
           />
-          <div className="relative text-[10px] font-semibold uppercase tracking-wider text-accent">
+          <div className="relative text-xs font-semibold uppercase tracking-wider text-accent">
             Study tip
           </div>
           <p className="quote-text relative mt-1 font-display text-base font-semibold leading-relaxed">

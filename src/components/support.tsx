@@ -121,7 +121,7 @@ export function SupportScreen() {
         <div className="surface-icon-well grid h-12 w-12 place-items-center rounded-2xl">
           <LifeBuoy className="h-5 w-5" />
         </div>
-        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">HELP</p>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent">HELP</p>
         <h1 className="font-display text-3xl font-semibold text-foreground">How can we help?</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Search answers or choose an issue to message us on WhatsApp.
@@ -144,7 +144,7 @@ export function SupportScreen() {
           <>
             {faqSections.map((group) => (
               <section key={group.label} className="mt-6">
-                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {group.label}
                 </h2>
                 <div className="surface-key-card px-4">
@@ -173,12 +173,12 @@ export function SupportScreen() {
 
             {filteredIssues.length > 0 ? (
               <section className="mt-7">
-                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Report an issue
                 </h2>
                 {issueAreas.map((area) => (
                   <div key={area} className="mb-5">
-                    <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {area}
                     </h3>
                     <div className="space-y-2">

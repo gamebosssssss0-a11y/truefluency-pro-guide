@@ -581,7 +581,7 @@ export function PdfViewer({
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
           {fileName}
         </span>
-        <span className="shrink-0 text-[11px] text-muted-foreground">
+        <span className="shrink-0 text-xs text-muted-foreground">
           {status === "ready" ? `page ${page} / ${total}` : ""}
         </span>
         {status === "ready" ? (
@@ -589,7 +589,7 @@ export function PdfViewer({
             <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 0.6} onClick={() => setZoom((v) => Math.max(0.6, Math.round((v - 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
               <ZoomOut className="h-4 w-4" />
             </button>
-            <span className="min-w-10 text-center text-[11px] tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
+            <span className="min-w-10 text-center text-xs tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
             <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= 2} onClick={() => setZoom((v) => Math.min(2, Math.round((v + 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
               <ZoomIn className="h-4 w-4" />
             </button>
@@ -709,7 +709,7 @@ export function PdfViewer({
               aria-label="Go to page"
               className="h-10 w-14 border-border bg-card text-center text-[12px] text-foreground"
             />
-            <span className="whitespace-nowrap text-[11px] text-muted-foreground">/ {total}</span>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">/ {total}</span>
           </form>
           <Button
             type="button"

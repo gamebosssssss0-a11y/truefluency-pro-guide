@@ -110,7 +110,7 @@ function SharedChatPage() {
         <header className="mb-7 flex items-center gap-3">
           <LogoMark className="h-8 w-8 shrink-0" />
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3E6C8]/90 drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F3E6C8]/90 drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
               TrueFluency Pro
             </p>
             <h1 className="font-display text-xl font-semibold text-[#F7F3EA] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
@@ -148,7 +148,7 @@ function SharedChatPage() {
         ) : conversation ? (
           <main>
             <section className="mb-6 border-b border-[#E4DCC8]/35 pb-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F3E6C8]/90 drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F3E6C8]/90 drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
                 {conversation.courseCode}
               </p>
               <h2 className="mt-1 font-display text-2xl font-semibold text-[#F7F3EA] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
@@ -165,12 +165,12 @@ function SharedChatPage() {
             <div className="space-y-6">
               {conversation.messages.map((message, index) => message.role === "user" ? (
                 <div key={`${message.createdAt ?? "user"}-${index}`} className="ml-auto w-fit max-w-[85%] rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] p-3.5 text-sm leading-6 text-[#1B2A4A] shadow-sm">
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5C5C70]">You</p>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#5C5C70]">You</p>
                   <p className="whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
               ) : (
                 <article key={`${message.createdAt ?? "assistant"}-${index}`} className="text-base leading-6">
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#F3E6C8]">TrueFluency</p>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]">TrueFluency</p>
                   <RichText tone="canvas">{message.content}</RichText>
                 </article>
               ))}

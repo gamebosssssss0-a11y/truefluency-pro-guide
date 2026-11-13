@@ -48,7 +48,7 @@ export function SourcePicker({
   if (ready.length === 1) {
     if (!showSingle) return null;
     return (
-      <div className={`flex items-center gap-2 text-[11px] ${muted} ${className}`}>
+      <div className={`flex items-center gap-2 text-xs ${muted} ${className}`}>
         <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span className="min-w-0 truncate">Study from: {ready[0].file_name}</span>
       </div>
@@ -68,7 +68,7 @@ export function SourcePicker({
     <div className={className}>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <label className={`block text-xs font-semibold uppercase tracking-wider ${muted}`}>Study from</label>
-        <span className={`text-[11px] tabular-nums ${muted}`}>{ticked.length} of {limit} {limit === 1 ? "file" : "files"}</span>
+        <span className={`text-xs tabular-nums ${muted}`}>{ticked.length} of {limit} {limit === 1 ? "file" : "files"}</span>
       </div>
       <div role={limit === 1 ? "radiogroup" : "group"} aria-label="Choose which of your files to use" className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
         {ready.map((file) => {
@@ -96,19 +96,19 @@ export function SourcePicker({
                 {on ? <Check className="h-3.5 w-3.5" /> : null}
               </span>
               <span className="min-w-0 flex-1 truncate text-foreground">{file.file_name}</span>
-              {shortDate(file.created_at) ? <span className="shrink-0 text-[11px] text-muted-foreground">{shortDate(file.created_at)}</span> : null}
+              {shortDate(file.created_at) ? <span className="shrink-0 text-xs text-muted-foreground">{shortDate(file.created_at)}</span> : null}
             </button>
           );
         })}
       </div>
-      <p className={`mt-1.5 text-[11px] leading-relaxed ${muted}`}>
+      <p className={`mt-1.5 text-xs leading-relaxed ${muted}`}>
         {ticked.length > 1
           ? `Shared evenly across your ${ticked.length} files. Best for revising the whole course.`
           : "Everything comes from this one file."}
         {waiting > 0 ? ` ${waiting} other file${waiting > 1 ? "s are" : " is"} not ready yet and not listed.` : ""}
       </p>
       {(atLimit || !canTickMore) && tier !== "exam" ? (
-        <p className={`mt-1 flex flex-wrap items-center gap-x-2 text-[11px] leading-relaxed ${muted}`}>
+        <p className={`mt-1 flex flex-wrap items-center gap-x-2 text-xs leading-relaxed ${muted}`}>
           <span>{nextPlanLine}</span>
           <button type="button" onClick={() => navigate("upgrade")} className="font-semibold text-accent underline underline-offset-2">
             See plans
