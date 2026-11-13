@@ -2,6 +2,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogEntry, Level } from "./uni-data";
 
+const SwipePreviewContext = createContext(false);
+
+export function SwipePreviewProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  return <SwipePreviewContext.Provider value={enabled}>{children}</SwipePreviewContext.Provider>;
+}
+
+export function useSwipePreview() {
+  return useContext(SwipePreviewContext);
+}
+
 /* ---------- Domain types ---------- */
 
 /**
