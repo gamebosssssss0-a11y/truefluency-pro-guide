@@ -25,6 +25,7 @@ import { NO_PAYMENT_YET, PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { getMyAvatar, removeMyAvatar, uploadMyAvatar } from "@/lib/avatar";
 import { deleteAccount } from "@/lib/backend-api";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 
 /**
  * Account photo. The image is cropped to a square in the browser, stored in the
@@ -134,6 +135,7 @@ export function AccountScreen() {
           ? "Core trial"
           : "Free";
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   /** Two-tap confirmation: 1 = warning, 2 = final confirm. No typing required. */
@@ -501,11 +503,7 @@ export function AccountScreen() {
         <Button
           variant="outline"
           className="w-full"
-          onClick={() => {
-            if (confirm("Reset your profile? This clears your faculty, department, level, confirmed courses, and streak. Your uploaded past papers, slides, and mock test history are kept — find your files under 'All my uploads'.")) {
-              resetSetup();
-            }
-          }}
+          onClick={() => setResetOpen(true)}
         >
           <RotateCcw className="mr-2 h-4 w-4" /> Reset profile
         </Button>
@@ -575,17 +573,38 @@ export function AccountScreen() {
                   Continue
                 </AlertDialogAction>
               ) : (
-                <AlertDialogAction
-                  disabled={deleting}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    void handleDeleteAll();
-                  }}
-                >
-                  {deleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                  Delete everything
-                </AlertDialogAction>
+                <div className="w-full sm:min-w-64">
+                  <SlideToConfirm
+                    label="Delete everything"
+                    onConfirm={() => void handleDeleteAll()}
+                    disabled={deleting}
+                    busy={deleting}
+                  />
+                </div>
               )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset profile</AlertDialogTitle>
+              <AlertDialogDescription>
+                Reset your profile? This clears your faculty, department, level, confirmed courses, and streak. Your uploaded past papers, slides, and mock test history are kept — find your files under 'All my uploads'.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <div className="w-full sm:min-w-64">
+                <SlideToConfirm
+                  label="Reset profile"
+                  onConfirm={() => {
+                    setResetOpen(false);
+                    resetSetup();
+                  }}
+                />
+              </div>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
