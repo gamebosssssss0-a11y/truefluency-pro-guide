@@ -1463,3 +1463,13 @@ nav[aria-label="Mobile navigation"] {
 body { font-size: var(--tf-body-size); line-height: var(--tf-body-line); }
 h1 { font-family: Inter, var(--font-sans); font-size: var(--tf-page-title-size); line-height: var(--tf-page-title-line); font-weight: 600; }
 h2 { font-family: Inter, var(--font-sans); font-size: var(--tf-section-title-size); line-height: var(--tf-section-title-line); font-weight: 600; }
+
+.reference-home .reference-home-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(23, 35, 56, 0.06);
+}
+.dark .reference-home .reference-home-card {
+  box-shadow: none;
+}
