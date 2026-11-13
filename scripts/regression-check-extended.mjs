@@ -350,7 +350,7 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
   assert.match(hook, /window\.innerWidth \* 0\.35 \|\| fastEnough/);
   assert.match(hook, /releaseVelocity < -0\.4/);
   const moveHandler = hook.slice(hook.indexOf("const onMove"), hook.indexOf("const onEnd"));
-  assert.equal((moveHandler.match(/setPreview\\(/g) || []).length, 1, "mount the neighbor once when a horizontal gesture begins");
+  assert.equal((moveHandler.match(/setPreview\(/g) || []).length, 1, "mount the neighbor once when a horizontal gesture begins");
   assert.match(hook, /setPreview\(\{ tab: previewTab, side: previewSide, highlightedTab: null \}\)/);
   assert.match(tabBar, /mobile-tab-bar fixed inset-x-4/);
   assert.match(tabBar, /h-\[68px\].*rounded-3xl.*backdrop-blur-\[16px\]/);
