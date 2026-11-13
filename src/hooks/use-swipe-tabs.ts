@@ -104,6 +104,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       deltaX = 0;
       horizontal = false;
       tracking = true;
+      cancelNextClick = false;
       samples = [{ x: touch.clientX, time: performance.now() }];
       clickTarget = target instanceof Element ? target.closest("button, a, [role='button']") : null;
       previewTab = null;
