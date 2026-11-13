@@ -34,7 +34,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     let horizontal = false;
     let deltaX = 0;
     let stage: HTMLElement | null = null;
-    let neighbor: HTMLElement | null = null;
     let previewTab: AppView | null = null;
     let previewSide: "left" | "right" | null = null;
     let settleTimer = 0;
@@ -68,7 +67,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     const finishPreview = () => {
       setPreview(null);
       previewTab = null;
-      neighbor = null;
       previewSide = null;
       clearWillChange();
     };
@@ -109,7 +107,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       samples = [{ x: touch.clientX, time: performance.now() }];
       clickTarget = target instanceof Element ? target.closest("button, a, [role='button']") : null;
       previewTab = null;
-      neighbor = null;
       previewSide = null;
     };
 
@@ -131,8 +128,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         previewTab = ORDER[adjacentIndex] ?? null;
         previewSide = dx < 0 ? "right" : "left";
         if (previewTab && !reducedMotion()) {
-          neighbor = stage.querySelector<HTMLElement>(`[data-root-tab="${previewTab}"]`);
-          setPreview({ tab: previewTab, side: previewSide, highlightedTab: null });
+              setPreview({ tab: previewTab, side: previewSide, highlightedTab: null });
         }
       }
       deltaX = dx;
@@ -148,9 +144,6 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       if (!reducedMotion()) {
         stage.style.transition = "none";
         stage.style.transform = `translate3d(${previewTab ? dx : dx * 0.25}px, 0, 0)`;
-        if (neighbor && previewSide) {
-          neighbor.style.transform = `translate3d(${previewSide === "right" ? -dx : -dx}px, 0, 0)`;
-        }
       }
       stage.dataset.swipeActive = "true";
       if (clickTarget && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) cancelNextClick = true;
