@@ -27,7 +27,7 @@ export function DisclaimerScreen() {
   return (
     <AppShell title="Before you begin" subtitle="A quick note on how TrueFluency Pro should be used.">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="mb-3 flex items-center gap-2 text-accent">
+        <div className="mb-3 flex items-center gap-2 text-amber">
           <ShieldCheck className="h-4 w-4" />
           <span className="text-xs font-semibold uppercase tracking-wider">Summary</span>
         </div>
@@ -35,7 +35,7 @@ export function DisclaimerScreen() {
 
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-accent"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-amber"
         >
           {expanded ? "Hide full version" : "Read full version"}
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -82,7 +82,7 @@ export function DisclaimerViewScreen() {
   return (
     <AppShell title="Disclaimer" subtitle="How TrueFluency Pro should be used.">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="mb-3 flex items-center gap-2 text-accent">
+        <div className="mb-3 flex items-center gap-2 text-amber">
           <ShieldCheck className="h-4 w-4" />
           <span className="text-xs font-semibold uppercase tracking-wider">Summary</span>
         </div>
@@ -90,7 +90,7 @@ export function DisclaimerViewScreen() {
 
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-accent"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-amber"
         >
           {expanded ? "Hide full version" : "Read full version"}
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
