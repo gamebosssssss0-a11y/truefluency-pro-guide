@@ -3,7 +3,7 @@ import { useNavigation, type AppView } from "@/lib/profile-store";
 
 /** The five root tabs, in the order the tab bar shows them. */
 const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
-const SETTLE_MS = 220;
+const SETTLE_MS = 220;\nconst SNAP_BACK_MS = 240;
 
 export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null };
 
@@ -75,7 +75,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
 
     const restoreStage = (node: HTMLElement) => {
       paintTabLight(index, 0, true);
-      node.style.transition = reducedMotion() ? "none" : `transform ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      node.style.transition = reducedMotion() ? "none" : `transform ${SNAP_BACK_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       node.style.transform = "translate3d(0, 0, 0)";
       node.dataset.swipeActive = "false";
       window.clearTimeout(settleTimer);
@@ -85,7 +85,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         node.style.transition = "";
         node.style.transform = "";
         clearWillChange();
-      }, reducedMotion() ? 0 : SETTLE_MS + 20);
+      }, reducedMotion() ? 0 : SNAP_BACK_MS + 20);
     };
 
     const onStart = (event: TouchEvent) => {
