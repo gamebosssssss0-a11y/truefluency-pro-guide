@@ -1,7 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import { ProfileProvider, useProfile, type AppView } from "@/lib/profile-store";
+import { ProfileProvider, SwipePreviewProvider, useProfile, type AppView } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
 import { SplashScreen } from "@/components/onboarding/splash";
 import { SigningInScreen } from "@/components/signing-in";
@@ -155,11 +155,13 @@ const RootTabs = memo(function RootTabs({
             className={preview ? "pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background" : undefined}
             style={preview && previewSide ? { left: previewSide === "right" ? "100%" : "-100%" } : undefined}
           >
-            {tab === "home" ? <MemoHomeScreen active={active} />
-              : tab === "mock-tests" ? <MemoMockTestsScreen active={active} />
-                : tab === "library" ? <MemoLibraryScreen active={active} />
-                  : tab === "chatbot" ? <MemoChatbotScreen active={active} />
-                    : <MemoAccountScreen />}
+            <SwipePreviewProvider enabled={preview}>
+              {tab === "home" ? <MemoHomeScreen active={active} />
+                : tab === "mock-tests" ? <MemoMockTestsScreen active={active} />
+                  : tab === "library" ? <MemoLibraryScreen active={active} />
+                    : tab === "chatbot" ? <MemoChatbotScreen active={active} />
+                      : <MemoAccountScreen />}
+            </SwipePreviewProvider>
           </div>
         );
       })}

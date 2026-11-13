@@ -1,5 +1,7 @@
 node_modules
 dist
+.output
+.wrangler
 .DS_Store
 *.local
 .env

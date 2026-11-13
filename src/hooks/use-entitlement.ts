@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSwipePreview } from "@/lib/profile-store";
 import { getMyAccess } from "@/lib/entitlements.functions";
 import {
   FREE_MAX_QUESTIONS,
@@ -19,6 +20,7 @@ import {
 type AccessWithAdmin = AccessSummary & { isAdmin?: boolean };
 
 export function useEntitlement() {
+  const isSwipePreview = useSwipePreview();
   const [access, setAccess] = useState<AccessWithAdmin | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +32,7 @@ export function useEntitlement() {
   };
 
   useEffect(() => {
+    if (isSwipePreview) return;
     let live = true;
 
     const refreshOnReturn = () => {
@@ -72,7 +75,7 @@ export function useEntitlement() {
       window.removeEventListener("focus", refreshOnReturn);
       document.removeEventListener("visibilitychange", refreshOnReturn);
     };
-  }, []);
+  }, [isSwipePreview]);
 
   return {
     access,

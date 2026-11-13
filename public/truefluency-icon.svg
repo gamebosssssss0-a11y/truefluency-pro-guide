@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="TrueFluency Pro">
+  <rect width="100" height="100" rx="22" fill="#1B2A4A"/>
+  <path d="M6 42C16 42 20 12 32 12S44 44 56 44l10 10 16-32" transform="translate(0 20)" fill="none" stroke="#B88732" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="85" cy="37" r="5.5" fill="#B88732"/>
+</svg>
