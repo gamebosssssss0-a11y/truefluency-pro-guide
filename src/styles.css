@@ -57,115 +57,6 @@
   --color-chat-foreground: var(--chat-foreground);
 }
 
-
-:root {
-  --radius: 0.875rem;
-
-  /* Blueprint aliases: one calm slate/teal system for every surface. */
-  --surface-base: #F8FAFC;
-  --surface-card: #FFFFFF;
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --brand-teal: #0D9488;
-  --state-success: #2F6B4F;
-  --state-error: #B42332;
-
-  /* Brand palette: slate, teal, and soft neutral surfaces */
-  --cream: #F8FAFC;
-  --sand: #CCFBF1;
-  --ink: #0F172A;
-
-  --background: var(--surface-base);
-  --foreground: var(--text-primary);
-  --surface: var(--surface-card);
-
-  --card: var(--surface-card);
-  --card-foreground: var(--text-primary);
-  --popover: var(--surface-card);
-  --popover-foreground: var(--text-primary);
-
-  --primary: #0D9488;
-  --primary-foreground: #FFFFFF;
-
-  --secondary: #F1F5F9;
-  --secondary-foreground: var(--text-primary);
-
-  --muted: #F1F5F9;
-  --muted-foreground: var(--text-secondary);
-
-  --accent: var(--brand-teal);
-  --accent-foreground: #FFFFFF;
-  --accent-on-sand: #115E59;
-
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: #F7F3EA;
-
-  --success: oklch(0.62 0.14 150);
-  --warning: #946200;
-
-  --border: #E2E8F0;
-  --input: #94A3B8;
-  --ring: #0D9488;
-  /* Lightness for topic-pill text, so pills stay legible in both themes. */
-  --pill-text-l: 30%;
-
-  /* Locked palette (fixed hex, identical in both themes). */
-  --navy: #1B2A4A;
-  --amber: #B86E0A;
-  --wine: #8B2E2E;
-  --doc-blue: #1D4E89;
-  --ppt-amber: #B86E0A;
-  --good: #2F6B4F;
-  --warn: #B86E0A;
-  --bad: #8B2E2E;
-  --chat-page: #F8FAFC;
-  --chat-card: var(--surface);
-  --chat-foreground: #1B2A4A;
-
-}
-
-/* Dark: navy page, raised navy cards, slate wash, and a teal accent. */
-.dark {
-  --surface-base: #0F172A;
-  --surface-card: #172334;
-  --text-primary: #F1F5F9;
-  --text-secondary: #B6C2CF;
-  --brand-teal: #F2C35E;
-  --state-success: #86D8A8;
-  --state-error: #FDA4AF;
-  --background: var(--surface-base);
-  --foreground: var(--text-primary);
-  --card: var(--surface-card);
-  --surface: var(--card);
-  --card-foreground: var(--text-primary);
-  --popover: #132240;
-  --popover-foreground: var(--text-primary);
-  --primary: #1E293B;
-  --primary-foreground: #F7F3EA;
-  --secondary: #132240;
-  --secondary-foreground: #F7F3EA;
-  --muted: #132240;
-  --muted-foreground: #A8B3C2;
-  --accent: var(--brand-teal);
-  --accent-foreground: #061329;
-  --accent-on-sand: #0F766E;
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: #F7F3EA;
-  --success: oklch(0.7 0.15 150);
-  --warning: #B86E0A;
-  --border: #334155;
-  --input: #334155;
-  --ring: #F2C35E;
-  --cream: #F7F3EA;
-  --sand: #F3E6C8;
-  --ink: #F7F3EA;
-  --pill-text-l: 82%;
-  --chat-page: #020A1A;
-  --chat-card: #0E1A33;
-  --chat-foreground: #F7F3EA;
-}
-
-
 @layer base {
   * {
     border-color: var(--color-border);
@@ -735,12 +626,6 @@
   color: var(--accent-foreground);
 }
 
-.study-utility-page [class~="text-[9px]"],
-.study-utility-page [class~="text-[10px]"],
-.study-utility-page [class~="text-[11px]"] {
-  font-size: 0.75rem;
-  line-height: 1.35;
-}
 
 
 /* Assistant ink stays gold-toned while remaining readable across the page wash. */
@@ -775,7 +660,7 @@
 
 /* Accessibility and mobile polish: additive only; preserves existing component layouts. */
 :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
-  outline: 3px solid var(--ring, #0F766E);
+  outline: 3px solid var(--ring, var(--accent-on-sand));
   outline-offset: 3px;
 }
 
@@ -855,12 +740,12 @@
 }
 
 :where(input, select, textarea):focus-visible {
-  border-color: var(--ring, #0F766E);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0F766E) 16%, transparent);
+  border-color: var(--ring, var(--accent-on-sand));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, var(--accent-on-sand)) 16%, transparent);
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent, #0F766E) 22%, transparent);
+  background: color-mix(in srgb, var(--accent, var(--accent-on-sand)) 22%, transparent);
 }
 
 /* Keep common card surfaces crisp without forcing a new layout or theme. */
@@ -891,12 +776,6 @@
 
 
 /* Accessibility contrast: keep muted copy readable and make focus unmistakable in both themes. */
-:root {
-  --muted-foreground: #64748B;
-}
-.dark {
-  --muted-foreground: #B6C2D2;
-}
 
 :where(a, button, [role="button"], input, select, textarea):focus-visible {
   outline: 3px solid var(--ring);
@@ -936,7 +815,7 @@
   --color-surface-card: var(--surface-card);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
-  --color-brand-teal: var(--brand-teal);
+  --color-brand-gold: var(--brand-gold);
   --color-state-success: var(--state-success);
   --color-state-error: var(--state-error);
 }
@@ -955,40 +834,6 @@
   }
 }
 
-
-/* Specification-aligned light theme tokens. Keep cards solid and the canvas quiet. */
-:root {
-  --surface-base: #F8FAFC;
-  --surface-card: #FFFFFF;
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --muted-foreground: #64748B;
-  --brand-teal: #0D9488;
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --surface: #FFFFFF;
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-  --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-  --primary: #0D9488;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  --accent: #0D9488;
-  --accent-foreground: #FFFFFF;
-  --border: #E2E8F0;
-  --input: #94A3B8;
-  --ring: #0D9488;
-  --chat-page: #F8FAFC;
-  --chat-card: #FFFFFF;
-  --chat-foreground: #0F172A;
-}
-:root {
-  --color-feedback-error: #991B1B;
-}
 
 /* Calm, short screen and disclosure transitions. Reduced-motion overrides remain authoritative. */
 [data-tab-swipe-stage] > [data-root-tab] {
@@ -1013,91 +858,106 @@ details[open] > :not(summary) {
 
 
 
-/* Global navy / slate / gold / cream palette. Cream surfaces are intentionally
-   softened rather than pure white; text tokens remain readable in either theme. */
+
+/* One final cream, navy and gold token system. Primary controls use navy on light
+   surfaces and gold with navy text in dark mode for consistent contrast. */
 :root {
-  --surface-base: #F5F2EA;
+  --radius: 0.875rem;
+  --surface-base: #F7F3EA;
   --surface-card: #FFFDF8;
-  --text-primary: #172338;
-  --text-secondary: #465366;
-  --background: #F5F2EA;
-  --foreground: #172338;
+  --text-primary: #1B2A4A;
+  --text-secondary: #515B6B;
+  --background: #F7F3EA;
+  --foreground: #1B2A4A;
   --surface: #FFFDF8;
   --card: #FFFDF8;
-  --card-foreground: #172338;
+  --card-foreground: #1B2A4A;
   --popover: #FFFDF8;
-  --popover-foreground: #172338;
+  --popover-foreground: #1B2A4A;
   --primary: #1B2A4A;
   --primary-foreground: #F7F3EA;
-  --secondary: #E7E4DC;
-  --secondary-foreground: #172338;
-  --muted: #E7E4DC;
-  --muted-foreground: #465366;
+  --secondary: #EEE8DA;
+  --secondary-foreground: #1B2A4A;
+  --muted: #EEE8DA;
+  --muted-foreground: #515B6B;
   --accent: #B88732;
-  --accent-foreground: #172338;
+  --accent-foreground: #1B2A4A;
   --accent-on-sand: #65420D;
-  --border: #D0C9BA;
-  --input: #8C96A5;
+  --border: #E4DCC8;
+  --input: #887E6C;
   --ring: #B88732;
-  --cream: #F5F2EA;
-  --sand: #E9DAB8;
-  --ink: #172338;
+  --cream: #F7F3EA;
+  --sand: #F3E6C8;
+  --ink: #1B2A4A;
+  --brand-gold: #B88732;
+  --state-success: #166534;
+  --state-error: #991B1B;
   --success: #166534;
-  --warning: #92400E;
+  --warning: #854D0E;
+  --color-feedback-error: #991B1B;
   --navy: #1B2A4A;
   --amber: #B88732;
-  --wine: #9F1239;
-  --doc-blue: #1D4ED8;
+  --wine: #8B2E2E;
+  --doc-blue: #1D4E89;
   --ppt-amber: #B88732;
   --good: #166534;
-  --warn: #92400E;
-  --bad: #B91C1C;
-  --chat-page: #F5F2EA;
+  --warn: #854D0E;
+  --bad: #991B1B;
+  --chat-page: #F7F3EA;
   --chat-card: #FFFDF8;
-  --chat-foreground: #172338;
+  --chat-foreground: #1B2A4A;
+  --pill-text-l: 30%;
+  --tab-light-color: #B88732;
 }
 html.dark {
   color-scheme: dark;
   --surface-base: #101827;
   --surface-card: #1A2638;
-  --text-primary: #F5F2EA;
+  --text-primary: #F7F3EA;
   --text-secondary: #C5CCD6;
   --background: #101827;
-  --foreground: #F5F2EA;
+  --foreground: #F7F3EA;
   --surface: #1A2638;
   --card: #1A2638;
-  --card-foreground: #F5F2EA;
+  --card-foreground: #F7F3EA;
   --popover: #1A2638;
-  --popover-foreground: #F5F2EA;
+  --popover-foreground: #F7F3EA;
   --primary: #E0B458;
-  --primary-foreground: #172338;
+  --primary-foreground: #1B2A4A;
   --secondary: #253247;
-  --secondary-foreground: #F5F2EA;
+  --secondary-foreground: #F7F3EA;
   --muted: #253247;
   --muted-foreground: #C5CCD6;
   --accent: #E0B458;
-  --accent-foreground: #172338;
+  --accent-foreground: #1B2A4A;
   --accent-on-sand: #F5D98E;
   --border: #3B485A;
-  --input: #536176;
+  --input: var(--text-secondary);
   --ring: #E0B458;
-  --cream: #F5F2EA;
+  --cream: #F7F3EA;
   --sand: #3A3428;
-  --ink: #F5F2EA;
-  --success: #86EFAC;
-  --warning: #FCD34D;
+  --ink: #F7F3EA;
+  --brand-gold: #E0B458;
+  --state-success: #86D8A8;
+  --state-error: #FDA4AF;
+  --success: #86D8A8;
+  --warning: #F2C27E;
+  --color-feedback-error: #FDA4AF;
   --navy: #1B2A4A;
-  --amber: #FBBF24;
+  --amber: #E0B458;
   --wine: #FDA4AF;
   --doc-blue: #93C5FD;
-  --ppt-amber: #FCD34D;
-  --good: #86EFAC;
-  --warn: #FCD34D;
+  --ppt-amber: #E0B458;
+  --good: #86D8A8;
+  --warn: #F2C27E;
   --bad: #FDA4AF;
   --chat-page: #101827;
   --chat-card: #1A2638;
-  --chat-foreground: #F5F2EA;
+  --chat-foreground: #F7F3EA;
+  --pill-text-l: 82%;
+  --tab-light-color: #E0B458;
 }
+
 html, body, #root {
   width: 100%;
   min-width: 0;
@@ -1179,14 +1039,14 @@ nav[aria-label="Mobile navigation"] {
   padding-bottom: env(safe-area-inset-bottom);
 }
 [data-cgpa-form="calculator"] .bg-navy {
-  background: #1E293B !important;
-  color: #F8FAFC !important;
+  background: var(--navy) !important;
+  color: var(--cream) !important;
 }
 [data-cgpa-form="calculator"] .text-navy {
-  color: #1E293B !important;
+  color: var(--navy) !important;
 }
 .dark [data-cgpa-form="calculator"] .bg-navy {
-  background: #334155 !important;
+  background: var(--text-secondary) !important;
   color: #F1F5F9 !important;
 }
 .dark [data-cgpa-form="calculator"] .text-navy {
@@ -1205,8 +1065,8 @@ nav[aria-label="Mobile navigation"] {
   border: 1px solid #94A3B8;
 }
 .dark [data-cgpa-form="calculator"] [role="progressbar"] {
-  background: #1E293B;
-  border-color: #64748B;
+  background: var(--navy);
+  border-color: var(--text-secondary);
 }
 [data-cgpa-form="calculator"] button[aria-pressed="true"] {
   outline: 2px solid var(--ring);
@@ -1538,4 +1398,70 @@ nav[aria-label="Mobile navigation"] {
     animation: none !important;
     transition: none !important;
   }
+}
+
+
+/* Floating mobile navigation; swipe code updates the indicator position directly. */
+.mobile-tab-bar {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.08);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.mobile-tab-bar [data-tab-indicator] {
+  background-color: var(--tab-light-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tab-light-color) 45%, transparent);
+}
+
+/* Navy depth for the next-step card on Home. */
+.home-next-card {
+  position: relative;
+  overflow: hidden;
+  border-top: 2px solid #B88732;
+  background: linear-gradient(160deg, #2A3C63, #1B2A4A);
+  color: #F7F3EA;
+}
+.dark .home-next-card {
+  border-top-color: #E0B458;
+  background: linear-gradient(160deg, #32487A, #223457);
+}
+.home-next-card button {
+  min-height: 44px;
+  background: #E0B458;
+  color: #1B2A4A;
+}
+.home-next-card button:hover {
+  background: #F0CA74;
+}
+
+/* One quiet elevation for raised cards, with surface and border defining dark cards. */
+.shadow-sm { box-shadow: 0 1px 2px rgba(23, 35, 56, 0.06); }
+.dark .shadow-sm { box-shadow: none; }
+
+.practice-carousel-track {
+  perspective: 1000px;
+  scroll-padding-inline: 16px;
+}
+.practice-carousel-card {
+  transform: perspective(1000px) rotateY(calc(var(--carousel-offset, 0) * 34deg)) scale(var(--carousel-scale, 1));
+  transform-origin: center;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .practice-carousel-card {
+    transform: scale(var(--carousel-scale, 1)) !important;
+    transition: none !important;
+  }
+}
+
+/* Functional motion stays short; disclosure content animates without max-height. */
+@keyframes explanation-unfurl {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-explanation-unfurl {
+  animation: explanation-unfurl 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-explanation-unfurl { animation: none !important; }
 }
