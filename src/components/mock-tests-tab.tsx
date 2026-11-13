@@ -2,13 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { useProfile, useProfileData, averageForCourse, type MockAttempt } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MathText } from "@/components/math-text";
 import { supabase } from "@/integrations/supabase/client";
 import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  ArrowLeft, BookOpen, ChevronDown, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw,
+  ArrowLeft, BookOpen, ChevronDown, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
@@ -25,7 +29,8 @@ import { maxSourceFiles } from "@/lib/entitlements";
 let practiceMaterialCache: Record<string, string | null> = {};
 
 export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
-  const { profile, navigate } = useProfileData();
+  const { profile, navigate, update } = useProfileData();
+  const [discardOpen, setDiscardOpen] = useState(false);
   const { access: planAccess } = useEntitlement();
   const sourceLimit = maxSourceFiles(planAccess?.tier);
   const [readyMaterialIds, setReadyMaterialIds] = useState<Record<string, string | null>>(() => ({ ...practiceMaterialCache }));
@@ -92,19 +97,53 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
         </p>
 
         {profile.inProgressTest ? (
-          <section aria-label="Practice in progress" className="mt-5 rounded-2xl border border-accent/40 border-l-4 border-l-accent bg-card p-4">
-            <div className="text-xs font-semibold uppercase tracking-wider text-accent">Practice in progress</div>
-            <h2 className="mt-1 text-base font-semibold text-foreground">{profile.inProgressTest.courseCode}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Your answers and question position are saved. Continue where you left off.
-            </p>
-            <Button
-              className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={() => navigate("mock-run", { courseCode: profile.inProgressTest!.courseCode })}
-            >
-              Continue practice
-            </Button>
-          </section>
+          <>
+            <section aria-label="Practice in progress" className="mt-5 rounded-2xl border border-accent/40 border-l-4 border-l-accent bg-card p-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-accent">Practice in progress</div>
+              <h2 className="mt-1 text-base font-semibold text-foreground">{profile.inProgressTest.courseCode}</h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Your answers and question position are saved. Continue where you left off.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button
+                  className="min-h-11 bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={() => navigate("mock-run", { courseCode: profile.inProgressTest!.courseCode })}
+                >
+                  Continue practice
+                </Button>
+                <Button
+                  variant="outline"
+                  className="min-h-11 text-destructive"
+                  onClick={() => setDiscardOpen(true)}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" /> Discard this test
+                </Button>
+              </div>
+            </section>
+
+            <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Discard this test?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Your saved answers and timer for this in-progress test will be removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep test</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      update({ inProgressTest: null });
+                      setDiscardOpen(false);
+                    }}
+                  >
+                    Discard this test
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         ) : null}
 
         {/* Course selection */}
