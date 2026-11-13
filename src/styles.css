@@ -863,6 +863,16 @@ details[open] > :not(summary) {
    surfaces and gold with navy text in dark mode for consistent contrast. */
 :root {
   --radius: 0.875rem;
+  --tf-page-title-size: 28px;
+  --tf-page-title-line: 34px;
+  --tf-section-title-size: 22px;
+  --tf-section-title-line: 28px;
+  --tf-body-size: 16px;
+  --tf-body-line: 24px;
+  --tf-secondary-size: 14px;
+  --tf-secondary-line: 20px;
+  --tf-caption-size: 12px;
+  --tf-caption-line: 16px;
   --surface-base: #F7F3EA;
   --surface-card: #FFFDF8;
   --text-primary: #1B2A4A;
@@ -1347,7 +1357,7 @@ nav[aria-label="Mobile navigation"] {
 
 .flashcard-3d-card {
   transform-style: preserve-3d;
-  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .flashcard-3d-card.is-flipped {
@@ -1465,3 +1475,8 @@ nav[aria-label="Mobile navigation"] {
 @media (prefers-reduced-motion: reduce) {
   .animate-explanation-unfurl { animation: none !important; }
 }
+
+/* Accessible type scale: Inter headings and a 12px minimum for captions. */
+body { font-size: var(--tf-body-size); line-height: var(--tf-body-line); }
+h1 { font-family: Inter, var(--font-sans); font-size: var(--tf-page-title-size); line-height: var(--tf-page-title-line); font-weight: 600; }
+h2 { font-family: Inter, var(--font-sans); font-size: var(--tf-section-title-size); line-height: var(--tf-section-title-line); font-weight: 600; }
