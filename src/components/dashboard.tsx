@@ -290,7 +290,7 @@ function StrengthsCard() {
   const topics = entry.analysis.topics.slice(0, 5);
 
   return (
-    <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+    <div className="reference-home-card mb-5 rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Your strengths</h2>
         <button
@@ -457,7 +457,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         {!showFirstUseLayout ? (
           <>
         {/* Streak: cloud-backed qualifying mock activity only. */}
-        <div className="reference-stat-card reference-streak mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+        <div className="reference-home-card reference-stat-card reference-streak mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
               <StreakGlyph state={streak.state} />
             </div>
@@ -482,7 +482,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         </div>
 
         {hydrated || access || cachedHome?.access || mocksToday > 0 ? (
-          <div className="reference-stat-card reference-goal mb-5 rounded-2xl border border-border bg-card p-3.5">
+          <div className="reference-home-card reference-stat-card reference-goal mb-5 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>
@@ -501,7 +501,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               />
             </div>
           </div>
-        ) : !hydrated ? <div aria-hidden="true" className="mb-5 h-[68px] rounded-2xl border border-border/50 bg-card" /> : null}
+        ) : !hydrated ? <div aria-hidden="true" className="reference-home-card mb-5 h-[68px] rounded-2xl border border-border/50 bg-card" /> : null}
 
         {/* Straight routes to the two lists students look for most. */}
         <div className="mb-5 grid gap-2">
@@ -513,12 +513,12 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         <StrengthsCard />
 
         {/* Two columns from CGPA down where there's room. */}
-        <div className="md:grid md:grid-cols-2 md:items-start md:gap-5">
+        <div className="md:grid md:grid-cols-2 md:items-start md:gap-6">
 
           <div className="min-w-0">
             <CgpaStatusCard />
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-5 grid grid-cols-2 gap-2">
               <QuickLink icon={<Calculator className="h-4 w-4" />} label="Calculator" onClick={() => navigate("cgpa")} />
               <QuickLink icon={<Target className="h-4 w-4" />} label="Goal setter" onClick={() => navigate("cgpa-goal")} />
             </div>
@@ -531,7 +531,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
                 sessionStorage.setItem("truefluency-flashcards-origin", "home");
                 navigate("flashcards");
               }}
-              className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
+              className="reference-home-card mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Layers className="h-4.5 w-4.5" />
@@ -566,7 +566,7 @@ function HomeRowLink({ label, onClick }: { label: string; onClick: () => void })
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-left"
+      className="reference-home-card flex w-full items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-left"
     >
       <span className="min-w-0 flex-1 text-sm font-medium text-card-foreground">{label}</span>
       <ChevronRight className="h-4 w-4 shrink-0 text-accent" />
@@ -586,7 +586,7 @@ function QuickLink({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-left"
+      className="reference-home-card flex items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-left"
     >
       <span className="shrink-0 text-primary">{icon}</span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
@@ -603,7 +603,7 @@ function CgpaStatusCard() {
   return (
     <button
       onClick={() => navigate("cgpa")}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left"
+      className="reference-home-card flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left"
     >
       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
         <GraduationCap className="h-4.5 w-4.5" />
@@ -667,7 +667,7 @@ function RotatingWisdomCard({ active }: { active: boolean }) {
     <figure
       key={reduceMotion ? "static-wisdom" : i}
       className={cn(
-        "quote-card relative mt-5 min-h-32 overflow-hidden rounded-2xl px-6 py-5 text-center",
+        "reference-home-card quote-card relative mt-5 min-h-32 overflow-hidden rounded-2xl px-6 py-5 text-center",
         !reduceMotion && "quote-card-cycle",
       )}
     >
