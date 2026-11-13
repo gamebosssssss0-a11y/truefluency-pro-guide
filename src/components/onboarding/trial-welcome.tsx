@@ -61,7 +61,7 @@ export function TrialWelcomeScreen() {
 
       <Button
         size="lg"
-        className="mt-6 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
+        className="mt-6 h-12 w-full bg-amber text-cream hover:bg-amber/90"
         onClick={start}
       >
         Got it, let's start
