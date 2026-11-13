@@ -3,7 +3,8 @@ import { useNavigation, type AppView } from "@/lib/profile-store";
 
 /** The five root tabs, in the order the tab bar shows them. */
 const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
-const SETTLE_MS = 220;\nconst SNAP_BACK_MS = 240;
+const SETTLE_MS = 220;
+const SNAP_BACK_MS = 240;
 
 export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null };
 
