@@ -62,7 +62,7 @@ export function ReportQuestionButton({
         onClick={() => setOpen(true)}
         disabled={sent}
         aria-label={sent ? "Question reported" : "Report this question"}
-        className={`${compact ? "" : "mt-2 "}inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:opacity-60`}
+        className={`${compact ? "" : "mt-2 "}inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:opacity-60`}
       >
         <Flag className="h-3 w-3" aria-hidden="true" />
         {sent ? "Reported" : compact ? "Report" : "Report this question"}

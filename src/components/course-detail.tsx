@@ -153,7 +153,7 @@ export function CourseDetailScreen() {
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
           <div className="text-xs font-medium text-primary-foreground/70">{canonicalCourseCode(course.code)}</div>
           <div className="mt-0.5 font-display text-2xl font-semibold leading-tight">{course.name}</div>
-          <div className="mt-1 text-[11px] uppercase tracking-wider text-primary-foreground/60">
+          <div className="mt-1 text-xs uppercase tracking-wider text-primary-foreground/60">
             {course.status} · {course.source === "manual" ? "Manually added" : "Verified"}
           </div>
         </div>
@@ -193,7 +193,7 @@ export function CourseDetailScreen() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-foreground">{a.correct}/{a.total} correct</div>
-                    <div className="text-[11px] text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                       {new Date(a.submittedAt).toLocaleDateString()} · {a.total} questions · Review answers
                     </div>
                   </div>
@@ -269,7 +269,7 @@ function CoursePrimaryActions({
         Customize Mock Test
       </Button>
       {!hasCurrentAnalysis && !analysis.busy ? (
-        <p className="col-span-2 text-center text-[11px] text-muted-foreground">
+        <p className="col-span-2 text-center text-xs text-muted-foreground">
           Analyze is optional: it predicts the topics most likely to come up.
         </p>
       ) : null}
@@ -288,7 +288,7 @@ function CoursePrimaryActions({
       <Button size="lg" className="w-full" disabled>
         <Zap className="mr-1.5 h-4 w-4" /> Customize Mock Test
       </Button>
-      <p className="text-center text-[11px] text-muted-foreground">
+      <p className="text-center text-xs text-muted-foreground">
         {materialsLoading && materials === null
           ? "Checking your uploads…"
           : repairable
@@ -338,7 +338,7 @@ function CoursePrimaryActions({
           >
             Flashcards for {courseCode}
           </Button>
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          <p className="mt-2 text-center text-xs text-muted-foreground">
             15-card decks from your upload.
           </p>
         </>
@@ -482,7 +482,7 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
               faculty: profile.faculty,
             }).map((group) => (
               <div key={group.label}>
-                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {group.label}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -494,7 +494,7 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
             ))}
           </div>
           {stale ? (
-            <p className="mt-2 text-[11px] italic text-muted-foreground">
+            <p className="mt-2 text-xs italic text-muted-foreground">
               Based on an earlier upload. Tap Re-analyze for your newest file.
             </p>
           ) : null}
@@ -902,7 +902,7 @@ function PasteTextButton({ courseCode }: { courseCode: string }) {
         value={text}
         onChange={(e) => { setText(e.target.value); setError(null); }}
       />
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+      <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
         <span>{text.trim().length} characters</span>
         <span>{MIN_PASTED_CHARS} minimum</span>
       </div>
@@ -1123,7 +1123,7 @@ export function MaterialRow({
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold tracking-wider",
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-bold tracking-wider",
             chip.tone,
           )}
         >
@@ -1131,11 +1131,11 @@ export function MaterialRow({
         </div>
         <div className="min-w-0 flex-1">
           <div className="break-words text-sm font-semibold leading-snug text-foreground">{m.file_name}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
             {showCourse ? <span className="font-semibold text-foreground">{canonicalCourseCode(m.course_code)}</span> : null}
             {showCourse ? <span>·</span> : null}
             {isPasted ? (
-              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-primary">
                 Pasted text
               </span>
             ) : (
@@ -1149,7 +1149,7 @@ export function MaterialRow({
           </div>
 
           {isFromInactiveCourse ? (
-            <div className="mt-1 text-[10px] italic text-muted-foreground">From a previous course selection</div>
+            <div className="mt-1 text-xs italic text-muted-foreground">From a previous course selection</div>
           ) : null}
         </div>
         {canRetry ? (
@@ -1197,7 +1197,7 @@ export function MaterialRow({
 
 
       {flag ? (
-        <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 p-2.5 text-[11px] text-foreground">
+        <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 p-2.5 text-xs text-foreground">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
             <p>{METADATA_NOTE}</p>
@@ -1229,7 +1229,7 @@ function ExtractionBadge({ material }: { material: CourseMaterial }) {
           ? "bg-amber-100 text-amber-800"
           : "bg-destructive/10 text-destructive";
   return (
-    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", tone)}>
+    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider", tone)}>
       {summary.label}
     </span>
   );
@@ -1243,7 +1243,7 @@ function ExtractionGuidance({ material }: { material: CourseMaterial }) {
   return (
     <div
       className={cn(
-        "mt-2.5 rounded-xl border p-2.5 text-[11px]",
+        "mt-2.5 rounded-xl border p-2.5 text-xs",
         isWarn ? "border-amber-200 bg-amber-50 text-amber-900" : "border-destructive/20 bg-destructive/5 text-foreground",
       )}
     >

@@ -30,7 +30,7 @@ export function PaywallNotice({
           <div className="min-w-0">
             <div className="font-display text-base font-semibold text-foreground">{copy.title}</div>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{copy.body}</p>
-            <p className="mt-2 break-words text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 break-words text-xs leading-relaxed text-muted-foreground">
               {PRICE_LINE} A plan renews only if you choose automatic renewal, and you can stop it any time.
             </p>
 

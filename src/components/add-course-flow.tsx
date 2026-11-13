@@ -102,7 +102,7 @@ export function AddCourseFlow({
             className="h-11 pl-10 text-sm"
           />
         </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-xs text-muted-foreground">
           We search across every department and level in the catalogue. This isn't live
           verification against UI's records, just our local list.
         </p>
@@ -124,7 +124,7 @@ export function AddCourseFlow({
                   )}
                 >
                   <div className={cn(
-                    "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[10px] font-semibold",
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-semibold",
                     added ? "bg-success text-primary-foreground" : "bg-secondary text-primary"
                   )}>
                     {added ? <Check className="h-4 w-4" /> : m.level + "L"}
@@ -135,7 +135,7 @@ export function AddCourseFlow({
                       <StatusBadge status={m.status} />
                     </div>
                     <div className="truncate text-xs text-muted-foreground">{m.name}</div>
-                    <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                    <div className="mt-0.5 text-xs uppercase tracking-wider text-muted-foreground/80">
                       {m.department}
                     </div>
                   </div>
@@ -189,7 +189,7 @@ export function AddCourseFlow({
             <Button size="sm" variant="outline" className="flex-1" onClick={() => setShowFreeText(false)}>Cancel</Button>
             <Button size="sm" className="flex-1" onClick={addFreeText} disabled={!freeCode.trim() || !freeTitle.trim()}>Add Course</Button>
           </div>
-          <p className="mt-2 text-[10px] text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground">
             Manually added courses are tagged as self-reported.
           </p>
         </div>
@@ -208,7 +208,7 @@ export function AddCourseFlow({
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold text-foreground">{c.code}</span>
                     {c.source === "manual" ? (
-                      <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-warning">
+                      <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-warning">
                         Manually Added
                       </span>
                     ) : (
@@ -239,7 +239,7 @@ export function StatusBadge({ status }: { status: "Compulsory" | "Required" | "E
     status === "Required" ? "bg-primary/10 text-primary" :
     "bg-muted text-muted-foreground";
   return (
-    <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider", styles)}>
+    <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider", styles)}>
       {status}
     </span>
   );

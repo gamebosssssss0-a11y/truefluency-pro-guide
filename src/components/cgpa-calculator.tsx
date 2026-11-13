@@ -433,7 +433,7 @@ export function CgpaCalculatorScreen() {
           >
             <ArrowLeft className="h-4 w-4" /> Account
           </button>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-[10px] font-medium text-navy">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-xs font-medium text-navy">
             <ShieldCheck className="h-3 w-3" /> Select your grading scale
           </span>
         </div>
@@ -452,7 +452,7 @@ export function CgpaCalculatorScreen() {
         </p>
 
         <label className="mt-4 block rounded-2xl border border-border bg-card p-3.5">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Grading scale</span>
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Grading scale</span>
           <select
             className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
             value={scale}
@@ -467,7 +467,7 @@ export function CgpaCalculatorScreen() {
             <option value="ui-5">University of Ibadan · 5.0</option>
             <option value="four-point">Generic 4.0 · confirm with your institution</option>
           </select>
-          {scale === "four-point" ? <span className="mt-1 block text-[11px] text-muted-foreground">Generic 4.0 bands are estimates. Confirm your institution’s grade boundaries before relying on this result.</span> : null}
+          {scale === "four-point" ? <span className="mt-1 block text-xs text-muted-foreground">Generic 4.0 bands are estimates. Confirm your institution’s grade boundaries before relying on this result.</span> : null}
         </label>
 
         {/* Mode switch */}
@@ -494,7 +494,7 @@ export function CgpaCalculatorScreen() {
         </h2>
         <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Previous CGPA
             </span>
             <Input
@@ -508,7 +508,7 @@ export function CgpaCalculatorScreen() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Units completed
             </span>
             <Input
@@ -522,7 +522,7 @@ export function CgpaCalculatorScreen() {
             />
           </label>
         </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-xs text-muted-foreground">
           First semester? Leave both blank and this becomes your first GPA.
         </p>
 
@@ -555,7 +555,7 @@ export function CgpaCalculatorScreen() {
                       <div className="text-sm font-semibold text-foreground">
                         {canonicalCourseCode(c.code)}
                       </div>
-                      <div className="truncate text-[11px] text-muted-foreground">{c.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">{c.name}</div>
                     </div>
                     <div
                       className="grid grid-cols-6 gap-0.5 rounded-xl bg-sand p-1"
@@ -609,7 +609,7 @@ export function CgpaCalculatorScreen() {
                           }
                           aria-label={`Percentage score for ${c.code}`}
                         />
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {row?.percent !== null &&
                           row?.percent !== undefined &&
                           !Number.isNaN(row.percent)
@@ -650,7 +650,7 @@ export function CgpaCalculatorScreen() {
                   Number.isFinite(row.percent) &&
                   row.percent >= 0 &&
                   row.percent <= 100 ? (
-                    <p className="mt-2 text-[10px] font-medium text-navy/70">
+                    <p className="mt-2 text-xs font-medium text-navy/70">
                       {mode === "percent"
                         ? `Entering ${row.percent}% → Grade ${gradeForPercent(row.percent, scale)} (${row.points.toFixed(1)} GP)`
                         : `Grade ${letters[canonicalCourseCode(c.code)]} (${row.points.toFixed(1)} GP)`}
@@ -698,7 +698,7 @@ export function CgpaCalculatorScreen() {
               <div key={entry.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold text-foreground">{entry.label}</div>
-                  <div className="text-[11px] text-muted-foreground">CGPA {entry.result.cumulativeCgpa.toFixed(2)} · {entry.result.totalUnits} credits · {entry.result.scale === "four-point" ? "4.0" : "5.0"} scale</div>
+                  <div className="text-xs text-muted-foreground">CGPA {entry.result.cumulativeCgpa.toFixed(2)} · {entry.result.totalUnits} credits · {entry.result.scale === "four-point" ? "4.0" : "5.0"} scale</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => openCalculation(entry)}>Edit</Button>
               </div>
@@ -751,7 +751,7 @@ export function CgpaCalculatorScreen() {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Session
               </span>
               <Input
@@ -761,7 +761,7 @@ export function CgpaCalculatorScreen() {
               />
             </label>
             <div>
-              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Semester
               </span>
               <div className="grid grid-cols-2 gap-1 rounded-xl border border-border p-1">
@@ -791,7 +791,7 @@ export function CgpaCalculatorScreen() {
             Save {term} semester
           </Button>
           {!profile.cgpaActual ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Save a calculation first, then save this semester to your history.
             </p>
           ) : null}
@@ -813,7 +813,7 @@ export function CgpaCalculatorScreen() {
                     <div className="text-sm font-semibold text-foreground">
                       {s.session} · {s.term} semester
                     </div>
-                    <div className="text-[11px] text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                       GPA {s.gpa.toFixed(2)} · {s.units} credits
                     </div>
                   </div>
@@ -837,7 +837,7 @@ export function CgpaCalculatorScreen() {
                 <div className="text-sm font-semibold text-navy">
                   {m.session} combined GPA {m.gpa.toFixed(2)}
                 </div>
-                <div className="text-[11px] text-navy/70">
+                <div className="text-xs text-navy/70">
                   Both semesters weighted by credits · {m.units} credits
                 </div>
               </div>
@@ -848,13 +848,13 @@ export function CgpaCalculatorScreen() {
                 <div className="text-sm font-semibold text-navy">
                   All saved semesters: {allYears.gpa.toFixed(2)}
                 </div>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   {allYears.units} credits · {classify(allYears.gpa)}
                 </div>
               </div>
             ) : null}
             {sessionMerges.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 A combined session GPA appears once both 1st and 2nd semester are saved for that
                 session.
               </p>
@@ -911,7 +911,7 @@ function ResultBlock({
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-foreground/70">
+            <div className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">
               Estimated semester GPA
             </div>
             <div className="mt-1 font-display text-3xl font-semibold leading-none">
@@ -922,12 +922,12 @@ function ResultBlock({
                 {result ? result.semesterGpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-[10px] text-primary-foreground/60">
+            <div className="mt-1 text-xs text-primary-foreground/60">
               {result ? `${result.semesterUnits} units included` : "Add valid course results"}
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-foreground/70">
+            <div className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">
               Updated cumulative CGPA
             </div>
             <div className="mt-1 font-display text-3xl font-semibold leading-none">
@@ -938,7 +938,7 @@ function ResultBlock({
                 {result ? result.cumulativeCgpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-[10px] text-primary-foreground/60">
+            <div className="mt-1 text-xs text-primary-foreground/60">
               {result ? `${result.totalUnits} total units` : "Live preview"}
             </div>
           </div>
@@ -995,7 +995,7 @@ function ResultBlock({
               />
             </div> : null}
             {result.validCourseCount < result.selectedCourseCount ? (
-              <p className="mt-2 text-[10px] text-primary-foreground/65">
+              <p className="mt-2 text-xs text-primary-foreground/65">
                 Preview uses {result.validCourseCount} of {result.selectedCourseCount} selected
                 courses with complete values.
               </p>
@@ -1020,7 +1020,7 @@ function ResultBlock({
           <Button className="mt-3 w-full" size="lg" onClick={() => navigate("cgpa-goal")}>
             <Target className="mr-1.5 h-4 w-4" /> Set a target from this
           </Button>
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          <p className="mt-2 text-center text-xs text-muted-foreground">
             {savedPreviewMatches
               ? "Your CGPA and units carry into the goal setter."
               : "The goal setter uses your last saved result. Save this preview first to carry updated numbers across."}

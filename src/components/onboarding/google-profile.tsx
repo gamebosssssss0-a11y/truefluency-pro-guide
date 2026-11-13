@@ -101,7 +101,7 @@ export function GoogleProfileScreen() {
             >
               {photoUrl ? "Change photo" : "Add a photo"}
             </button>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Optional. Skip it and we'll use the letter circle. You can add one later in Account.
             </p>
           </div>
@@ -128,7 +128,7 @@ export function GoogleProfileScreen() {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Ada Okafor"
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             This is the name you'll see on Home and on anything you choose to share.
           </p>
         </div>
@@ -138,7 +138,7 @@ export function GoogleProfileScreen() {
           <div>
             <Label htmlFor="google-email">Your email</Label>
             <Input id="google-email" readOnly value={email} className="mt-1.5 h-12 bg-muted" />
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               This is the Google account you signed in with. Your work is saved to it.
             </p>
           </div>

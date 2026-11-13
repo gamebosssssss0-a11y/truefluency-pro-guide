@@ -1138,7 +1138,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <span>History</span>
             </button>
             {capText ? (
-              <span className="whitespace-nowrap rounded-full bg-[#F3E6C8] px-2 py-1.5 text-[10px] font-semibold text-[#1B2A4A]">
+              <span className="whitespace-nowrap rounded-full bg-[#F3E6C8] px-2 py-1.5 text-xs font-semibold text-[#1B2A4A]">
                 {capText}
               </span>
             ) : null}
@@ -1152,7 +1152,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               {latestAssistantReply.sources?.map((source, index) => (
                 <li key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="rounded-xl border border-border bg-background p-3">
                   <p className="break-words text-xs font-semibold text-foreground">{source.fileName}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{sourceLocation(source)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{sourceLocation(source)}</p>
                   {source.excerpt ? <p className="mt-2 break-words text-xs leading-relaxed text-foreground">{source.excerpt}</p> : null}
                 </li>
               ))}
@@ -1199,7 +1199,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
-              <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-accent">
+              <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#F3E6C8]" />
                 Your course, made clearer
               </div>
@@ -1245,7 +1245,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 m.from === "student" ? (
                   <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[96%] break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
-                      <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
+                      <p className="mb-1 inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-right text-xs font-semibold uppercase tracking-wide text-accent-foreground">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
@@ -1296,7 +1296,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 ) : m.from === "assistant" ? (
                   <div key={m.id} className="w-full min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
-                      <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1B2A4A]">
+                      <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#1B2A4A]">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
@@ -1306,7 +1306,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                     {m.sources?.length ? (
                       <div className="mt-2 flex flex-wrap gap-1.5 md:hidden" aria-label="Answer sources">
                         {m.sources.map((source, index) => (
-                          <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] text-foreground">
+                          <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-xs text-foreground">
                             <FileText aria-hidden="true" className="h-3 w-3 shrink-0 text-accent" />
                             <span className="truncate">{source.fileName} · {sourceLocation(source)}</span>
                           </span>
@@ -1370,7 +1370,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 ),
               )}
               {!speechAvailable && messages.some((message) => message.from === "assistant") ? (
-                <p className="text-[11px] text-muted-foreground">Read aloud isn't available in this browser.</p>
+                <p className="text-xs text-muted-foreground">Read aloud isn't available in this browser.</p>
               ) : null}
             </>
           ) : null}
@@ -1455,13 +1455,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         className={`block w-full rounded-lg px-3 py-2 text-left text-popover-foreground hover:bg-secondary ${item === mode ? "bg-secondary" : ""}`}
                       >
                         <span className="block text-xs font-semibold">{item}</span>
-                        <span className="block text-[11px] font-normal text-muted-foreground">{MODE_HINTS[item]}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{MODE_HINTS[item]}</span>
                       </button>
                     ))}
                   </div>
                 ) : null}
               </div>
-              <span className="chat-connected-context flex min-w-0 flex-1 items-center justify-end gap-1 text-[11px] text-[#878170]">
+              <span className="chat-connected-context flex min-w-0 flex-1 items-center justify-end gap-1 text-xs text-[#878170]">
                 <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#477A5B]" />
                 <span className="truncate">{selected ? `Using ${placeholderCourse} notes` : "Add a course to connect notes"}</span>
               </span>
@@ -1505,7 +1505,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           </div>
           {chatCapReached ? (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground">
               Today's chat usage is used up. It resets {formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.
             </p>
           ) : null}
@@ -1540,12 +1540,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         onClick={() => setExpandedConvId(isExpanded ? null : row.conversationId)}
                         className="min-w-0 flex-1 text-left"
                       >
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {displayCode(row.course)} · {row.date}
                         </div>
                         <div className="mt-1 line-clamp-2 text-sm font-semibold">{row.title}</div>
                         {previewText ? <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{previewText}</div> : null}
-                        <div className="mt-1 text-[11px] text-muted-foreground">{row.messages.length} messages</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{row.messages.length} messages</div>
                       </button>
                       <button
                         type="button"
@@ -1566,7 +1566,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                               ? "rounded-xl border border-[#E4DCC8] bg-[#F3E6C8] p-3 text-[#1B2A4A]"
                               : "rounded-xl border border-border bg-background p-3 text-foreground"}
                           >
-                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: m.role === "user" ? "#334155" : "var(--muted-foreground)" }}>
+                            <div className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: m.role === "user" ? "var(--text-secondary)" : "var(--muted-foreground)" }}>
                               {m.role === "user" ? "You" : "Study Chat"}
                             </div>
                             <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
@@ -1575,7 +1575,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                             {m.role === "assistant" && m.sources?.length ? (
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {m.sources.map((source, index) => (
-                                  <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="rounded-full border border-border bg-card px-2 py-1 text-[10px] text-foreground">
+                                  <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="rounded-full border border-border bg-card px-2 py-1 text-xs text-foreground">
                                     {source.fileName} · {sourceLocation(source)}
                                   </span>
                                 ))}

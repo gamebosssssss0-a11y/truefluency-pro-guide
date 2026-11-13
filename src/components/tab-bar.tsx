@@ -122,19 +122,20 @@ export function BottomTabBar() {
     <nav
       aria-label="Mobile navigation"
       data-mobile-tab-bar=""
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="mobile-tab-bar fixed inset-x-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-40 h-[68px] rounded-3xl border border-border bg-card/90 shadow-[0_4px_16px_rgba(27,42,74,0.08)] backdrop-blur-[16px] md:hidden"
     >
       <div
-        className="relative mx-auto flex w-full max-w-[52rem] items-stretch"
+        className="relative mx-auto flex h-full w-full items-stretch px-1"
       >
         <span
           aria-hidden="true"
           data-tab-indicator
-          className="pointer-events-none absolute bottom-1 left-0 z-10 h-1 w-6 -translate-x-1/2 rounded-full bg-accent transition-[left,opacity,box-shadow] duration-200"
+          className="pointer-events-none absolute bottom-[6px] left-0 z-10 h-[3px] w-7 -translate-x-1/2 rounded-full transition-[left,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
             left: `${((activeIndex + 0.5) / TABS.length) * 100}%`,
-            opacity: 0.35,
-            boxShadow: "0 0 4px color-mix(in srgb, var(--accent) 20%, transparent)",
+            opacity: 1,
+            backgroundColor: "var(--tab-light-color)",
+            boxShadow: "0 0 10px color-mix(in srgb, var(--tab-light-color) 45%, transparent)",
           }}
         />
         {TABS.map((t) => {
@@ -146,15 +147,15 @@ export function BottomTabBar() {
               onClick={() => navigate(t.view, { replace: true })}
               aria-current={on ? "page" : undefined}
               className={cn(
-                "flex min-h-12 flex-1 flex-col items-center justify-center gap-1 px-1 pb-2.5 pt-2.5 transition",
-                on ? "text-accent" : "text-muted-foreground hover:text-foreground",
+                "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 px-1 pb-2 pt-1 transition",
+                on ? "text-[#7A5410] dark:text-[#E0B458]" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <t.icon className={cn("h-5 w-5", on && "stroke-[2.5]")} />
-              <span className={cn("text-xs leading-none", on ? "font-semibold" : "font-medium")}>
+              <t.icon className={cn("h-[22px] w-[22px]", on && "stroke-[2.5]")} />
+              <span className={cn("text-xs leading-4", on ? "font-semibold" : "font-medium")}>
                 {t.label}
               </span>
-              <span className="h-0.5 w-6 rounded-full bg-transparent" />
+              <span aria-hidden="true" className="h-0.5 w-7 rounded-full bg-transparent" />
             </button>
           );
         })}

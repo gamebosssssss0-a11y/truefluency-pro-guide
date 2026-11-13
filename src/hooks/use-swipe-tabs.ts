@@ -3,8 +3,8 @@ import { useNavigation, type AppView } from "@/lib/profile-store";
 
 /** The five root tabs, in the order the tab bar shows them. */
 const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
-const SWIPE_THRESHOLD = 70;
-const TRANSITION_MS = 180;
+const SETTLE_MS = 220;
+const SNAP_BACK_MS = 240;
 
 export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTab: AppView | null };
 
@@ -35,47 +35,56 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     let horizontal = false;
     let deltaX = 0;
     let stage: HTMLElement | null = null;
+    let previewTab: AppView | null = null;
+    let previewSide: "left" | "right" | null = null;
     let settleTimer = 0;
     let lightFrame = 0;
-    let lightProgress = index;
-    let lightIntensity = 0;
-    const paintTabLight = (progress: number, intensity: number, settle = false) => {
-      lightProgress = progress;
-      lightIntensity = intensity;
+    let samples: Array<{ x: number; time: number }> = [];
+    let clickTarget: Element | null = null;
+    let cancelNextClick = false;
+
+    const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const paintTabLight = (progress: number, speed = 0, settle = false) => {
       if (lightFrame) window.cancelAnimationFrame(lightFrame);
       lightFrame = window.requestAnimationFrame(() => {
         lightFrame = 0;
+        const nav = document.querySelector<HTMLElement>("[data-mobile-tab-bar]");
         const indicator = document.querySelector<HTMLElement>("[data-tab-indicator]");
-        if (!indicator) return;
-        indicator.style.transition = settle
-          ? `left ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${TRANSITION_MS}ms ease, box-shadow ${TRANSITION_MS}ms ease`
+        if (!nav || !indicator) return;
+        nav.style.setProperty("--tab-progress", String(Math.max(0, Math.min(ORDER.length - 1, progress))));
+        indicator.style.transition = settle && !reducedMotion()
+          ? `left ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
           : "none";
-        indicator.style.left = `${((lightProgress + 0.5) / ORDER.length) * 100}%`;
-        indicator.style.opacity = String(0.35 + lightIntensity * 0.65);
-        indicator.style.boxShadow = `0 0 ${4 + lightIntensity * 10}px color-mix(in srgb, var(--accent) ${20 + lightIntensity * 50}%, transparent)`;
-        if (settle) {
-          window.setTimeout(() => {
-            if (indicator.isConnected) indicator.style.transition = "";
-          }, TRANSITION_MS + 30);
-        }
+        const stretch = 1 + Math.min(0.4, Math.abs(speed) / 2);
+        indicator.style.transform = `translateX(-50%) scaleX(${stretch})`;
       });
     };
-    const restoreStage = (node: HTMLElement, removePreview = true) => {
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      paintTabLight(index, 0, !reduced);
-      node.style.transition = reduced ? "none" : `transform ${TRANSITION_MS}ms ease`;
+
+    const clearWillChange = () => {
+      stage?.querySelectorAll<HTMLElement>("[data-root-tab]").forEach((tab) => { tab.style.willChange = ""; });
+      if (stage) stage.style.willChange = "";
+    };
+
+    const finishPreview = () => {
+      setPreview(null);
+      previewTab = null;
+      previewSide = null;
+      clearWillChange();
+    };
+
+    const restoreStage = (node: HTMLElement) => {
+      paintTabLight(index, 0, true);
+      node.style.transition = reducedMotion() ? "none" : `transform ${SNAP_BACK_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       node.style.transform = "translate3d(0, 0, 0)";
       node.dataset.swipeActive = "false";
-      if (removePreview) {
-        window.clearTimeout(settleTimer);
-        settleTimer = window.setTimeout(() => setPreview(null), reduced ? 0 : TRANSITION_MS + 30);
-      }
-      window.setTimeout(() => {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        finishPreview();
         if (!node.isConnected || node.dataset.swipeActive === "true") return;
         node.style.transition = "";
         node.style.transform = "";
-        node.style.willChange = "";
-      }, reduced ? 0 : TRANSITION_MS + 30);
+        clearWillChange();
+      }, reducedMotion() ? 0 : SNAP_BACK_MS + 20);
     };
 
     const onStart = (event: TouchEvent) => {
@@ -84,7 +93,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         return;
       }
       const target = event.target;
-      if (target instanceof Element && target.closest("[data-swipe-lock], [role='dialog'], [role='menu'], button, a, input, textarea, select, [contenteditable='true']")) {
+      if (target instanceof Element && target.closest("[data-swipe-lock], [role='dialog'], [role='menu'], input, textarea, select, [contenteditable='true'], [contenteditable='']")) {
         tracking = false;
         return;
       }
@@ -96,6 +105,11 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       deltaX = 0;
       horizontal = false;
       tracking = true;
+      cancelNextClick = false;
+      samples = [{ x: touch.clientX, time: performance.now() }];
+      clickTarget = target instanceof Element ? target.closest("button, a, [role='button']") : null;
+      previewTab = null;
+      previewSide = null;
     };
 
     const onMove = (event: TouchEvent) => {
@@ -108,33 +122,33 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
           tracking = false;
           return;
         }
-        if (Math.abs(dx) < 8 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+        if (Math.abs(dx) <= 8 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
         horizontal = true;
         stage.style.willChange = "transform";
+        stage.querySelectorAll<HTMLElement>("[data-root-tab]").forEach((tab) => { tab.style.willChange = "transform"; });
+        const adjacentIndex = index + (dx < 0 ? 1 : -1);
+        previewTab = ORDER[adjacentIndex] ?? null;
+        previewSide = dx < 0 ? "right" : "left";
+        if (previewTab && !reducedMotion()) {
+              setPreview({ tab: previewTab, side: previewSide, highlightedTab: null });
+        }
       }
       deltaX = dx;
-      const adjacentIndex = index + (dx < 0 ? 1 : -1);
-      const adjacent = ORDER[adjacentIndex];
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const progress = Math.max(0, Math.min(ORDER.length - 1, index - Math.max(-1, Math.min(1, dx / SWIPE_THRESHOLD))));
-      const intensity = Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD);
-      if (adjacent && !reduced) {
-        const side = dx < 0 ? "right" : "left";
-        const highlightedTab = Math.abs(dx) >= window.innerWidth / 2 ? adjacent : null;
-        // Keep React out of the per-pixel path. The tab light is painted in
-        // requestAnimationFrame; React only mounts the neighbor and crosses
-        // the active-tab highlight boundary.
-        setPreview((current) => current?.tab === adjacent && current.side === side && current.highlightedTab === highlightedTab
-          ? current
-          : { tab: adjacent, side, highlightedTab });
-        paintTabLight(progress, intensity);
-      } else {
-        setPreview((current) => current === null ? current : null);
+      const now = performance.now();
+      samples.push({ x: touch.clientX, time: now });
+      if (samples.length > 3) samples.shift();
+      const first = samples[0]!;
+      const last = samples[samples.length - 1]!;
+      const velocity = last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
+      const progress = Math.max(0, Math.min(4, index - dx / window.innerWidth));
+      paintTabLight(progress, velocity);
+
+      if (!reducedMotion()) {
+        stage.style.transition = "none";
+        stage.style.transform = `translate3d(${previewTab ? dx : dx * 0.25}px, 0, 0)`;
       }
-      const resisted = adjacent ? dx : dx * 0.25;
-      stage.style.transition = "none";
-      stage.style.transform = reduced ? "" : `translate3d(${resisted}px, 0, 0)`;
       stage.dataset.swipeActive = "true";
+      if (clickTarget && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) cancelNextClick = true;
       if (event.cancelable) event.preventDefault();
     };
 
@@ -144,50 +158,67 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const node = stage;
       const targetIndex = index + (deltaX < 0 ? 1 : -1);
       const target = ORDER[targetIndex];
-      if (!horizontal || !target || Math.abs(deltaX) < SWIPE_THRESHOLD) {
-        if (horizontal && target) setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: null });
-        restoreStage(node);
+      const first = samples[0];
+      const last = samples[samples.length - 1];
+      const releaseVelocity = first && last && last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
+      const fastEnough = target != null && (deltaX < 0 ? releaseVelocity < -0.4 : releaseVelocity > 0.4);
+      const shouldCommit = Boolean(horizontal && target && (Math.abs(deltaX) > window.innerWidth * 0.35 || fastEnough));
+      if (!shouldCommit || !target) {
+        if (horizontal) restoreStage(node);
+        else {
+          previewTab = null;
+          clickTarget = null;
+        }
         return;
       }
 
-      const outgoing = deltaX < 0 ? -1 : 1;
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reduced) {
+      if (reducedMotion()) {
         navigateRef.current(target, { replace: true });
-        setPreview(null);
+        finishPreview();
         return;
       }
 
       paintTabLight(targetIndex, 0, true);
       setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target });
-      node.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-      node.style.transform = `translate3d(${outgoing * window.innerWidth}px, 0, 0)`;
-      window.setTimeout(() => {
+      node.style.transition = `transform ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      node.style.transform = `translate3d(${deltaX < 0 ? -window.innerWidth : window.innerWidth}px, 0, 0)`;
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
         if (!node.isConnected) return;
-        // ProfileProvider commits the destination while the stage remains
-        // off-screen. Router resets the transform in a layout effect after
-        // that destination has committed, so no empty frame can paint.
-        setPreview(null);
+        finishPreview();
         navigateRef.current(target, { replace: true });
-      }, TRANSITION_MS);
+      }, SETTLE_MS);
+    };
+
+    const onClickCapture = (event: MouseEvent) => {
+      if (!cancelNextClick || !clickTarget) return;
+      const target = event.target;
+      if (target instanceof Node && (target === clickTarget || clickTarget.contains(target))) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        cancelNextClick = false;
+        clickTarget = null;
+      }
     };
 
     const onCancel = () => {
       tracking = false;
       horizontal = false;
-      setPreview(null);
       if (stage) restoreStage(stage);
+      else finishPreview();
     };
 
     window.addEventListener("touchstart", onStart, { passive: true });
     window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onEnd, { passive: true });
     window.addEventListener("touchcancel", onCancel, { passive: true });
+    window.addEventListener("click", onClickCapture, true);
     return () => {
       window.removeEventListener("touchstart", onStart);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onCancel);
+      window.removeEventListener("click", onClickCapture, true);
       window.clearTimeout(settleTimer);
       if (lightFrame) window.cancelAnimationFrame(lightFrame);
       if (stage) {
@@ -196,7 +227,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         stage.style.willChange = "";
         stage.dataset.swipeActive = "false";
       }
-      setPreview(null);
+      clearWillChange();
+      finishPreview();
     };
   }, [enabled, index]);
 

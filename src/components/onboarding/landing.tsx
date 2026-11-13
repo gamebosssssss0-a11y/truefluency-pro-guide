@@ -125,16 +125,16 @@ export function LandingScreen() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-display text-lg font-semibold text-foreground">CHE 105</div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Introductory Physical Chemistry
               </div>
             </div>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               PDF
             </span>
           </div>
 
-          <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Topics in this upload
           </div>
           <div className="mt-2 space-y-2">
@@ -144,7 +144,7 @@ export function LandingScreen() {
           </div>
 
           <div className="on-sand mt-4 rounded-xl border border-border bg-background p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Mock test
             </div>
             <p className="mt-1 text-xs leading-relaxed text-foreground">
@@ -155,7 +155,7 @@ export function LandingScreen() {
               {["Raising the temperature", "Adding a catalyst", "Reducing the volume"].map((o) => (
                 <div
                   key={o}
-                  className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] text-foreground"
+                  className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground"
                 >
                   {o}
                 </div>
@@ -248,7 +248,7 @@ function TopicRow({
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
       <span className="truncate text-xs font-medium text-foreground">{topic}</span>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${pillClass}`}>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${pillClass}`}>
         {pill}
       </span>
     </div>

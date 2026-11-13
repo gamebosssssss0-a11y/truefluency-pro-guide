@@ -166,7 +166,7 @@ function SharedFilePage() {
             <>
               <div className="flex items-center gap-2">
                 <span
-                  className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                  className="rounded-md px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white"
                   style={{ backgroundColor: typeColor(share.file_type) }}
                 >
                   {share.file_type.toUpperCase().slice(0, 4)}
@@ -180,7 +180,7 @@ function SharedFilePage() {
                 Shared by {share.peer_alias} · {share.usesLeft} of {share.maxUses} saves left ·
                 expires within 7 days
               </p>
-              <p className="mt-1 text-[11px] text-[#5C5C70]">This link is one file only.</p>
+              <p className="mt-1 text-xs text-[#5C5C70]">This link is one file only.</p>
 
               <div className="mt-4 h-[52vh] min-w-0 w-full max-w-full overflow-hidden rounded-xl border border-[#E4DCC8] bg-[#F7F3EA]">
                 {previewOff ? (
@@ -222,7 +222,7 @@ function SharedFilePage() {
               >
                 {saving ? "Saving..." : signedIn ? "Save to my locker" : "Sign in to save to locker"}
               </Button>
-              <p className="mt-2 text-[11px] text-[#5C5C70]">
+              <p className="mt-2 text-xs text-[#5C5C70]">
                 Viewing happens in the app. There is no download.
               </p>
             </>

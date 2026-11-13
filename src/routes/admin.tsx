@@ -168,7 +168,7 @@ function AdminPage() {
           <h2 className="font-display text-xl font-semibold">Paywall hits · last 7 days</h2>
           {gateCountsError ? <p role="alert" className="mt-2 text-sm text-destructive">{gateCountsError}</p> : null}
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {GATES.map((gate) => <div key={gate} className="rounded-xl bg-background p-3"><p className="text-[10px] leading-tight text-muted-foreground">{gate.replaceAll("_", " ")}</p><p className="mt-1 text-xl font-semibold">{gate in gateCounts ? gateCounts[gate] : "—"}</p></div>)}
+            {GATES.map((gate) => <div key={gate} className="rounded-xl bg-background p-3"><p className="text-xs leading-tight text-muted-foreground">{gate.replaceAll("_", " ")}</p><p className="mt-1 text-xl font-semibold">{gate in gateCounts ? gateCounts[gate] : "—"}</p></div>)}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">Event metrics begin accumulating from this tracking update; historical events are not backfilled.</p>
         </section>

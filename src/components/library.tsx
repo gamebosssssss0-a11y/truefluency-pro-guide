@@ -120,7 +120,7 @@ function TypeChip({ fileType }: { fileType: string }) {
   const { label, color, textColor } = typeChip(fileType);
   return (
     <span
-      className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      className="rounded-md px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide"
       style={{ backgroundColor: color, color: textColor }}
     >
       {label}
@@ -131,11 +131,11 @@ function TypeChip({ fileType }: { fileType: string }) {
 
 function ReadyPill({ ready }: { ready: boolean }) {
   return ready ? (
-    <span className="rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good">
+    <span className="rounded-full bg-good/15 px-2 py-0.5 text-xs font-semibold text-good">
       Ready for mocks
     </span>
   ) : (
-    <span className="rounded-full bg-[#B86E0A]/12 px-2 py-0.5 text-[10px] font-semibold text-accent">
+    <span className="rounded-full bg-[#B86E0A]/12 px-2 py-0.5 text-xs font-semibold text-accent">
       Reading only
     </span>
   );
@@ -579,10 +579,10 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <ReadyPill ready={f.readyForMocks} />
                           {f.published ? (
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">On shelf</span>
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">On shelf</span>
                           ) : null}
                           {f.is_peer_copy ? (
-                            <span className="rounded-full bg-doc-blue/10 px-2 py-0.5 text-[10px] font-semibold text-doc-blue">
+                            <span className="rounded-full bg-doc-blue/10 px-2 py-0.5 text-xs font-semibold text-doc-blue">
                               Peer copy: {f.peer_alias ?? "A peer"}
                             </span>
                           ) : null}
@@ -682,7 +682,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
-                      <span className="flex items-center gap-1.5 rounded-full bg-doc-blue/10 px-2 py-0.5 text-[10px] font-semibold text-doc-blue">
+                      <span className="flex items-center gap-1.5 rounded-full bg-doc-blue/10 px-2 py-0.5 text-xs font-semibold text-doc-blue">
                         {it.avatar_url ? (
                           <img
                             src={it.avatar_url}
@@ -714,7 +714,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         )}
 
-        <p className="mt-4 text-[11px] text-muted-foreground">
+        <p className="mt-4 text-xs text-muted-foreground">
           Files are viewed in the app. There is no download, and you can unpublish at any time.
         </p>
       </div>
@@ -924,7 +924,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
           ) : (
             <p className="mt-3 text-center text-[12px] font-medium text-muted-foreground">View only</p>
           )}
-          <p className="mt-2 break-words text-[11px] text-muted-foreground">{PRICE_LINE}</p>
+          <p className="mt-2 break-words text-xs text-muted-foreground">{PRICE_LINE}</p>
 
         </SheetContent>
       </Sheet>

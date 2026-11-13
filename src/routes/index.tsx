@@ -328,7 +328,7 @@ function Router() {
       <div
         data-tab-swipe-stage
         className={cn(
-          hidesTabBar(view) ? undefined : "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-8 overflow-x-clip",
+          hidesTabBar(view) ? undefined : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 overflow-x-clip",
           !flowScreen && "app-stage-wide",
           "tab-swipe-stage relative overflow-x-hidden",
         )}

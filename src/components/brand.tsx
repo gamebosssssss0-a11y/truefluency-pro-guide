@@ -48,7 +48,7 @@ export function Wordmark({
       <span
         className={cn(
           "pb-0.5 font-sans font-semibold uppercase",
-          size === "lg" ? "text-xs" : "text-[10px]",
+          size === "lg" ? "text-xs" : "text-xs",
           onDark ? "text-primary-foreground/70" : "text-muted-foreground",
         )}
         style={{ letterSpacing: "0.05em" }}

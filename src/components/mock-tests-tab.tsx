@@ -93,7 +93,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
 
         {profile.inProgressTest ? (
           <section aria-label="Practice in progress" className="mt-5 rounded-2xl border border-accent/40 border-l-4 border-l-accent bg-card p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">Practice in progress</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-accent">Practice in progress</div>
             <h2 className="mt-1 text-base font-semibold text-foreground">{profile.inProgressTest.courseCode}</h2>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               Your answers and question position are saved. Continue where you left off.
@@ -157,11 +157,11 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                       <CourseDescription text={c.name} />
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {analysis?.topics.length ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-accent">
                             <Sparkles className="h-3 w-3" /> {analysis.topics.length} topics predicted
                           </span>
                         ) : (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             No analysis yet
                           </span>
                         )}
@@ -203,7 +203,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
           </h2>
           <button
             onClick={() => navigate("test-history")}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent/80"
+            className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80"
           >
             <History className="h-3 w-3" /> Full history
           </button>
@@ -246,7 +246,7 @@ function AttemptRow({ attempt }: { attempt: MockAttempt }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-foreground">{attempt.courseCode}</div>
-        <div className="truncate text-[11px] text-muted-foreground">
+        <div className="truncate text-xs text-muted-foreground">
           {attempt.correct}/{attempt.total} correct · {new Date(attempt.submittedAt).toLocaleDateString()}
         </div>
       </div>
@@ -362,7 +362,7 @@ export function TestHistoryScreen() {
                 <div
                   ref={carouselRef}
                   onScroll={syncCarouselIndex}
-                  className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-[8%] pb-3 [perspective:1000px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="practice-carousel-track flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   aria-label="Mock result carousel"
                 >
               {filtered.map((a, cardIndex) => {
@@ -372,11 +372,13 @@ export function TestHistoryScreen() {
                 <div
                   key={a.id}
                   ref={(node) => { cardRefs.current[cardIndex] = node; }}
-                  className="w-[84%] shrink-0 snap-center rounded-2xl border border-border bg-card p-4 shadow-sm transition-[transform,opacity] duration-200 md:w-[72%] lg:w-[58%]"
+                  data-practice-carousel-card=""
+                  className="practice-carousel-card w-[calc(100%-32px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border bg-card p-4 shadow-sm"
                   style={{
-                    transform: `perspective(900px) rotateY(${Math.max(-1, Math.min(1, cardIndex - activeAttemptIndex)) * -9}deg) scale(${cardIndex === activeAttemptIndex ? 1 : 0.95})`,
-                    opacity: Math.abs(cardIndex - activeAttemptIndex) > 1 ? 0.76 : 1,
-                  }}
+                    "--carousel-offset": Math.max(-1, Math.min(1, cardIndex - activeAttemptIndex)) * -1,
+                    "--carousel-scale": cardIndex === activeAttemptIndex ? 1 : 0.88,
+                    opacity: cardIndex === activeAttemptIndex ? 1 : 0.7,
+                  } as React.CSSProperties}
                   aria-current={cardIndex === activeAttemptIndex ? "true" : undefined}
                 >
                   <div className="flex items-start gap-3">
@@ -394,8 +396,8 @@ export function TestHistoryScreen() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-foreground">{a.courseCode}</div>
-                      <div className="break-words text-[11px] text-muted-foreground">{a.courseTitle}</div>
-                      <div className="mt-1 text-[11px] text-muted-foreground">
+                      <div className="break-words text-xs text-muted-foreground">{a.courseTitle}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
                         {new Date(a.submittedAt).toLocaleString("en-GB", {
                           timeZone: "Africa/Lagos",
                           day: "numeric",
@@ -409,7 +411,7 @@ export function TestHistoryScreen() {
 
                       {/* Counts come from the SAVED attempt: a 45-question row
                           must never print the current setting's 60. */}
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                         <span>
                           {a.total} questions
                           {a.settings?.minutes && a.settings?.questionCount === a.total
@@ -499,7 +501,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+        "rounded-full border px-2.5 py-1 text-xs font-medium transition",
         on
           ? "border-accent bg-accent/15 text-accent"
           : "border-border bg-background text-muted-foreground hover:border-accent/50",
@@ -711,7 +713,7 @@ export function ProgressPanel({
   return (
     <div className="mt-4 space-y-5">
       <section className="rounded-2xl border border-border bg-card p-4">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">Course progress</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-accent">Course progress</p>
         {course ? (
           <>
             <div className="mt-1 flex items-start justify-between gap-3">
@@ -724,7 +726,7 @@ export function ProgressPanel({
               </span>
             </div>
             <div className="mt-4 rounded-xl border border-border bg-background p-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">Do this next</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Do this next</p>
               {lowestTopic ? (
                 <p className="mt-1 font-display text-base font-semibold text-foreground">
                   Next: <span className="text-accent">{lowestTopic.topic}</span> · {lowestTopic.score}%
@@ -752,7 +754,7 @@ export function ProgressPanel({
         <div className="mb-2">
           <h2 id="course-standing" className="font-display text-lg font-semibold text-foreground">Course standing</h2>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <label className="flex min-w-0 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="flex min-w-0 flex-col gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Progress course
               <select
                 aria-label="Choose a course for your progress"
@@ -770,7 +772,7 @@ export function ProgressPanel({
                 ))}
               </select>
             </label>
-            <label className="flex min-w-0 flex-col gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="flex min-w-0 flex-col gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Progress topic
               <select
                 aria-label="Choose a topic for your progress"
@@ -796,30 +798,30 @@ export function ProgressPanel({
               >
                 <div className="grid h-[68px] w-[68px] place-items-center rounded-full bg-card text-center">
                   {average === null ? (
-                    <span className="px-1 text-[10px] leading-tight text-muted-foreground">Not counted yet</span>
+                    <span className="px-1 text-xs leading-tight text-muted-foreground">Not counted yet</span>
                   ) : (
                     <span>
                       <strong className="block font-display text-xl text-foreground">{average}%</strong>
-                      <small className="text-[9px] uppercase tracking-wider text-muted-foreground">overall</small>
+                      <small className="text-xs uppercase tracking-wider text-muted-foreground">overall</small>
                     </span>
                   )}
                 </div>
               </div>
-              <div className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
+              <div className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                 <span>Mastered · {Math.round(pct(mastered))}%</span>
                 <span>Learning · {Math.round(pct(learning))}%</span>
                 <span>Weak / unattempted · {Math.round(pct(weak))}%</span>
               </div>
-              <p className="mt-1 text-center text-[9px] text-muted-foreground">Topic composition · {courseTopics.length} topics</p>
+              <p className="mt-1 text-center text-xs text-muted-foreground">Topic composition · {courseTopics.length} topics</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="font-display text-sm font-semibold text-foreground">Mock score trend</h3>
-                <span className="text-[9px] text-muted-foreground">last 5</span>
+                <span className="text-xs text-muted-foreground">last 5</span>
               </div>
               {chartPoints.length > 0 ? (
                 <>
-                  {latest ? <p className="mt-1 font-display text-lg font-semibold text-foreground">{latest.score}% <span className="text-[9px] font-normal text-muted-foreground">{scoreChange === null ? "latest score" : scoreChange > 0 ? `↑ ${scoreChange} points` : scoreChange < 0 ? `↓ ${Math.abs(scoreChange)} points` : "steady"}</span></p> : null}
+                  {latest ? <p className="mt-1 font-display text-lg font-semibold text-foreground">{latest.score}% <span className="text-xs font-normal text-muted-foreground">{scoreChange === null ? "latest score" : scoreChange > 0 ? `↑ ${scoreChange} points` : scoreChange < 0 ? `↓ ${Math.abs(scoreChange)} points` : "steady"}</span></p> : null}
                   <svg viewBox="0 0 220 110" className="mt-2 h-24 w-full" role="img" aria-label={`Mock scores ${chartPoints.map((point) => point.attempt.score).join(", ")} percent`}>
                     <line x1="18" y1="20" x2="202" y2="20" stroke="#A7A196" strokeDasharray="3 4" />
                     <text x="184" y="16" fill="#817B6F" fontSize="8">80%</text>
@@ -873,7 +875,7 @@ export function ProgressPanel({
                     className="flex min-h-12 w-full items-center justify-between gap-3 p-3 text-left transition hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{entry.topic}</span>
-                    <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-secondary-foreground">{status}</span>
+                    <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{status}</span>
                     <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent">
                       {expanded ? "Hide" : "See progress"}
                       <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} aria-hidden="true" />
@@ -930,7 +932,7 @@ export function ProgressPanel({
           <div className="space-y-2">
             {recentMisses.map((miss) => (
               <article key={`${miss.id}-${miss.number}`} className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{miss.topic}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-accent">{miss.topic}</p>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question {miss.number}</p>
                 <div className="mt-2 break-words whitespace-pre-wrap text-base font-semibold leading-7 text-foreground"><MathText>{miss.question}</MathText></div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -966,7 +968,7 @@ export function ProgressPanel({
             <div className="mt-3 grid grid-cols-4 gap-2">
               {(["again", "hard", "good", "easy"] as const).map((rating) => (
                 <div key={rating} className="rounded-xl border border-border bg-background p-2 text-center">
-                  <p className="text-[10px] capitalize text-muted-foreground">{rating}</p>
+                  <p className="text-xs capitalize text-muted-foreground">{rating}</p>
                   <p className="mt-1 font-display text-xl font-semibold text-foreground">{ratingCounts[rating]}</p>
                 </div>
               ))}

@@ -385,7 +385,7 @@ export function CgpaGoalSetterScreen() {
         </p>
 
         {actual ? (
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <p className="mt-3 text-xs text-muted-foreground">
             Prefilled from your CGPA calculator run on{" "}
             {new Date(actual.calculatedAt).toLocaleDateString()}. Edit anything that looks off.
           </p>
@@ -393,7 +393,7 @@ export function CgpaGoalSetterScreen() {
           <button
             type="button"
             onClick={() => navigate("cgpa")}
-            className="mt-3 text-left text-[11px] font-medium text-accent underline-offset-4 hover:underline"
+            className="mt-3 text-left text-xs font-medium text-accent underline-offset-4 hover:underline"
           >
             Not sure of your current CGPA? Work it out in the CGPA calculator first.
           </button>
@@ -463,7 +463,7 @@ export function CgpaGoalSetterScreen() {
             </p>
           ) : null}
           {hasLegacyCountdown ? (
-            <div className="rounded-xl border border-border bg-card/80 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card/80 p-3 text-xs leading-relaxed text-muted-foreground">
               <p>{legacyDays} days remaining in your saved countdown.</p>
               <p className="mt-1">Pick your exam date so this plan counts down automatically.</p>
               <p>A date is required the next time you recalculate; no date has been guessed.</p>
@@ -501,7 +501,7 @@ export function CgpaGoalSetterScreen() {
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           This semester’s courses
         </h2>
-        <p className="mb-2 text-[11px] text-muted-foreground">
+        <p className="mb-2 text-xs text-muted-foreground">
           Pick the courses this plan should cover, then adjust the credit units to match your course
           forms.
         </p>
@@ -526,7 +526,7 @@ export function CgpaGoalSetterScreen() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-navy">{code}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">{course.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{course.name}</div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Input
@@ -546,7 +546,7 @@ export function CgpaGoalSetterScreen() {
                       }
                       aria-label={`Credit units for ${course.code}`}
                     />
-                    <span className="text-[11px] text-muted-foreground">units</span>
+                    <span className="text-xs text-muted-foreground">units</span>
                   </div>
                 </div>
               );
@@ -563,7 +563,7 @@ export function CgpaGoalSetterScreen() {
 
         <GradeScaleCard />
         {historyNotice ? (
-          <div className="mt-4 rounded-xl border border-border bg-secondary/60 p-3 text-[11px] text-foreground">
+          <div className="mt-4 rounded-xl border border-border bg-secondary/60 p-3 text-xs text-foreground">
             {historyNotice}
           </div>
         ) : null}
@@ -632,7 +632,7 @@ export function CgpaGoalSetterScreen() {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-navy/65">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-navy/65">
         {label}
       </span>
       {children}
@@ -656,7 +656,7 @@ function GradeScaleCard() {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-xs text-muted-foreground">
         CGPA uses total quality points divided by total credit units, so a 6-unit course moves your
         CGPA more than a 1-unit one.
       </p>
@@ -748,7 +748,7 @@ function PlanOutput({
       </h2>
 
       <div className="rounded-2xl bg-primary p-5 text-primary-foreground shadow-sm">
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground/70">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">
           <Target className="h-3.5 w-3.5" /> {classify(plan.targetCgpa)}
         </div>
         <div className="mt-2 font-display text-2xl font-semibold leading-tight">
@@ -764,7 +764,7 @@ function PlanOutput({
             {gradeCounts.map(({ grade, count }) => (
               <span
                 key={grade.grade}
-                className="rounded-full border border-accent/35 bg-accent/20 px-2.5 py-1 text-[10px] font-semibold text-primary-foreground"
+                className="rounded-full border border-accent/35 bg-accent/20 px-2.5 py-1 text-xs font-semibold text-primary-foreground"
               >
                 {count} {count === 1 ? "course" : "courses"} at Grade {grade.grade} (
                 {grade.grade === "F" ? "below 40%" : `${grade.min}%+`})
@@ -820,7 +820,7 @@ function PlanOutput({
       <h3 className="mb-2 mt-6 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <ListChecks className="h-3.5 w-3.5" /> Term-by-term preview
       </h3>
-      <p className="mb-2 text-[11px] text-muted-foreground">
+      <p className="mb-2 text-xs text-muted-foreground">
         Assumes each term carries about {termCreditLoad} credits and you maintain a similar GPA each term.
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -914,19 +914,19 @@ function PlanOutput({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     {isHighestLeverage ? (
-                      <span className="mb-2 inline-flex rounded-full border border-accent/45 bg-accent/20 px-2.5 py-1 text-[9px] font-bold tracking-wide text-navy">
+                      <span className="mb-2 inline-flex rounded-full border border-accent/45 bg-accent/20 px-2.5 py-1 text-xs font-bold tracking-wide text-navy">
                         HIGH LEVERAGE • {course.units} CREDIT UNITS
                       </span>
                     ) : null}
                     <div className="text-sm font-semibold text-navy">{course.code}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">{course.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{course.name}</div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-accent/20 px-2.5 py-1 text-[10px] font-bold text-navy">
+                  <span className="shrink-0 rounded-full bg-accent/20 px-2.5 py-1 text-xs font-bold text-navy">
                     Grade {course.requiredGrade}
                   </span>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <span>{course.units} units</span>
                   <span>·</span>
                   <span>{course.requiredPercent}</span>
@@ -941,7 +941,7 @@ function PlanOutput({
                       {accuracy === null ? "No practice yet" : `${accuracy.toFixed(1)}%`}
                     </span>
                   </div>
-                  <div className="mt-1 text-[11px] font-medium text-navy">
+                  <div className="mt-1 text-xs font-medium text-navy">
                     {maintenance
                       ? "Maintenance mode"
                       : `Target gap: ${gap.toFixed(1)} percentage points`}
@@ -950,7 +950,7 @@ function PlanOutput({
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <div className="rounded-xl bg-card/80 p-2.5">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
                       <Timer className="h-3 w-3" /> Reading
                     </div>
                     <div className="mt-0.5 text-sm font-semibold text-navy">
@@ -958,7 +958,7 @@ function PlanOutput({
                     </div>
                   </div>
                   <div className="rounded-xl bg-card/80 p-2.5">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
                       <BookOpen className="h-3 w-3" /> Mock quota
                     </div>
                     <div className="mt-0.5 text-sm font-semibold text-navy">
@@ -993,7 +993,7 @@ function PlanOutput({
         </p>
       </div>
 
-      <p className="mt-4 text-center text-[10px] text-muted-foreground">
+      <p className="mt-4 text-center text-xs text-muted-foreground">
         Locked {createdLabel}. Recalculate to replace this plan.
       </p>
     </div>
@@ -1022,21 +1022,21 @@ function SchedulePhase({
       <span className="absolute -left-[1.56rem] top-4 h-3 w-3 rounded-full border-2 border-accent bg-card" />
       <div className="flex items-start justify-between gap-2">
         <h4 className="text-sm font-semibold text-navy">{title}</h4>
-        <span className="shrink-0 rounded-full bg-sand px-2 py-1 text-[10px] font-semibold text-navy">
+        <span className="shrink-0 rounded-full bg-sand px-2 py-1 text-xs font-semibold text-navy">
           {daysLabel}
         </span>
       </div>
       {days > 0 ? (
         <>
           <p className="mt-2 text-xs leading-relaxed text-foreground">{description}</p>
-          <p className="mt-1 text-[11px] font-semibold text-navy">{target}</p>
-          <p className="mt-2 border-t border-border pt-2 text-[11px] italic text-muted-foreground">
+          <p className="mt-1 text-xs font-semibold text-navy">{target}</p>
+          <p className="mt-2 border-t border-border pt-2 text-xs italic text-muted-foreground">
             {ifThen}
           </p>
           {children}
         </>
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           No days are allocated to this phase.
         </p>
       )}

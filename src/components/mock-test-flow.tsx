@@ -407,7 +407,7 @@ export function MockGenerationScreen() {
         {analysis && analysis.topics.length > 0 ? (
           <div className="mt-6 overflow-hidden rounded-2xl border border-accent/15 bg-card shadow-sm">
             <div className="bg-gradient-to-br from-primary to-primary/85 p-4 text-primary-foreground">
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accent/25 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
                 <Sparkles className="h-3 w-3" /> Mock prediction ready
               </div>
               <div className="grid grid-cols-3 gap-2 border-t border-primary-foreground/15 pt-3">
@@ -457,7 +457,7 @@ function GenStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="font-display text-lg font-semibold leading-none">{value}</div>
-      <div className="mt-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">{label}</div>
+      <div className="mt-1 text-xs uppercase tracking-wider text-primary-foreground/60">{label}</div>
     </div>
   );
 }
@@ -719,7 +719,7 @@ export function MockConfigScreen() {
                       </span>
                     ) : null}
                     <div className="font-display text-xl font-semibold text-foreground">{n}</div>
-                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       {locked ? (n === EXAM_MAX_QUESTIONS ? "Exam plan" : "Core plan") : label}
                     </div>
                   </button>
@@ -727,7 +727,7 @@ export function MockConfigScreen() {
               })}
             </div>
             {maxQuestionsPerSet < EXAM_MAX_QUESTIONS ? (
-              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+              <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground">
                 <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span>{access?.tier === "core" || access?.tier === "trial" ? EXAM_PRICE_LINE : PRICE_LINE}</span>
               </p>
@@ -755,7 +755,7 @@ export function MockConfigScreen() {
                   )}
                 >
                   <span className="block text-sm font-semibold text-foreground">{option.title}</span>
-                  <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">{option.detail}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{option.detail}</span>
                 </button>
               ))}
             </div>
@@ -775,7 +775,7 @@ export function MockConfigScreen() {
                     onClick={() => locked ? navigate("upgrade") : setDifficulty(d.key)}
                     className={cn("rounded-xl border p-2.5 text-left transition", on ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50", locked && "opacity-60")}>
                     <div className="flex items-center gap-1 text-sm font-semibold text-foreground">{d.label}{locked ? <Lock className="h-3 w-3" aria-hidden="true" /> : null}</div>
-                    <div className="text-[11px] text-muted-foreground">{locked ? "Included with a higher plan" : d.blurb}</div>
+                    <div className="text-xs text-muted-foreground">{locked ? "Included with a higher plan" : d.blurb}</div>
                   </button>
                 );
               })}
@@ -787,7 +787,7 @@ export function MockConfigScreen() {
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Topics
               </label>
-              <p className="mb-2 text-[11px] text-muted-foreground">
+              <p className="mb-2 text-xs text-muted-foreground">
                 {excluded.length === 0
                   ? "Questions cover your whole upload. Tap a topic to leave it out."
                   : `Leaving out ${excluded.length} topic${excluded.length > 1 ? "s" : ""}. Tap again to include.`}
@@ -799,7 +799,7 @@ export function MockConfigScreen() {
                   return (
                     <button key={t} type="button" onClick={() => toggleExcluded(t)} disabled={lastOne}
                       aria-pressed={!out}
-                      className={cn("rounded-full border px-2.5 py-1 text-[11px] transition",
+                      className={cn("rounded-full border px-2.5 py-1 text-xs transition",
                         out
                           ? "border-border bg-background text-muted-foreground line-through opacity-60"
                           : "border-accent bg-accent/15 text-accent-foreground hover:border-accent/50")}>
@@ -810,7 +810,7 @@ export function MockConfigScreen() {
               </div>
               {excluded.length > 0 ? (
                 <button type="button" onClick={() => setExcluded([])}
-                  className="mt-2 text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                  className="mt-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
                   Include all topics
                 </button>
               ) : null}
@@ -818,7 +818,7 @@ export function MockConfigScreen() {
           )}
 
           {ALL_TOPICS.length === 0 && analysisForCourse && readyMaterialId && analysisForCourse.materialId !== readyMaterialId ? (
-            <p className="rounded-xl border border-dashed border-border bg-background p-3 text-[11px] text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
               Your predicted topics were made for a different choice of files. To pick topics for this choice, open the course page and tap Analyze.
               You can still generate a test from it now.
             </p>
@@ -832,7 +832,7 @@ export function MockConfigScreen() {
           </div>
 
           <button type="button" onClick={resetToDefaults}
-            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
             <RotateCcw className="h-3 w-3" /> Reset to default
           </button>
         </div>
@@ -861,7 +861,7 @@ export function MockConfigScreen() {
             <Zap className="mr-2 h-4 w-4" />
             <span className="flex flex-col items-start leading-tight">
               <span className="text-base font-semibold">Generate Mock Test</span>
-              <span className="text-[11px] font-normal opacity-90">
+              <span className="text-xs font-normal opacity-90">
                 {count} questions · {minutes} min · {difficultyLabel}
                 {excluded.length > 0 ? ` · ${topicFocus.length} of ${ALL_TOPICS.length} topics` : ""}
               </span>
@@ -889,7 +889,7 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeilin
       </div>
       <input type="range" min={min} max={hardCeiling ?? max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-accent" />
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-xs text-muted-foreground">
         <span>{min}</span>
         {hardCeiling && hardCeiling < max ? (
           <span className="inline-flex items-center gap-1">
@@ -1239,7 +1239,7 @@ export function MockRunScreen() {
           <div className="flex items-center gap-2">
             <HeaderLogo />
             <div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t.courseCode}</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">{t.courseCode}</div>
             <div className="truncate text-sm font-semibold text-foreground">{t.courseTitle}</div>
             </div>
           </div>
@@ -1260,13 +1260,13 @@ export function MockRunScreen() {
 
         <div className="mb-2 flex items-center gap-3">
           <Progress value={((idx + 1) / questions.length) * 100} className="h-2 flex-1" />
-          <span className="text-[11px] text-muted-foreground">Q {idx + 1} of {questions.length}</span>
+          <span className="text-xs text-muted-foreground">Q {idx + 1} of {questions.length}</span>
         </div>
 
         <button
           type="button"
           onClick={() => setMapOpen(true)}
-          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1.5 text-[11px] font-medium text-success transition hover:bg-success/15"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1.5 text-xs font-medium text-success transition hover:bg-success/15"
         >
           <LayoutGrid className="h-3 w-3" />
           <span>{answered} answered</span>
@@ -1306,7 +1306,7 @@ export function MockRunScreen() {
                     <div
                       aria-hidden="true"
                       className={cn(
-                        "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
+                        "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-semibold",
                         isCorrectOption
                           ? "border-success bg-success/10 text-success"
                           : isWrongSelection
@@ -1351,7 +1351,7 @@ export function MockRunScreen() {
                     <p className="text-xs text-muted-foreground">Retry used. Continue when you’re ready.</p>
                   ) : null}
                   <div>
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
                     </h3>
                     <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
@@ -1361,7 +1361,7 @@ export function MockRunScreen() {
                         <>
                           {wasWrong ? <p className="mb-1 text-muted-foreground">Your answer: <MathText>{chosenText}</MathText>. Correct answer: <MathText>{answerText}</MathText>.</p> : null}
                           {wasWrong ? (blocks.wrong ? <MathText>{blocks.wrong}</MathText> : <p className="text-muted-foreground">The saved explanation does not include a separate reason for this option.</p>) : <MathText>{blocks.correct}</MathText>}
-                          {wasWrong ? <div className="mt-2"><h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why the correct answer is right</h4><MathText>{blocks.correct}</MathText></div> : null}
+                          {wasWrong ? <div className="mt-2"><h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why the correct answer is right</h4><MathText>{blocks.correct}</MathText></div> : null}
                         </>
                       ) : (
                         <p className="text-muted-foreground">No explanation was saved for this question.</p>
@@ -1370,7 +1370,7 @@ export function MockRunScreen() {
                   </div>
                   {!failsQualityCheck(explanation) && blocks.concept ? (
                     <div>
-                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
                       <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
                         <MathText>{blocks.concept}</MathText>
                       </div>
@@ -1393,7 +1393,7 @@ export function MockRunScreen() {
               <AiGeneratedLabel />
               <div className="flex flex-col items-end gap-1">
                 {q.verification?.sourceFileName ? (
-                  <span className="max-w-48 text-right text-[10px] text-muted-foreground">
+                  <span className="max-w-48 text-right text-xs text-muted-foreground">
                     {q.verification.sourceUnavailable ? "Source file removed: " : "Source: "}{q.verification.sourceFileName} · {q.verification.sourceLocation || "page unavailable"}
                   </span>
                 ) : null}
@@ -1405,7 +1405,7 @@ export function MockRunScreen() {
                     nextQuestions[idx] = { ...q, flagged: !q.flagged };
                     update({ inProgressTest: { ...t, questions: nextQuestions } });
                   }}
-                  className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium", q.flagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
+                  className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium", q.flagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
                 >
                   <Flag className="h-3 w-3" aria-hidden="true" />{q.flagged ? "Flagged for review" : "Flag for review"}
                 </button>
@@ -1503,7 +1503,7 @@ function QuestionMapSheet({ total, answers, current, onJump, onClose, onSubmit }
             );
           })}
         </div>
-        <p className="mt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
           {answered} answered · {total - answered} left
         </p>
         <Button size="lg" className="mt-3 w-full" onClick={onSubmit}>Submit test</Button>
@@ -1659,7 +1659,7 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+        <p className="mt-2 text-center text-xs text-muted-foreground">
           Basic keys only. Results are never entered into your answers.
         </p>
       </div>
@@ -1728,7 +1728,7 @@ export function MockResultScreen() {
             <DifficultyChip difficulty={attempt.settings?.difficulty} />
           </div>
           {streak.state !== "none" ? (
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent">
               {streak.state === "frozen" ? <Snowflake aria-hidden="true" className="h-3 w-3" /> : <Flame aria-hidden="true" className="h-3 w-3" />} {streak.days}-day streak{streak.state === "frozen" ? " frozen" : ""}
             </div>
           ) : null}
@@ -1742,7 +1742,7 @@ export function MockResultScreen() {
             <div className="space-y-3">
               {groups.map((g) => (
                 <div key={g.key}>
-                  <div className={cn("text-[11px] font-semibold uppercase tracking-wider", g.tone)}>{g.label}</div>
+                  <div className={cn("text-xs font-semibold uppercase tracking-wider", g.tone)}>{g.label}</div>
                   <div className="mt-1 space-y-1">
                     {g.topics.map((t) => (
                       <div key={t.topic} className="flex items-start justify-between gap-3 text-sm">
@@ -1891,7 +1891,7 @@ export function AttemptReviewScreen() {
           <div className="mt-0.5 break-words font-display text-xl font-semibold leading-tight text-foreground">
             {attempt.courseTitle}
           </div>
-          <div className="mt-1 text-[11px] text-muted-foreground">
+          <div className="mt-1 text-xs text-muted-foreground">
             Completed{" "}
             {new Date(attempt.submittedAt).toLocaleString("en-GB", {
               timeZone: "Africa/Lagos",
@@ -1959,12 +1959,12 @@ export function AttemptReviewScreen() {
                 >
 
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <span className="text-xs uppercase tracking-wider text-muted-foreground">
                       Q{i + 1} · {q.topic}{q.flagged ? " · Flagged" : ""}
                     </span>
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wider",
                         invalid ? "bg-warning/15 text-warning" : isCorrect ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
                       )}
                     >
@@ -2000,7 +2000,7 @@ export function AttemptReviewScreen() {
                             ) : isPicked ? (
                               <X className="h-4 w-4 text-wine" aria-label="Your incorrect answer" />
                             ) : (
-                              <span className="grid h-4 w-4 place-items-center text-[10px] font-semibold text-muted-foreground">
+                              <span className="grid h-4 w-4 place-items-center text-xs font-semibold text-muted-foreground">
                                 {String.fromCharCode(65 + oi)}
                               </span>
                             )}
@@ -2014,11 +2014,11 @@ export function AttemptReviewScreen() {
                             <MathText>{opt}</MathText>
                           </span>
                           {isPicked ? (
-                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                               Your answer
                             </span>
                           ) : isAnswer ? (
-                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                               Correct
                             </span>
                           ) : null}
@@ -2028,7 +2028,7 @@ export function AttemptReviewScreen() {
                   </div>
 
                   {selected === null ? (
-                    <p className="mt-2 text-[11px] italic text-muted-foreground">
+                    <p className="mt-2 text-xs italic text-muted-foreground">
                       You left this question unanswered.
                     </p>
                   ) : null}
@@ -2047,7 +2047,7 @@ export function AttemptReviewScreen() {
                     /* Locked: lock icon only. The single price banner sits at the top. */
                     <div className="mt-3 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
                       <Lock className="h-4 w-4 shrink-0 text-accent" aria-label="Explanation locked" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Why</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-foreground">Why</span>
                     </div>
                   )}
 
@@ -2076,7 +2076,7 @@ export function AttemptReviewScreen() {
         >
           <Zap className="mr-1.5 h-4 w-4" /> Retake This Test
         </Button>
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+        <p className="mt-2 text-center text-xs text-muted-foreground">
           Generates a fresh set of questions using the same course and settings.
         </p>
       </div>
@@ -2097,8 +2097,8 @@ function ReviewMiniMap({
   return (
     <div className="mt-4 rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Question map</div>
-        <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Question map</div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-good" /> Correct</span>
           <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-wine" /> Wrong or blank</span>
         </div>
@@ -2113,7 +2113,7 @@ function ReviewMiniMap({
               onClick={() => onPick(i)}
               aria-label={`Question ${i + 1}, ${right ? "correct" : "wrong or blank"}${q.flagged ? ", flagged for review" : ""}`}
               className={cn(
-                "grid h-8 place-items-center rounded-lg border bg-card text-[11px] font-semibold",
+                "grid h-8 place-items-center rounded-lg border bg-card text-xs font-semibold",
                 right ? "border-good/50 text-good" : "border-wine/50 text-wine",
                 q.flagged && "ring-1 ring-warning",
                 current === i && "ring-2 ring-amber ring-offset-1 ring-offset-cream",
@@ -2132,7 +2132,7 @@ function ReviewMiniMap({
 
 function DifficultyChip({ difficulty }: { difficulty?: Difficulty | string | null }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-sand px-2.5 py-1 text-[11px] font-semibold text-navy">
+    <span className="inline-flex items-center rounded-full bg-sand px-2.5 py-1 text-xs font-semibold text-navy">
       {difficultyLabelOf(difficulty)}
     </span>
   );
@@ -2160,7 +2160,7 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
     <div className="mt-3 space-y-3 rounded-xl border border-border bg-card p-3">
       {rows.map((row) => (
         <div key={row.label}>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber">
+          <div className="text-xs font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
           <div className="mt-1 break-words whitespace-pre-wrap text-[15px] leading-6 text-foreground">

@@ -333,8 +333,36 @@ test("Study Chat warms and prefetches its selected thread before the tab is open
 
 test("chat history contrast is explicit and the chat column no longer caps width", async () => {
   const chat = await read("../src/components/chatbot.tsx");
-  assert.ok(chat.includes('style={{ color: m.role === "user" ? "#334155" : "var(--muted-foreground)" }}'));
+  assert.ok(chat.includes('style={{ color: m.role === "user" ? "var(--text-secondary)" : "var(--muted-foreground)" }}'));
   assert.ok(chat.includes("max-w-[96%] break-words [overflow-wrap:anywhere]"));
   assert.ok(chat.includes("w-full px-3 sm:px-4 md:pt-4"));
   assert.ok(!chat.includes("max-w-[640px] px-4 sm:px-5 md:pt-4"));
+});
+
+test("root swipe progress is frame-painted and the mobile tab bar floats", async () => {
+  const hook = await read("../src/hooks/use-swipe-tabs.ts");
+  const tabBar = await read("../src/components/tab-bar.tsx");
+  const styles = await read("../src/styles.css");
+  const dashboard = await read("../src/components/dashboard.tsx");
+  const practice = await read("../src/components/mock-tests-tab.tsx");
+  const chat = await read("../src/components/chatbot.tsx");
+  assert.match(hook, /index - dx \/ window\.innerWidth/);
+  assert.match(hook, /window\.innerWidth \* 0\.35 \|\| fastEnough/);
+  assert.match(hook, /releaseVelocity < -0\.4/);
+  const moveHandler = hook.slice(hook.indexOf("const onMove"), hook.indexOf("const onEnd"));
+  assert.equal((moveHandler.match(/setPreview\(/g) || []).length, 1, "mount the neighbor once when a horizontal gesture begins");
+  assert.match(hook, /setPreview\(\{ tab: previewTab, side: previewSide, highlightedTab: null \}\)/);
+  assert.match(tabBar, /mobile-tab-bar fixed inset-x-4/);
+  assert.match(tabBar, /h-\[68px\].*rounded-3xl.*backdrop-blur-\[16px\]/);
+  assert.match(tabBar, /h-\[3px\] w-7/);
+  assert.match(styles, /--tf-page-title-size: 28px/);
+  assert.match(styles, /--tf-section-title-size: 22px/);
+  assert.match(styles, /--tf-body-size: 16px/);
+  assert.match(styles, /--tf-secondary-size: 14px/);
+  assert.match(styles, /--tf-caption-size: 12px/);
+  assert.match(dashboard, /home-next-card/);
+  assert.match(practice, /--carousel-scale.*0\.88/);
+  const bannedColors = /#(?:0D9488|0F766E|1E293B|334155|F8FAFC|64748B)\b/i;
+  for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, bannedColors);
+  for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, /text-\[(?:9|10|11)px\]/);
 });
