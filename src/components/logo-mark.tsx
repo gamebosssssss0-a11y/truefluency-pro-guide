@@ -1,10 +1,8 @@
-import markAsset from "@/assets/truefluency-icon.png.asset.json";
-
 /**
  * TrueFluency PRO logo mark: the indigo squircle with the white flowing wave
  * and amber tip. Single source of truth for the logo everywhere in the app.
  */
-export const LOGO_MARK_URL = markAsset.url;
+export const LOGO_MARK_URL = "/truefluency-mark.svg";
 
 export const LOGO_VIEWBOX = "0 0 100 64";
 
@@ -15,8 +13,8 @@ export const LOGO_PATH =
 /** Terminal point of the stroke, where the amber dot locks in. */
 export const LOGO_DOT = { x: 85, y: 17, r: 5.5 };
 
-export const LOGO_BG = "#0F0F14";
-export const LOGO_ACCENT = "#F59E0B";
+export const LOGO_BG = "#1B2A4A";
+export const LOGO_ACCENT = "#B88732";
 
 export function LogoMark({
   className,
