@@ -100,7 +100,7 @@ function ChipShell({ children }: { children: React.ReactNode }) {
   return (
     <button
       onClick={() => navigate("upgrade")}
-      className="reference-plan-chip mb-5 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
+      className="reference-plan-chip mb-6 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
     >
       <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
         {children}
@@ -129,7 +129,7 @@ function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
     latest.extraction_status === "failed" || latest.extraction_status === "timeout";
 
   return (
-    <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+    <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <div
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-bold"
@@ -263,7 +263,7 @@ function NextStepCard({ ownMaterials }: { ownMaterials: CourseMaterial[] | null 
   })();
 
   return (
-        <div className="home-next-card mb-5 rounded-[20px] border border-border p-5">
+        <div className="home-next-card mb-6 rounded-[20px] border border-border p-5">
       <div className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]">
         Do this next
       </div>
@@ -290,7 +290,7 @@ function StrengthsCard() {
   const topics = entry.analysis.topics.slice(0, 5);
 
   return (
-    <div className="reference-home-card mb-5 rounded-2xl border border-border bg-card p-4">
+    <div className="reference-home-card mb-6 rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Your strengths</h2>
         <button
@@ -397,7 +397,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
     <div className="reference-home min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
       <div className="reference-home__inner mx-auto max-w-md px-5 pb-8 pt-6">
         {/* Header */}
-        <div className="reference-hero mb-5">
+        <div className="reference-hero mb-6">
           <div className="reference-hero__label mb-4 flex items-center gap-2">
             <HeaderLogo />
             <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
@@ -447,7 +447,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         {!showFirstUseLayout ? (
           <>
             <PlanChip />
-            <button type="button" onClick={() => setReminderOpen(true)} className="mb-5 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
+            <button type="button" onClick={() => setReminderOpen(true)} className="mb-6 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
               See plan options
             </button>
           </>
@@ -457,7 +457,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         {!showFirstUseLayout ? (
           <>
         {/* Streak: cloud-backed qualifying mock activity only. */}
-        <div className="reference-home-card reference-stat-card reference-streak mb-5 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+        <div className="reference-home-card reference-stat-card reference-streak mb-6 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
               <StreakGlyph state={streak.state} />
             </div>
@@ -482,7 +482,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         </div>
 
         {hydrated || access || cachedHome?.access || mocksToday > 0 ? (
-          <div className="reference-home-card reference-stat-card reference-goal mb-5 rounded-2xl border border-border bg-card p-3.5">
+          <div className="reference-home-card reference-stat-card reference-goal mb-6 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">Daily goal</div>
@@ -501,10 +501,10 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               />
             </div>
           </div>
-        ) : !hydrated ? <div aria-hidden="true" className="reference-home-card mb-5 h-[68px] rounded-2xl border border-border/50 bg-card" /> : null}
+        ) : !hydrated ? <div aria-hidden="true" className="reference-home-card mb-6 h-[68px] rounded-2xl border border-border/50 bg-card" /> : null}
 
         {/* Straight routes to the two lists students look for most. */}
-        <div className="mb-5 grid gap-2">
+        <div className="mb-6 grid gap-2">
           <HomeRowLink label="Your courses" onClick={() => navigate("add-course")} />
           <HomeRowLink label="Test history" onClick={() => navigate("test-history")} />
         </div>
@@ -518,7 +518,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
           <div className="min-w-0">
             <CgpaStatusCard />
 
-            <div className="mt-5 grid grid-cols-2 gap-2">
+            <div className="mt-6 grid grid-cols-2 gap-2">
               <QuickLink icon={<Calculator className="h-4 w-4" />} label="Calculator" onClick={() => navigate("cgpa")} />
               <QuickLink icon={<Target className="h-4 w-4" />} label="Goal setter" onClick={() => navigate("cgpa-goal")} />
             </div>
@@ -531,7 +531,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
                 sessionStorage.setItem("truefluency-flashcards-origin", "home");
                 navigate("flashcards");
               }}
-              className="reference-home-card mt-5 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
+              className="reference-home-card mt-6 flex w-full items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 text-left md:mt-0"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Layers className="h-4.5 w-4.5" />
@@ -667,7 +667,7 @@ function RotatingWisdomCard({ active }: { active: boolean }) {
     <figure
       key={reduceMotion ? "static-wisdom" : i}
       className={cn(
-        "reference-home-card quote-card relative mt-5 min-h-32 overflow-hidden rounded-2xl px-6 py-5 text-center",
+        "reference-home-card quote-card relative mt-6 min-h-32 overflow-hidden rounded-2xl px-6 py-5 text-center",
         !reduceMotion && "quote-card-cycle",
       )}
     >
