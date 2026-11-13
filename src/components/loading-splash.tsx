@@ -166,7 +166,7 @@ export function SonicUnfurlLoader({
         </div>
 
         {caption ? (
-          <p className={cn("mt-3 text-center text-sm", !reduceMotion && "sonic-text-2")} style={{ color: "#9CA3AF" }}>
+          <p className={cn("mt-3 text-center text-sm", !reduceMotion && "sonic-text-2")} style={{ color: "#E0B458" }}>
             {caption}
           </p>
         ) : null}
