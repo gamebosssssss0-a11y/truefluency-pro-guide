@@ -263,14 +263,14 @@ function NextStepCard({ ownMaterials }: { ownMaterials: CourseMaterial[] | null 
   })();
 
   return (
-        <div className="mb-5 rounded-2xl border border-border bg-card p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+        <div className="home-next-card mb-5 rounded-[20px] border border-border p-5">
+      <div className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]">
         Do this next
       </div>
-      <h2 className="mt-1 font-display text-lg font-semibold text-foreground">{next.title}</h2>
-      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{next.line}</p>
+      <h2 className="mt-1 font-display text-lg font-semibold text-[#F7F3EA]">{next.title}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-[#F7F3EA]">{next.line}</p>
       <Button
-        className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+        className="mt-3 h-11 w-full bg-accent text-primary-foreground hover:bg-accent/90"
         onClick={next.go}
       >
         {next.cta} <ChevronRight className="ml-0.5 h-4 w-4" />
