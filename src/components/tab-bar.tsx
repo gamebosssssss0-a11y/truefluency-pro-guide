@@ -134,7 +134,8 @@ export function BottomTabBar() {
           style={{
             left: `${((activeIndex + 0.5) / TABS.length) * 100}%`,
             opacity: 1,
-            backgroundColor: "var(--tab-light-color)",\n            boxShadow: "0 0 10px color-mix(in srgb, var(--tab-light-color) 45%, transparent)",
+            backgroundColor: "var(--tab-light-color)",
+            boxShadow: "0 0 10px color-mix(in srgb, var(--tab-light-color) 45%, transparent)",
           }}
         />
         {TABS.map((t) => {
