@@ -38,7 +38,7 @@ export function ChatUsageRing({ usage, className }: { usage: ChatUsage | null; c
             <circle
               cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE * (1 - pct / 100)}
-              className={`${tone} transition-[stroke-dashoffset] duration-500`}
+              className={`${tone} transition-[stroke-dashoffset] duration-300`}
             />
           </svg>
           <span className="tabular-nums">{pct}%</span>
