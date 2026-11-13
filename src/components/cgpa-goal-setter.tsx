@@ -802,6 +802,7 @@ function PlanOutput({
 
       {!plan.reachable ? (
         <div className="mt-3 rounded-2xl border border-accent/50 bg-accent/10 p-3.5 text-xs text-navy">
+          Reaching {plan.targetCgpa.toFixed(2)} requires a semester average above 5.00. Consider a nearer milestone.
           Highest reachable CGPA after {remainingCredits} credits is {maxAchievable.toFixed(2)}. The selected target is above that limit.
         </div>
       ) : plan.alreadyThere ? (
