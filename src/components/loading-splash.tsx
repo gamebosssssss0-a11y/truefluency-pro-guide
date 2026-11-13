@@ -36,7 +36,7 @@ function makeParticles(): Particle[] {
       dx: Math.cos(angle) * dist,
       dy: Math.sin(angle) * dist,
       size: 2 + Math.round(Math.random() * 2),
-      color: i % 3 === 0 ? "#FFFFFF" : LOGO_ACCENT,
+      color: i % 3 === 0 ? "#F7F3EA" : LOGO_ACCENT,
       opacity: 0.5 + Math.random() * 0.5,
       delay: 900 + Math.random() * 220,
       duration: 340 + Math.random() * 160,
@@ -153,13 +153,13 @@ export function SonicUnfurlLoader({
         <div className="mt-4 flex items-end gap-2">
           <span
             className={cn("font-display text-4xl font-bold leading-none tracking-tight", !reduceMotion && "sonic-text-1")}
-            style={{ color: "#A5B4FC", fontVariationSettings: '"opsz" 144', fontWeight: 700 }}
+            style={{ color: "#F7F3EA", fontVariationSettings: '"opsz" 144', fontWeight: 700 }}
           >
             TrueFluency
           </span>
           <span
             className={cn("pb-1 font-sans text-xs font-semibold uppercase", !reduceMotion && "sonic-text-2")}
-            style={{ color: "#9CA3AF", letterSpacing: "0.08em" }}
+            style={{ color: "#E0B458", letterSpacing: "0.08em" }}
           >
             Pro
           </span>
@@ -171,7 +171,7 @@ export function SonicUnfurlLoader({
           </p>
         ) : null}
         {tapHint ? (
-          <p className="mt-6 text-xs" style={{ color: "#6B7280" }}>{tapHint}</p>
+          <p className="mt-6 text-xs" style={{ color: "#F7F3EA" }}>{tapHint}</p>
         ) : null}
       </div>
     </div>
