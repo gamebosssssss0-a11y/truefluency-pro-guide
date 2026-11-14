@@ -48,7 +48,7 @@ export const Route = createFileRoute("/api/file-preview")({
         if (Boolean(shareToken) === Boolean(materialId)) return unavailable();
 
         try {
-          const { readSharePreview, readShelfPreview, headSharePreview, headShelfPreview } = await import("@/lib/library.server");
+          const { readSharePreview, readShelfPreview } = await import("@/lib/library.server");
           const preview = shareToken
             ? /^[a-z0-9]{6,64}$/i.test(shareToken)
               ? await readSharePreview(shareToken, range)
