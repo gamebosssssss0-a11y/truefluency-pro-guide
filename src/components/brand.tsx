@@ -39,7 +39,7 @@ export function Wordmark({
         className={cn(
           "font-display font-bold leading-none tracking-tight",
           size === "lg" ? "text-4xl" : "text-2xl",
-          onDark ? "text-primary-foreground" : "text-[#4F46E5]",
+          onDark ? "text-primary-foreground" : "text-navy",
         )}
         style={{ fontVariationSettings: '"opsz" 144', fontWeight: 700 }}
       >

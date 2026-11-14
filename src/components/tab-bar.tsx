@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useNavigation, type AppView, type TabKey } from "@/lib/profile-store";
 import { Home, ClipboardList, Library, MessageCircle, User } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
@@ -122,17 +123,19 @@ export function BottomTabBar() {
     <nav
       aria-label="Mobile navigation"
       data-mobile-tab-bar=""
+      style={{ "--tab-progress": activeIndex } as CSSProperties}
       className="mobile-tab-bar fixed inset-x-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-40 h-[68px] rounded-3xl border border-border bg-card/90 shadow-[0_4px_16px_rgba(27,42,74,0.08)] backdrop-blur-[16px] md:hidden"
     >
       <div
-        className="relative mx-auto flex h-full w-full items-stretch px-1"
+        className="relative mx-auto flex h-full w-full items-stretch px-1 [container-type:inline-size]"
       >
         <span
           aria-hidden="true"
           data-tab-indicator
-          className="pointer-events-none absolute bottom-[6px] left-0 z-10 h-[3px] w-7 -translate-x-1/2 rounded-full transition-[left,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          data-tab-indicator-track=""
+          className="pointer-events-none absolute bottom-[6px] left-[10%] z-10 h-[3px] w-7 -translate-x-1/2 rounded-full transition-[translate,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            left: `${((activeIndex + 0.5) / TABS.length) * 100}%`,
+            translate: "calc(var(--tab-progress, 0) * 20cqi) 0",
             opacity: 1,
             backgroundColor: "var(--tab-light-color)",
             boxShadow: "0 0 10px color-mix(in srgb, var(--tab-light-color) 45%, transparent)",
@@ -148,7 +151,7 @@ export function BottomTabBar() {
               aria-current={on ? "page" : undefined}
               className={cn(
                 "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 px-1 pb-2 pt-1 transition",
-                on ? "text-[#7A5410] dark:text-[#E0B458]" : "text-muted-foreground hover:text-foreground",
+                on ? "text-[var(--tf-gold-ink)] dark:text-[var(--tf-gold-bright)]" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <t.icon className={cn("h-[22px] w-[22px]", on && "stroke-[2.5]")} />

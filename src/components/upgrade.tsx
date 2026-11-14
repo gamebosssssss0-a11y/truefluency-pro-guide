@@ -247,7 +247,7 @@ export function UpgradeScreen() {
               <h2 className="text-sm font-semibold">Your studies, with more support</h2>
               <ul className="mt-3 space-y-3">{PLAN_FEATURES.core.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
             </section>
-            <Button className="mt-5 h-12 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"}</Button>
+            <Button className="mt-5 h-12 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"}</Button>
             <Button variant="outline" className="mt-3 h-12 w-full" onClick={() => navigate("support")}>Ask us about payment</Button>
             <Button variant="ghost" className="mt-2 w-full" onClick={() => setStep("plans")}>Compare plans</Button>
             {status && !live ? <p className="mt-2 text-center text-xs text-muted-foreground">Payments aren’t live yet. Nothing will be charged.</p> : null}
@@ -371,7 +371,7 @@ export function UpgradeScreen() {
               {autoRenew ? " If you delete your account, your plan is cancelled and your saved card is removed, so you are never charged again." : ""}
             </p>
             {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
-            <Button disabled={busy || (status !== null && !live)} className="mt-4 w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => void pay()}>
+            <Button disabled={busy || (status !== null && !live)} className="mt-4 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => void pay()}>
               {busy ? "Opening Squad…" : status !== null && !live ? "Payments aren’t live yet" : `Pay ${formatNaira(price)} with Squad`}
             </Button>
             <Button variant="outline" className="mt-2 w-full" disabled={busy} onClick={() => setStep("plans")}>Back to plans</Button>
@@ -430,7 +430,7 @@ export function UpgradeReminderSheet({ open, onOpenChange }: { open: boolean; on
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="mx-auto max-w-md rounded-t-3xl">
         <SheetHeader className="pr-6 text-left"><p className="text-xs font-semibold uppercase tracking-wider text-accent">A gentle reminder</p><SheetTitle>A little more room to practise?</SheetTitle><SheetDescription>Core gives you more daily mock sets and clearer answer explanations, whenever you’re ready.</SheetDescription></SheetHeader>
-        <SheetFooter className="mt-5 flex-col gap-2 sm:flex-col sm:space-x-0"><Button className="w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]" onClick={() => { onOpenChange(false); navigate("upgrade"); }}>See plans</Button><Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Not now</Button></SheetFooter>
+        <SheetFooter className="mt-5 flex-col gap-2 sm:flex-col sm:space-x-0"><Button className="w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => { onOpenChange(false); navigate("upgrade"); }}>See plans</Button><Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Not now</Button></SheetFooter>
       </SheetContent>
     </Sheet>
   );

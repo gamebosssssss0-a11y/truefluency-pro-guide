@@ -48,6 +48,19 @@ const KATEX_OPTIONS = {
 };
 
 const MAX_TEX_LENGTH = 2000;
+const BARE_TEX_COMMAND = /\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|begin|vec|overline|underline|mathrm|mathbf|text|cdot|times|left|right|sin|cos|tan|log|ln|exp|min|max|gcd|det|ker|dim|alpha|beta|gamma|theta|pi|mu|sigma|omega|Delta|pm|infty)\b/;
+
+function looksLikeBareTex(value: string) {
+  const tex = value.trim();
+  if (!tex || tex.length > MAX_TEX_LENGTH) return false;
+
+  // Model replies often omit delimiters while starting with prose or a
+  // variable (for example, "k = \\sqrt{I/M}"). Require both a known
+  // TeX command and a math structure so ordinary prose remains untouched.
+  const commandFormula = BARE_TEX_COMMAND.test(tex) && /[{}^_=]/.test(tex);
+  const compactFormula = /^[A-Za-z0-9(){}^_=+\-*/.,]+$/.test(tex) && /[=^_]/.test(tex);
+  return commandFormula || compactFormula;
+}
 
 function render(tex: string, display: boolean): string | null {
   if (tex.length > MAX_TEX_LENGTH) return null;
@@ -58,10 +71,13 @@ function render(tex: string, display: boolean): string | null {
   }
 }
 
-function mathClass(display: boolean) {
-  return display
+function MathOutput({ html, display }: { html: string; display: boolean }) {
+  const className = display
     ? "my-3 block max-w-full overflow-x-auto text-center text-[1.15em]"
     : "inline";
+  const Element = display ? "div" : "span";
+
+  return <Element className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 export function MathText({ children }: { children: string | null | undefined }) {
@@ -72,17 +88,20 @@ export function MathText({ children }: { children: string | null | undefined }) 
   const onlyFormula = trimmedSegments.length === 1 && trimmedSegments[0]?.kind !== "text" ? trimmedSegments[0] : null;
 
   if (onlyFormula) {
-    const html = render(onlyFormula.value, true);
+    const display = onlyFormula.kind === "block";
+    const html = render(onlyFormula.value, display);
     if (!html) return <>{normalized}</>;
-    return (
-      <span
-        className={mathClass(true)}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
+    return <MathOutput html={html} display={display} />;
   }
 
-  if (!segments.some((segment) => segment.kind !== "text")) return <>{text}</>;
+  if (!segments.some((segment) => segment.kind !== "text")) {
+    const bareTex = normalized.trim();
+    if (looksLikeBareTex(bareTex)) {
+      const html = render(bareTex, true);
+      if (html) return <MathOutput html={html} display />;
+    }
+    return <>{text}</>;
+  }
 
   return (
     <>
@@ -90,13 +109,7 @@ export function MathText({ children }: { children: string | null | undefined }) 
         if (segment.kind === "text") return <span key={index}>{segment.value}</span>;
         const html = render(segment.value, segment.kind === "block");
         if (!html) return <span key={index}>{segment.source ?? segment.value}</span>;
-        return (
-          <span
-            key={index}
-            className={mathClass(segment.kind === "block")}
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        );
+        return <MathOutput key={index} html={html} display={segment.kind === "block"} />;
       })}
     </>
   );

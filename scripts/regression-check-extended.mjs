@@ -117,7 +117,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(chat, /line-clamp-2/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
   assert.match(styles, /\.study-chat-screen\s*\{[\s\S]*?height: 100%/);
-  assert.match(styles, /--accent: #E0B458/);
+  assert.match(styles, /--accent: var\(--tf-gold\)/);
   assert.match(styles, /--muted-foreground: #C5CCD6/);
   assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
   const upgrade = await read("../src/components/upgrade.tsx");
@@ -151,7 +151,7 @@ test("the supplied mark is shared, the splash stays static, and sign-in owns the
   assert.match(splash, /Tap to skip/);
   assert.match(signingIn, /SonicUnfurlLoader/);
   assert.match(signingIn, /busy/);
-  assert.match(signingIn, /backgroundColor="#000000"/);
+  assert.match(signingIn, /backgroundColor="var\(--tf-black\)"/);
   assert.match(loader, /sonic-mark-in/);
   assert.match(loader, /onDone\?\.\(\)/);
 });
@@ -385,7 +385,31 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
   assert.match(styles, /--tf-caption-size: 12px/);
   assert.match(dashboard, /home-next-card/);
   assert.match(practice, /--carousel-scale.*0\.88/);
+  assert.match(practice, /tf-visual-phase2 min-h-screen/);
   const bannedColors = /#(?:0D9488|0F766E|1E293B|334155|F8FAFC|64748B)\b/i;
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, bannedColors);
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, /text-\[(?:9|10|11)px\]/);
+});
+
+test("math text uses KaTeX for marked and bare formulas across practice and review", async () => {
+  const math = await read("../src/components/math-text.tsx");
+  const practice = await read("../src/components/mock-tests-tab.tsx");
+  const review = await read("../src/components/mock-test-flow.tsx");
+  assert.match(math, /import katex from "katex"/);
+  assert.match(math, /looksLikeBareTex/);
+  assert.match(math, /compactFormula/);
+  assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
+  assert.match(review, /<MathText>\{q\.question\}<\/MathText>/);
+  assert.match(review, /<MathText>\{opt\}<\/MathText>/);
+});
+
+test("carousel swipes stay in their track and root swipe cancels multipoint gestures", async () => {
+  const swipe = await read("../src/hooks/use-swipe-tabs.ts");
+  const history = await read("../src/components/mock-tests-tab.tsx");
+  assert.match(swipe, /target\.closest\("\[data-swipe-lock\]/);
+  assert.match(swipe, /event\.touches\.length !== 1/);
+  assert.match(swipe, /translate \$\{SETTLE_MS\}ms/);
+  assert.match(history, /data-swipe-lock=""/);
+  assert.match(history, /requestAnimationFrame\(\(\) => \{/);
+  assert.match(history, /setActiveAttemptIndex\(\(current\) => current === nearest \? current : nearest\)/);
 });

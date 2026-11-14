@@ -82,7 +82,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
   const recent = attempts.slice(0, 3);
 
   return (
-    <div className="min-h-screen">
+    <div className="tf-visual-phase2 min-h-screen">
       <div className="mx-auto max-w-5xl px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -306,6 +306,13 @@ export function TestHistoryScreen() {
   const [activeAttemptIndex, setActiveAttemptIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const carouselSyncFrameRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (carouselSyncFrameRef.current !== null) {
+      window.cancelAnimationFrame(carouselSyncFrameRef.current);
+    }
+  }, []);
 
   const all = useMemo(
     () => [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt),
@@ -313,6 +320,10 @@ export function TestHistoryScreen() {
   );
   const filtered = courseFilter === "all" ? all : all.filter((a) => a.courseCode === courseFilter);
   useEffect(() => {
+    if (carouselSyncFrameRef.current !== null) {
+      window.cancelAnimationFrame(carouselSyncFrameRef.current);
+      carouselSyncFrameRef.current = null;
+    }
     setActiveAttemptIndex(0);
     cardRefs.current[0]?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
   }, [courseFilter]);
@@ -322,23 +333,27 @@ export function TestHistoryScreen() {
     cardRefs.current[next]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
   };
   const syncCarouselIndex = () => {
-    const track = carouselRef.current;
-    if (!track) return;
-    const center = track.getBoundingClientRect().left + track.clientWidth / 2;
-    let nearest = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    cardRefs.current.slice(0, filtered.length).forEach((card, i) => {
-      if (!card) return;
-      const rect = card.getBoundingClientRect();
-      const distance = Math.abs(rect.left + rect.width / 2 - center);
-      if (distance < nearestDistance) { nearest = i; nearestDistance = distance; }
+    if (carouselSyncFrameRef.current !== null) return;
+    carouselSyncFrameRef.current = window.requestAnimationFrame(() => {
+      carouselSyncFrameRef.current = null;
+      const track = carouselRef.current;
+      if (!track) return;
+      const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+      let nearest = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      cardRefs.current.slice(0, filtered.length).forEach((card, i) => {
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        const distance = Math.abs(rect.left + rect.width / 2 - center);
+        if (distance < nearestDistance) { nearest = i; nearestDistance = distance; }
+      });
+      setActiveAttemptIndex((current) => current === nearest ? current : nearest);
     });
-    setActiveAttemptIndex(nearest);
   };
   const courseCodes = Array.from(new Set(all.map((a) => a.courseCode)));
 
   return (
-    <div className="study-utility-page study-page-blend min-h-screen">
+    <div className="study-utility-page study-page-blend tf-visual-phase2 min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -401,7 +416,10 @@ export function TestHistoryScreen() {
                 <div
                   ref={carouselRef}
                   onScroll={syncCarouselIndex}
-                  className="practice-carousel-track flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  data-swipe-lock=""
+                  tabIndex={0}
+                  aria-roledescription="carousel"
+                  className="practice-carousel-track flex snap-x snap-mandatory gap-3 overscroll-x-contain overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   aria-label="Mock result carousel"
                 >
               {filtered.map((a, cardIndex) => {
@@ -666,7 +684,7 @@ export function ProgressPanel({
   const learning = visibleTopics.filter((entry) => entry.score !== null && entry.score >= 40 && entry.score < 80).length;
   const weak = visibleTopics.length - mastered - learning;
   const pct = (count: number) => visibleTopics.length ? (count / visibleTopics.length) * 100 : 0;
-  const donutBackground = `conic-gradient(#47835E 0 ${pct(mastered)}%, #B86E0A ${pct(mastered)}% ${pct(mastered + learning)}%, #C8C5BD ${pct(mastered + learning)}% 100%)`;
+  const donutBackground = `conic-gradient(var(--tf-chart-success) 0 ${pct(mastered)}%, var(--tf-amber-strong) ${pct(mastered)}% ${pct(mastered + learning)}%, var(--tf-chart-neutral) ${pct(mastered + learning)}% 100%)`;
 
   const recentMisses = useMemo(() => {
     const found: Array<{
@@ -862,16 +880,16 @@ export function ProgressPanel({
                 <>
                   {latest ? <p className="mt-1 font-display text-lg font-semibold text-foreground">{latest.score}% <span className="text-xs font-normal text-muted-foreground">{scoreChange === null ? "latest score" : scoreChange > 0 ? `↑ ${scoreChange} points` : scoreChange < 0 ? `↓ ${Math.abs(scoreChange)} points` : "steady"}</span></p> : null}
                   <svg viewBox="0 0 220 110" className="mt-2 h-24 w-full" role="img" aria-label={`Mock scores ${chartPoints.map((point) => point.attempt.score).join(", ")} percent`}>
-                    <line x1="18" y1="20" x2="202" y2="20" stroke="#A7A196" strokeDasharray="3 4" />
-                    <text x="184" y="16" fill="#817B6F" fontSize="8">80%</text>
-                    <polyline points={polyline} fill="none" stroke="#B86E0A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="18" y1="20" x2="202" y2="20" stroke="var(--tf-chart-axis)" strokeDasharray="3 4" />
+                    <text x="184" y="16" fill="var(--tf-chart-label)" fontSize="8">80%</text>
+                    <polyline points={polyline} fill="none" stroke="var(--tf-amber-strong)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     {chartPoints.map((point, index) => (
-                      <circle key={point.attempt.id} cx={point.x} cy={point.y} r="3" fill="#FBF7EE" stroke="#B86E0A" strokeWidth="2">
+                      <circle key={point.attempt.id} cx={point.x} cy={point.y} r="3" fill="var(--tf-chart-point)" stroke="var(--tf-amber-strong)" strokeWidth="2">
                         <title>Set {index + 1}: {point.attempt.score}%</title>
                       </circle>
                     ))}
                   </svg>
-                  <div className="flex justify-between text-[8px] text-muted-foreground">
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     {chartPoints.map((point, index) => <span key={point.attempt.id}>Set {index + 1}</span>)}
                   </div>
                 </>
@@ -895,7 +913,7 @@ export function ProgressPanel({
               const masteredTopic = entry.score !== null && score >= 80;
               const learningTopic = entry.score !== null && score >= 40 && score < 80;
               const status = masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak";
-              const color = masteredTopic ? "#47835E" : learningTopic ? "#B86E0A" : "#9B9A93";
+              const color = masteredTopic ? "var(--tf-chart-success)" : learningTopic ? "var(--tf-amber-strong)" : "var(--tf-chart-muted)";
               const expanded = expandedProgressTopics.has(entry.topic);
               const panelId = `topic-progress-${index}`;
               return (

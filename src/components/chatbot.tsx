@@ -1075,9 +1075,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const sourceLocation = (source: ChatSource) => source.page ? `Page ${source.page}` : source.section || source.location || "Page unavailable";
 
   return (
-    <div className={`study-chat-screen min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
+    <div className={`study-chat-screen tf-visual-phase2 min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={cn("chat-layout mx-auto grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
-        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#E4DCC8]/25 pb-2">
+        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[var(--tf-border-warm)]/25 pb-2">
           <button
             type="button"
             onClick={() => setShowFullCourseTitle((current) => !current)}
@@ -1085,7 +1085,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             aria-expanded={showFullCourseTitle}
             aria-label={selected ? `Show ${showFullCourseTitle ? "short" : "full"} course title for ${displayCode(selected)}` : "Choose a course"}
             title={fullCourseTitle || displayCode(selected)}
-            className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-[#F7F3EA] disabled:opacity-60"
+            className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[var(--tf-border-warm)]/45 bg-[var(--tf-navy)] px-3 py-2 text-xs font-semibold text-[var(--tf-cream)] disabled:opacity-60"
           >
             <span className={cn("min-w-0 whitespace-normal break-words text-left leading-4", showFullCourseTitle ? "line-clamp-none" : "line-clamp-2")}>
               {selected ? <>
@@ -1102,9 +1102,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             aria-haspopup="dialog"
             aria-label="Change course"
             title="Change course"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E4DCC8]/45 bg-[#1B2A4A] text-[#F7F3EA] disabled:opacity-60"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--tf-border-warm)]/45 bg-[var(--tf-navy)] text-[var(--tf-cream)] disabled:opacity-60"
           >
-            <ChevronDown className="h-4 w-4 shrink-0 text-[#F3E6C8]" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--tf-sand-chip)]" />
           </button>
           <div className="flex shrink-0 items-center gap-1.5">
             <button
@@ -1128,7 +1128,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
                 }
               }}
-              className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[#ead6ae] bg-[#F3E6C8] px-2.5 py-1.5 text-xs font-semibold text-[#784c12] transition hover:bg-[#ead6ae] disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--tf-sand-border)] bg-[var(--tf-sand-chip)] px-2.5 py-1.5 text-xs font-semibold text-[var(--tf-sand-ink)] transition hover:bg-[var(--tf-sand-border)] disabled:opacity-60"
             >
               <Plus aria-hidden="true" className="h-3 w-3" />
               New chat
@@ -1138,7 +1138,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <span>History</span>
             </button>
             {capText ? (
-              <span className="whitespace-nowrap rounded-full bg-[#F3E6C8] px-2 py-1.5 text-xs font-semibold text-[#1B2A4A]">
+              <span className="whitespace-nowrap rounded-full bg-[var(--tf-sand-chip)] px-2 py-1.5 text-xs font-semibold text-[var(--tf-navy)]">
                 {capText}
               </span>
             ) : null}
@@ -1174,7 +1174,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         >
           {threadLoadTimedOut && messages.length === 0 ? (
             <div role="alert" aria-live="assertive" className="chat-load-state flex min-h-full flex-col items-center justify-center px-6 text-center">
-              <span className="chat-load-icon mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A]"><RotateCcw aria-hidden="true" className="h-7 w-7" /></span>
+              <span className="chat-load-icon mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--tf-sand-chip)] text-[var(--tf-navy)]"><RotateCcw aria-hidden="true" className="h-7 w-7" /></span>
               <p className="text-base font-semibold text-foreground">Conversation is taking too long</p>
               <p className="mt-1 max-w-xs text-sm text-muted-foreground">Your saved chat is safe. Retry the connection or open a fresh conversation.</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -1184,7 +1184,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : isLoadingThread && messages.length === 0 ? (
             <div role="status" aria-live="polite" className="flex min-h-full flex-col items-center justify-center px-6 text-center">
-              <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#F3E6C8] text-[#1B2A4A] shadow-[0_0_24px_rgba(184,110,10,0.24)]">
+              <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--tf-sand-chip)] text-[var(--tf-navy)] shadow-[0_0_24px_rgba(184,110,10,0.24)]">
                 <Loader2 aria-hidden="true" className="chat-spinner h-7 w-7" />
               </span>
               <p className="text-base font-semibold text-foreground">
@@ -1193,14 +1193,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                 This can take a little while as we open {placeholderCourse} and load your saved conversation. Please keep this screen open.
               </p>
-              <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-[#E4DCC8]/40">
-                <div className="chat-loading-progress h-full w-2/5 rounded-full bg-[#B86E0A]" />
+              <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-[var(--tf-border-warm)]/40">
+                <div className="chat-loading-progress h-full w-2/5 rounded-full bg-[var(--tf-amber-strong)]" />
               </div>
             </div>
           ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
               <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#F3E6C8]" />
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--tf-sand-chip)]" />
                 Your course, made clearer
               </div>
               <p className="text-xl font-semibold tracking-tight text-foreground">
@@ -1210,8 +1210,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 {selected ? `Ask a question based on your uploaded ${placeholderCourse} notes, past questions, or slides.` : "Add a course and upload study materials to get grounded explanations."}
               </p>
               {selected ? (
-                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E4DCC8]/40 bg-[#F3E6C8]/15 px-2.5 py-1 text-xs text-foreground">
-                  <Check aria-hidden="true" className="h-3 w-3 text-[#F3E6C8]" />
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--tf-border-warm)]/40 bg-[var(--tf-sand-chip)]/15 px-2.5 py-1 text-xs text-foreground">
+                  <Check aria-hidden="true" className="h-3 w-3 text-[var(--tf-sand-chip)]" />
                   Course notes connected
                 </span>
               ) : null}
@@ -1233,7 +1233,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         <span className="block whitespace-normal break-words text-xs font-bold">{card.title}</span>
                         <span className="mt-1 block whitespace-normal break-words text-xs text-muted-foreground">{card.subtitle}</span>
                       </span>
-                      <span aria-hidden="true" className="px-0.5 text-lg leading-none text-[#A08A64]">›</span>
+                      <span aria-hidden="true" className="px-0.5 text-lg leading-none text-[var(--tf-sand-muted)]">›</span>
                     </button>
                   );
                 })}
@@ -1296,11 +1296,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 ) : m.from === "assistant" ? (
                   <div key={m.id} className="w-full min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (
-                      <p className="mb-1 inline-flex rounded-full bg-[#F3E6C8] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#1B2A4A]">
+                      <p className="mb-1 inline-flex rounded-full bg-[var(--tf-sand-chip)] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-[var(--tf-navy)]">
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="chat-message-content text-base leading-6">
+                    <div className="chat-message-content text-base leading-7">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.sources?.length ? (
@@ -1429,7 +1429,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               </button>
             </div>
           ) : null}
-          <div className="rounded-[20px] border border-[#dfd1b8] bg-card p-2 shadow-[0_7px_17px_rgba(27,42,74,0.08),inset_0_0_0_1px_rgba(255,255,255,0.55)]">
+          <div className="rounded-[20px] border border-[var(--tf-composer-border)] bg-card p-2 shadow-[0_7px_17px_rgba(27,42,74,0.08),inset_0_0_0_1px_rgba(255,255,255,0.55)]">
             <div className="chat-composer-meta mb-2 flex min-w-0 items-center justify-between gap-2 px-1">
               <div className="relative shrink-0">
                 <button
@@ -1438,7 +1438,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   aria-expanded={modeMenuOpen}
                   onClick={() => setModeMenuOpen((open) => !open)}
                   aria-label={`Reply mode: ${mode}`}
-                  className="inline-flex min-h-11 min-w-[84px] items-center justify-center gap-1 rounded-full border border-[#E4DCC8] bg-[#F3E6C8] px-2 text-xs font-semibold text-[#1B2A4A]"
+                  className="inline-flex min-h-11 min-w-[84px] items-center justify-center gap-1 rounded-full border border-[var(--tf-border-warm)] bg-[var(--tf-sand-chip)] px-2 text-xs font-semibold text-[var(--tf-navy)]"
                 >
                   <span>{mode === "Work a problem" ? "Work" : mode}</span>
                   <ChevronDown className="h-3.5 w-3.5" />
@@ -1461,15 +1461,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                   </div>
                 ) : null}
               </div>
-              <span className="chat-connected-context flex min-w-0 flex-1 items-center justify-end gap-1 text-xs text-[#878170]">
-                <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#477A5B]" />
+              <span className="chat-connected-context flex min-w-0 flex-1 items-center justify-end gap-1 text-xs text-[var(--tf-muted-ink)]">
+                <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--tf-success-muted)]" />
                 <span className="truncate">{selected ? `Using ${placeholderCourse} notes` : "Add a course to connect notes"}</span>
               </span>
               {/* The usage ring lives inside the message box, in this row, so it never takes space from the text area. */}
               <ChatUsageRing usage={usage} className="shrink-0" />
             </div>
             <div className="flex min-w-0 items-end gap-1">
-              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full border border-[#E4DCC8] bg-[#F3E6C8] text-[#1B2A4A] disabled:opacity-60">
+              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full border border-[var(--tf-border-warm)] bg-[var(--tf-sand-chip)] text-[var(--tf-navy)] disabled:opacity-60">
                 <Plus className="h-3.5 w-3.5" />
               </button>
               <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void pickPhoto(f); }} />
@@ -1488,7 +1488,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 }}
                 disabled={!selected || isSending || isLoadingThread || isUploadingPhoto}
                 placeholder={selected ? `Ask a question about ${placeholderCourse}…` : "Add a course first."}
-                className="chat-composer-textarea max-h-40 min-h-11 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[#B86E0A]/45 disabled:opacity-60"
+                className="chat-composer-textarea max-h-40 min-h-11 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[var(--tf-amber-strong)]/45 disabled:opacity-60"
               />
               <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
                 <Mic className="h-4 w-4" />
@@ -1563,7 +1563,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                           <div
                             key={i}
                             className={m.role === "user"
-                              ? "rounded-xl border border-[#E4DCC8] bg-[#F3E6C8] p-3 text-[#1B2A4A]"
+                              ? "rounded-xl border border-[var(--tf-border-warm)] bg-[var(--tf-sand-chip)] p-3 text-[var(--tf-navy)]"
                               : "rounded-xl border border-border bg-background p-3 text-foreground"}
                           >
                             <div className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: m.role === "user" ? "var(--text-secondary)" : "var(--muted-foreground)" }}>
@@ -1638,11 +1638,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           </SheetHeader>
           <fieldset disabled={shareLoading || shareGenerating || shareRevoking} className="mt-4 space-y-2 text-sm">
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
-              <input type="radio" name="chat-visibility" value="public" checked={shareVisibility === "public"} onChange={() => setShareVisibility("public")} className="mt-0.5 accent-[#B86E0A]" />
+              <input type="radio" name="chat-visibility" value="public" checked={shareVisibility === "public"} onChange={() => setShareVisibility("public")} className="mt-0.5 accent-[var(--tf-amber-strong)]" />
               <span><span className="block font-semibold">Public</span><span className="mt-0.5 block text-xs text-muted-foreground">Anyone with the link can view it. It is unlisted, but recipients can forward the URL.</span></span>
             </label>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground">
-              <input type="radio" name="chat-visibility" value="private" checked={shareVisibility === "private"} onChange={() => setShareVisibility("private")} className="mt-0.5 accent-[#B86E0A]" />
+              <input type="radio" name="chat-visibility" value="private" checked={shareVisibility === "private"} onChange={() => setShareVisibility("private")} className="mt-0.5 accent-[var(--tf-amber-strong)]" />
               <span><span className="block font-semibold">Private</span><span className="mt-0.5 block text-xs text-muted-foreground">Only the signed-in account that created this conversation can view it. New links start private.</span></span>
             </label>
           </fieldset>
