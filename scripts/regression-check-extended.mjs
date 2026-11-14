@@ -141,19 +141,19 @@ test("the supplied mark is shared, the splash stays static, and sign-in owns the
   const splash = await read("../src/components/onboarding/splash.tsx");
   const loader = await read("../src/components/loading-splash.tsx");
   const signingIn = await read("../src/components/signing-in.tsx");
-  assert.match(styles, /\\.sonic-mark-in\\s*\\{\\s*animation:\\s*sonic-mark-in/);
-  assert.match(styles, /@media \\(prefers-reduced-motion: reduce\\)/);
-  assert.match(mark, /LOGO_MARK_URL = "\\/truefluency-mark\\.jpg"/);
-  assert.match(root, /href: "\\/truefluency-mark\\.jpg", type: "image\\/jpeg"/);
+  assert.match(styles, /\.sonic-mark-in\s*\{\s*animation:\s*sonic-mark-in/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(mark, /LOGO_MARK_URL = "\/truefluency-mark\.jpg"/);
+  assert.match(root, /href: "\/truefluency-mark\.jpg", type: "image\/jpeg"/);
   assert.doesNotMatch(splash, /SonicUnfurlLoader/);
   assert.match(splash, /Plays on every app entry/);
-  assert.match(splash, /window\\.setTimeout\\(advance, 1900\\)/);
+  assert.match(splash, /window\.setTimeout\(advance, 1900\)/);
   assert.match(splash, /Tap to skip/);
   assert.match(signingIn, /SonicUnfurlLoader/);
   assert.match(signingIn, /busy/);
   assert.match(signingIn, /backgroundColor="#000000"/);
   assert.match(loader, /sonic-mark-in/);
-  assert.match(loader, /onDone\\?\\.\\(\\)/);
+  assert.match(loader, /onDone\?\.\(\)/);
 });
 test("chat thinking animation remains visible independently of the empty-thread branch", async () => {
   const chat = await read("../src/components/chatbot.tsx");
