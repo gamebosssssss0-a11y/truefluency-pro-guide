@@ -138,6 +138,18 @@ export async function readDownloadRange(opts: {
   };
 }
 
+/** Metadata-only read used by preview HEAD requests. */
+export async function headDownload(opts: {
+  path: string;
+  bucket?: string;
+}): Promise<{ contentLength?: number; contentType?: string }> {
+  const result = await r2().send(new HeadObjectCommand({
+    Bucket: bucketName(),
+    Key: keyFor(opts.path, opts.bucket),
+  }));
+  return { contentLength: result.ContentLength, contentType: result.ContentType };
+}
+
 export async function deleteObject(path: string, bucket: string = COURSE_MATERIALS_BUCKET): Promise<void> {
   await r2().send(new DeleteObjectCommand({ Bucket: bucketName(), Key: keyFor(path, bucket) }));
 }

@@ -455,12 +455,12 @@ export async function shelfPreviewUrl(materialId: string, viewerId: string): Pro
     .from("course_materials")
     .select("id, user_id, file_path, file_name, file_type, course_code, published, extracted_content")
     .eq("id", materialId)
+    .eq("published", true)
     .neq("user_id", viewerId)
     .eq("is_peer_copy", false)
     .maybeSingle();
   if (
     !material ||
-    !material.published ||
     !isOwnedMaterialPath(material.file_path, material.user_id ?? "")
   ) {
     return null;
@@ -500,6 +500,34 @@ export async function readShelfPreview(materialId: string, viewerId: string, ran
   if (!material || !material.user_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
   return {
     file: await r2.readDownloadRange({ path: material.file_path, range }),
+    mimeType: material.mime_type,
+  };
+}
+
+/** Recheck a share before returning file metadata, without transferring bytes. */
+export async function headSharePreview(token: string) {
+  const resolved = await resolveShare(token);
+  if (!resolved || !isOwnedMaterialPath(resolved.material.file_path, resolved.material.user_id)) return null;
+  return {
+    metadata: await r2.headDownload({ path: resolved.material.file_path }),
+    mimeType: resolved.material.mime_type,
+  };
+}
+
+/** Recheck a shelf publication before returning file metadata. */
+export async function headShelfPreview(materialId: string, viewerId: string) {
+  const db = admin();
+  const { data: material } = await db
+    .from("course_materials")
+    .select("user_id, file_path, mime_type")
+    .eq("id", materialId)
+    .eq("published", true)
+    .eq("is_peer_copy", false)
+    .neq("user_id", viewerId)
+    .maybeSingle();
+  if (!material?.user_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
+  return {
+    metadata: await r2.headDownload({ path: material.file_path }),
     mimeType: material.mime_type,
   };
 }
