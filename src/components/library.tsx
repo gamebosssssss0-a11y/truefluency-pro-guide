@@ -186,7 +186,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     { fileName: string; token: string; expiresAt: string; usesLeft: number; maxUses: number } | null
   >(null);
   const [preview, setPreview] = useState<
-    { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; failed?: boolean; reason?: string } | null
+    { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; headers?: Record<string, string>; failed?: boolean; reason?: string } | null
   >(null);
   const [pageExplanation, setPageExplanation] = useState<{ courseCode: string; page: number; fileName: string; text: string; previewUrl?: string } | null>(null);
 
@@ -433,12 +433,15 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
         });
         return;
       }
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      if (authError || !authData.session?.access_token) throw new Error("Sign in to view this file.");
       const result = await getShelfPreview({ data: { materialId: item.id } });
       setBusy(false);
       if (!result.ok) { toast.error(result.reason); fallback(true); return; }
       setPreview({
         id: item.id, file_name: result.file_name, file_type: result.file_type,
         course_code: result.course_code, url: result.url, readyForMocks: result.readyForMocks, peer,
+        headers: { Authorization: `Bearer ${authData.session.access_token}` },
       });
     } catch (e) {
       // A real request failure (object gone, storage error): show the shared
@@ -875,13 +878,19 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                   />
                 </div>
               ) : preview?.url && preview.file_type.toLowerCase() === "image" ? (
-                <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
+                preview.peer ? (
+                  <AuthorizedPreviewImage url={preview.url} headers={preview.headers} alt={preview.file_name} />
+                ) : (
+                  <img src={preview.url} alt={preview.file_name} className="mx-auto h-full object-contain" />
+                )
               ) : preview?.url && preview.file_type.toLowerCase() === "pdf" ? (
                 <Suspense fallback={<div role="status" className="grid h-full place-items-center text-sm text-muted-foreground">Opening PDF viewer…</div>}>
                   <PdfViewer
                     url={preview.url}
                     fileName={preview.file_name}
                     fileKey={preview.id}
+                    disableCache={preview.peer}
+                    httpHeaders={preview.headers}
                     onClose={() => { setPreview(null); setPageExplanation(null); }}
                     onCancel={() => { setPreview(null); setPageExplanation(null); }}
                     onExplain={explainPageInChat}
