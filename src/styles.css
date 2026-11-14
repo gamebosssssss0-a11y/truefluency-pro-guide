@@ -153,8 +153,8 @@
   [class*="bg-sand/"],
   .bg-cream,
   [class*="bg-cream/"] {
-    --foreground: var(--tf-ink);
-    --card-foreground: #1B2A4A;
+    --foreground: var(--tf-navy);
+    --card-foreground: var(--tf-navy);
     --muted-foreground: #5C5C70;
     color: #1B2A4A;
   }

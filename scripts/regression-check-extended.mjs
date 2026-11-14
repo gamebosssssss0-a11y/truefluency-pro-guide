@@ -384,7 +384,7 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
   assert.match(styles, /--tf-secondary-size: 14px/);
   assert.match(styles, /--tf-caption-size: 12px/);
   assert.match(dashboard, /home-next-card/);
-  assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
+  assert.match(practice, /--carousel-scale.*0\.88/);
   const bannedColors = /#(?:0D9488|0F766E|1E293B|334155|F8FAFC|64748B)\b/i;
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, bannedColors);
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, /text-\[(?:9|10|11)px\]/);
