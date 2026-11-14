@@ -34,7 +34,7 @@ async function verifiedUserId(request: Request): Promise<string | null> {
   return !error && typeof data?.claims?.sub === "string" ? data.claims.sub : null;
 }
 
-export const Route = createFileRoute("/api/file-preview")({
+export const Route = createFileRoute("/api/public/file-preview")({
   server: {
     handlers: {
       GET: async ({ request }) => {
