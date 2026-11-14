@@ -53,7 +53,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         if (!nav || !indicator) return;
         nav.style.setProperty("--tab-progress", String(Math.max(0, Math.min(ORDER.length - 1, progress))));
         indicator.style.transition = settle && !reducedMotion()
-          ? `left ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+          ? `translate ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
           : "none";
         const stretch = 1 + Math.min(0.4, Math.abs(speed) / 2);
         indicator.style.transform = `translateX(-50%) scaleX(${stretch})`;
@@ -98,7 +98,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         return;
       }
       stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");
-      if (!stage) return;
+      if (!stage || stage.dataset.swipeActive === "true") return;
       const touch = event.touches[0]!;
       startX = touch.clientX;
       startY = touch.clientY;
@@ -113,7 +113,15 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     };
 
     const onMove = (event: TouchEvent) => {
-      if (!tracking || event.touches.length !== 1 || !stage) return;
+      if (!tracking || !stage) return;
+      if (event.touches.length !== 1) {
+        tracking = false;
+        if (horizontal) {
+          horizontal = false;
+          restoreStage(stage);
+        }
+        return;
+      }
       const touch = event.touches[0]!;
       const dx = touch.clientX - startX;
       const dy = touch.clientY - startY;

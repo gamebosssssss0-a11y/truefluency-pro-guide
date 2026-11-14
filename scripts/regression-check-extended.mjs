@@ -384,8 +384,30 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
   assert.match(styles, /--tf-secondary-size: 14px/);
   assert.match(styles, /--tf-caption-size: 12px/);
   assert.match(dashboard, /home-next-card/);
-  assert.match(practice, /--carousel-scale.*0\.88/);
+  assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
   const bannedColors = /#(?:0D9488|0F766E|1E293B|334155|F8FAFC|64748B)\b/i;
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, bannedColors);
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, /text-\[(?:9|10|11)px\]/);
+});
+
+test("math text uses KaTeX for marked and bare formulas across practice and review", async () => {
+  const math = await read("../src/components/math-text.tsx");
+  const practice = await read("../src/components/mock-tests-tab.tsx");
+  const review = await read("../src/components/mock-test-flow.tsx");
+  assert.match(math, /import katex from "katex"/);
+  assert.match(math, /looksLikeBareTex/);
+  assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
+  assert.match(review, /<MathText>\{q\.question\}<\/MathText>/);
+  assert.match(review, /<MathText>\{opt\}<\/MathText>/);
+});
+
+test("carousel swipes stay in their track and root swipe cancels multipoint gestures", async () => {
+  const swipe = await read("../src/hooks/use-swipe-tabs.ts");
+  const history = await read("../src/components/mock-tests-tab.tsx");
+  assert.match(swipe, /target\.closest\("\[data-swipe-lock\]/);
+  assert.match(swipe, /event\.touches\.length !== 1/);
+  assert.match(swipe, /translate \$\{SETTLE_MS\}ms/);
+  assert.match(history, /data-swipe-lock=""/);
+  assert.match(history, /requestAnimationFrame\(\(\) => \{/);
+  assert.match(history, /setActiveAttemptIndex\(\(current\) => current === nearest \? current : nearest\)/);
 });

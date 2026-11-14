@@ -48,6 +48,15 @@ const KATEX_OPTIONS = {
 };
 
 const MAX_TEX_LENGTH = 2000;
+const BARE_TEX_COMMAND = /\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|begin|vec|overline|underline|mathrm|mathbf|text|cdot|times|left|right|alpha|beta|gamma|theta|pi|mu|sigma|omega|Delta|pm|infty)\b/;
+
+function looksLikeBareTex(value: string) {
+  const tex = value.trim();
+  return tex.length > 0 && tex.length <= MAX_TEX_LENGTH
+    && /^\\[A-Za-z]+/.test(tex)
+    && BARE_TEX_COMMAND.test(tex)
+    && /[{}^_=]/.test(tex);
+}
 
 function render(tex: string, display: boolean): string | null {
   if (tex.length > MAX_TEX_LENGTH) return null;
@@ -82,7 +91,16 @@ export function MathText({ children }: { children: string | null | undefined }) 
     );
   }
 
-  if (!segments.some((segment) => segment.kind !== "text")) return <>{text}</>;
+  if (!segments.some((segment) => segment.kind !== "text")) {
+    const bareTex = normalized.trim();
+    if (looksLikeBareTex(bareTex)) {
+      const html = render(bareTex, true);
+      if (html) {
+        return <span className={mathClass(true)} dangerouslySetInnerHTML={{ __html: html }} />;
+      }
+    }
+    return <>{text}</>;
+  }
 
   return (
     <>

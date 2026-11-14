@@ -306,6 +306,13 @@ export function TestHistoryScreen() {
   const [activeAttemptIndex, setActiveAttemptIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const carouselSyncFrameRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (carouselSyncFrameRef.current !== null) {
+      window.cancelAnimationFrame(carouselSyncFrameRef.current);
+    }
+  }, []);
 
   const all = useMemo(
     () => [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt),
@@ -313,6 +320,10 @@ export function TestHistoryScreen() {
   );
   const filtered = courseFilter === "all" ? all : all.filter((a) => a.courseCode === courseFilter);
   useEffect(() => {
+    if (carouselSyncFrameRef.current !== null) {
+      window.cancelAnimationFrame(carouselSyncFrameRef.current);
+      carouselSyncFrameRef.current = null;
+    }
     setActiveAttemptIndex(0);
     cardRefs.current[0]?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
   }, [courseFilter]);
@@ -322,18 +333,22 @@ export function TestHistoryScreen() {
     cardRefs.current[next]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
   };
   const syncCarouselIndex = () => {
-    const track = carouselRef.current;
-    if (!track) return;
-    const center = track.getBoundingClientRect().left + track.clientWidth / 2;
-    let nearest = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    cardRefs.current.slice(0, filtered.length).forEach((card, i) => {
-      if (!card) return;
-      const rect = card.getBoundingClientRect();
-      const distance = Math.abs(rect.left + rect.width / 2 - center);
-      if (distance < nearestDistance) { nearest = i; nearestDistance = distance; }
+    if (carouselSyncFrameRef.current !== null) return;
+    carouselSyncFrameRef.current = window.requestAnimationFrame(() => {
+      carouselSyncFrameRef.current = null;
+      const track = carouselRef.current;
+      if (!track) return;
+      const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+      let nearest = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      cardRefs.current.slice(0, filtered.length).forEach((card, i) => {
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        const distance = Math.abs(rect.left + rect.width / 2 - center);
+        if (distance < nearestDistance) { nearest = i; nearestDistance = distance; }
+      });
+      setActiveAttemptIndex((current) => current === nearest ? current : nearest);
     });
-    setActiveAttemptIndex(nearest);
   };
   const courseCodes = Array.from(new Set(all.map((a) => a.courseCode)));
 
@@ -401,7 +416,10 @@ export function TestHistoryScreen() {
                 <div
                   ref={carouselRef}
                   onScroll={syncCarouselIndex}
-                  className="practice-carousel-track flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  data-swipe-lock=""
+                  tabIndex={0}
+                  aria-roledescription="carousel"
+                  className="practice-carousel-track flex snap-x snap-mandatory gap-3 overscroll-x-contain overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   aria-label="Mock result carousel"
                 >
               {filtered.map((a, cardIndex) => {

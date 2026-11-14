@@ -1505,8 +1505,11 @@ nav[aria-label="Mobile navigation"] {
 .practice-carousel-track {
   perspective: 1000px;
   scroll-padding-inline: 16px;
+  overscroll-behavior-inline: contain;
 }
 .practice-carousel-card {
+  backface-visibility: hidden;
+  scroll-margin-inline: 16px;
   transform: perspective(1000px) rotateY(calc(var(--carousel-offset, 0) * 34deg)) scale(var(--carousel-scale, 1));
   transform-origin: center;
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
