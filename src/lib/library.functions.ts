@@ -134,10 +134,10 @@ export const revokeOneFileLink = createServerFn({ method: "POST" })
 export const getShelfPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { materialId: string }) => ({ materialId: cleanId(input?.materialId) }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     if (!sharingLive()) return { ok: false as const, reason: SHARING_OFFLINE_MESSAGE };
     const { shelfPreviewUrl } = await import("@/lib/library.server");
-    const preview = await shelfPreviewUrl(data.materialId);
+    const preview = await shelfPreviewUrl(data.materialId, context.userId);
     if (!preview) return { ok: false as const, reason: "This file is no longer available." };
     return { ok: true as const, ...preview };
   });

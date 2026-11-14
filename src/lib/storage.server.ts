@@ -21,6 +21,7 @@ import {
   DeleteObjectsCommand,
   CopyObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -110,6 +111,43 @@ export async function presignDownload(opts: {
   const { GetObjectCommand } = await import("@aws-sdk/client-s3");
   const cmd = new GetObjectCommand({ Bucket: bucketName(), Key: keyFor(opts.path, opts.bucket) });
   return getSignedUrl(r2(), cmd, { expiresIn: opts.expiresInSeconds ?? 60 * 30 });
+}
+
+/** Fetch file bytes on the server after the owning share/publication is rechecked. */
+export async function readDownloadRange(opts: {
+  path: string;
+  range?: string;
+  bucket?: string;
+}): Promise<{
+  body: Uint8Array;
+  contentLength?: number;
+  contentRange?: string;
+  contentType?: string;
+}> {
+  const result = await r2().send(new GetObjectCommand({
+    Bucket: bucketName(),
+    Key: keyFor(opts.path, opts.bucket),
+    ...(opts.range ? { Range: opts.range } : {}),
+  }));
+  if (!result.Body) throw new Error("File is unavailable.");
+  return {
+    body: await result.Body.transformToByteArray(),
+    contentLength: result.ContentLength,
+    contentRange: result.ContentRange,
+    contentType: result.ContentType,
+  };
+}
+
+/** Metadata-only read used by preview HEAD requests. */
+export async function headDownload(opts: {
+  path: string;
+  bucket?: string;
+}): Promise<{ contentLength?: number; contentType?: string }> {
+  const result = await r2().send(new HeadObjectCommand({
+    Bucket: bucketName(),
+    Key: keyFor(opts.path, opts.bucket),
+  }));
+  return { contentLength: result.ContentLength, contentType: result.ContentType };
 }
 
 export async function deleteObject(path: string, bucket: string = COURSE_MATERIALS_BUCKET): Promise<void> {

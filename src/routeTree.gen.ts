@@ -16,6 +16,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ChatShareTokenRouteImport } from './routes/chat-share.$token'
 import { Route as MockShareTokenRouteImport } from './routes/mock-share.$token'
 import { Route as STokenRouteImport } from './routes/s.$token'
+import { Route as ApiPublicFilePreviewRouteImport } from './routes/api/public/file-preview'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const STokenRoute = STokenRouteImport.update({
   path: '/s/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicFilePreviewRoute = ApiPublicFilePreviewRouteImport.update({
+  id: '/api/public/file-preview',
+  path: '/api/public/file-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailTransactionalPreviewRoute =
   LovableEmailTransactionalPreviewRouteImport.update({
     id: '/lovable/email/transactional/preview',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/mock-share/$token': typeof MockShareTokenRoute
   '/s/$token': typeof STokenRoute
+  '/api/public/file-preview': typeof ApiPublicFilePreviewRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesByTo {
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/mock-share/$token': typeof MockShareTokenRoute
   '/s/$token': typeof STokenRoute
+  '/api/public/file-preview': typeof ApiPublicFilePreviewRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRoutesById {
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/mock-share/$token': typeof MockShareTokenRoute
   '/s/$token': typeof STokenRoute
+  '/api/public/file-preview': typeof ApiPublicFilePreviewRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
 }
 export interface FileRouteTypes {
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/chat-share/$token'
     | '/mock-share/$token'
     | '/s/$token'
+    | '/api/public/file-preview'
     | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/chat-share/$token'
     | '/mock-share/$token'
     | '/s/$token'
+    | '/api/public/file-preview'
     | '/lovable/email/transactional/preview'
   id:
     | '__root__'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/chat-share/$token'
     | '/mock-share/$token'
     | '/s/$token'
+    | '/api/public/file-preview'
     | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
 }
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   ChatShareTokenRoute: typeof ChatShareTokenRoute
   MockShareTokenRoute: typeof MockShareTokenRoute
   STokenRoute: typeof STokenRoute
+  ApiPublicFilePreviewRoute: typeof ApiPublicFilePreviewRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
 }
 
@@ -186,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof STokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/file-preview': {
+      id: '/api/public/file-preview'
+      path: '/api/public/file-preview'
+      fullPath: '/api/public/file-preview'
+      preLoaderRoute: typeof ApiPublicFilePreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/preview': {
       id: '/lovable/email/transactional/preview'
       path: '/lovable/email/transactional/preview'
@@ -204,6 +224,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatShareTokenRoute: ChatShareTokenRoute,
   MockShareTokenRoute: MockShareTokenRoute,
   STokenRoute: STokenRoute,
+  ApiPublicFilePreviewRoute: ApiPublicFilePreviewRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
 }
 export const routeTree = rootRouteImport

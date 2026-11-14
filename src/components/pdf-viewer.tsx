@@ -12,7 +12,7 @@ import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, ZoomIn, ZoomO
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
-import { getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
+import { deleteCachedPdf, getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
 import { toast } from "sonner";
 
 export const MAX_PREVIEW_PAGES = 800;
@@ -203,6 +203,8 @@ export function PdfViewer({
   onExplain,
   onRetry,
   explainPanelOpen = false,
+  disableCache = false,
+  httpHeaders,
 }: {
   url: string;
   fileName: string;
@@ -212,6 +214,9 @@ export function PdfViewer({
   onExplain?: (data: { page: number; fileName: string; text: string; previewUrl?: string }) => void;
   onRetry?: () => void | Promise<void>;
   explainPanelOpen?: boolean;
+  /** Revocation-aware same-origin previews must be re-authorized for every range request. */
+  disableCache?: boolean;
+  httpHeaders?: Record<string, string>;
 }) {
   const [doc, setDoc] = useState<PdfDoc | null>(null);
   const [total, setTotal] = useState(0);
@@ -247,7 +252,11 @@ export function PdfViewer({
     void (async () => {
       try {
         const pdfjs = await loadPdfjs();
-        const cached =
+        if (disableCache && fileKey) {
+          await deleteCachedPdf(fileKey);
+          if (memoryCache?.key === fileKey) memoryCache = null;
+        }
+        const cached = disableCache ? null :
           memoryCache && fileKey && memoryCache.key === fileKey
             ? memoryCache.buffer
             : await getCachedPdf(fileKey);
@@ -257,7 +266,7 @@ export function PdfViewer({
         const task = pdfjs.getDocument(
           cached
             ? { data: new Uint8Array(cached.slice(0)) }
-            : { url, disableAutoFetch: true, disableStream: false, rangeChunkSize: 524288 },
+            : { url, httpHeaders, withCredentials: true, disableAutoFetch: true, disableStream: false, rangeChunkSize: 524288 },
         ) as unknown as LoadingTask;
         taskRef.current = task;
         const loaded = (await task.promise) as unknown as PdfDoc;
@@ -265,7 +274,7 @@ export function PdfViewer({
           void loaded.destroy?.();
           return;
         }
-        if (cached && fileKey) memoryCache = { key: fileKey, buffer: cached };
+        if (cached && fileKey && !disableCache) memoryCache = { key: fileKey, buffer: cached };
         const cap = Math.min(loaded.numPages, MAX_PREVIEW_PAGES);
         const start = Math.min(Math.max(1, readLastPage(fileKey)), cap);
         // Warm the page we are about to paint before showing the canvas, so the
@@ -283,7 +292,7 @@ export function PdfViewer({
         setStatus("ready");
 
         // Keep the bytes for next time, without delaying this open.
-        if (!cached && fileKey) {
+        if (!cached && fileKey && !disableCache) {
           void (async () => {
             try {
               const res = await fetch(url, { signal: cacheController.signal });
@@ -313,7 +322,7 @@ export function PdfViewer({
       void taskRef.current?.destroy();
       taskRef.current = null;
     };
-  }, [url, fileKey]);
+  }, [url, fileKey, disableCache, httpHeaders]);
 
   useEffect(load, [load]);
 
