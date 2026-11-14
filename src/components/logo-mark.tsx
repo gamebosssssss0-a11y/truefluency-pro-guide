@@ -2,7 +2,7 @@
  * TrueFluency PRO logo mark: the indigo squircle with the white flowing wave
  * and amber tip. Single source of truth for the logo everywhere in the app.
  */
-export const LOGO_MARK_URL = "/truefluency-mark.svg";
+export const LOGO_MARK_URL = "/truefluency-mark.jpg";
 
 export const LOGO_VIEWBOX = "0 0 100 64";
 
