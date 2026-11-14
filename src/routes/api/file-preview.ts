@@ -48,7 +48,7 @@ export const Route = createFileRoute("/api/file-preview")({
         if (Boolean(shareToken) === Boolean(materialId)) return unavailable();
 
         try {
-          const { readSharePreview, readShelfPreview } = await import("@/lib/library.server");
+          const { readSharePreview, readShelfPreview, headSharePreview, headShelfPreview } = await import("@/lib/library.server");
           const preview = shareToken
             ? /^[a-z0-9]{6,64}$/i.test(shareToken)
               ? await readSharePreview(shareToken, range)
@@ -81,15 +81,15 @@ export const Route = createFileRoute("/api/file-preview")({
         const materialId = url.searchParams.get("materialId");
         if (Boolean(shareToken) === Boolean(materialId)) return unavailable();
         try {
-          const { readSharePreview, readShelfPreview } = await import("@/lib/library.server");
+          const { headSharePreview, headShelfPreview } = await import("@/lib/library.server");
           const preview = shareToken
             ? /^[a-z0-9]{6,64}$/i.test(shareToken)
-              ? await readSharePreview(shareToken)
+              ? await headSharePreview(shareToken)
               : null
             : /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(materialId ?? "")
               ? await (async () => {
                   const viewerId = await verifiedUserId(request);
-                  return viewerId ? readShelfPreview(materialId!, viewerId) : null;
+                  return viewerId ? headShelfPreview(materialId!, viewerId) : null;
                 })()
               : null;
           if (!preview) return unavailable();
@@ -99,8 +99,8 @@ export const Route = createFileRoute("/api/file-preview")({
               "Cache-Control": "private, no-store, max-age=0",
               "X-Content-Type-Options": "nosniff",
               "Accept-Ranges": "bytes",
-              "Content-Type": preview.mimeType || preview.file.contentType || "application/octet-stream",
-              ...(preview.file.contentLength === undefined ? {} : { "Content-Length": String(preview.file.contentLength) }),
+              "Content-Type": preview.mimeType || preview.metadata.contentType || "application/octet-stream",
+              ...(preview.metadata.contentLength === undefined ? {} : { "Content-Length": String(preview.metadata.contentLength) }),
             },
           });
         } catch {
