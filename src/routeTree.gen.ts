@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ResetRouteImport } from './routes/reset'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ApiFilePreviewRouteImport } from './routes/api/file-preview'
 import { Route as ChatShareTokenRouteImport } from './routes/chat-share.$token'
 import { Route as MockShareTokenRouteImport } from './routes/mock-share.$token'
 import { Route as STokenRouteImport } from './routes/s.$token'
@@ -36,6 +37,11 @@ const ResetRoute = ResetRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilePreviewRoute = ApiFilePreviewRouteImport.update({
+  id: '/api/file-preview',
+  path: '/api/file-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatShareTokenRoute = ChatShareTokenRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/file-preview': typeof ApiFilePreviewRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/mock-share/$token': typeof MockShareTokenRoute
   '/s/$token': typeof STokenRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/file-preview': typeof ApiFilePreviewRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/mock-share/$token': typeof MockShareTokenRoute
   '/s/$token': typeof STokenRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/file-preview': typeof ApiFilePreviewRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
   '/mock-share/$token': typeof MockShareTokenRoute
   '/s/$token': typeof STokenRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/reset'
     | '/sitemap.xml'
+    | '/api/file-preview'
     | '/chat-share/$token'
     | '/mock-share/$token'
     | '/s/$token'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/reset'
     | '/sitemap.xml'
+    | '/api/file-preview'
     | '/chat-share/$token'
     | '/mock-share/$token'
     | '/s/$token'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/reset'
     | '/sitemap.xml'
+    | '/api/file-preview'
     | '/chat-share/$token'
     | '/mock-share/$token'
     | '/s/$token'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ResetRoute: typeof ResetRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiFilePreviewRoute: typeof ApiFilePreviewRoute
   ChatShareTokenRoute: typeof ChatShareTokenRoute
   MockShareTokenRoute: typeof MockShareTokenRoute
   STokenRoute: typeof STokenRoute
@@ -163,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/file-preview': {
+      id: '/api/file-preview'
+      path: '/api/file-preview'
+      fullPath: '/api/file-preview'
+      preLoaderRoute: typeof ApiFilePreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat-share/$token': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ResetRoute: ResetRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiFilePreviewRoute: ApiFilePreviewRoute,
   ChatShareTokenRoute: ChatShareTokenRoute,
   MockShareTokenRoute: MockShareTokenRoute,
   STokenRoute: STokenRoute,
