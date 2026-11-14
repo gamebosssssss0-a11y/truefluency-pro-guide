@@ -117,7 +117,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(chat, /line-clamp-2/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
   assert.match(styles, /\.study-chat-screen\s*\{[\s\S]*?height: 100%/);
-  assert.match(styles, /--accent: #E0B458/);
+  assert.match(styles, /--accent: var\(--tf-gold\)/);
   assert.match(styles, /--muted-foreground: #C5CCD6/);
   assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
   const upgrade = await read("../src/components/upgrade.tsx");
@@ -151,7 +151,7 @@ test("the supplied mark is shared, the splash stays static, and sign-in owns the
   assert.match(splash, /Tap to skip/);
   assert.match(signingIn, /SonicUnfurlLoader/);
   assert.match(signingIn, /busy/);
-  assert.match(signingIn, /backgroundColor="#000000"/);
+  assert.match(signingIn, /backgroundColor="var\(--tf-color-000000\)"/);
   assert.match(loader, /sonic-mark-in/);
   assert.match(loader, /onDone\?\.\(\)/);
 });
