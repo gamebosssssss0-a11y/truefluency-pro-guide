@@ -31,9 +31,13 @@ test("shared mock sign-in handoff returns to the same preview", async () => {
   assert.match(profile, /returnTo\.startsWith\("\/mock-share\/"\)/);
 });
 
-test("Tutor Mode hides the Key Concept section when no concept is saved", async () => {
+test("mock teaching blocks omit empty explanation sections without placeholders", async () => {
   const flow = await read("../src/components/mock-test-flow.tsx");
-  assert.match(flow, /!failsQualityCheck\(explanation\) && blocks\.concept \?/);
+  const helpers = await read("../src/lib/why-blocks.ts");
+  assert.match(flow, /TeachingExplanationBlocks explanation=\{explanation\}/);
+  assert.match(flow, /\.filter\(\(section\) => Boolean\(section\.body\)\)/);
+  assert.match(flow, /\.filter\(\(item\) => Boolean\(item\.body\)\)/);
+  assert.match(helpers, /export function toTeachingExplanation/);
   assert.doesNotMatch(flow, /A separate key concept was not included/);
   assert.doesNotMatch(flow, /The key concept is not available for this question/);
 });
@@ -398,9 +402,21 @@ test("math text uses KaTeX for marked and bare formulas across practice and revi
   assert.match(math, /import katex from "katex"/);
   assert.match(math, /looksLikeBareTex/);
   assert.match(math, /compactFormula/);
+  assert.match(math, /exam-math-display/);
+  assert.match(math, /readableMathFallback/);
+  assert.match(review, /toTeachingExplanation/);
+  assert.match(review, /What it tests/);
+  assert.match(review, /Plain-English words/);
+  assert.match(review, /Minimum rule/);
+  assert.match(review, /Easy example/);
+  assert.match(review, /Common mistake/);
+  assert.match(review, /Worked solution \/ steps/);
+  assert.match(review, /The rule to remember/);
+  assert.match(review, /animate-explanation-unfurl/);
+  assert.match(review, /Not answered/);
   assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
-  assert.match(review, /<MathText>\{q\.question\}<\/MathText>/);
-  assert.match(review, /<MathText>\{opt\}<\/MathText>/);
+  assert.match(review, /<MathText(?: examMath)?>\{q\.question\}<\/MathText>/);
+  assert.match(review, /<MathText(?: examMath)?>\{opt\}<\/MathText>/);
 });
 
 test("carousel swipes stay in their track and root swipe cancels multipoint gestures", async () => {
