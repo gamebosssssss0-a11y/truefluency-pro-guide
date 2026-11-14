@@ -115,7 +115,7 @@ export function toTeachingExplanation(explanation: string): TeachingExplanation 
   const result = emptyTeachingExplanation();
   const buckets = new Map<TeachingKey, string[]>();
   let current: TeachingKey | null = null;
-  let preamble: string[] = [];
+  const preamble: string[] = [];
 
   const append = (key: TeachingKey, value: string) => {
     const text = value.trim();
