@@ -684,7 +684,7 @@ export function ProgressPanel({
   const learning = visibleTopics.filter((entry) => entry.score !== null && entry.score >= 40 && entry.score < 80).length;
   const weak = visibleTopics.length - mastered - learning;
   const pct = (count: number) => visibleTopics.length ? (count / visibleTopics.length) * 100 : 0;
-  const donutBackground = `conic-gradient(var(--tf-color-47835e) 0 ${pct(mastered)}%, var(--tf-color-b86e0a) ${pct(mastered)}% ${pct(mastered + learning)}%, var(--tf-color-c8c5bd) ${pct(mastered + learning)}% 100%)`;
+  const donutBackground = `conic-gradient(var(--tf-chart-success) 0 ${pct(mastered)}%, var(--tf-amber-strong) ${pct(mastered)}% ${pct(mastered + learning)}%, var(--tf-chart-neutral) ${pct(mastered + learning)}% 100%)`;
 
   const recentMisses = useMemo(() => {
     const found: Array<{
@@ -880,11 +880,11 @@ export function ProgressPanel({
                 <>
                   {latest ? <p className="mt-1 font-display text-lg font-semibold text-foreground">{latest.score}% <span className="text-xs font-normal text-muted-foreground">{scoreChange === null ? "latest score" : scoreChange > 0 ? `↑ ${scoreChange} points` : scoreChange < 0 ? `↓ ${Math.abs(scoreChange)} points` : "steady"}</span></p> : null}
                   <svg viewBox="0 0 220 110" className="mt-2 h-24 w-full" role="img" aria-label={`Mock scores ${chartPoints.map((point) => point.attempt.score).join(", ")} percent`}>
-                    <line x1="18" y1="20" x2="202" y2="20" stroke="var(--tf-color-a7a196)" strokeDasharray="3 4" />
-                    <text x="184" y="16" fill="var(--tf-color-817b6f)" fontSize="8">80%</text>
-                    <polyline points={polyline} fill="none" stroke="var(--tf-color-b86e0a)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="18" y1="20" x2="202" y2="20" stroke="var(--tf-chart-axis)" strokeDasharray="3 4" />
+                    <text x="184" y="16" fill="var(--tf-chart-label)" fontSize="8">80%</text>
+                    <polyline points={polyline} fill="none" stroke="var(--tf-amber-strong)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     {chartPoints.map((point, index) => (
-                      <circle key={point.attempt.id} cx={point.x} cy={point.y} r="3" fill="var(--tf-color-fbf7ee)" stroke="var(--tf-color-b86e0a)" strokeWidth="2">
+                      <circle key={point.attempt.id} cx={point.x} cy={point.y} r="3" fill="var(--tf-chart-point)" stroke="var(--tf-amber-strong)" strokeWidth="2">
                         <title>Set {index + 1}: {point.attempt.score}%</title>
                       </circle>
                     ))}
@@ -913,7 +913,7 @@ export function ProgressPanel({
               const masteredTopic = entry.score !== null && score >= 80;
               const learningTopic = entry.score !== null && score >= 40 && score < 80;
               const status = masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak";
-              const color = masteredTopic ? "var(--tf-color-47835e)" : learningTopic ? "var(--tf-color-b86e0a)" : "var(--tf-color-9b9a93)";
+              const color = masteredTopic ? "var(--tf-chart-success)" : learningTopic ? "var(--tf-amber-strong)" : "var(--tf-chart-muted)";
               const expanded = expandedProgressTopics.has(entry.topic);
               const panelId = `topic-progress-${index}`;
               return (

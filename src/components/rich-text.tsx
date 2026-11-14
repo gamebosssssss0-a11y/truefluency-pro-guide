@@ -109,11 +109,11 @@ export function RichText({ children, tone = "default" }: { children: string | nu
         nextRow += 1;
       }
       const tableTone = canvas
-        ? "w-full min-w-[32rem] border-collapse bg-[var(--tf-color-1b2a4a)] text-left text-sm text-[var(--tf-color-f7f3ea)]"
+        ? "w-full min-w-[32rem] border-collapse bg-[var(--tf-navy)] text-left text-sm text-[var(--tf-cream)]"
         : "w-full min-w-[32rem] border-collapse bg-card text-left text-sm text-card-foreground";
-      const headerTone = canvas ? "bg-[var(--tf-color-3d5278)]" : "bg-secondary";
+      const headerTone = canvas ? "bg-[var(--tf-table-header)]" : "bg-secondary";
       blocks.push(
-        <div key={`table-${idx}`} role="region" aria-label="Scrollable response table" className="my-3 w-full overflow-x-auto rounded-lg border border-[var(--tf-color-b86e0a)]/45">
+        <div key={`table-${idx}`} role="region" aria-label="Scrollable response table" className="my-3 w-full overflow-x-auto rounded-lg border border-[var(--tf-amber-strong)]/45">
           <table className={tableTone}>
             <thead className={headerTone}>
               <tr>
@@ -150,7 +150,7 @@ export function RichText({ children, tone = "default" }: { children: string | nu
     const finalDisplayFormula = line.match(/^\s*\\\[([\s\S]+?)\\\]\s*$/);
     const lastContentLine = lines.map((candidate) => candidate.trim()).lastIndexOf(lines.slice().reverse().find((candidate) => candidate.trim())?.trim() ?? "");
     if (finalDisplayFormula && line.trim() === lines[lastContentLine]?.trim()) {
-      blocks.push(<div key={idx} className={canvas ? "my-3 max-w-full overflow-x-auto px-2 py-2 text-center text-[1.15em]" : "my-3 border border-[var(--tf-color-e4dcc8)] px-2 py-2 text-center text-[1.15em] text-navy"}><MathText>{line}</MathText></div>);
+      blocks.push(<div key={idx} className={canvas ? "my-3 max-w-full overflow-x-auto px-2 py-2 text-center text-[1.15em]" : "my-3 border border-[var(--tf-border-warm)] px-2 py-2 text-center text-[1.15em] text-navy"}><MathText>{line}</MathText></div>);
       return;
     }
     const finalLine = line.match(/^\s*(final answer|answer)\s*:\s*(.*)$/i);

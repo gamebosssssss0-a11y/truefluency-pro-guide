@@ -145,10 +145,10 @@ type ShelfItem = {
 
 function typeChip(fileType: string): { label: string; color: string; textColor: string } {
   const t = fileType.toLowerCase();
-  if (t === "pdf") return { label: "PDF", color: "var(--tf-color-8b2e2e)", textColor: "var(--tf-color-f7f3ea)" };
-  if (t === "docx" || t === "doc") return { label: "DOC", color: "var(--tf-color-1d4e89)", textColor: "var(--tf-color-f7f3ea)" };
-  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "var(--tf-color-b86e0a)", textColor: "var(--tf-color-080d19)" };
-  return { label: "TXT", color: "var(--tf-color-5c5c70)", textColor: "var(--tf-color-f7f3ea)" };
+  if (t === "pdf") return { label: "PDF", color: "var(--tf-file-pdf)", textColor: "var(--tf-cream)" };
+  if (t === "docx" || t === "doc") return { label: "DOC", color: "var(--tf-file-doc)", textColor: "var(--tf-cream)" };
+  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "var(--tf-amber-strong)", textColor: "var(--tf-ink-dark)" };
+  return { label: "TXT", color: "var(--tf-muted-warm)", textColor: "var(--tf-cream)" };
 }
 
 function TypeChip({ fileType }: { fileType: string }) {
@@ -170,7 +170,7 @@ function ReadyPill({ ready }: { ready: boolean }) {
       Ready for mocks
     </span>
   ) : (
-    <span className="rounded-full bg-[var(--tf-color-b86e0a)]/12 px-2 py-0.5 text-xs font-semibold text-accent">
+    <span className="rounded-full bg-[var(--tf-amber-strong)]/12 px-2 py-0.5 text-xs font-semibold text-accent">
       Reading only
     </span>
   );
@@ -835,7 +835,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             <label className="flex items-start gap-3 text-sm text-foreground">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 accent-[var(--tf-color-b86e0a)]"
+                className="mt-0.5 h-4 w-4 accent-[var(--tf-amber-strong)]"
                 checked={publishName}
                 onChange={(e) => setPublishName(e.target.checked)}
               />
@@ -845,7 +845,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
               <label className="flex items-start gap-3 text-sm text-foreground">
                 <input
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 accent-[var(--tf-color-b86e0a)]"
+                  className="mt-0.5 h-4 w-4 accent-[var(--tf-amber-strong)]"
                   checked={publishPhoto}
                   onChange={(e) => setPublishPhoto(e.target.checked)}
                 />

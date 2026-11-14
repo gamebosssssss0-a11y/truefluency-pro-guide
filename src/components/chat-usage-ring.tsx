@@ -24,17 +24,17 @@ function resetText(iso: string): string {
 export function ChatUsageRing({ usage, className }: { usage: ChatUsage | null; className?: string }) {
   if (!usage || usage.metering === false) return null;
   const pct = Math.max(0, Math.min(100, usage.percent));
-  const tone = pct >= 100 ? "stroke-destructive" : pct >= 80 ? "stroke-[var(--tf-color-b8480a)]" : "stroke-[var(--tf-color-b86e0a)]";
+  const tone = pct >= 100 ? "stroke-destructive" : pct >= 80 ? "stroke-[var(--tf-amber-alert)]" : "stroke-[var(--tf-amber-strong)]";
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={`Chat usage: ${pct}% used today. Tap for details.`}
-          className={`inline-flex h-7 items-center gap-1 rounded-full px-1.5 text-xs font-medium text-[var(--tf-color-878170)] transition hover:bg-secondary ${className ?? ""}`}
+          className={`inline-flex h-7 items-center gap-1 rounded-full px-1.5 text-xs font-medium text-[var(--tf-muted-ink)] transition hover:bg-secondary ${className ?? ""}`}
         >
           <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" className="-rotate-90">
-            <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} className="stroke-[var(--tf-color-e4dcc8)]" />
+            <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} className="stroke-[var(--tf-border-warm)]" />
             <circle
               cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE * (1 - pct / 100)}

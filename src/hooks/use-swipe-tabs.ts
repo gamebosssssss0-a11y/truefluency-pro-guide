@@ -76,11 +76,15 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       paintTabLight(index, 0, true);
       node.style.transition = reducedMotion() ? "none" : `transform ${SNAP_BACK_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       node.style.transform = "translate3d(0, 0, 0)";
-      node.dataset.swipeActive = "false";
+      node.dataset.swipeActive = "true";
       window.clearTimeout(settleTimer);
       settleTimer = window.setTimeout(() => {
+        if (!node.isConnected) {
+          finishPreview();
+          return;
+        }
+        node.dataset.swipeActive = "false";
         finishPreview();
-        if (!node.isConnected || node.dataset.swipeActive === "true") return;
         node.style.transition = "";
         node.style.transform = "";
         clearWillChange();
@@ -90,6 +94,10 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     const onStart = (event: TouchEvent) => {
       if (event.touches.length !== 1) {
         tracking = false;
+        if (horizontal && stage) {
+          horizontal = false;
+          restoreStage(stage);
+        }
         return;
       }
       const target = event.target;
@@ -138,7 +146,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         previewTab = ORDER[adjacentIndex] ?? null;
         previewSide = dx < 0 ? "right" : "left";
         if (previewTab && !reducedMotion()) {
-              setPreview({ tab: previewTab, side: previewSide, highlightedTab: null });
+          setPreview({ tab: previewTab, side: previewSide, highlightedTab: null });
         }
       }
       deltaX = dx;

@@ -151,7 +151,7 @@ export function BottomTabBar() {
               aria-current={on ? "page" : undefined}
               className={cn(
                 "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 px-1 pb-2 pt-1 transition",
-                on ? "text-[var(--tf-color-7a5410)] dark:text-[var(--tf-color-e0b458)]" : "text-muted-foreground hover:text-foreground",
+                on ? "text-[var(--tf-gold-ink)] dark:text-[var(--tf-gold-bright)]" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <t.icon className={cn("h-[22px] w-[22px]", on && "stroke-[2.5]")} />

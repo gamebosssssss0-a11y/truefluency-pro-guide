@@ -6,7 +6,7 @@ export function SigningInScreen() {
     <div role="status" aria-live="polite">
       <SonicUnfurlLoader
         busy
-        backgroundColor="var(--tf-color-000000)"
+        backgroundColor="var(--tf-black)"
         caption="Signing you in..."
       />
     </div>

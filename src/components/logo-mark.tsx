@@ -13,8 +13,8 @@ export const LOGO_PATH =
 /** Terminal point of the stroke, where the amber dot locks in. */
 export const LOGO_DOT = { x: 85, y: 17, r: 5.5 };
 
-export const LOGO_BG = "var(--tf-color-1b2a4a)";
-export const LOGO_ACCENT = "var(--tf-color-b88732)";
+export const LOGO_BG = "var(--tf-navy)";
+export const LOGO_ACCENT = "var(--tf-gold)";
 
 export function LogoMark({
   className,

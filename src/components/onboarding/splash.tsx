@@ -39,10 +39,10 @@ export function SplashScreen() {
         <div className="flex flex-col items-center">
           <LogoMark className="h-[120px] w-[120px] shadow-2xl" />
           <Wordmark size="lg" onDark className="mt-4" />
-          <p className="mt-3 text-center text-sm" style={{ color: "var(--tf-color-e0b458)" }}>
+          <p className="mt-3 text-center text-sm" style={{ color: "var(--tf-gold-bright)" }}>
             Smarter prep. For UI students.
           </p>
-          <p className="mt-6 text-xs" style={{ color: "var(--tf-color-f7f3ea)" }}>
+          <p className="mt-6 text-xs" style={{ color: "var(--tf-cream)" }}>
             Tap to skip
           </p>
         </div>

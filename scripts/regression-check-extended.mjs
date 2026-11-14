@@ -151,7 +151,7 @@ test("the supplied mark is shared, the splash stays static, and sign-in owns the
   assert.match(splash, /Tap to skip/);
   assert.match(signingIn, /SonicUnfurlLoader/);
   assert.match(signingIn, /busy/);
-  assert.match(signingIn, /backgroundColor="var\(--tf-color-000000\)"/);
+  assert.match(signingIn, /backgroundColor="var\(--tf-black\)"/);
   assert.match(loader, /sonic-mark-in/);
   assert.match(loader, /onDone\?\.\(\)/);
 });
