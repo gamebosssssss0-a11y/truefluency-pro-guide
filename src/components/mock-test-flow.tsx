@@ -23,7 +23,7 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { ReportQuestionButton } from "@/components/report-question";
 import { recordMockStreak } from "@/lib/streak.functions";
-import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toWhyBlocks } from "@/lib/why-blocks";
+import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toTeachingExplanation } from "@/lib/why-blocks";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
 import { createMockShare } from "@/lib/mock-sharing.functions";
@@ -1287,7 +1287,7 @@ export function MockRunScreen() {
               <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{q.topic}</div>
               <span role="progressbar" aria-label="Practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((idx + 1) / questions.length) * 100)} aria-valuetext={`Question ${idx + 1} of ${questions.length}`} className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{Math.round(((idx + 1) / questions.length) * 100)}% complete</span>
             </div>
-            <div className={`${PROSE} break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground`}><MathText>{q.question}</MathText></div>
+            <div className={`${PROSE} break-words whitespace-pre-wrap text-lg font-semibold leading-8 text-foreground`}><MathText examMath>{q.question}</MathText></div>
 
             <div className="mt-4 space-y-2">
               {q.options.map((opt, i) => {
@@ -1318,7 +1318,7 @@ export function MockRunScreen() {
                     >
                       {isCorrectOption ? <Check className="h-3.5 w-3.5" /> : isWrongSelection ? <X className="h-3.5 w-3.5" /> : on ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
                     </div>
-                    <span className="min-w-0 flex-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground"><MathText>{opt}</MathText></span>
+                    <div className="min-w-0 flex-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground"><MathText examMath>{opt}</MathText></div>
                     {mode === "tutor" && locked && isCorrectOption ? <span className="sr-only">Correct answer</span> : null}
                     {mode === "tutor" && locked && isWrongSelection ? <span className="sr-only">Your selected answer is incorrect</span> : null}
                   </button>
@@ -1329,7 +1329,6 @@ export function MockRunScreen() {
               const selected = t.answers[idx] as number;
               const wasWrong = selected !== q.correct_index;
               const explanation = q.explanation?.trim() ?? "";
-              const blocks = toWhyBlocks(explanation, wasWrong);
               const chosenText = q.options[selected] ?? "your selected option";
               const answerText = q.options[q.correct_index] ?? "the correct option";
               return (
@@ -1359,33 +1358,15 @@ export function MockRunScreen() {
                         <p className="text-muted-foreground">{QUALITY_FAIL_NOTICE}</p>
                       ) : explanation ? (
                         <>
-                          {wasWrong ? <p className="mb-1 text-muted-foreground">Your answer: <MathText>{chosenText}</MathText>. Correct answer: <MathText>{answerText}</MathText>.</p> : null}
-                          {wasWrong ? (blocks.wrong ? <MathText>{blocks.wrong}</MathText> : <p className="text-muted-foreground">The saved explanation does not include a separate reason for this option.</p>) : <MathText>{blocks.correct}</MathText>}
-                          {wasWrong ? <div className="mt-2"><h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why the correct answer is right</h4><MathText>{blocks.correct}</MathText></div> : null}
+                          {wasWrong ? <div className="mb-2 text-muted-foreground">Your answer: <MathText examMath>{chosenText}</MathText>. Correct answer: <MathText examMath>{answerText}</MathText>.</div> : null}
+                          <TeachingExplanationBlocks explanation={explanation} />
                         </>
                       ) : (
                         <p className="text-muted-foreground">No explanation was saved for this question.</p>
                       )}
                     </div>
                   </div>
-                  {!failsQualityCheck(explanation) && blocks.concept ? (
-                    <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
-                      <div className="mt-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground">
-                        <MathText>{blocks.concept}</MathText>
-                      </div>
-                    </div>
-                  ) : null}
-                  {!failsQualityCheck(explanation) && explanation.length > 180 ? (
-                    <details className="rounded-lg border border-border bg-card/60 px-3 py-2">
-                      <summary className="cursor-pointer text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
-                        Read the full saved explanation
-                      </summary>
-                      <div className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-foreground">
-                        <MathText>{explanation}</MathText>
-                      </div>
-                    </details>
-                  ) : null}
+
                 </section>
               );
             })() : null}
@@ -1973,7 +1954,7 @@ export function AttemptReviewScreen() {
                     </span>
                   </div>
 
-                  <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText>{q.question}</MathText></div>
+                  <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText examMath>{q.question}</MathText></div>
                   {q.verification?.sourceFileName ? (
                     <p className="mt-2 text-xs text-muted-foreground">
                       {q.verification.sourceUnavailable ? "Source file removed: " : "Source: "}{q.verification.sourceFileName} · {q.verification.sourceLocation || "page unavailable"}
@@ -2005,14 +1986,14 @@ export function AttemptReviewScreen() {
                               </span>
                             )}
                           </span>
-                          <span
+                          <div
                             className={cn(
                               "min-w-0 flex-1 break-words whitespace-pre-wrap text-base leading-6",
                               isAnswer || wrongPick ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
-                            <MathText>{opt}</MathText>
-                          </span>
+                            <MathText examMath>{opt}</MathText>
+                          </div>
                           {isPicked ? (
                             <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                               Your answer
@@ -2028,8 +2009,9 @@ export function AttemptReviewScreen() {
                   </div>
 
                   {selected === null ? (
-                    <p className="mt-2 text-xs italic text-muted-foreground">
-                      You left this question unanswered.
+                    <p className="mt-2 text-xs font-semibold text-muted-foreground">
+                      Not answered
+                      <span className="sr-only"> You left this question unanswered.</span>
                     </p>
                   ) : null}
 
@@ -2042,7 +2024,7 @@ export function AttemptReviewScreen() {
                   />
 
                   {explanationsUnlocked && q.explanation?.trim() ? (
-                    <WhyPanel explanation={q.explanation} wasWrong={!isCorrect} />
+                    <WhyPanel explanation={q.explanation} />
                   ) : (
                     /* Locked: lock icon only. The single price banner sits at the top. */
                     <div className="mt-3 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
@@ -2138,7 +2120,8 @@ function DifficultyChip({ difficulty }: { difficulty?: Difficulty | string | nul
   );
 }
 
-function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: boolean }) {
+
+function WhyPanel({ explanation }: { explanation: string }) {
   if (failsQualityCheck(explanation)) {
     return (
       <div className="mt-3 rounded-xl border border-border bg-background p-3">
@@ -2149,25 +2132,72 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
     );
   }
 
-  const blocks = toWhyBlocks(explanation, wasWrong);
-  const rows: { label: string; body: string }[] = [
-    { label: "Correct", body: blocks.correct },
-    ...(wasWrong && blocks.wrong ? [{ label: "Why your pick was wrong", body: blocks.wrong }] : []),
-    ...(blocks.concept ? [{ label: "Key concept", body: blocks.concept }] : []),
-  ];
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-card p-3">
+      <TeachingExplanationBlocks explanation={explanation} />
+    </div>
+  );
+}
+
+function TeachingExplanationBlocks({ explanation }: { explanation: string }) {
+  const content = toTeachingExplanation(explanation);
+  const sections = [
+    { key: "what", label: "What it tests", body: content.whatItTests, tone: "border-primary/15 bg-primary/5" },
+    { key: "plain", label: "Plain-English words", body: content.plainEnglish, tone: "border-violet-500/10 bg-violet-500/5 dark:border-violet-300/10 dark:bg-violet-400/10" },
+    { key: "rule", label: "Minimum rule", body: content.minimumRule, tone: "border-accent/20 bg-accent/10" },
+    { key: "example", label: "Easy example", body: content.easyExample, tone: "border-success/20 bg-success/10" },
+    { key: "mistake", label: "Common mistake", body: content.commonMistake, tone: "border-destructive/15 bg-destructive/5" },
+    { key: "worked", label: "Worked solution / steps", body: content.workedSolution, tone: "border-border bg-muted/40" },
+  ].filter((section) => Boolean(section.body));
+  const recapItems = [
+    { label: "The rule to remember", body: content.recap.rule },
+    { label: "Apply it here", body: content.recap.application },
+    { label: "Therefore", body: content.recap.therefore },
+  ].filter((item) => Boolean(item.body));
+  const hasRecap = recapItems.length > 0 || Boolean(content.recap.intro);
+
+  if (sections.length === 0 && !content.finalAnswer && !hasRecap) return null;
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-border bg-card p-3">
-      {rows.map((row) => (
-        <div key={row.label}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-amber">
-            {row.label}
+    <div className="space-y-2.5">
+      {sections.map((section) => (
+        <section key={section.key} className={cn("rounded-xl border px-3 py-2.5", section.tone)}>
+          <h4 className="text-xs font-semibold text-foreground">{section.label}</h4>
+          <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-7 text-foreground">
+            <MathText examMath>{section.body}</MathText>
           </div>
-          <div className="mt-1 break-words whitespace-pre-wrap text-base leading-6 text-foreground">
-            <MathText>{row.body}</MathText>
+        </section>
+      ))}
+      {content.finalAnswer ? (
+        <div className="rounded-lg border border-border bg-card px-3 py-2.5 text-foreground">
+          <h4 className="text-xs font-semibold">Final answer</h4>
+          <div className="mt-1 break-words whitespace-pre-wrap text-base font-semibold leading-7">
+            <MathText examMath>{content.finalAnswer}</MathText>
           </div>
         </div>
-      ))}
+      ) : null}
+      {hasRecap ? (
+        <section className="rounded-xl border border-accent/25 bg-accent/10 p-3">
+          <h4 className="text-xs font-semibold text-foreground">Short recap</h4>
+          {content.recap.intro ? (
+            <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-7 text-foreground">
+              <MathText examMath>{content.recap.intro}</MathText>
+            </div>
+          ) : null}
+          {recapItems.length ? (
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {recapItems.map((item) => (
+                <div key={item.label} className="min-w-0 rounded-lg border border-accent/15 bg-card/70 p-2.5">
+                  <h5 className="text-xs font-semibold text-foreground">{item.label}</h5>
+                  <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                    <MathText examMath>{item.body}</MathText>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -1518,6 +1518,8 @@ nav[aria-label="Mobile navigation"] {
   }
 }
 
+.exam-math-display .katex-display { margin: 0; }
+
 /* Functional motion stays short; disclosure content animates without max-height. */
 @keyframes explanation-unfurl {
   from { opacity: 0; transform: translateY(-6px); }

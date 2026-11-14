@@ -398,9 +398,21 @@ test("math text uses KaTeX for marked and bare formulas across practice and revi
   assert.match(math, /import katex from "katex"/);
   assert.match(math, /looksLikeBareTex/);
   assert.match(math, /compactFormula/);
+  assert.match(math, /exam-math-display/);
+  assert.match(math, /readableMathFallback/);
+  assert.match(review, /toTeachingExplanation/);
+  assert.match(review, /What it tests/);
+  assert.match(review, /Plain-English words/);
+  assert.match(review, /Minimum rule/);
+  assert.match(review, /Easy example/);
+  assert.match(review, /Common mistake/);
+  assert.match(review, /Worked solution \/ steps/);
+  assert.match(review, /The rule to remember/);
+  assert.match(review, /animate-explanation-unfurl/);
+  assert.match(review, /Not answered/);
   assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
-  assert.match(review, /<MathText>\{q\.question\}<\/MathText>/);
-  assert.match(review, /<MathText>\{opt\}<\/MathText>/);
+  assert.match(review, /<MathText(?: examMath)?>\{q\.question\}<\/MathText>/);
+  assert.match(review, /<MathText(?: examMath)?>\{opt\}<\/MathText>/);
 });
 
 test("carousel swipes stay in their track and root swipe cancels multipoint gestures", async () => {
