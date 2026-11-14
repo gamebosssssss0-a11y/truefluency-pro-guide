@@ -134,20 +134,27 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   await assert.rejects(() => read("../public/reference-home-light.html"));
 });
 
-test("splash and loading animations remain enabled and splash plays on every app entry", async () => {
+test("the supplied mark is shared, the splash stays static, and sign-in owns the animation", async () => {
   const styles = await read("../src/styles.css");
+  const mark = await read("../src/components/logo-mark.tsx");
+  const root = await read("../src/routes/__root.tsx");
   const splash = await read("../src/components/onboarding/splash.tsx");
   const loader = await read("../src/components/loading-splash.tsx");
-  assert.doesNotMatch(styles, /Final calm-motion guard/);
+  const signingIn = await read("../src/components/signing-in.tsx");
   assert.match(styles, /\.sonic-mark-in\s*\{\s*animation:\s*sonic-mark-in/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.doesNotMatch(splash, /truefluency-splash-seen|sessionStorage|SPLASH_HOLD_MS/);
+  assert.match(mark, /LOGO_MARK_URL = "\/truefluency-mark\.jpg"/);
+  assert.match(root, /href: "\/truefluency-mark\.jpg", type: "image\/jpeg"/);
+  assert.doesNotMatch(splash, /SonicUnfurlLoader/);
   assert.match(splash, /Plays on every app entry/);
-  assert.match(splash, /onDone=\{\(\) => advance\(\)\}/);
+  assert.match(splash, /window\.setTimeout\(advance, 1900\)/);
+  assert.match(splash, /Tap to skip/);
+  assert.match(signingIn, /SonicUnfurlLoader/);
+  assert.match(signingIn, /busy/);
+  assert.match(signingIn, /backgroundColor="#000000"/);
   assert.match(loader, /sonic-mark-in/);
   assert.match(loader, /onDone\?\.\(\)/);
 });
-
 test("chat thinking animation remains visible independently of the empty-thread branch", async () => {
   const chat = await read("../src/components/chatbot.tsx");
   const indicator = chat.indexOf("          {isSending && streamingBubbleId === null ? (");

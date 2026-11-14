@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useProfile } from "@/lib/profile-store";
-import { SonicUnfurlLoader } from "@/components/loading-splash";
+import { LogoMark, LOGO_BG } from "@/components/logo-mark";
+import { Wordmark } from "@/components/brand";
 
-/** Plays on every app entry; the animation completes unless the user skips it. */
+/** Plays on every app entry; the branded screen advances unless the user skips it. */
 export function SplashScreen() {
   const { go, profile } = useProfile();
   const advanced = useRef(false);
@@ -17,10 +18,12 @@ export function SplashScreen() {
   useEffect(() => {
     const onPointer = () => advance();
     const onKey = () => advance();
+    const timer = window.setTimeout(advance, 1900);
     window.addEventListener("pointerdown", onPointer);
     window.addEventListener("keydown", onKey);
 
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("pointerdown", onPointer);
       window.removeEventListener("keydown", onKey);
     };
@@ -29,11 +32,21 @@ export function SplashScreen() {
   return (
     <>
       <h1 className="sr-only">TrueFluency Pro: AI Exam Prep for UI Students</h1>
-      <SonicUnfurlLoader
-        onDone={() => advance()}
-        caption="Smarter prep. For UI students."
-        tapHint="Tap to skip"
-      />
+      <div
+        className="relative grid min-h-screen w-full place-items-center px-6"
+        style={{ backgroundColor: LOGO_BG }}
+      >
+        <div className="flex flex-col items-center">
+          <LogoMark className="h-[120px] w-[120px] shadow-2xl" />
+          <Wordmark size="lg" onDark className="mt-4" />
+          <p className="mt-3 text-center text-sm" style={{ color: "#E0B458" }}>
+            Smarter prep. For UI students.
+          </p>
+          <p className="mt-6 text-xs" style={{ color: "#F7F3EA" }}>
+            Tap to skip
+          </p>
+        </div>
+      </div>
     </>
   );
 }
