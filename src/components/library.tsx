@@ -37,6 +37,40 @@ import {
 const PdfViewer = lazy(() => import("@/components/pdf-viewer").then((module) => ({ default: module.PdfViewer })));
 const ChatbotScreen = lazy(() => import("@/components/chatbot").then((module) => ({ default: module.ChatbotScreen })));
 
+function AuthorizedPreviewImage({
+  url,
+  headers,
+  alt,
+}: {
+  url: string;
+  headers?: Record<string, string>;
+  alt: string;
+}) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    let createdUrl: string | null = null;
+    void fetch(url, { headers, signal: controller.signal, cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("This file is no longer available.");
+        return response.blob();
+      })
+      .then((blob) => {
+        createdUrl = URL.createObjectURL(blob);
+        setObjectUrl(createdUrl);
+      })
+      .catch(() => setObjectUrl(null));
+    return () => {
+      controller.abort();
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [url, headers]);
+
+  return objectUrl
+    ? <img src={objectUrl} alt={alt} className="mx-auto h-full object-contain" />
+    : <div role="status" className="grid h-full place-items-center text-sm text-muted-foreground">Opening preview…</div>;
+}
+
 const READY_MIN_CHARS = 50;
 
 type Rail = "locker" | "shelf";
