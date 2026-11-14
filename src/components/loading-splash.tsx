@@ -52,12 +52,14 @@ export function SonicUnfurlLoader({
   caption,
   tapHint,
   className,
+  backgroundColor = LOGO_BG,
 }: {
   onDone?: () => void;
   busy?: boolean;
   caption?: string;
   tapHint?: string;
   className?: string;
+  backgroundColor?: string;
 }) {
   const particles = useMemo(makeParticles, []);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -98,7 +100,7 @@ export function SonicUnfurlLoader({
   return (
     <div
       className={cn("relative grid min-h-screen w-full place-items-center px-6", className)}
-      style={{ backgroundColor: LOGO_BG }}
+      style={{ backgroundColor }}
     >
       <div className="flex flex-col items-center">
         {/* Mark */}
