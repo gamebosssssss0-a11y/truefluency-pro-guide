@@ -50,6 +50,7 @@ function AuthorizedPreviewImage({
   useEffect(() => {
     const controller = new AbortController();
     let createdUrl: string | null = null;
+    setObjectUrl(null);
     void fetch(url, { headers, signal: controller.signal, cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error("This file is no longer available.");
