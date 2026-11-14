@@ -12,7 +12,7 @@ import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, ZoomIn, ZoomO
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
-import { getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
+import { deleteCachedPdf, getCachedPdf, putCachedPdf } from "@/lib/pdf-cache";
 import { toast } from "sonner";
 
 export const MAX_PREVIEW_PAGES = 800;
@@ -252,6 +252,10 @@ export function PdfViewer({
     void (async () => {
       try {
         const pdfjs = await loadPdfjs();
+        if (disableCache && fileKey) {
+          await deleteCachedPdf(fileKey);
+          if (memoryCache?.key === fileKey) memoryCache = null;
+        }
         const cached = disableCache ? null :
           memoryCache && fileKey && memoryCache.key === fileKey
             ? memoryCache.buffer

@@ -88,3 +88,15 @@ export async function putCachedPdf(fileKey: string | undefined, buffer: ArrayBuf
     /* private mode or storage full: streaming still works */
   }
 }
+
+/** Remove a previously cached copy when it becomes revocation-sensitive. */
+export async function deleteCachedPdf(fileKey?: string) {
+  if (!fileKey || !available()) return;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.delete(requestUrl(fileKey));
+    writeIndex(readIndex().filter((entry) => entry.key !== fileKey));
+  } catch {
+    /* cache cleanup is best effort; future opens still require the server */
+  }
+}
