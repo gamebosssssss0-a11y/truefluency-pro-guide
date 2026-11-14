@@ -200,6 +200,7 @@ function SharedFilePage() {
                     url={share.previewUrl}
                     fileName={share.file_name}
                     fileKey={`share:${token}`}
+                    disableCache
                     onCancel={() => setPreviewOff(true)}
                   />
                 ) : share.previewUrl ? (
