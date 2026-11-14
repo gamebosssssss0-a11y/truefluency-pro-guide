@@ -426,13 +426,6 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
   if (!resolved) return null;
   const { share, material } = resolved;
 
-  let previewUrl: string | null = null;
-  try {
-    previewUrl = await r2.presignDownload({ path: material.file_path, expiresInSeconds: 60 * 30 });
-  } catch {
-    previewUrl = null;
-  }
-
   return {
     token,
     file_name: material.file_name,
@@ -443,14 +436,14 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
     peer_alias: (
       await attributionFor(material.user_id, material.show_owner_name, material.show_owner_photo)
     ).peer_alias,
-    previewUrl,
+    previewUrl: `/api/file-preview?shareToken=${encodeURIComponent(token)}`,
     usesLeft: Math.max(0, share.max_uses - share.use_count),
     maxUses: share.max_uses,
   };
 }
 
 /** Signed, time limited preview of a published shelf file. No download UI. */
-export async function shelfPreviewUrl(materialId: string): Promise<{
+export async function shelfPreviewUrl(materialId: string, viewerId: string): Promise<{
   url: string | null;
   file_name: string;
   file_type: string;
@@ -462,6 +455,8 @@ export async function shelfPreviewUrl(materialId: string): Promise<{
     .from("course_materials")
     .select("id, user_id, file_path, file_name, file_type, course_code, published, extracted_content")
     .eq("id", materialId)
+    .neq("user_id", viewerId)
+    .eq("is_peer_copy", false)
     .maybeSingle();
   if (
     !material ||
@@ -470,18 +465,42 @@ export async function shelfPreviewUrl(materialId: string): Promise<{
   ) {
     return null;
   }
-  let url: string | null = null;
-  try {
-    url = await r2.presignDownload({ path: material.file_path, expiresInSeconds: 60 * 30 });
-  } catch {
-    url = null;
-  }
   return {
-    url,
+    url: `/api/file-preview?materialId=${encodeURIComponent(materialId)}`,
     file_name: material.file_name,
     file_type: material.file_type,
     course_code: material.course_code,
     readyForMocks: ready(material.extracted_content),
+  };
+}
+
+/** Fetch a one-file share only while the link remains active; never issue a reusable storage URL. */
+export async function readSharePreview(token: string, range?: string) {
+  const resolved = await resolveShare(token);
+  if (!resolved) return null;
+  const { material } = resolved;
+  if (!isOwnedMaterialPath(material.file_path, material.user_id)) return null;
+  return {
+    file: await r2.readDownloadRange({ path: material.file_path, range }),
+    mimeType: material.mime_type,
+  };
+}
+
+/** Fetch a shelf file only while it remains published and visible to this viewer. */
+export async function readShelfPreview(materialId: string, viewerId: string, range?: string) {
+  const db = admin();
+  const { data: material } = await db
+    .from("course_materials")
+    .select("id, user_id, file_path, mime_type, published, is_peer_copy")
+    .eq("id", materialId)
+    .eq("published", true)
+    .eq("is_peer_copy", false)
+    .neq("user_id", viewerId)
+    .maybeSingle();
+  if (!material || !material.user_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
+  return {
+    file: await r2.readDownloadRange({ path: material.file_path, range }),
+    mimeType: material.mime_type,
   };
 }
 
