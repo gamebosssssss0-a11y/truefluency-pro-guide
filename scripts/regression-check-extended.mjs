@@ -287,6 +287,22 @@ test("peer share use limits are claimed atomically and failed claims roll back c
   assert.match(server, /if \(claimError \|\| !claimed\) \{[\s\S]*\.delete\(\)\.eq\("id", inserted\.id\)[\s\S]*deleteObject\(destPath\)/);
 });
 
+test("file previews recheck share or shelf access on every request and are not cached", async () => {
+  const route = await read("../src/routes/api/file-preview.ts");
+  const server = await read("../src/lib/library.server.ts");
+  const viewer = await read("../src/components/pdf-viewer.tsx");
+  assert.match(route, /readSharePreview\(shareToken, range\)/);
+  assert.match(route, /readShelfPreview\(materialId!, viewerId, range\)/);
+  assert.match(route, /Cache-Control": "private, no-store, max-age=0"/);
+  assert.match(server, /\.eq\("published", true\)/);
+  assert.match(server, /resolveShare\(token\)/);
+  assert.match(server, /url: `\/api\/file-preview\?shareToken=/);
+  assert.match(server, /url: `\/api\/file-preview\?materialId=/);
+  assert.match(viewer, /disableCache \? null/);
+  assert.match(viewer, /disableCache\) memoryCache =/);
+  assert.match(viewer, /!disableCache\) \{/);
+});
+
 
 test("theme follows the browser color scheme and does not force dark on app entry", async () => {
   const theme = await read("../src/lib/theme.tsx");
