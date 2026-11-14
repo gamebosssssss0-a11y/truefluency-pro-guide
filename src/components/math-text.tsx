@@ -57,7 +57,6 @@ function looksLikeBareTex(value: string) {
     && BARE_TEX_COMMAND.test(tex)
     && /[{}^_=]/.test(tex);
   const compactFormula = /^[A-Za-z0-9(){}^_=+\-*\/.,]+$/.test(tex) && /[=^_]/.test(tex);
-    && /[=^_]/.test(tex);
   return commandFormula || compactFormula;
 }
 
