@@ -288,7 +288,7 @@ test("peer share use limits are claimed atomically and failed claims roll back c
 });
 
 test("file previews recheck share or shelf access on every request and are not cached", async () => {
-  const route = await read("../src/routes/api/file-preview.ts");
+  const route = await read("../src/routes/api/public/file-preview.ts");
   const server = await read("../src/lib/library.server.ts");
   const viewer = await read("../src/components/pdf-viewer.tsx");
   assert.match(route, /readSharePreview\(shareToken, range\)/);

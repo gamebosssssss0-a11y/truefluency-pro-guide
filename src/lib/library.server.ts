@@ -442,7 +442,7 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
   };
 }
 
-/** Signed, time limited preview of a published shelf file. No download UI. */
+/** Revocation-aware preview of a published shelf file. No download UI. */
 export async function shelfPreviewUrl(materialId: string, viewerId: string): Promise<{
   url: string | null;
   file_name: string;
