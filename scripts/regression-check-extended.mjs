@@ -31,9 +31,13 @@ test("shared mock sign-in handoff returns to the same preview", async () => {
   assert.match(profile, /returnTo\.startsWith\("\/mock-share\/"\)/);
 });
 
-test("Tutor Mode hides the Key Concept section when no concept is saved", async () => {
+test("mock teaching blocks omit empty explanation sections without placeholders", async () => {
   const flow = await read("../src/components/mock-test-flow.tsx");
-  assert.match(flow, /!failsQualityCheck\(explanation\) && blocks\.concept \?/);
+  const helpers = await read("../src/lib/why-blocks.ts");
+  assert.match(flow, /TeachingExplanationBlocks explanation=\{explanation\}/);
+  assert.match(flow, /\.filter\(\(section\) => Boolean\(section\.body\)\)/);
+  assert.match(flow, /\.filter\(\(item\) => Boolean\(item\.body\)\)/);
+  assert.match(helpers, /export function toTeachingExplanation/);
   assert.doesNotMatch(flow, /A separate key concept was not included/);
   assert.doesNotMatch(flow, /The key concept is not available for this question/);
 });
