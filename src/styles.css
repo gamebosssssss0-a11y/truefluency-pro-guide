@@ -55,6 +55,13 @@
   --color-chat-page: var(--chat-page);
   --color-chat-card: var(--chat-card);
   --color-chat-foreground: var(--chat-foreground);
+  --color-tf-canvas: var(--tf-canvas);
+  --color-tf-card: var(--tf-card);
+  --color-tf-ink: var(--tf-ink);
+  --color-tf-muted: var(--tf-muted);
+  --color-tf-border: var(--tf-border);
+  --color-tf-navy: var(--tf-navy);
+  --color-tf-gold: var(--tf-gold);
 }
 
 @layer base {
@@ -146,7 +153,7 @@
   [class*="bg-sand/"],
   .bg-cream,
   [class*="bg-cream/"] {
-    --foreground: #1B2A4A;
+    --foreground: var(--tf-ink);
     --card-foreground: #1B2A4A;
     --muted-foreground: #5C5C70;
     color: #1B2A4A;
@@ -332,6 +339,9 @@
   }
   .tab-swipe-stage {
     scroll-behavior: auto;
+  }
+  [data-tab-indicator-track] {
+    transition-duration: 0ms !important;
   }
 }
 
@@ -854,6 +864,61 @@ details[open] > :not(summary) {
 /* One final cream, navy and gold token system. Primary controls use navy on light
    surfaces and gold with navy text in dark mode for consistent contrast. */
 :root {
+  --tf-canvas: #F5F2EA;
+  --tf-card: #FFFDF8;
+  --tf-ink: #172338;
+  --tf-muted: #465366;
+  --tf-border: #D0C9BA;
+  --tf-navy: #1B2A4A;
+  --tf-gold: #B88732;
+  --color-tf-canvas: var(--tf-canvas);
+  --color-tf-card: var(--tf-card);
+  --color-tf-ink: var(--tf-ink);
+  --color-tf-muted: var(--tf-muted);
+  --color-tf-border: var(--tf-border);
+  --color-tf-navy: var(--tf-navy);
+  --color-tf-gold: var(--tf-gold);
+  --tf-radius-card: 20px;
+  --tf-radius-control: 14px;
+  --tf-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --tf-ease-press: cubic-bezier(0.16, 1, 0.3, 1);
+  --tf-duration-micro: 120ms;
+  --tf-duration-standard: 240ms;
+
+  --tf-color-4f46e5: #4F46E5;
+  --tf-color-fff8e7: #FFF8E7;
+  --tf-color-b8480a: #B8480A;
+  --tf-color-b86e0a: #B86E0A;
+  --tf-color-878170: #878170;
+  --tf-color-e4dcc8: #E4DCC8;
+  --tf-color-1b2a4a: #1B2A4A;
+  --tf-color-f7f3ea: #F7F3EA;
+  --tf-color-f3e6c8: #F3E6C8;
+  --tf-color-ead6ae: #EAD6AE;
+  --tf-color-784c12: #784C12;
+  --tf-color-a08a64: #A08A64;
+  --tf-color-dfd1b8: #DFD1B8;
+  --tf-color-477a5b: #477A5B;
+  --tf-color-8b2e2e: #8B2E2E;
+  --tf-color-1d4e89: #1D4E89;
+  --tf-color-080d19: #080D19;
+  --tf-color-c4b8a0: #C4B8A0;
+  --tf-color-5c5c70: #5C5C70;
+  --tf-color-e0b458: #E0B458;
+  --tf-color-b88732: #B88732;
+  --tf-color-47835e: #47835E;
+  --tf-color-c8c5bd: #C8C5BD;
+  --tf-color-a7a196: #A7A196;
+  --tf-color-817b6f: #817B6F;
+  --tf-color-fbf7ee: #FBF7EE;
+  --tf-color-9b9a93: #9B9A93;
+  --tf-color-4285f4: #4285F4;
+  --tf-color-34a853: #34A853;
+  --tf-color-fbbc05: #FBBC05;
+  --tf-color-ea4335: #EA4335;
+  --tf-color-3d5278: #3D5278;
+  --tf-color-000000: #000000;
+  --tf-color-7a5410: #7A5410;
   --radius: 0.875rem;
   --tf-page-title-size: 28px;
   --tf-page-title-line: 34px;
@@ -865,33 +930,33 @@ details[open] > :not(summary) {
   --tf-secondary-line: 20px;
   --tf-caption-size: 12px;
   --tf-caption-line: 16px;
-  --surface-base: #F7F3EA;
-  --surface-card: #FFFDF8;
-  --text-primary: #1B2A4A;
-  --text-secondary: #515B6B;
-  --background: #F7F3EA;
-  --foreground: #1B2A4A;
-  --surface: #FFFDF8;
-  --card: #FFFDF8;
-  --card-foreground: #1B2A4A;
-  --popover: #FFFDF8;
-  --popover-foreground: #1B2A4A;
-  --primary: #1B2A4A;
-  --primary-foreground: #F7F3EA;
+  --surface-base: var(--tf-canvas);
+  --surface-card: var(--tf-card);
+  --text-primary: var(--tf-ink);
+  --text-secondary: var(--tf-muted);
+  --background: var(--tf-canvas);
+  --foreground: var(--tf-ink);
+  --surface: var(--tf-card);
+  --card: var(--tf-card);
+  --card-foreground: var(--tf-ink);
+  --popover: var(--tf-card);
+  --popover-foreground: var(--tf-ink);
+  --primary: var(--tf-navy);
+  --primary-foreground: var(--tf-canvas);
   --secondary: #EEE8DA;
-  --secondary-foreground: #1B2A4A;
+  --secondary-foreground: var(--tf-ink);
   --muted: #EEE8DA;
   --muted-foreground: #515B6B;
-  --accent: #B88732;
-  --accent-foreground: #1B2A4A;
+  --accent: var(--tf-gold);
+  --accent-foreground: var(--tf-navy);
   --accent-on-sand: #65420D;
-  --border: #E4DCC8;
+  --border: var(--tf-border);
   --input: #887E6C;
-  --ring: #B88732;
-  --cream: #F7F3EA;
+  --ring: var(--tf-gold);
+  --cream: var(--tf-canvas);
   --sand: #F3E6C8;
-  --ink: #1B2A4A;
-  --brand-gold: #B88732;
+  --ink: var(--tf-navy);
+  --brand-gold: var(--tf-gold);
   --state-success: #166534;
   --state-error: #991B1B;
   --success: #166534;
@@ -905,41 +970,47 @@ details[open] > :not(summary) {
   --good: #166534;
   --warn: #854D0E;
   --bad: #991B1B;
-  --chat-page: #F7F3EA;
-  --chat-card: #FFFDF8;
-  --chat-foreground: #1B2A4A;
+  --chat-page: var(--tf-canvas);
+  --chat-card: var(--tf-card);
+  --chat-foreground: var(--tf-ink);
   --pill-text-l: 30%;
-  --tab-light-color: #B88732;
+  --tab-light-color: var(--tf-gold);
 }
 html.dark {
   color-scheme: dark;
-  --surface-base: #101827;
-  --surface-card: #1A2638;
-  --text-primary: #F7F3EA;
-  --text-secondary: #C5CCD6;
-  --background: #101827;
-  --foreground: #F7F3EA;
-  --surface: #1A2638;
-  --card: #1A2638;
-  --card-foreground: #F7F3EA;
-  --popover: #1A2638;
-  --popover-foreground: #F7F3EA;
-  --primary: #E0B458;
+  --tf-canvas: #101827;
+  --tf-card: #1A2638;
+  --tf-ink: #F5F2EA;
+  --tf-muted: #C5CCD6;
+  --tf-border: #3B485A;
+  --tf-gold: #E0B458;
+  --surface-base: var(--tf-canvas);
+  --surface-card: var(--tf-card);
+  --text-primary: var(--tf-ink);
+  --text-secondary: var(--tf-muted);
+  --background: var(--tf-canvas);
+  --foreground: var(--tf-ink);
+  --surface: var(--tf-card);
+  --card: var(--tf-card);
+  --card-foreground: var(--tf-ink);
+  --popover: var(--tf-card);
+  --popover-foreground: var(--tf-ink);
+  --primary: var(--tf-gold);
   --primary-foreground: #1B2A4A;
   --secondary: #253247;
-  --secondary-foreground: #F7F3EA;
+  --secondary-foreground: var(--tf-ink);
   --muted: #253247;
   --muted-foreground: #C5CCD6;
-  --accent: #E0B458;
+  --accent: var(--tf-gold);
   --accent-foreground: #1B2A4A;
   --accent-on-sand: #F5D98E;
-  --border: #3B485A;
+  --border: var(--tf-border);
   --input: var(--text-secondary);
-  --ring: #E0B458;
+  --ring: var(--tf-gold);
   --cream: #F7F3EA;
   --sand: #3A3428;
   --ink: #F7F3EA;
-  --brand-gold: #E0B458;
+  --brand-gold: var(--tf-gold);
   --state-success: #86D8A8;
   --state-error: #FDA4AF;
   --success: #86D8A8;
@@ -953,11 +1024,11 @@ html.dark {
   --good: #86D8A8;
   --warn: #F2C27E;
   --bad: #FDA4AF;
-  --chat-page: #101827;
-  --chat-card: #1A2638;
-  --chat-foreground: #F7F3EA;
+  --chat-page: var(--tf-canvas);
+  --chat-card: var(--tf-card);
+  --chat-foreground: var(--tf-ink);
   --pill-text-l: 82%;
-  --tab-light-color: #E0B458;
+  --tab-light-color: var(--tf-gold);
 }
 
 html, body, #root {
@@ -1472,4 +1543,31 @@ h2 { font-family: Inter, var(--font-sans); font-size: var(--tf-section-title-siz
 }
 .dark .reference-home .reference-home-card {
   box-shadow: none;
+}
+
+/* Phase 2 visual polish stays scoped to the existing screens. */
+.tf-visual-phase2 :is(section, article, div)[class*="rounded-2xl"][class*="border"][class*="bg-card"] {
+  border-radius: var(--tf-radius-card);
+}
+.tf-visual-phase2 .chat-message-content {
+  font-size: var(--tf-body-size);
+  line-height: 1.5;
+}
+.tf-visual-phase2 .chat-connected-context {
+  min-width: 0;
+  align-items: center;
+}
+.tf-visual-phase2 .chat-connected-context > span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+.tf-visual-phase2 :where(button, [role="button"]) {
+  transition-duration: var(--tf-duration-micro);
+}
+.tf-visual-phase2 :where(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):active {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tf-visual-phase2 :where(button, [role="button"]):active { transform: none; }
 }

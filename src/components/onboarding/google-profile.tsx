@@ -75,7 +75,7 @@ export function GoogleProfileScreen() {
     >
       <div className="space-y-5">
         {/* Photo, optional */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#E4DCC8] bg-card p-4">
+        <div className="flex items-center gap-4 rounded-2xl border border-[var(--tf-color-e4dcc8)] bg-card p-4">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -89,7 +89,7 @@ export function GoogleProfileScreen() {
             ) : (
               initial
             )}
-            <span className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full bg-[#B86E0A] text-[#080D19]">
+            <span className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full bg-[var(--tf-color-b86e0a)] text-[var(--tf-color-080d19)]">
               <Camera className="h-3.5 w-3.5" />
             </span>
           </button>
@@ -146,7 +146,7 @@ export function GoogleProfileScreen() {
 
         <Button
           size="lg"
-          className="w-full bg-[#B86E0A] text-[#080D19] hover:bg-[#B86E0A]"
+          className="w-full bg-[var(--tf-color-b86e0a)] text-[var(--tf-color-080d19)] hover:bg-[var(--tf-color-b86e0a)]"
           disabled={!canContinue}
           onClick={() => void finish()}
         >

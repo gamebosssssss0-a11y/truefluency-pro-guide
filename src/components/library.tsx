@@ -145,10 +145,10 @@ type ShelfItem = {
 
 function typeChip(fileType: string): { label: string; color: string; textColor: string } {
   const t = fileType.toLowerCase();
-  if (t === "pdf") return { label: "PDF", color: "#8B2E2E", textColor: "#F7F3EA" };
-  if (t === "docx" || t === "doc") return { label: "DOC", color: "#1D4E89", textColor: "#F7F3EA" };
-  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "#B86E0A", textColor: "#080D19" };
-  return { label: "TXT", color: "#5C5C70", textColor: "#F7F3EA" };
+  if (t === "pdf") return { label: "PDF", color: "var(--tf-color-8b2e2e)", textColor: "var(--tf-color-f7f3ea)" };
+  if (t === "docx" || t === "doc") return { label: "DOC", color: "var(--tf-color-1d4e89)", textColor: "var(--tf-color-f7f3ea)" };
+  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "var(--tf-color-b86e0a)", textColor: "var(--tf-color-080d19)" };
+  return { label: "TXT", color: "var(--tf-color-5c5c70)", textColor: "var(--tf-color-f7f3ea)" };
 }
 
 function TypeChip({ fileType }: { fileType: string }) {
@@ -170,7 +170,7 @@ function ReadyPill({ ready }: { ready: boolean }) {
       Ready for mocks
     </span>
   ) : (
-    <span className="rounded-full bg-[#B86E0A]/12 px-2 py-0.5 text-xs font-semibold text-accent">
+    <span className="rounded-full bg-[var(--tf-color-b86e0a)]/12 px-2 py-0.5 text-xs font-semibold text-accent">
       Reading only
     </span>
   );
@@ -530,7 +530,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   };
 
   return (
-    <div className="min-h-screen text-foreground">
+    <div className="tf-visual-phase2 min-h-screen text-foreground">
       <div className="mx-auto max-w-md px-5 pb-28 pt-6 md:max-w-3xl">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -835,7 +835,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             <label className="flex items-start gap-3 text-sm text-foreground">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 accent-[#B86E0A]"
+                className="mt-0.5 h-4 w-4 accent-[var(--tf-color-b86e0a)]"
                 checked={publishName}
                 onChange={(e) => setPublishName(e.target.checked)}
               />
@@ -845,7 +845,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
               <label className="flex items-start gap-3 text-sm text-foreground">
                 <input
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 accent-[#B86E0A]"
+                  className="mt-0.5 h-4 w-4 accent-[var(--tf-color-b86e0a)]"
                   checked={publishPhoto}
                   onChange={(e) => setPublishPhoto(e.target.checked)}
                 />

@@ -908,7 +908,7 @@ function PlanOutput({
                 )}
                 style={
                   isHighestLeverage
-                    ? { backgroundColor: "#FFF8E7", borderWidth: "1.5px" }
+                    ? { backgroundColor: "var(--tf-color-fff8e7)", borderWidth: "1.5px" }
                     : undefined
                 }
               >

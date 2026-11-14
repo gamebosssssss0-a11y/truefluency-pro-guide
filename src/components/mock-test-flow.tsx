@@ -344,7 +344,7 @@ export function MockGenerationScreen() {
 
   if (refused) {
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={STATUS}>
           <PaywallNotice
             feature="mock_sets"
@@ -359,7 +359,7 @@ export function MockGenerationScreen() {
 
   if (error) {
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={STATUS}>
           <ErrorCard
             title={error.includes("verified questions") ? "Not enough verified questions" : "Mock didn't finish"}
@@ -387,7 +387,7 @@ export function MockGenerationScreen() {
 
 
   return (
-    <div className="study-utility-page min-h-screen">
+    <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={STATUS}>
         <div className="absolute left-5 top-6">
           <HeaderLogo />
@@ -668,7 +668,7 @@ export function MockConfigScreen() {
   };
 
   return (
-    <div className="study-utility-page min-h-screen">
+    <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -1133,7 +1133,7 @@ export function MockRunScreen() {
 
   if (!t) {
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <section className="mt-6 rounded-2xl border border-border bg-card p-5">
@@ -1154,7 +1154,7 @@ export function MockRunScreen() {
       setNow(Date.now());
     };
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className="mx-auto w-full max-w-[40rem] px-4 pt-12 sm:px-6">
           <section className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
             <h1 className="font-display text-xl font-semibold text-foreground">Your test is saved</h1>
@@ -1169,7 +1169,7 @@ export function MockRunScreen() {
 
   if (questions.length === 0) {
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
           <section className="mt-6 rounded-2xl border border-border bg-card p-5">
             <h1 className="font-display text-lg font-semibold text-foreground">This test's questions weren't saved</h1>
@@ -1233,7 +1233,7 @@ export function MockRunScreen() {
   };
 
   return (
-    <div className="study-utility-page min-h-screen">
+    <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={`${SCREEN} pb-8 pt-6`}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1354,7 +1354,7 @@ export function MockRunScreen() {
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
                     </h3>
-                    <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                    <div className="mt-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground">
                       {failsQualityCheck(explanation) ? (
                         <p className="text-muted-foreground">{QUALITY_FAIL_NOTICE}</p>
                       ) : explanation ? (
@@ -1371,7 +1371,7 @@ export function MockRunScreen() {
                   {!failsQualityCheck(explanation) && blocks.concept ? (
                     <div>
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key concept</h3>
-                      <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      <div className="mt-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground">
                         <MathText>{blocks.concept}</MathText>
                       </div>
                     </div>
@@ -1381,7 +1381,7 @@ export function MockRunScreen() {
                       <summary className="cursor-pointer text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
                         Read the full saved explanation
                       </summary>
-                      <div className="mt-2 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      <div className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-foreground">
                         <MathText>{explanation}</MathText>
                       </div>
                     </details>
@@ -1678,7 +1678,7 @@ export function MockResultScreen() {
 
   if (!attempt) {
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">No result to show.</p>
@@ -1705,7 +1705,7 @@ export function MockResultScreen() {
   }
 
   return (
-    <div className="study-utility-page min-h-screen">
+    <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -1823,7 +1823,7 @@ export function AttemptReviewScreen() {
 
   if (!attempt) {
     return (
-      <div className="study-utility-page min-h-screen">
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
           <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
           <p className="mt-6 text-sm text-muted-foreground">That attempt is no longer available.</p>
@@ -1873,7 +1873,7 @@ export function AttemptReviewScreen() {
   };
 
   return (
-    <div className="study-utility-page min-h-screen">
+    <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
@@ -2007,7 +2007,7 @@ export function AttemptReviewScreen() {
                           </span>
                           <span
                             className={cn(
-                              "min-w-0 flex-1 break-words whitespace-pre-wrap text-[15px] leading-6",
+                              "min-w-0 flex-1 break-words whitespace-pre-wrap text-base leading-6",
                               isAnswer || wrongPick ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
@@ -2163,7 +2163,7 @@ function WhyPanel({ explanation, wasWrong }: { explanation: string; wasWrong: bo
           <div className="text-xs font-semibold uppercase tracking-wider text-amber">
             {row.label}
           </div>
-          <div className="mt-1 break-words whitespace-pre-wrap text-[15px] leading-6 text-foreground">
+          <div className="mt-1 break-words whitespace-pre-wrap text-base leading-6 text-foreground">
             <MathText>{row.body}</MathText>
           </div>
         </div>

@@ -224,7 +224,7 @@ export function FlashcardsScreen() {
       <div className="mx-auto max-w-md px-5 pb-24 pt-[max(1.5rem,env(safe-area-inset-top))] md:pb-8">
         <button
           onClick={returnToOrigin}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-[#F3E6C8]/80 hover:text-[#F7F3EA] dark:text-[#C4B8A0] dark:hover:text-[#F7F3EA]"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-[var(--tf-color-f3e6c8)]/80 hover:text-[var(--tf-color-f7f3ea)] dark:text-[var(--tf-color-c4b8a0)] dark:hover:text-[var(--tf-color-f7f3ea)]"
         >
           <ArrowLeft className="h-4 w-4" /> Back: Home
         </button>
@@ -248,7 +248,7 @@ export function FlashcardsScreen() {
         </div>
 
         <div className="mb-8">
-          <label htmlFor="flashcards-course-filter" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]/80 dark:text-[#C4B8A0]">
+          <label htmlFor="flashcards-course-filter" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--tf-color-f3e6c8)]/80 dark:text-[var(--tf-color-c4b8a0)]">
             Course
           </label>
           <select
@@ -505,7 +505,7 @@ export function FlashcardsReviewScreen() {
         <div className="mb-6 flex items-center justify-between">
           <button
             onClick={() => navigate("flashcards")}
-            className="inline-flex items-center gap-1.5 text-sm text-[#F3E6C8]/80 hover:text-[#F7F3EA] dark:text-[#C4B8A0] dark:hover:text-[#F7F3EA]"
+            className="inline-flex items-center gap-1.5 text-sm text-[var(--tf-color-f3e6c8)]/80 hover:text-[var(--tf-color-f7f3ea)] dark:text-[var(--tf-color-c4b8a0)] dark:hover:text-[var(--tf-color-f7f3ea)]"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>

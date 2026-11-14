@@ -102,20 +102,20 @@ function ChipShell({ children }: { children: React.ReactNode }) {
       onClick={() => navigate("upgrade")}
       className="reference-plan-chip mb-6 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
     >
-      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[#1B2A4A]">
+      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[var(--tf-color-1b2a4a)]">
         {children}
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-[#1B2A4A]/60" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--tf-color-1b2a4a)]/60" />
     </button>
   );
 }
 
 const TYPE_CHIP: Record<string, { label: string; color: string; textColor: string }> = {
-  pdf: { label: "PDF", color: "#8B2E2E", textColor: "#F7F3EA" },
-  docx: { label: "DOC", color: "#1D4E89", textColor: "#F7F3EA" },
-  pptx: { label: "PPT", color: "#B86E0A", textColor: "#080D19" },
-  image: { label: "IMG", color: "#1B2A4A", textColor: "#F7F3EA" },
-  pasted: { label: "TXT", color: "#1B2A4A", textColor: "#F7F3EA" },
+  pdf: { label: "PDF", color: "var(--tf-color-8b2e2e)", textColor: "var(--tf-color-f7f3ea)" },
+  docx: { label: "DOC", color: "var(--tf-color-1d4e89)", textColor: "var(--tf-color-f7f3ea)" },
+  pptx: { label: "PPT", color: "var(--tf-color-b86e0a)", textColor: "var(--tf-color-080d19)" },
+  image: { label: "IMG", color: "var(--tf-color-1b2a4a)", textColor: "var(--tf-color-f7f3ea)" },
+  pasted: { label: "TXT", color: "var(--tf-color-1b2a4a)", textColor: "var(--tf-color-f7f3ea)" },
 };
 
 /** Latest file this student uploaded themselves. Peer copies never appear here. */
@@ -264,11 +264,11 @@ function NextStepCard({ ownMaterials }: { ownMaterials: CourseMaterial[] | null 
 
   return (
         <div className="home-next-card mb-6 rounded-[20px] border border-border p-5">
-      <div className="text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]">
+      <div className="text-xs font-semibold uppercase tracking-wider text-[var(--tf-color-f3e6c8)]">
         Do this next
       </div>
-      <h2 className="mt-1 font-display text-lg font-semibold text-[#F7F3EA]">{next.title}</h2>
-      <p className="mt-1 text-sm leading-relaxed text-[#F7F3EA]">{next.line}</p>
+      <h2 className="mt-1 font-display text-lg font-semibold text-[var(--tf-color-f7f3ea)]">{next.title}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--tf-color-f7f3ea)]">{next.line}</p>
       <Button
         className="mt-3 h-11 w-full bg-accent text-primary-foreground hover:bg-accent/90"
         onClick={next.go}
@@ -394,7 +394,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
   );
 
   return (
-    <div className="reference-home min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
+    <div className="reference-home tf-visual-phase2 min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
       <div className="reference-home__inner mx-auto max-w-md px-5 pb-8 pt-6">
         {/* Header */}
         <div className="reference-hero mb-6">

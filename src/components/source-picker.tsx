@@ -39,7 +39,7 @@ export function SourcePicker({
   const { navigate } = useProfile();
   const { access } = useEntitlement();
   const limit = maxSourceFiles(access?.tier);
-  const muted = tone === "dark" ? "text-[#F3E6C8]/80 dark:text-[#C4B8A0]" : "text-muted-foreground";
+  const muted = tone === "dark" ? "text-[var(--tf-color-f3e6c8)]/80 dark:text-[var(--tf-color-c4b8a0)]" : "text-muted-foreground";
   if (!files) return null;
   const ready = readyList(files);
   const waiting = files.length - ready.length;
