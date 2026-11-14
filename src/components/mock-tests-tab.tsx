@@ -82,7 +82,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
   const recent = attempts.slice(0, 3);
 
   return (
-    <div className="min-h-screen">
+    <div className="tf-visual-phase2 min-h-screen">
       <div className="mx-auto max-w-5xl px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />

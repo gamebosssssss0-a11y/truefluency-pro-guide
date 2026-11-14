@@ -48,14 +48,17 @@ const KATEX_OPTIONS = {
 };
 
 const MAX_TEX_LENGTH = 2000;
-const BARE_TEX_COMMAND = /\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|begin|vec|overline|underline|mathrm|mathbf|text|cdot|times|left|right|alpha|beta|gamma|theta|pi|mu|sigma|omega|Delta|pm|infty)\b/;
+const BARE_TEX_COMMAND = /\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|begin|vec|overline|underline|mathrm|mathbf|text|cdot|times|left|right|sin|cos|tan|log|ln|exp|min|max|gcd|det|ker|dim|alpha|beta|gamma|theta|pi|mu|sigma|omega|Delta|pm|infty)\b/;
 
 function looksLikeBareTex(value: string) {
   const tex = value.trim();
-  return tex.length > 0 && tex.length <= MAX_TEX_LENGTH
-    && /^\\[A-Za-z]+/.test(tex)
+  if (!tex || tex.length > MAX_TEX_LENGTH) return false;
+  const commandFormula = /^\\[A-Za-z]+/.test(tex)
     && BARE_TEX_COMMAND.test(tex)
     && /[{}^_=]/.test(tex);
+  const compactFormula = /^[A-Za-z0-9(){}^_=+\-*\/.,]+$/.test(tex) && /[=^_]/.test(tex);
+    && /[=^_]/.test(tex);
+  return commandFormula || compactFormula;
 }
 
 function render(tex: string, display: boolean): string | null {

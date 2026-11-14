@@ -385,6 +385,7 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
   assert.match(styles, /--tf-caption-size: 12px/);
   assert.match(dashboard, /home-next-card/);
   assert.match(practice, /--carousel-scale.*0\.88/);
+  assert.match(practice, /tf-visual-phase2 min-h-screen/);
   const bannedColors = /#(?:0D9488|0F766E|1E293B|334155|F8FAFC|64748B)\b/i;
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, bannedColors);
   for (const source of [styles, dashboard, practice, chat]) assert.doesNotMatch(source, /text-\[(?:9|10|11)px\]/);
@@ -396,6 +397,7 @@ test("math text uses KaTeX for marked and bare formulas across practice and revi
   const review = await read("../src/components/mock-test-flow.tsx");
   assert.match(math, /import katex from "katex"/);
   assert.match(math, /looksLikeBareTex/);
+  assert.match(math, /compactFormula/);
   assert.match(practice, /<MathText>\{miss\.question\}<\/MathText>/);
   assert.match(review, /<MathText>\{q\.question\}<\/MathText>/);
   assert.match(review, /<MathText>\{opt\}<\/MathText>/);
