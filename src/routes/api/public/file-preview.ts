@@ -9,6 +9,10 @@ function unavailable() {
   });
 }
 
+function sharingEnabled(): boolean {
+  return Boolean(process.env["SERVICE_ROLE_KEY"] ?? process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+}
+
 async function verifiedUserId(request: Request): Promise<string | null> {
   const authorization = request.headers.get("authorization") ?? "";
   const token = /^Bearer ([^\s]+)$/.exec(authorization)?.[1];
@@ -38,6 +42,7 @@ export const Route = createFileRoute("/api/public/file-preview")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        if (!sharingEnabled()) return unavailable();
         const url = new URL(request.url);
         const shareToken = url.searchParams.get("shareToken");
         const materialId = url.searchParams.get("materialId");
@@ -76,6 +81,7 @@ export const Route = createFileRoute("/api/public/file-preview")({
         }
       },
       HEAD: async ({ request }) => {
+        if (!sharingEnabled()) return unavailable();
         const url = new URL(request.url);
         const shareToken = url.searchParams.get("shareToken");
         const materialId = url.searchParams.get("materialId");

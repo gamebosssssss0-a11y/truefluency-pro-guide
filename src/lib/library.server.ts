@@ -436,7 +436,7 @@ export async function redeemShareLink(token: string): Promise<RedeemedShare | nu
     peer_alias: (
       await attributionFor(material.user_id, material.show_owner_name, material.show_owner_photo)
     ).peer_alias,
-    previewUrl: `/api/file-preview?shareToken=${encodeURIComponent(token)}`,
+    previewUrl: `/api/public/file-preview?shareToken=${encodeURIComponent(token)}`,
     usesLeft: Math.max(0, share.max_uses - share.use_count),
     maxUses: share.max_uses,
   };
@@ -466,7 +466,7 @@ export async function shelfPreviewUrl(materialId: string, viewerId: string): Pro
     return null;
   }
   return {
-    url: `/api/file-preview?materialId=${encodeURIComponent(materialId)}`,
+    url: `/api/public/file-preview?materialId=${encodeURIComponent(materialId)}`,
     file_name: material.file_name,
     file_type: material.file_type,
     course_code: material.course_code,
