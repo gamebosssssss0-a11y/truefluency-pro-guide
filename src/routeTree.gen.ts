@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as FilePreviewRouteImport } from './routes/file-preview'
 import { Route as ResetRouteImport } from './routes/reset'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ChatShareTokenRouteImport } from './routes/chat-share.$token'
@@ -26,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FilePreviewRoute = FilePreviewRouteImport.update({
+  id: '/file-preview',
+  path: '/file-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetRoute = ResetRouteImport.update({
@@ -63,6 +69,7 @@ const LovableEmailTransactionalPreviewRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/file-preview': typeof FilePreviewRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/file-preview': typeof FilePreviewRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/file-preview': typeof FilePreviewRoute
   '/reset': typeof ResetRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/chat-share/$token': typeof ChatShareTokenRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/file-preview'
     | '/reset'
     | '/sitemap.xml'
     | '/chat-share/$token'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/file-preview'
     | '/reset'
     | '/sitemap.xml'
     | '/chat-share/$token'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/file-preview'
     | '/reset'
     | '/sitemap.xml'
     | '/chat-share/$token'
@@ -127,6 +139,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  FilePreviewRoute: typeof FilePreviewRoute
   ResetRoute: typeof ResetRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ChatShareTokenRoute: typeof ChatShareTokenRoute
@@ -149,6 +162,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/file-preview': {
+      id: '/file-preview'
+      path: '/file-preview'
+      fullPath: '/file-preview'
+      preLoaderRoute: typeof FilePreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset': {
@@ -199,6 +219,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  FilePreviewRoute: FilePreviewRoute,
   ResetRoute: ResetRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ChatShareTokenRoute: ChatShareTokenRoute,
