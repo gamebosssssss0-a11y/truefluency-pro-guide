@@ -176,8 +176,8 @@ export type AppView =
   | "edit-identity"
   | "disclaimer-view";
 
-/** The five persistent bottom tabs. */
-export type TabKey = "home" | "mock-tests" | "library" | "chatbot" | "account";
+/** The four persistent bottom tabs. Chat opens as a full-screen destination. */
+export type TabKey = "home" | "mock-tests" | "library" | "account";
 
 /* ---------- CGPA calculator + static study plan ---------- */
 

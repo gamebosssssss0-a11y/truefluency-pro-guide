@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { MessageCircle } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, SwipePreviewProvider, useProfile, type AppView } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
@@ -83,7 +84,7 @@ function Index() {
 }
 
 
-const ROOT_TABS: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
+const ROOT_TABS: AppView[] = ["home", "mock-tests", "library", "account"];
 
 function rootTabFor(view: AppView): AppView | null {
   if (view === "home" || view === "dashboard") return "home";
@@ -102,10 +103,11 @@ const RootTabs = memo(function RootTabs({
   previewSide: "left" | "right" | null;
 }) {
   const activeTab = rootTabFor(view);
-  const [visited, setVisited] = useState<AppView[]>(() => [
-    activeTab ?? "home",
-    ...(activeTab === "chatbot" ? [] : ["chatbot" as AppView]),
-  ]);
+  const [visited, setVisited] = useState<AppView[]>(() => {
+    const initial = activeTab ?? "home";
+    const index = ROOT_TABS.indexOf(initial);
+    return [initial, ROOT_TABS[index - 1], ROOT_TABS[index + 1]].filter((tab): tab is AppView => Boolean(tab));
+  });
 
   useEffect(() => {
     if (!activeTab) return;
@@ -134,37 +136,39 @@ const RootTabs = memo(function RootTabs({
     if (activeTab && !visited.includes(activeTab)) setVisited((tabs) => [...tabs, activeTab]);
   }, [activeTab, visited]);
 
-  const tabsToRender = [...new Set([
-    ...visited,
-    ...(activeTab ? [activeTab] : []),
-    ...(previewTab ? [previewTab] : []),
-  ])];
+  const activeIndex = activeTab ? ROOT_TABS.indexOf(activeTab) : -1;
+  const adjacentTabs = activeIndex < 0 ? [] : [ROOT_TABS[activeIndex - 1], ROOT_TABS[activeIndex + 1]].filter((tab): tab is AppView => Boolean(tab));
+  const tabsToRender = [...new Set([...visited, ...adjacentTabs, ...(activeTab ? [activeTab] : []), ...(previewTab ? [previewTab] : [])])];
 
   return (
     <>
       {tabsToRender.map((tab) => {
         const active = activeTab === tab;
         const preview = !active && previewTab === tab;
+        const adjacent = !active && adjacentTabs.includes(tab);
+        const side = ROOT_TABS.indexOf(tab) < activeIndex ? "left" : "right";
         return (
           <div
             key={tab}
-            hidden={!active && !preview}
+            hidden={!active && !preview && !adjacent}
             aria-hidden={!active}
             inert={!active ? true : undefined}
             data-root-tab={tab}
-            className={preview ? "pointer-events-none absolute inset-y-0 z-0 w-full overflow-hidden bg-background" : undefined}
-            style={preview && previewSide ? { left: previewSide === "right" ? "100%" : "-100%" } : undefined}
+            className={!active ? "pointer-events-none absolute inset-y-0 z-0 w-full bg-background" : undefined}
+            style={!active ? { left: (preview ? previewSide : side) === "right" ? "100%" : "-100%" } : undefined}
           >
             <SwipePreviewProvider enabled={preview}>
               {tab === "home" ? <MemoHomeScreen active={active} />
                 : tab === "mock-tests" ? <MemoMockTestsScreen active={active} />
                   : tab === "library" ? <MemoLibraryScreen active={active} />
-                    : tab === "chatbot" ? <MemoChatbotScreen active={active} />
-                      : <MemoAccountScreen />}
+                    : <MemoAccountScreen />}
             </SwipePreviewProvider>
           </div>
         );
       })}
+      <div hidden={view !== "chatbot"} aria-hidden={view !== "chatbot"} inert={view !== "chatbot" ? true : undefined} data-chat-fullscreen="">
+        <MemoChatbotScreen active={view === "chatbot"} />
+      </div>
     </>
   );
 });
@@ -175,6 +179,20 @@ function Router() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateKeyboardState = () => setKeyboardOpen(window.innerHeight - viewport.height > 160);
+    updateKeyboardState();
+    viewport.addEventListener("resize", updateKeyboardState);
+    viewport.addEventListener("scroll", updateKeyboardState);
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardState);
+      viewport.removeEventListener("scroll", updateKeyboardState);
+    };
+  }, []);
 
   // Wake the chat backend as soon as the signed-in shell is available, rather
   // than waiting for the student to tap Study Chat and then watching a blank
@@ -327,17 +345,31 @@ function Router() {
     <>
       <TopNavBar highlightedView={swipePreview?.highlightedTab} />
       {/* Padding keeps the persistent mobile tab bar from covering content. */}
-      <div
-        data-tab-swipe-stage
-        className={cn(
-          hidesTabBar(view) ? undefined : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 overflow-x-clip",
-          !flowScreen && "app-stage-wide",
-          "tab-swipe-stage relative overflow-x-hidden",
-        )}
-      >
-        <RootTabs view={view} previewTab={swipePreview?.tab ?? null} previewSide={swipePreview?.side ?? null} />
-        {!currentRootTab ? screen : null}
+      <div className="tab-swipe-clip overflow-x-clip">
+        <div
+          data-tab-swipe-stage
+          className={cn(
+            hidesTabBar(view) ? undefined : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
+            !flowScreen && "app-stage-wide",
+            "tab-swipe-stage relative overflow-visible",
+          )}
+        >
+          <RootTabs view={view} previewTab={swipePreview?.tab ?? null} previewSide={swipePreview?.side ?? null} />
+          {!currentRootTab ? screen : null}
+        </div>
       </div>
+      {step === "dashboard" && !keyboardOpen && !["chatbot", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view) ? (
+        <button
+          type="button"
+          data-verilo-entry=""
+          aria-label="Open Verilo study chat"
+          onClick={() => navigate("chatbot")}
+          className="verilo-fab fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full border border-accent/40 bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:bottom-6"
+        >
+          <MessageCircle className="h-6 w-6" aria-hidden="true" />
+          <span className="sr-only">Verilo</span>
+        </button>
+      ) : null}
       <BottomTabBar />
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>

@@ -6,10 +6,14 @@ type Ctx = { theme: ThemeMode; setTheme: (t: ThemeMode) => void; toggle: () => v
 
 const ThemeCtx = createContext<Ctx | null>(null);
 
-function applyTheme(t: ThemeMode) {
+function applyTheme(t: ThemeMode, animateColors = false) {
   const root = document.documentElement;
   root.classList.toggle("dark", t === "dark");
   root.style.colorScheme = t;
+  if (animateColors && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    root.setAttribute("data-theme-transition", "");
+    window.setTimeout(() => root.removeAttribute("data-theme-transition"), 200);
+  }
 }
 
 /**
@@ -50,7 +54,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = (next: ThemeMode) => {
     setThemeState(next);
-    applyTheme(next);
+    applyTheme(next, true);
     try { localStorage.setItem("truefluency-theme", next); } catch { /* storage is optional */ }
   };
 
