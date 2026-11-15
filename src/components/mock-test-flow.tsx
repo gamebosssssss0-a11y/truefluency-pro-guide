@@ -980,6 +980,14 @@ export function MockRunScreen() {
 
   const submit = async () => {
     if (!t || submittedRef.current) return;
+    const answeredBeforeSubmit = t.answers.filter((answer) => answer !== null && answer !== undefined).length;
+    if (answeredBeforeSubmit === 0) {
+      submittedRef.current = true;
+      update({ inProgressTest: null });
+      toast.error("Answer at least one question before submitting.");
+      navigate("mock-tests", { courseCode: t.courseCode });
+      return;
+    }
     submittedRef.current = true;
 
     let correct = 0;
@@ -1373,11 +1381,6 @@ export function MockRunScreen() {
             <div className="mt-4 flex items-start justify-between gap-3">
               <AiGeneratedLabel />
               <div className="flex flex-col items-end gap-1">
-                {q.verification?.sourceFileName ? (
-                  <span className="max-w-48 text-right text-xs text-muted-foreground">
-                    {q.verification.sourceUnavailable ? "Source file removed: " : "Source: "}{q.verification.sourceFileName} · {q.verification.sourceLocation || "page unavailable"}
-                  </span>
-                ) : null}
                 <button
                   type="button"
                   aria-pressed={Boolean(q.flagged)}
@@ -1427,12 +1430,11 @@ export function MockRunScreen() {
         {calcOpen ? <CalculatorSheet onClose={() => setCalcOpen(false)} /> : null}
         {confirmOpen ? (
           <SubmitConfirmSheet
-            left={questions.length - answered}
+            unanswered={t.answers.flatMap((answer, questionIndex) => answer === null || answer === undefined ? [questionIndex] : [])}
             onClose={() => setConfirmOpen(false)}
-            onReview={() => {
-              const first = t.answers.findIndex((answer) => answer === null || answer === undefined);
+            onReview={(questionIndex) => {
               setConfirmOpen(false);
-              if (first >= 0) update({ inProgressTest: { ...t, currentIndex: first } });
+              update({ inProgressTest: { ...t, currentIndex: questionIndex } });
             }}
             onSubmit={() => { setConfirmOpen(false); void submit(); }}
           />
@@ -1493,9 +1495,9 @@ function QuestionMapSheet({ total, answers, current, onJump, onClose, onSubmit }
   );
 }
 
-function SubmitConfirmSheet({ left, onReview, onSubmit, onClose }: {
-  left: number;
-  onReview: () => void;
+function SubmitConfirmSheet({ unanswered, onReview, onSubmit, onClose }: {
+  unanswered: number[];
+  onReview: (questionIndex: number) => void;
   onSubmit: () => void;
   onClose: () => void;
 }) {
@@ -1513,16 +1515,23 @@ function SubmitConfirmSheet({ left, onReview, onSubmit, onClose }: {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="submit-confirm-title"
-        className="mx-auto w-full max-w-md rounded-t-3xl border border-border bg-card p-5 shadow-lg"
+        className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="submit-confirm-title" className="text-lg font-semibold text-foreground">
-          {left} question{left > 1 ? "s" : ""} not answered
+          {unanswered.length} question{unanswered.length > 1 ? "s" : ""} not answered
         </h2>
         <p className="mt-1 text-base text-muted-foreground">
           Blank answers count as missed. Your answers are saved either way.
         </p>
-        <Button size="lg" className="mt-4 w-full" onClick={onReview}>Go to first unanswered</Button>
+        <div className="mt-4 grid grid-cols-4 gap-2" aria-label="Unanswered questions">
+          {unanswered.map((questionIndex) => (
+            <Button key={questionIndex} type="button" size="sm" variant="outline" onClick={() => onReview(questionIndex)}>
+              Question {questionIndex + 1}
+            </Button>
+          ))}
+        </div>
+        <Button size="lg" className="mt-4 w-full" onClick={() => onReview(unanswered[0])}>Go to first unanswered</Button>
         <Button size="lg" variant="outline" className="mt-2 w-full" onClick={onSubmit}>Submit anyway</Button>
       </div>
     </div>
@@ -1928,7 +1937,7 @@ export function AttemptReviewScreen() {
             {questions.map((q, i) => {
               const selected = answers[i] ?? null;
               const invalid = invalidIndexes.includes(i);
-              const isCorrect = selected === q.correct_index;
+              const isCorrect = selected !== null && selected !== undefined && selected === q.correct_index;
               return (
                 <div
                   key={`${q.id}-${i}`}
@@ -1950,16 +1959,11 @@ export function AttemptReviewScreen() {
                       )}
                     >
                       {invalid ? <Flag className="h-3 w-3" /> : isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                      {invalid ? "Excluded from score" : isCorrect ? "Correct" : "Incorrect"}
+                      {invalid ? "Excluded from score" : selected === null || selected === undefined ? "Not answered" : isCorrect ? "Correct" : "Incorrect"}
                     </span>
                   </div>
 
                   <div className="break-words whitespace-pre-wrap text-base font-medium leading-7 text-foreground"><MathText examMath>{q.question}</MathText></div>
-                  {q.verification?.sourceFileName ? (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {q.verification.sourceUnavailable ? "Source file removed: " : "Source: "}{q.verification.sourceFileName} · {q.verification.sourceLocation || "page unavailable"}
-                    </p>
-                  ) : null}
 
                   <div className="mt-3 space-y-1.5">
                     {q.options.map((opt, oi) => {

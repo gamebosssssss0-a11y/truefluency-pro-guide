@@ -361,7 +361,6 @@ export async function generateMock(
   const raw = Array.isArray(data.result?.questions) ? (data.result!.questions as unknown[]) : [];
   if (raw.length === 0) throw new Error("No questions came back from the generator.");
 
-  const allowedSourceNames = new Set((input.sourceFiles ?? []).map((f) => f.fileName.trim().toLocaleLowerCase()));
   const questions: AIQuestion[] = raw
     .map<AIQuestion | null>((q, i) => {
       const o = q as Partial<AIQuestion> & { correct_index?: unknown };
@@ -371,20 +370,6 @@ export async function generateMock(
       const correct = Number(o.correct_index);
       if (typeof o.question !== "string" || options.length < 2) return null;
       if (!Number.isInteger(correct) || correct < 0 || correct >= options.length) return null;
-      const verification = o.verification && typeof o.verification === "object"
-        ? o.verification as Record<string, unknown>
-        : null;
-      const status = verification?.status;
-      const checked = verification?.checkedAgainstMaterial === true || verification?.checked_against_material === true;
-      const sourceFileName = typeof verification?.sourceFileName === "string"
-        ? verification.sourceFileName.trim()
-        : typeof verification?.source_file_name === "string" ? verification.source_file_name.trim() : "";
-      const sourceLocationValue = verification?.sourceLocation ?? verification?.source_location;
-      const sourceLocation = typeof sourceLocationValue === "string" && sourceLocationValue.trim()
-        ? sourceLocationValue.trim()
-        : null;
-      const verified = status === "verified" && checked && sourceFileName.length > 0
-        && allowedSourceNames.has(sourceFileName.toLocaleLowerCase());
       return {
         id: typeof o.id === "number" ? o.id : i + 1,
         topic: typeof o.topic === "string" && o.topic.trim() ? o.topic : "General",
@@ -392,24 +377,13 @@ export async function generateMock(
         options,
         correct_index: correct,
         explanation: typeof o.explanation === "string" ? o.explanation : "",
-        verification: {
-          status: verified ? "verified" : status === "rejected" ? "rejected" : "unverified",
-          checkedAgainstMaterial: verified,
-          sourceFileName: sourceFileName || undefined,
-          sourceLocation,
-        },
       } satisfies AIQuestion;
     })
     .filter((q): q is AIQuestion => q !== null)
+    .slice(0, input.questionCount)
     .map((q, i) => ({ ...q, id: i + 1 }));
 
-  const verifiedQuestions = questions
-    .filter((q) => q.verification?.status === "verified" && q.verification.checkedAgainstMaterial)
-    .slice(0, input.questionCount);
-  if (verifiedQuestions.length < 10) {
-    throw new Error(`Only ${verifiedQuestions.length} questions could be verified against your selected files. At least 10 verified questions are needed to start a mock. Choose another file or try again after the course material has been analyzed.`);
-  }
-  return verifiedQuestions;
+  return questions;
 }
 
 /**
