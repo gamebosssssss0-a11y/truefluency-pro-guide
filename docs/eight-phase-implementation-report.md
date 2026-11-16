@@ -41,7 +41,7 @@ This report describes the code on `codex/eight-phase-implementation`. The branch
 
 - **Route → mount → element:** result and history actions mount `MockShareSheet`. It offers private/public visibility before creation; an existing link locks the selection and shows copy/countdown/revoke or expired/revoked state.
 - `src/lib/mock-sharing.functions.ts` authenticates create/status/revoke and private preview/start calls. `src/lib/mock-sharing.server.ts` snapshots the saved attempt, enforces owner checks, and rejects expired/revoked links. Public preview omits answers. `src/routes/mock-share.$token.tsx` starts a copied settings snapshot in local practice state.
-- `supabase/migrations/20261115000000_mock_shares_attempt_scoped.sql` adds one unique record per attempt, server-set 30-minute expiry, owner-only row visibility, and irreversible revocation. It was applied to the connected Supabase project as migration `20261116041306_mock_shares_attempt_scoped` after confirming the live `(user_id, id)` unique key.
+- `supabase/migrations/20261116041306_mock_shares_attempt_scoped.sql` adds one unique record per attempt, server-set 30-minute expiry, owner-only row visibility, and irreversible revocation. It was applied to the connected Supabase project as migration `20261116041306_mock_shares_attempt_scoped` after confirming the live `(user_id, id)` unique key.
 - **Incomplete:** live Supabase migration behavior, concurrent share creation, expiry races, and start-before-expiry/continue-after-expiry need a disposable database integration run.
 
 ## Phase 7 — Document previews and plan cards
