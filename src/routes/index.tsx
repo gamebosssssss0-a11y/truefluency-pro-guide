@@ -357,6 +357,7 @@ function Router() {
   // Each mock-flow screen sizes its own column and gutter.
   const flowScreen = examFocus || view === "mock-config" || view === "mock-result";
   const currentRootTab = rootTabFor(view);
+  const showVeriloButton = step === "dashboard" && !keyboardOpen && !["chatbot", "chat-history", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view);
 
   return (
     <>
@@ -366,7 +367,8 @@ function Router() {
         <div
           data-tab-swipe-stage
           className={cn(
-            hidesTabBar(view) ? undefined : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
+            // With the floating Verilo button on screen the page needs more room under its last row, or the button sits on top of it.
+            hidesTabBar(view) ? undefined : showVeriloButton ? "pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-8" : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
             !flowScreen && "app-stage-wide",
             "tab-swipe-stage relative overflow-visible",
           )}
@@ -375,7 +377,7 @@ function Router() {
           {!currentRootTab ? screen : null}
         </div>
       </div>
-      {step === "dashboard" && !keyboardOpen && !["chatbot", "chat-history", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view) ? (
+      {showVeriloButton ? (
         <button
           type="button"
           data-verilo-entry=""

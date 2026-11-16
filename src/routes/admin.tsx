@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AdminPaymentProblems } from "@/components/admin-payment-problems";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -182,6 +183,8 @@ function AdminPage() {
             <div className="mt-3 flex flex-wrap items-center gap-2"><Button disabled={busy} variant="outline" onClick={() => saveSettings(settings.maintenance_mode)}>{busy ? "Saving…" : "Save message"}</Button><Button disabled={busy} onClick={() => saveSettings(!settings.maintenance_mode)}>{settings.maintenance_mode ? "Turn notice off" : "Turn notice on"}</Button><span className="text-xs text-muted-foreground">Currently {settings.maintenance_mode ? "on" : "off"}</span></div>
           </> : <p className="mt-2 text-sm text-muted-foreground">Settings unavailable.</p>}
         </section>
+
+        <AdminPaymentProblems />
       </div>
     </main>
   );
