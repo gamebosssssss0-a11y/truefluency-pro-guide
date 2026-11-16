@@ -11,6 +11,7 @@ import { TopicPill } from "@/components/common";
 import { HeaderLogo } from "@/components/brand";
 import { greetingSubline } from "@/lib/personalization";
 import { buildRotatingDeck, type Rotating } from "@/lib/study-quotes";
+import { PlanBanner } from "@/components/plan-banner";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -64,50 +65,6 @@ function writeHomeDisplayCache(update: HomeDisplayCache) {
   homeDisplayCache = { ...readHomeDisplayCache(), ...update };
   try { localStorage.setItem(HOME_DISPLAY_CACHE_KEY, JSON.stringify(homeDisplayCache)); }
   catch { /* display cache is optional */ }
-}
-
-/** One chip only: the live trial, paid access, or the founding price line. */
-function PlanChip() {
-  const { access, isAdmin } = useEntitlement(); // ADMIN (1/2): isAdmin comes from the server-resolved access
-  const cached = readHomeDisplayCache()?.access;
-  const displayAccess = access ?? cached ?? null;
-  useEffect(() => {
-    if (access) writeHomeDisplayCache({ access: { tier: access.tier, trialEndsAt: access.trialEndsAt ?? null } });
-  }, [access]);
-  if (!displayAccess) return null;
-
-  // ADMIN (2/2): shown only when the server says this account is an admin.
-  if (isAdmin) return <ChipShell>Admin mode · unrestricted access</ChipShell>;
-
-  if (displayAccess.tier === "trial" && displayAccess.trialEndsAt) {
-    const msLeft = new Date(displayAccess.trialEndsAt).getTime() - Date.now();
-    if (msLeft > 0) {
-      const days = Math.max(1, Math.ceil(msLeft / 86_400_000));
-      return (
-        <ChipShell>
-          {TRIAL_LINE} · {days} {days === 1 ? "day" : "days"} left
-        </ChipShell>
-      );
-    }
-  }
-  if (displayAccess.tier === "exam") return <ChipShell>Exam plan, this month</ChipShell>;
-  if (displayAccess.tier === "core") return <ChipShell>Core plan, this month</ChipShell>;
-  return <ChipShell>{PRICE_LINE}</ChipShell>;
-}
-
-function ChipShell({ children }: { children: React.ReactNode }) {
-  const { navigate } = useProfileData();
-  return (
-    <button
-      onClick={() => navigate("upgrade")}
-      className="reference-plan-chip mb-6 flex w-full items-center gap-2 rounded-2xl border border-border bg-sand px-3.5 py-2.5 text-left"
-    >
-      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-relaxed text-[var(--tf-navy)]">
-        {children}
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--tf-navy)]/60" />
-    </button>
-  );
 }
 
 const TYPE_CHIP: Record<string, { label: string; color: string; textColor: string }> = {
@@ -446,7 +403,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
 
         {!showFirstUseLayout ? (
           <>
-            <PlanChip />
+            <PlanBanner />
             <button type="button" onClick={() => setReminderOpen(true)} className="mb-6 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">
               See plan options
             </button>

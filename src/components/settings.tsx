@@ -317,7 +317,7 @@ export function AccountScreen() {
 
         <div className="surface-list-row mt-4 p-4">
           <h2 className="text-sm font-semibold text-foreground">Payment history</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Receipts appear here after a payment is confirmed. Manage renewal on the Premium page.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Receipts appear here after a payment is confirmed. View receipts, manage renewal or report a payment problem on the Premium page.</p>
           <button
             type="button"
             onClick={() => navigate("upgrade")}

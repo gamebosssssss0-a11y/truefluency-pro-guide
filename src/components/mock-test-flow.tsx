@@ -13,7 +13,7 @@ import { SourcePicker } from "@/components/source-picker";
 import { apiSource, pickSource, readSourceChoice, useSourceChoice } from "@/lib/material-pick";
 import { maxSourceFiles } from "@/lib/entitlements";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
-import { findResumableMockJob, generateMock, submitResults } from "@/lib/backend-api";
+import { findResumableMockJob, generateMock, getTutorStatus, submitResults, TutorLimitError, type TutorStatus } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, EXAM_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
@@ -23,7 +23,8 @@ import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { ReportQuestionButton } from "@/components/report-question";
 import { recordMockStreak } from "@/lib/streak.functions";
-import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toTeachingExplanation } from "@/lib/why-blocks";
+import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE } from "@/lib/why-blocks";
+import { TeachingExplanationBlocks } from "@/components/teaching-explanation";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
 import { MockShareSheet } from "@/components/mock-share-sheet";
@@ -100,6 +101,8 @@ export function MockGenerationScreen() {
   /** True while one generation job is running: blocks a second job. */
   const inFlightRef = useRef(false);
   const [refused, setRefused] = useState<QuotaVerdict | null>(null);
+  /** Set when the server says the Free plan's daily Tutor sessions are used up (text from the server). */
+  const [tutorUsedUp, setTutorUsedUp] = useState<string | null>(null);
   /** Bumped by "Try again" so the generation effect runs the same request again. */
   const [retryKey, setRetryKey] = useState(0);
   const fetchedRef = useRef(false);
@@ -236,6 +239,7 @@ export function MockGenerationScreen() {
             courseCode: course.code,
             courseName: course.name,
             questionCount: allowedCount,
+            mode: settings?.mode ?? "tutor",
             difficulty,
             topicFocus,
             excludeTopics,
@@ -324,7 +328,8 @@ export function MockGenerationScreen() {
       } catch (e: unknown) {
         clearInterval(animId);
         if (aliveRef.current) {
-          setError(e instanceof Error ? e.message : "Something went wrong generating your mock.");
+          if (e instanceof TutorLimitError) setTutorUsedUp(e.message);
+          else setError(e instanceof Error ? e.message : "Something went wrong generating your mock.");
         }
       } finally {
         inFlightRef.current = false;
@@ -346,6 +351,33 @@ export function MockGenerationScreen() {
             verdict={refused}
             onDismiss={() => navigate("mock-tests")}
             dismissLabel="Back to Mock Tests"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (tutorUsedUp) {
+    return (
+      <div className="study-utility-page tf-visual-phase2 min-h-screen">
+        <div className={STATUS}>
+          <ErrorCard
+            title="Tutor sessions used up for today"
+            body={tutorUsedUp}
+            actionLabel="Practise in Exam mode now"
+            onAction={() => {
+              // Same course, same settings, Exam mode: nothing else changes and the Tutor allowance is not touched.
+              const current = course ? profile.courseTestSettings[course.code] : undefined;
+              if (course && current) {
+                update({ courseTestSettings: { ...profile.courseTestSettings, [course.code]: { ...current, mode: "exam" } } });
+              }
+              fetchedRef.current = false;
+              setTutorUsedUp(null);
+              setPct(0);
+              setStatusIdx(0);
+              setRetryKey((k) => k + 1);
+            }}
+            onLink={() => navigate("mock-tests")}
           />
         </div>
       </div>
@@ -565,6 +597,13 @@ export function MockConfigScreen() {
   const [minutes, setMinutes] = useState(initial?.minutes ?? defaultMinutesForCount(initialCount));
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
   const [mode, setMode] = useState<MockMode>(initial?.mode ?? "tutor");
+  // Free plan: how many of the 2 daily Tutor sessions are left (the server counts; this only shows it).
+  const [tutorStatus, setTutorStatus] = useState<TutorStatus | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getTutorStatus().then((st) => { if (alive) setTutorStatus(st); });
+    return () => { alive = false; };
+  }, []);
 
   // Topic options come from THIS course's stored analysis, not from a
   // previously generated question set (which may belong to another course).
@@ -735,7 +774,15 @@ export function MockConfigScreen() {
             <legend className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Practice mode</legend>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { key: "tutor", title: "Tutor", detail: "See an explanation after each answer." },
+                {
+                  key: "tutor",
+                  title: "Tutor",
+                  detail: tutorStatus?.limited && tutorStatus.counting && tutorStatus.remaining !== null
+                    ? (tutorStatus.remaining > 0
+                      ? `See an explanation after each answer. ${tutorStatus.remaining} of ${tutorStatus.limit} free Tutor sessions left today.`
+                      : "Your free Tutor sessions are used up for today. Exam mode is open.")
+                    : "See an explanation after each answer.",
+                },
                 { key: "exam", title: "Exam", detail: "Review answers after you finish." },
               ] as const).map((option) => (
                 <button
@@ -1361,7 +1408,7 @@ export function MockRunScreen() {
                       ) : explanation ? (
                         <>
                           {wasWrong ? <div className="mb-2 text-muted-foreground">Your answer: <MathText examMath>{chosenText}</MathText>. Correct answer: <MathText examMath>{answerText}</MathText>.</div> : null}
-                          <TeachingExplanationBlocks explanation={explanation} />
+                          <TeachingExplanationBlocks explanation={explanation} pickedIndex={selected} correctIndex={q.correct_index} />
                         </>
                       ) : (
                         <p className="text-muted-foreground">No explanation was saved for this question.</p>
@@ -1993,7 +2040,7 @@ export function AttemptReviewScreen() {
                   />
 
                   {explanationsUnlocked && q.explanation?.trim() ? (
-                    <WhyPanel explanation={q.explanation} />
+                    <WhyPanel explanation={q.explanation} pickedIndex={selected} correctIndex={q.correct_index} />
                   ) : (
                     /* Locked: lock icon only. The single price banner sits at the top. */
                     <div className="mt-3 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
@@ -2090,7 +2137,7 @@ function DifficultyChip({ difficulty }: { difficulty?: Difficulty | string | nul
 }
 
 
-function WhyPanel({ explanation }: { explanation: string }) {
+function WhyPanel({ explanation, pickedIndex, correctIndex }: { explanation: string; pickedIndex?: number | null; correctIndex?: number }) {
   if (failsQualityCheck(explanation)) {
     return (
       <div className="mt-3 rounded-xl border border-border bg-background p-3">
@@ -2103,70 +2150,7 @@ function WhyPanel({ explanation }: { explanation: string }) {
 
   return (
     <div className="mt-3 rounded-xl border border-border bg-card p-3">
-      <TeachingExplanationBlocks explanation={explanation} />
-    </div>
-  );
-}
-
-function TeachingExplanationBlocks({ explanation }: { explanation: string }) {
-  const content = toTeachingExplanation(explanation);
-  const sections = [
-    { key: "what", label: "What it tests", body: content.whatItTests, tone: "border-primary/15 bg-primary/5" },
-    { key: "plain", label: "Plain-English words", body: content.plainEnglish, tone: "border-violet-500/10 bg-violet-500/5 dark:border-violet-300/10 dark:bg-violet-400/10" },
-    { key: "rule", label: "Minimum rule", body: content.minimumRule, tone: "border-accent/20 bg-accent/10" },
-    { key: "example", label: "Easy example", body: content.easyExample, tone: "border-success/20 bg-success/10" },
-    { key: "mistake", label: "Common mistake", body: content.commonMistake, tone: "border-destructive/15 bg-destructive/5" },
-    { key: "worked", label: "Worked solution / steps", body: content.workedSolution, tone: "border-border bg-muted/40" },
-  ].filter((section) => Boolean(section.body));
-  const recapItems = [
-    { label: "The rule to remember", body: content.recap.rule },
-    { label: "Apply it here", body: content.recap.application },
-    { label: "Therefore", body: content.recap.therefore },
-  ].filter((item) => Boolean(item.body));
-  const hasRecap = recapItems.length > 0 || Boolean(content.recap.intro);
-
-  if (sections.length === 0 && !content.finalAnswer && !hasRecap) return null;
-
-  return (
-    <div className="space-y-2.5">
-      {sections.map((section) => (
-        <section key={section.key} className={cn("rounded-xl border px-3 py-2.5", section.tone)}>
-          <h4 className="text-xs font-semibold text-foreground">{section.label}</h4>
-          <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-7 text-foreground">
-            <MathText examMath>{section.body}</MathText>
-          </div>
-        </section>
-      ))}
-      {content.finalAnswer ? (
-        <div className="rounded-lg border border-border bg-card px-3 py-2.5 text-foreground">
-          <h4 className="text-xs font-semibold">Final answer</h4>
-          <div className="mt-1 break-words whitespace-pre-wrap text-base font-semibold leading-7">
-            <MathText examMath>{content.finalAnswer}</MathText>
-          </div>
-        </div>
-      ) : null}
-      {hasRecap ? (
-        <section className="rounded-xl border border-accent/25 bg-accent/10 p-3">
-          <h4 className="text-xs font-semibold text-foreground">Short recap</h4>
-          {content.recap.intro ? (
-            <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-7 text-foreground">
-              <MathText examMath>{content.recap.intro}</MathText>
-            </div>
-          ) : null}
-          {recapItems.length ? (
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {recapItems.map((item) => (
-                <div key={item.label} className="min-w-0 rounded-lg border border-accent/15 bg-card/70 p-2.5">
-                  <h5 className="text-xs font-semibold text-foreground">{item.label}</h5>
-                  <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-6 text-foreground">
-                    <MathText examMath>{item.body}</MathText>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+      <TeachingExplanationBlocks explanation={explanation} pickedIndex={pickedIndex} correctIndex={correctIndex} />
     </div>
   );
 }

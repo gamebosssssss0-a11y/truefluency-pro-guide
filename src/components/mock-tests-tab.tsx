@@ -7,6 +7,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MathText } from "@/components/math-text";
+import { TeachingExplanationBlocks } from "@/components/teaching-explanation";
+import { PlanBanner } from "@/components/plan-banner";
 import { supabase } from "@/integrations/supabase/client";
 import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
@@ -130,6 +132,8 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
           </span>
         </div>
 
+        <PlanBanner />
+
         <h1 className="font-display text-3xl font-bold text-foreground">Practice</h1>
         <p className="mt-1 text-sm text-foreground">
           Sit a mock test built from your own uploads. Pick a course, choose how long, then start.
@@ -233,7 +237,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                           event.preventDefault();
                           courseCardRefs.current[courseIndex]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
                         }}
-                        className="course-carousel-card w-[calc(100%-40px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 shadow-sm transition-[opacity,transform] duration-200"
+                        className="course-carousel-card w-[calc(100%-28px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3 shadow-sm transition-[opacity,transform] duration-200 min-[400px]:w-[calc(100%-40px)] min-[400px]:p-4"
                         style={{ opacity: centered ? 1 : 0.72, transform: centered ? "scale(1)" : "scale(.96)" }}>
                         <div className="flex items-start gap-3">
                           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><BookOpen className="h-4.5 w-4.5" /></div>
@@ -245,9 +249,9 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                             </div>
                           </div>
                         </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <Button variant="outline" size="sm" disabled={!centered} onClick={() => navigate("course-detail", { courseCode: c.code })}>Materials</Button>
-                          <Button size="sm" disabled={!centered || materialsLoading || Boolean(profile.inProgressTest)} onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}>
+                        <div className="mt-3 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+                          <Button variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal py-2 text-center leading-tight" disabled={!centered} onClick={() => navigate("course-detail", { courseCode: c.code })}>Materials</Button>
+                          <Button size="sm" className="h-auto min-h-9 whitespace-normal py-2 text-center leading-tight" disabled={!centered || materialsLoading || Boolean(profile.inProgressTest)} onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}>
                             <Zap className="mr-1.5 h-3.5 w-3.5" />{profile.inProgressTest ? "Finish current practice first" : materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
                           </Button>
                         </div>
@@ -724,6 +728,9 @@ export function ProgressPanel({
       chosen: string;
       correct: string;
       explanation: string;
+      /** Where the student's own answer sat among the options (null = left unanswered), and where the right one sat. */
+      chosenIndex: number | null;
+      correctIndex: number;
     }> = [];
     for (const attempt of [...courseAttempts].reverse()) {
       if (!Array.isArray(attempt.questions) || !Array.isArray(attempt.answers)) continue;
@@ -742,6 +749,8 @@ export function ProgressPanel({
           chosen: chosen ?? "Not answered",
           correct,
           explanation: question.explanation,
+          chosenIndex: typeof chosenIndex === "number" ? chosenIndex : null,
+          correctIndex: question.correct_index,
         });
       });
       if (found.length >= 3) break;
@@ -1048,7 +1057,7 @@ export function ProgressPanel({
                 </div>
                 <div className="mt-3 border-t border-dashed border-border pt-3 text-sm leading-7 text-muted-foreground">
                   <span className="font-semibold text-foreground">Explanation</span>
-                  <div className="mt-1 break-words whitespace-pre-wrap"><MathText>{miss.explanation}</MathText></div>
+                  <div className="mt-2"><TeachingExplanationBlocks explanation={miss.explanation} pickedIndex={miss.chosenIndex} correctIndex={miss.correctIndex} /></div>
                 </div>
               </article>
             ))}

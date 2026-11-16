@@ -9,6 +9,7 @@ import {
   ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PlanBanner } from "@/components/plan-banner";
 import { HeaderLogo } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -513,6 +514,8 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
           <HeaderLogo />
           <span className="text-xs font-semibold uppercase tracking-wider text-foreground">My Files</span>
         </div>
+
+        <PlanBanner />
 
         <h1 className="font-display text-2xl font-bold text-foreground">My files</h1>
         <p className="mt-1 text-sm text-foreground">

@@ -15,6 +15,9 @@ import {
   Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { HeaderLogo } from "@/components/brand";
+import { ReceiptSheet } from "@/components/receipt-sheet";
+import { PaymentProblemSheet } from "@/components/payment-problem";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import {
   CORE_DAILY_LIMITS,
@@ -32,7 +35,7 @@ import {
 } from "@/lib/entitlements";
 import {
   cancelAutoRenew, clearPaymentReturn, getBillingStatus, readPaymentReturn, rememberCheckout,
-  startCheckout, verifyPayment, type BillingPlan, type BillingStatus,
+  PriceChangedError, chargeTiming, startCheckout, verifyPayment, type BillingPlan, type BillingStatus, type Consent,
 } from "@/lib/billing-api";
 
 type Step = "offer" | "plans" | "review" | "redirecting" | "verifying" | "success" | "pending" | "failed";
@@ -90,7 +93,11 @@ export function UpgradeScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stopOpen, setStopOpen] = useState(false);
-  const [done, setDone] = useState<{ plan?: BillingPlan; periodEnd?: string | null; autoRenew?: boolean | null } | null>(null);
+  const [done, setDone] = useState<{ plan?: BillingPlan; periodEnd?: string | null; autoRenew?: boolean | null; nextAmount?: number | null; nextRenewalLabel?: string | null; renewalLeadDays?: number | null; receiptNo?: string | null; introductory?: boolean | null } | null>(null);
+  // The student's explicit agreement to the amounts and schedule shown on the review screen. Never pre-ticked, reset when anything changes.
+  const [agreed, setAgreed] = useState(false);
+  const [receiptRef, setReceiptRef] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ open: boolean; ref: string | null }>({ open: false, ref: null });
   const returned = useRef<string | null>(readPaymentReturn());
 
   const loadStatus = useCallback(async () => {
@@ -110,7 +117,7 @@ export function UpgradeScreen() {
         const out = await verifyPayment(ref);
         if (out.state === "success") {
           clearPaymentReturn();
-          setDone({ plan: out.plan, periodEnd: out.period_end, autoRenew: out.auto_renew });
+          setDone({ plan: out.plan, periodEnd: out.period_end, autoRenew: out.auto_renew, nextAmount: out.next_amount_naira ?? null, nextRenewalLabel: out.next_renewal_label ?? null, renewalLeadDays: out.renewal_lead_days ?? null, receiptNo: out.receipt_no ?? null, introductory: out.introductory ?? null });
           setStep("success");
           void refreshAccess().catch(() => undefined);
           void loadStatus();
@@ -144,6 +151,15 @@ export function UpgradeScreen() {
   const corePrice = status?.quote?.core.amount_naira ?? (foundingOpen ? FOUNDING_PRICE_NAIRA : STANDARD_PRICE_NAIRA);
   const examPrice = status?.quote?.exam.amount_naira ?? EXAM_PRICE_NAIRA;
   const price = selectedPlan === "core" ? corePrice : examPrice;
+  // The introductory price is for the FIRST 30 days only; every renewal is the standard price.
+  const coreThen = status?.quote?.core.then_naira ?? STANDARD_PRICE_NAIRA;
+  const thenPrice = selectedPlan === "core" ? coreThen : examPrice;
+  const introNow = selectedPlan === "core" && price < thenPrice;
+  // The date and the sentence come from the SERVER (its clock, Lagos time, the same words it records). Nothing here is computed in the browser,
+  // and if the server's text has not loaded there is nothing to agree to.
+  const planQuote = status?.quote?.[selectedPlan];
+  const renewLabel = planQuote?.first_renewal_label ?? null;
+  const consentLine = (autoRenew ? planQuote?.consent_auto : planQuote?.consent_once) ?? null;
   const live = status?.enabled === true;
   const activePlan = status?.plan && status.period_end && new Date(status.period_end).getTime() > Date.now() ? status.plan : null;
   const currentPlan = activePlan ?? (access?.tier === "trial" ? "core" : access?.tier ?? null);
@@ -158,13 +174,29 @@ export function UpgradeScreen() {
     setBusy(true);
     setError(null);
     try {
-      const out = await startCheckout(selectedPlan, autoRenew);
+      const consent: Consent = {
+        accepted: agreed,
+        first_amount_naira: price,
+        recurring_amount_naira: autoRenew ? thenPrice : null,
+        period_days: 30,
+        terms_version: status?.terms_version ?? "",
+        first_renewal_on: autoRenew ? (planQuote?.first_renewal_on ?? null) : null,
+      };
+      const out = await startCheckout(selectedPlan, autoRenew, consent);
       if (new URL(out.checkout_url).protocol !== "https:") throw new Error("The payment page address looked wrong, so we stopped. Nothing was charged.");
       rememberCheckout(out.ref);
       setStep("redirecting");
       window.location.assign(out.checkout_url);
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof PriceChangedError) {
+        // The server's amounts differ from the screen (a place was taken, or the screen was out of date). Nothing was charged:
+        // show the true amounts and ask for agreement again.
+        setAgreed(false);
+        await loadStatus();
+        setError(`${e.message} It is now ${formatNaira(e.firstAmountNaira)} today${e.recurringAmountNaira ? `, then ${formatNaira(e.recurringAmountNaira)}${e.firstRenewalLabel ? `, first charged on ${e.firstRenewalLabel}` : " every 30 days"}` : ""}.`);
+      } else {
+        setError((e as Error).message);
+      }
       setBusy(false);
     }
   };
@@ -189,9 +221,11 @@ export function UpgradeScreen() {
       <h2 className="mt-1 font-display text-xl font-semibold">{planName(activePlan)} · valid until {formatDate(status?.period_end)}</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {status?.auto_renew
-          ? `Renews automatically on that date for ${formatNaira(status.renewal_price_naira ?? corePrice)}. Cancel any time.`
+          ? (status.next_renewal_label
+            ? `Next automatic charge: ${formatNaira(status.renewal_price_naira ?? coreThen)} on ${status.next_renewal_label}, ${chargeTiming(status.renewal_lead_days)}. Cancel any time before then.`
+            : `Renews automatically one day before that date for ${formatNaira(status.renewal_price_naira ?? coreThen)}. Cancel any time.`)
           : "It won't renew by itself. Pick a plan below before it ends to keep going."}
-        {status?.founding ? " You hold one of the founding places." : ""}
+        {status?.founding ? " Your introductory price covered your first 30 days only." : ""}
       </p>
       {status?.auto_renew ? (
         <Button variant="outline" className="mt-3 w-full" disabled={busy} onClick={() => setStopOpen(true)}>Stop auto-renew</Button>
@@ -201,9 +235,11 @@ export function UpgradeScreen() {
           <p className="text-xs font-semibold text-muted-foreground">Receipts</p>
           <ul className="mt-2 space-y-1.5">
             {status.receipts.map((r) => (
-              <li key={r.ref} className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-                <span>{formatDate(r.paid_at)} · {planName(r.plan)} · {formatNaira(r.amount_naira)}</span>
-                <span className="font-mono text-xs">{r.ref}</span>
+              <li key={r.ref}>
+                <button type="button" onClick={() => setReceiptRef(r.ref)} className="flex min-h-11 w-full items-baseline justify-between gap-2 text-left text-xs text-muted-foreground hover:text-foreground">
+                  <span>{formatDate(r.paid_at)} · {planName(r.plan)} · {formatNaira(r.amount_naira)}{r.introductory ? " · introductory" : ""}</span>
+                  <span className="font-mono text-xs">{r.receipt_no ?? r.ref}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -211,6 +247,29 @@ export function UpgradeScreen() {
       ) : null}
     </section>
   ) : null;
+
+  const payments = (
+    <section aria-labelledby="payment-history-heading" className="mt-4 rounded-2xl border border-border bg-card p-5">
+      <h2 id="payment-history-heading" className="text-sm font-semibold">Payment history</h2>
+      {status?.receipts?.length && !activePlan ? (
+        <ul className="mt-2 divide-y divide-border">
+          {status.receipts.map((r) => (
+            <li key={r.ref}>
+              <button type="button" onClick={() => setReceiptRef(r.ref)} className="flex min-h-11 w-full items-center justify-between gap-2 text-left text-xs text-muted-foreground hover:text-foreground">
+                <span>{formatDate(r.paid_at)} · {planName(r.plan)} · {formatNaira(r.amount_naira)}</span>
+                <span className="font-mono text-xs">{r.receipt_no ?? r.ref}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : !status?.receipts?.length ? (
+        <p className="mt-1 text-xs text-muted-foreground">Receipts appear here after a payment is confirmed.</p>
+      ) : (
+        <p className="mt-1 text-xs text-muted-foreground">Tap a receipt above to view, print or save it.</p>
+      )}
+      <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setProblem({ open: true, ref: null })}>Report a payment problem</Button>
+    </section>
+  );
 
   return (
     <div className="min-h-screen bg-transparent text-foreground">
@@ -229,20 +288,21 @@ export function UpgradeScreen() {
             <h1 className="mt-2 font-display text-3xl font-bold text-foreground">Full access to your next level.</h1>
             <p className="mt-2 text-sm leading-relaxed text-foreground">Make every study session count with a little more room to practise.</p>
             <div className="mt-5 rounded-2xl border-2 border-accent bg-accent/10 p-5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Founding price" : "Core"}</span>
-              <div className="mt-3 flex items-end gap-2"><span className="font-display text-4xl font-semibold">{formatNaira(corePrice)}</span><span className="pb-1 text-sm text-muted-foreground">/ month</span></div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Introductory price" : "Core"}</span>
+              <div className="mt-3 flex flex-wrap items-end gap-x-2"><span className="font-display text-4xl font-semibold">{formatNaira(corePrice)}</span><span className="pb-1 text-sm text-muted-foreground">{foundingOpen ? "for your first 30 days" : "every 30 days"}</span></div>
               {foundingOpen ? (
                 <>
+                  <p className="mt-1 text-sm font-medium text-foreground">Then {formatNaira(coreThen)} every 30 days.</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Founding offer for the first {FOUNDING_USER_LIMIT} paying students{seatsLeft !== null ? ` · ${seatsLeft} of ${FOUNDING_USER_LIMIT} places remain` : ""} · cancel any time
+                    Introductory offer for the first {FOUNDING_USER_LIMIT} paying students{seatsLeft !== null ? ` · ${seatsLeft} of ${FOUNDING_USER_LIMIT} places remain` : ""} · cancel any time
                   </p>
-                  <div className="mt-3 flex items-baseline gap-2"><span className="font-display text-lg font-semibold text-muted-foreground line-through">{formatNaira(STANDARD_PRICE_NAIRA)}</span><span className="text-xs uppercase tracking-wider text-muted-foreground">standard price after the offer ends</span></div>
                 </>
               ) : (
-                <p className="mt-1 text-xs text-muted-foreground">The founding places have all been taken · cancel any time</p>
+                <p className="mt-1 text-xs text-muted-foreground">The introductory places have all been taken · cancel any time</p>
               )}
             </div>
             {manage}
+            {payments}
             <section className="mt-4 rounded-2xl border border-border bg-card p-5">
               <h2 className="text-sm font-semibold">Your studies, with more support</h2>
               <ul className="mt-3 space-y-3">{PLAN_FEATURES.core.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
@@ -266,7 +326,9 @@ export function UpgradeScreen() {
               {activePlan && status?.period_end ? (
                 <p className="mt-1 text-sm text-muted-foreground">
                   {status.auto_renew
-                    ? `Renews ${formatDate(status.period_end)} for ${formatNaira(status.renewal_price_naira ?? (activePlan === "core" ? corePrice : examPrice))}. Cancel before renewal to stop the next charge.`
+                    ? (status.next_renewal_label
+                      ? `Next charge: ${formatNaira(status.renewal_price_naira ?? (activePlan === "core" ? coreThen : examPrice))} on ${status.next_renewal_label}, ${status.renewal_lead_days === 0 ? "when your access ends" : "one day before your access ends"}. Cancel before then to stop it.`
+                      : `Renews one day before ${formatDate(status.period_end)} for ${formatNaira(status.renewal_price_naira ?? (activePlan === "core" ? coreThen : examPrice))}. Cancel before renewal to stop the next charge.`)
                     : `Paid through ${formatDate(status.period_end)}. It will not renew automatically.`}
                 </p>
               ) : access?.tier === "trial" ? (
@@ -279,7 +341,8 @@ export function UpgradeScreen() {
                   <li>{FREE_DAILY_LIMITS.mock_sets} mock sets per day</li>
                   <li>{FREE_MAX_QUESTIONS} questions per set</li>
                   <li>Balanced difficulty</li>
-                  <li>No full “why” explanations</li>
+                  <li>Explanations in Tutor mode, 2 sessions a day</li>
+                  <li>No “why” explanations in the final review</li>
                   <li>No peer-save</li>
                   <li>{filesLine("free")}</li>
                   <li>{CHAT_USAGE_LINE.free}</li>
@@ -291,20 +354,20 @@ export function UpgradeScreen() {
                 </ul>
               ) : null}
               {activePlan && !status?.auto_renew ? (
-                <Button className="mt-4 w-full" onClick={() => { setSelectedPlan(activePlan); setStep("review"); }}>Renew {planName(activePlan)}</Button>
+                <Button className="mt-4 w-full" onClick={() => { setSelectedPlan(activePlan); setAgreed(false); setStep("review"); }}>Renew {planName(activePlan)}</Button>
               ) : null}
             </section>
             <h2 className="mt-6 text-sm font-semibold text-foreground">Available plans</h2>
             <div className="mt-3 space-y-3">
               {(["core", "exam"] as BillingPlan[]).filter((plan) => plan !== activePlan).map((plan) => (
-                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setStep("review"); }} className="w-full rounded-2xl border border-border bg-card p-4 text-left transition hover:border-accent/60 hover:bg-accent/5">
+                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setAgreed(false); setStep("review"); }} className="w-full rounded-2xl border border-border bg-card p-4 text-left transition hover:border-accent/60 hover:bg-accent/5">
                   <div className="flex items-center justify-between gap-2">
                     <h2 className="font-display text-xl font-semibold">{planName(plan)}</h2>
-                    <span className="text-sm font-semibold">{formatNaira(plan === "core" ? corePrice : examPrice)} / month</span>
+                    <span className="text-right text-sm font-semibold">{formatNaira(plan === "core" ? corePrice : examPrice)}{plan === "core" && foundingOpen ? " first 30 days" : " / 30 days"}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {plan === "core" && foundingOpen
-                      ? `Founding price for eligible students${seatsLeft !== null ? ` · ${seatsLeft} places remain` : ""}`
+                      ? `Then ${formatNaira(coreThen)} every 30 days${seatsLeft !== null ? ` · ${seatsLeft} introductory places remain` : ""}`
                       : plan === "core" ? "Standard price" : "Available plan"}
                   </p>
                   <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{PLAN_FEATURES[plan].map((line) => <li key={line}>✓ {line}</li>)}</ul>
@@ -321,22 +384,21 @@ export function UpgradeScreen() {
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">Review</p>
             <h1 className="mt-2 font-display text-3xl font-bold">{planName(selectedPlan)} plan</h1>
             <p className="mt-2 text-sm font-semibold text-foreground">
-              {formatNaira(price)} for 30 days
-              {selectedPlan === "core" && foundingOpen ? ` · founding price${seatsLeft !== null ? ` · ${seatsLeft} places remain` : ""}` : ""}
+              {formatNaira(price)} for 30 days{introNow ? " · introductory price" : ""}
             </p>
-            {selectedPlan === "core" && foundingOpen ? (
+            {introNow ? (
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Eligible students pay {formatNaira(corePrice)} now. The regular price is {formatNaira(STANDARD_PRICE_NAIRA)} per month after the founding offer ends or its places are filled.
+                {formatNaira(price)} is the introductory price for your first 30 days only{seatsLeft !== null ? ` (${seatsLeft} places remain)` : ""}. After that, {autoRenew ? `the next automatic charge is ${formatNaira(thenPrice)}` : `a later purchase costs ${formatNaira(thenPrice)}`}.
               </p>
             ) : null}
             <ul className="mt-5 space-y-3">{PLAN_FEATURES[selectedPlan].map((line) => <li key={line} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /><span>{line}</span></li>)}</ul>
 
             <fieldset className="mt-5 space-y-2" aria-label="How do you want to pay?">
               {[
-                { value: true, title: "Renew automatically every 30 days", body: `${formatNaira(price)} is charged to the same card each month until you cancel. You can stop it here at any time.` },
+                { value: true, title: "Renew automatically every 30 days", body: `${introNow ? `${formatNaira(price)} today, then ${formatNaira(thenPrice)}` : formatNaira(price)} is charged to the same card one day before each 30-day period ends${renewLabel ? `, the first time on ${renewLabel}` : ""}, until you cancel. You can stop it here at any time.` },
                 { value: false, title: "Just this month", body: "Pay once for 30 days. Nothing is saved and nothing renews. Bank transfer and USSD always work this way." },
               ].map((o) => (
-                <button key={String(o.value)} type="button" role="radio" aria-checked={autoRenew === o.value} onClick={() => setAutoRenew(o.value)} className={`w-full rounded-xl border p-3 text-left text-sm transition ${autoRenew === o.value ? "border-accent bg-accent/10" : "border-border hover:bg-secondary"}`}>
+                <button key={String(o.value)} type="button" role="radio" aria-checked={autoRenew === o.value} onClick={() => { setAutoRenew(o.value); setAgreed(false); }} className={`w-full rounded-xl border p-3 text-left text-sm transition ${autoRenew === o.value ? "border-accent bg-accent/10" : "border-border hover:bg-secondary"}`}>
                   <span className="font-medium">{o.title}</span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">{o.body}</span>
                 </button>
@@ -346,14 +408,14 @@ export function UpgradeScreen() {
             <dl className="mt-5 divide-y divide-border rounded-xl border border-border bg-background px-3.5">
               <div className="flex justify-between gap-4 py-3 text-sm">
                 <dt className="text-muted-foreground">Amount due now</dt>
-                <dd className="font-semibold text-foreground">{formatNaira(price)}</dd>
+                <dd className="font-semibold text-foreground">{formatNaira(price)}{introNow ? " (introductory)" : ""}</dd>
               </div>
               <div className="flex justify-between gap-4 py-3 text-sm">
-                <dt className="text-muted-foreground">Next renewal</dt>
+                <dt className="text-muted-foreground">Next automatic charge</dt>
                 <dd className="text-right font-medium text-foreground">
                   {autoRenew
-                    ? `${formatNaira(price)} on ${formatDate(new Date(Date.now() + 30 * 86_400_000).toISOString())} (estimated)`
-                    : "No automatic renewal; access lasts 30 days"}
+                    ? (renewLabel ? `${formatNaira(thenPrice)} on ${renewLabel} (Lagos time), one day before your first 30 days end. After that, one day before each 30-day period ends.` : "Loading the exact date…")
+                    : "None. This purchase does not renew."}
                 </dd>
               </div>
               <div className="flex justify-between gap-4 py-3 text-sm">
@@ -370,9 +432,13 @@ export function UpgradeScreen() {
               You pay on Squad’s secure page; we never see your card number. Your plan starts only after Squad confirms the payment.
               {autoRenew ? " If you delete your account, your plan is cancelled and your saved card is removed, so you are never charged again." : ""}
             </p>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
+              <Checkbox checked={agreed} disabled={!consentLine} onCheckedChange={(v) => setAgreed(v === true)} aria-label="I agree to the amounts and schedule" className="mt-0.5" />
+              <span>{consentLine ?? "Loading the exact terms…"}</span>
+            </label>
             {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
-            <Button disabled={busy || (status !== null && !live)} className="mt-4 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => void pay()}>
-              {busy ? "Opening Squad…" : status !== null && !live ? "Payments aren’t live yet" : `Pay ${formatNaira(price)} with Squad`}
+            <Button disabled={busy || !agreed || !consentLine || (status !== null && !live)} className="mt-4 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => void pay()}>
+              {busy ? "Opening Squad…" : status !== null && !live ? "Payments aren’t live yet" : !agreed ? "Tick the box above to continue" : `Pay ${formatNaira(price)} with Squad`}
             </Button>
             <Button variant="outline" className="mt-2 w-full" disabled={busy} onClick={() => setStep("plans")}>Back to plans</Button>
           </section>
@@ -388,9 +454,13 @@ export function UpgradeScreen() {
             <h1 className="mt-5 font-display text-3xl font-bold">You’re on {planName(done?.plan)}.</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {done?.periodEnd ? `Valid until ${formatDate(done.periodEnd)}. ` : ""}
-              {done?.autoRenew ? "It renews automatically, and you can stop that here whenever you like." : "It won’t renew by itself."}
+              {done?.autoRenew ? `The next automatic charge is ${formatNaira(done.nextAmount ?? coreThen)}${done.nextRenewalLabel ? ` on ${done.nextRenewalLabel}` : ""}, ${chargeTiming(done.renewalLeadDays)}, and you can stop it here whenever you like.` : "It won’t renew by itself."}
             </p>
-            {status?.receipts?.[0] ? <p className="mt-3 text-xs text-muted-foreground">Receipt · {formatNaira(status.receipts[0].amount_naira)} · {status.receipts[0].ref}</p> : null}
+            {status?.receipts?.[0] ? (
+              <Button variant="outline" className="mt-4 w-full" onClick={() => setReceiptRef(status.receipts![0].ref)}>
+                View receipt{done?.receiptNo ? ` · ${done.receiptNo}` : ""}
+              </Button>
+            ) : null}
             <Button className="mt-6 w-full" onClick={() => navigate("home")}>Back to Home</Button>
           </section>
         ) : null}
@@ -401,12 +471,16 @@ export function UpgradeScreen() {
             <p className="mt-2 text-sm text-muted-foreground">Some banks take a few minutes. Please don’t pay again: your plan starts as soon as the payment is confirmed, and we keep checking.</p>
             {error ? <p className="mt-2 text-xs text-muted-foreground">{error}</p> : null}
             <Button className="mt-6 w-full" onClick={() => { const ref = returned.current; if (ref) { setStep("verifying"); void check(ref, 10); } else { void loadStatus(); setStep("offer"); } }}>Check again</Button>
-            <Button variant="outline" className="mt-2 w-full" onClick={() => navigate("support")}>Ask us about this payment</Button>
+            <Button variant="outline" className="mt-2 w-full" onClick={() => setProblem({ open: true, ref: returned.current })}>Report a payment problem</Button>
+            <Button variant="ghost" className="mt-1 w-full" onClick={() => navigate("support")}>Ask us about this payment</Button>
           </section>
         ) : null}
 
-        {step === "failed" ? <section className="py-10 text-center"><h1 className="font-display text-3xl font-bold">Payment not completed</h1><p className="mt-2 text-sm text-muted-foreground">No charge was made, or it was reversed by your bank. You can try again.</p><Button className="mt-6 w-full" onClick={() => setStep("review")}>Try again</Button><Button variant="outline" className="mt-2 w-full" onClick={() => navigate("support")}>Ask us about payment</Button></section> : null}
+        {step === "failed" ? <section className="py-10 text-center"><h1 className="font-display text-3xl font-bold">Payment not completed</h1><p className="mt-2 text-sm text-muted-foreground">No charge was made, or it was reversed by your bank. You can try again.</p><Button className="mt-6 w-full" onClick={() => setStep("review")}>Try again</Button><Button variant="outline" className="mt-2 w-full" onClick={() => setProblem({ open: true, ref: null })}>Report a payment problem</Button><Button variant="ghost" className="mt-1 w-full" onClick={() => navigate("support")}>Ask us about payment</Button></section> : null}
       </div>
+
+      <ReceiptSheet refCode={receiptRef} onOpenChange={(o) => { if (!o) setReceiptRef(null); }} onReport={(r) => { setReceiptRef(null); setProblem({ open: true, ref: r }); }} />
+      <PaymentProblemSheet open={problem.open} onOpenChange={(o) => setProblem((p) => ({ ...p, open: o }))} receipts={status?.receipts ?? []} presetRef={problem.ref ?? ""} />
 
       <AlertDialog open={stopOpen} onOpenChange={(o) => { if (!busy) setStopOpen(o); }}>
         <AlertDialogContent>
