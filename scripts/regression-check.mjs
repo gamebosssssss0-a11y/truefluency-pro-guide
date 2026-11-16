@@ -64,7 +64,7 @@ test("mock sharing enforces ownership and strips answers from public previews", 
 test("one-time mock shares lock visibility and enforce private owner access and server expiry", async () => {
   const server = await read("../src/lib/mock-sharing.server.ts");
   const functions = await read("../src/lib/mock-sharing.functions.ts");
-  const migration = await read("../supabase/migrations/20261115000000_mock_shares_attempt_scoped.sql");
+  const migration = await read("../supabase/migrations/20261116041306_mock_shares_attempt_scoped.sql");
   assert.match(server, /if \(existing\)\s*\{/);
   assert.match(server, /data\.owner_id !== requestingUserId/);
   assert.match(server, /Date\.parse\(data\.expires_at\) <= Date\.now\(\)/);
