@@ -34,9 +34,13 @@ test("shared mock sign-in handoff returns to the same preview", async () => {
 test("mock teaching blocks omit empty explanation sections without placeholders", async () => {
   const flow = await read("../src/components/mock-test-flow.tsx");
   const helpers = await read("../src/lib/why-blocks.ts");
-  assert.match(flow, /TeachingExplanationBlocks explanation=\{explanation\}/);
-  assert.match(flow, /\.filter\(\(section\) => Boolean\(section\.body\)\)/);
-  assert.match(flow, /\.filter\(\(item\) => Boolean\(item\.body\)\)/);
+  // the sections are drawn by the shared TeachingExplanationBlocks component (it also shows "Why your answer was wrong" for the student's own pick)
+  const teaching = await read("../src/components/teaching-explanation.tsx");
+  assert.match(flow, /TeachingExplanationBlocks\s+explanation=\{explanation\}/);
+  assert.match(teaching, /\.filter\(\(section\) => Boolean\(section\.body\)\)/);
+  assert.match(teaching, /\.filter\(\(item\) => Boolean\(item\.body\)\)/);
+  assert.doesNotMatch(teaching, /A separate key concept was not included/);
+  assert.doesNotMatch(teaching, /The key concept is not available for this question/);
   assert.match(helpers, /export function toTeachingExplanation/);
   assert.doesNotMatch(flow, /A separate key concept was not included/);
   assert.doesNotMatch(flow, /The key concept is not available for this question/);
@@ -126,7 +130,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(dashboard, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
   const upgrade = await read("../src/components/upgrade.tsx");
   assert.doesNotMatch(upgrade, /mix-blend-difference/);
-  assert.match(upgrade, /standard price after the offer ends/);
+  assert.match(upgrade, /introductory price for your first 30 days only/);   // the offer is for the first 30 days; every renewal is the standard price
   assert.match(upgrade, /places remain/);
   assert.doesNotMatch(styles, /--tf-navy-950|FINAL GLOBAL REFERENCE BACKGROUND|TrueFluency reference treatment/);
   assert.doesNotMatch(calculator, /sticky top-0 z-20/);
@@ -400,7 +404,8 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
 test("math text uses KaTeX for marked and bare formulas across practice and review", async () => {
   const math = await read("../src/components/math-text.tsx");
   const practice = await read("../src/components/mock-tests-tab.tsx");
-  const review = await read("../src/components/mock-test-flow.tsx");
+  // the review screen draws the explanation through the shared teaching component, so both files are the "review" source
+  const review = (await read("../src/components/mock-test-flow.tsx")) + (await read("../src/components/teaching-explanation.tsx"));
   assert.match(math, /import katex from "katex"/);
   assert.match(math, /looksLikeBareTex/);
   assert.match(math, /compactFormula/);
