@@ -516,9 +516,23 @@
   }
 }
 
-.locker-skeleton-block {
-  background: hsl(var(--muted));
+ .locker-skeleton-block {
+  background: var(--muted);
   animation: locker-skeleton-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.loading-skeleton {
+  background: color-mix(in srgb, var(--muted) 78%, var(--background));
+  animation: locker-skeleton-pulse 1.2s ease-in-out infinite alternate;
+}
+.loading-progress-track { background: color-mix(in srgb, var(--muted) 78%, var(--background)); }
+.loading-progress-bar {
+  background: var(--accent);
+  animation: loading-progress-indeterminate 1.6s ease-in-out infinite;
+}
+@keyframes loading-progress-indeterminate {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(260%); }
 }
 
 .locker-skeleton-row:nth-child(2) .locker-skeleton-block {
@@ -535,10 +549,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .locker-skeleton-block {
+  .locker-skeleton-block, .loading-skeleton {
     animation: none;
     opacity: 0.65;
   }
+  .loading-progress-bar { animation: none; width: 100%; opacity: 0.65; }
 }
 @media (min-width: 768px) {
   .app-stage-wide .max-w-md {
@@ -546,9 +561,14 @@
   }
 }
 
+.tab-swipe-clip {
+  overflow-x: clip;
+  overflow-y: visible;
+}
 .tab-swipe-stage {
   touch-action: pan-y;
   overscroll-behavior-x: contain;
+  overflow: visible;
 }
 
 /* The root tab stage already reserves space for the persistent navigation.
@@ -1051,8 +1071,12 @@ body {
 }
 [data-tab-swipe-stage] {
   min-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
-  overflow-x: clip !important;
-  overflow-y: visible !important;
+  overflow: visible !important;
+}
+[data-chat-fullscreen] {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 [data-root-tab="chatbot"] {
   /* TopNavBar is hidden on phones. Subtract only the fixed bottom tab bar. */
@@ -1100,14 +1124,14 @@ body {
     min-height: calc(100dvh - 4rem);
   }
 }
-nav[aria-label="Desktop primary navigation"], nav[aria-label="Mobile navigation"] {
-  background: color-mix(in srgb, var(--background) 96%, transparent) !important;
-  border-color: var(--border) !important;
-  backdrop-filter: blur(16px);
+body:has([data-tab-swipe-stage][data-swipe-active="true"]) [data-verilo-entry] {
+  opacity: 0;
+  pointer-events: none;
 }
-nav[aria-label="Mobile navigation"] {
-  padding-bottom: env(safe-area-inset-bottom);
+[data-verilo-entry] {
+  transition: opacity 140ms ease;
 }
+
 [data-cgpa-form="calculator"] .bg-navy {
   background: var(--navy) !important;
   color: var(--cream) !important;
@@ -1572,4 +1596,19 @@ h2 { font-family: Inter, var(--font-sans); font-size: var(--tf-section-title-siz
 }
 @media (prefers-reduced-motion: reduce) {
   .tf-visual-phase2 :where(button, [role="button"]):active { transform: none; }
+}
+
+
+/* Theme changes animate only color properties after a user action. */
+html[data-theme-transition] *,
+html[data-theme-transition] *::before,
+html[data-theme-transition] *::after {
+  transition-property: color, background-color, border-color, fill, stroke !important;
+  transition-duration: 180ms !important;
+  transition-timing-function: ease-out !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-transition] *,
+  html[data-theme-transition] *::before,
+  html[data-theme-transition] *::after { transition-duration: 0ms !important; }
 }

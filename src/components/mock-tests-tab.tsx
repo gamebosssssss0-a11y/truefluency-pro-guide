@@ -20,6 +20,7 @@ import { listMaterialsForCourse } from "@/lib/course-materials";
 import { SOURCE_CHANGE_EVENT, pickSource, readSourceChoice } from "@/lib/material-pick";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { maxSourceFiles } from "@/lib/entitlements";
+import { MockShareSheet } from "@/components/mock-share-sheet";
 
 /* ================= Tab 2: Mock Tests ================= */
 
@@ -38,6 +39,10 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
     profile.courses.some((course) => !Object.hasOwn(practiceMaterialCache, course.code)),
   );
   const [courseSearch, setCourseSearch] = useState("");
+  const [activeCourseIndex, setActiveCourseIndex] = useState(0);
+  const courseCarouselRef = useRef<HTMLDivElement | null>(null);
+  const courseCardRefs = useRef<(HTMLElement | null)[]>([]);
+  const courseSyncFrameRef = useRef<number | null>(null);
   const filteredCourses = useMemo(() => {
     const query = courseSearch.trim().toLocaleLowerCase();
     if (!query) return profile.courses;
@@ -47,6 +52,40 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
       canonicalCourseCode(course.code).toLocaleLowerCase().includes(query),
     );
   }, [courseSearch, profile.courses]);
+
+  useEffect(() => {
+    setActiveCourseIndex(0);
+    courseCardRefs.current[0]?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+  }, [courseSearch, profile.courses]);
+
+  useEffect(() => () => {
+    if (courseSyncFrameRef.current !== null) window.cancelAnimationFrame(courseSyncFrameRef.current);
+  }, []);
+
+  const syncCourseCarousel = () => {
+    if (courseSyncFrameRef.current !== null) return;
+    courseSyncFrameRef.current = window.requestAnimationFrame(() => {
+      courseSyncFrameRef.current = null;
+      const track = courseCarouselRef.current;
+      if (!track) return;
+      const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+      let nearest = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      courseCardRefs.current.slice(0, filteredCourses.length).forEach((card, i) => {
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        const distance = Math.abs(rect.left + rect.width / 2 - center);
+        if (distance < nearestDistance) { nearest = i; nearestDistance = distance; }
+      });
+      setActiveCourseIndex((current) => current === nearest ? current : nearest);
+    });
+  };
+
+  const moveCourse = (delta: number) => {
+    const next = Math.max(0, Math.min(filteredCourses.length - 1, activeCourseIndex + delta));
+    setActiveCourseIndex(next);
+    courseCardRefs.current[next]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
+  };
 
   useEffect(() => {
     if (!active) return;
@@ -172,67 +211,53 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                 No courses match “{courseSearch.trim()}”.
               </div>
             ) : (
-              <div className="mt-3 space-y-2.5">
-            {filteredCourses.map((c) => {
-              const analysis = profile.courseTopicAnalysis[c.code];
-              const readyMaterialId = readyMaterialIds[c.code] ?? null;
-              const canCustomize = Boolean(
-                readyMaterialId &&
-                analysis?.materialId === readyMaterialId &&
-                analysis.topics.length > 0,
-              );
-              const avg = averageForCourse(profile, c.code);
-              return (
-                <div
-                  key={c.code}
-                  className="rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 shadow-sm transition hover:border-accent/50"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-                      <BookOpen className="h-4.5 w-4.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div>
-                      <CourseDescription text={c.name} />
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {analysis?.topics.length ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-accent">
-                            <Sparkles className="h-3 w-3" /> {analysis.topics.length} topics predicted
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            No analysis yet
-                          </span>
-                        )}
-                        {avg !== null ? (
-                          <TopicPill label={`Avg ${avg}%`} strength={scoreToStrength(avg)} />
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate("course-detail", { courseCode: c.code })}
-                    >
-                      Materials
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={materialsLoading || Boolean(profile.inProgressTest)}
-                      onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}
-                    >
-                      <Zap className="mr-1.5 h-3.5 w-3.5" />
-                      {profile.inProgressTest ? "Finish current practice first" : materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
-                    </Button>
+              <div className="mt-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-muted-foreground">{filteredCourses.length ? activeCourseIndex + 1 : 0} of {filteredCourses.length} courses</span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon" aria-label="Previous course" onClick={() => moveCourse(-1)} disabled={activeCourseIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="icon" aria-label="Next course" onClick={() => moveCourse(1)} disabled={activeCourseIndex >= filteredCourses.length - 1}><ChevronRight className="h-4 w-4" /></Button>
                   </div>
                 </div>
-              );
-            })}
+                <div ref={courseCarouselRef} onScroll={syncCourseCarousel} data-swipe-lock="" tabIndex={0} aria-roledescription="carousel" aria-label="Practice courses" className="course-carousel-track flex snap-x snap-mandatory gap-3 overscroll-x-contain overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {filteredCourses.map((c, courseIndex) => {
+                    const centered = activeCourseIndex === courseIndex;
+                    const analysis = profile.courseTopicAnalysis[c.code];
+                    const readyMaterialId = readyMaterialIds[c.code] ?? null;
+                    const canCustomize = Boolean(readyMaterialId && analysis?.materialId === readyMaterialId && analysis.topics.length > 0);
+                    const avg = averageForCourse(profile, c.code);
+                    return (
+                      <article key={c.code} ref={(node) => { courseCardRefs.current[courseIndex] = node; }} data-course-carousel-card="" aria-current={centered ? "true" : undefined}
+                        onPointerDownCapture={(event) => {
+                          if (centered) return;
+                          event.preventDefault();
+                          courseCardRefs.current[courseIndex]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
+                        }}
+                        className="course-carousel-card w-[calc(100%-40px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border border-l-4 border-l-accent bg-card p-4 shadow-sm transition-[opacity,transform] duration-200"
+                        style={{ opacity: centered ? 1 : 0.72, transform: centered ? "scale(1)" : "scale(.96)" }}>
+                        <div className="flex items-start gap-3">
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><BookOpen className="h-4.5 w-4.5" /></div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div><CourseDescription text={c.name} />
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              {analysis?.topics.length ? <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-accent"><Sparkles className="h-3 w-3" /> {analysis.topics.length} topics predicted</span> : <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">No analysis yet</span>}
+                              {avg !== null ? <TopicPill label={`Avg ${avg}%`} strength={scoreToStrength(avg)} /> : null}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <Button variant="outline" size="sm" disabled={!centered} onClick={() => navigate("course-detail", { courseCode: c.code })}>Materials</Button>
+                          <Button size="sm" disabled={!centered || materialsLoading || Boolean(profile.inProgressTest)} onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}>
+                            <Zap className="mr-1.5 h-3.5 w-3.5" />{profile.inProgressTest ? "Finish current practice first" : materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
+                          </Button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
             )}
-          </>
+            </>
         )}
 
         {/* Results + history */}
@@ -302,6 +327,8 @@ export function TestHistoryScreen() {
   const { profile, navigate, update, activeCourseCode } = useProfileData();
   const [tab, setTab] = useState<HistoryTab>("attempts");
   const [courseFilter, setCourseFilter] = useState<string>("all");
+  const [shareAttemptId, setShareAttemptId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
   const [activeAttemptIndex, setActiveAttemptIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
@@ -318,7 +345,7 @@ export function TestHistoryScreen() {
     () => [...profile.attempts].sort((a, b) => b.submittedAt - a.submittedAt),
     [profile.attempts],
   );
-  const filtered = courseFilter === "all" ? all : all.filter((a) => a.courseCode === courseFilter);
+  const filtered = courseFilter === "all" ? all : all.filter((a) => canonicalCourseCode(a.courseCode) === canonicalCourseCode(courseFilter));
   useEffect(() => {
     if (carouselSyncFrameRef.current !== null) {
       window.cancelAnimationFrame(carouselSyncFrameRef.current);
@@ -350,7 +377,7 @@ export function TestHistoryScreen() {
       setActiveAttemptIndex((current) => current === nearest ? current : nearest);
     });
   };
-  const courseCodes = Array.from(new Set(all.map((a) => a.courseCode)));
+  const courseCodes = Array.from(new Set(all.map((a) => canonicalCourseCode(a.courseCode))));
 
   return (
     <div className="study-utility-page study-page-blend tf-visual-phase2 min-h-screen">
@@ -419,7 +446,7 @@ export function TestHistoryScreen() {
                   data-swipe-lock=""
                   tabIndex={0}
                   aria-roledescription="carousel"
-                  className="practice-carousel-track flex snap-x snap-mandatory gap-3 overscroll-x-contain overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="results-carousel-track flex snap-x snap-mandatory gap-3 overscroll-x-contain overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   aria-label="Mock result carousel"
                 >
               {filtered.map((a, cardIndex) => {
@@ -429,8 +456,8 @@ export function TestHistoryScreen() {
                 <div
                   key={a.id}
                   ref={(node) => { cardRefs.current[cardIndex] = node; }}
-                  data-practice-carousel-card=""
-                  className="practice-carousel-card w-[calc(100%-32px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border bg-card p-4 shadow-sm"
+                  data-results-carousel-card=""
+                  className="results-carousel-card w-[calc(100%-32px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border bg-card p-4 shadow-sm"
                   style={{
                     "--carousel-offset": Math.max(-1, Math.min(1, cardIndex - activeAttemptIndex)) * -1,
                     "--carousel-scale": cardIndex === activeAttemptIndex ? 1 : 0.88,
@@ -452,7 +479,7 @@ export function TestHistoryScreen() {
                       {a.correct} / {a.total}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{a.courseCode}</div>
+                      <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(a.courseCode)}</div>
                       <div className="break-words text-xs text-muted-foreground">{a.courseTitle}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {new Date(a.submittedAt).toLocaleString("en-GB", {
@@ -510,7 +537,7 @@ export function TestHistoryScreen() {
                     </>
                   ) : null}
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -534,6 +561,7 @@ export function TestHistoryScreen() {
                     >
                       <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Retake
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => { setShareAttemptId(a.id); setShareOpen(true); }}>Share</Button>
                   </div>
                 </div>
                 );
@@ -546,6 +574,7 @@ export function TestHistoryScreen() {
           <ProgressPanel profile={profile} activeCourseCode={activeCourseCode} navigate={navigate} update={update} />
         )}
       </div>
+      {shareAttemptId ? <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={shareAttemptId} /> : null}
     </div>
   );
 }
@@ -957,6 +986,21 @@ export function ProgressPanel({
                           disabled={!course}
                         >
                           Practice
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 shrink-0 px-3 text-xs"
+                          disabled={!course}
+                          onClick={() => {
+                            if (!course) return;
+                            try {
+                              sessionStorage.setItem("truefluency-verilo-pending-prompt", JSON.stringify({ courseCode: course.code, prompt: `Help me understand ${entry.topic} in ${canonicalCourseCode(course.code)} and suggest how I can practise it.` }));
+                            } catch { /* chat still opens if session storage is unavailable */ }
+                            navigate("chatbot", { courseCode: course.code });
+                          }}
+                        >
+                          Ask Verilo
                         </Button>
                       </div>
                       <div

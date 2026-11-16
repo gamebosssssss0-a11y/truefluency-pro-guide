@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, Loader2, ArrowRight } from "lucide-react";
+import { BookOpen, ArrowRight } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { Button } from "@/components/ui/button";
 import { MathText } from "@/components/math-text";
 import { supabase } from "@/integrations/supabase/client";
-import { readPracticeMockShare, readPublicMockShare, MOCK_SHARE_OFFLINE_MESSAGE } from "@/lib/mock-sharing.functions";
+import { readPracticeMockShare, readPublicMockShare, readSignedInMockShare, MOCK_SHARE_OFFLINE_MESSAGE } from "@/lib/mock-sharing.functions";
+import { LoadingStatus, SkeletonBlock } from "@/components/loading-state";
 
 export const Route = createFileRoute("/mock-share/$token")({
   component: SharedMockPage,
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/mock-share/$token")({
   }),
 });
 
-type Preview = { courseCode: string; courseTitle: string; questionCount: number; questions: { id?: number; topic?: string; question: string; options: string[] }[] };
+type Preview = { courseCode: string; courseTitle: string; questionCount: number; settings?: unknown; questions: { id?: number; topic?: string; question: string; options: string[] }[] };
 type PageState = "loading" | "ready" | "unavailable" | "offline";
 
 function SharedMockPage() {
@@ -36,7 +37,9 @@ function SharedMockPage() {
         const { data } = await supabase.auth.getSession();
         if (!alive) return;
         setSignedIn(!!data.session);
-        const result = await readPublicMockShare({ data: { token } });
+        const result = data.session
+          ? await readSignedInMockShare({ data: { token } })
+          : await readPublicMockShare({ data: { token } });
         if (!alive) return;
         if (result.ok) {
           setMock(result.mock);
@@ -71,6 +74,7 @@ function SharedMockPage() {
         courseCode: full.courseCode,
         courseTitle: full.courseTitle,
         questions,
+        settings: full.settings,
       }));
       window.location.href = "/";
     } catch {
@@ -92,10 +96,11 @@ function SharedMockPage() {
         </header>
 
         {state === "loading" ? (
-          <section role="status" className="rounded-2xl border border-border bg-card p-8 text-center">
-            <Loader2 className="mx-auto h-6 w-6 animate-spin text-accent" />
-            <p className="mt-3 text-sm text-muted-foreground">Opening the mock preview…</p>
-          </section>
+          <LoadingStatus className="rounded-2xl border border-border bg-card p-8 text-center" label="Opening the mock preview…" slowMessage="The shared mock is taking longer to load." longMessage="The preview is still loading. Check your connection and try opening the link again.">
+            <SkeletonBlock className="mx-auto h-6 w-36" />
+            <SkeletonBlock className="mx-auto mt-3 h-8 w-56 max-w-full" />
+            <SkeletonBlock className="mx-auto mt-6 h-24 w-full rounded-xl" />
+          </LoadingStatus>
         ) : state === "offline" ? (
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-display text-lg font-semibold">Sharing is temporarily unavailable</h2>

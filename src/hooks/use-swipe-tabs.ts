@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigation, type AppView } from "@/lib/profile-store";
 
-/** The five root tabs, in the order the tab bar shows them. */
-const ORDER: AppView[] = ["home", "mock-tests", "library", "chatbot", "account"];
+/** The four root tabs, in the order the tab bar shows them. */
+const ORDER: AppView[] = ["home", "mock-tests", "library", "account"];
 const SETTLE_MS = 220;
 const SNAP_BACK_MS = 240;
 
@@ -11,7 +11,7 @@ export type SwipePreview = { tab: AppView; side: "left" | "right"; highlightedTa
 /** Which root tab (if any) the current view is. Sub-screens are not swipeable. */
 function rootIndex(view: AppView): number {
   if (view === "dashboard") return 0;
-  if (view === "settings") return 4;
+  if (view === "settings") return 3;
   return ORDER.indexOf(view);
 }
 
@@ -145,9 +145,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         const adjacentIndex = index + (dx < 0 ? 1 : -1);
         previewTab = ORDER[adjacentIndex] ?? null;
         previewSide = dx < 0 ? "right" : "left";
-        if (previewTab && !reducedMotion()) {
-          setPreview({ tab: previewTab, side: previewSide, highlightedTab: null });
-        }
+        // The adjacent panel is mounted with the active root tab. Touch-move
+        // updates only its compositor transform; React does not render per drag.
       }
       deltaX = dx;
       const now = performance.now();
@@ -156,7 +155,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const first = samples[0]!;
       const last = samples[samples.length - 1]!;
       const velocity = last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
-      const progress = Math.max(0, Math.min(4, index - dx / window.innerWidth));
+      const progress = Math.max(0, Math.min(ORDER.length - 1, index - dx / window.innerWidth));
       paintTabLight(progress, velocity);
 
       if (!reducedMotion()) {

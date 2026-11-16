@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useNavigation, type AppView, type TabKey } from "@/lib/profile-store";
-import { Home, ClipboardList, Library, MessageCircle, User } from "lucide-react";
+import { Home, ClipboardList, Library, User } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +8,6 @@ const TABS: { key: TabKey; label: string; icon: typeof Home; view: AppView }[] =
   { key: "home", label: "Home", icon: Home, view: "home" },
   { key: "mock-tests", label: "Practice", icon: ClipboardList, view: "mock-tests" },
   { key: "library", label: "My Files", icon: Library, view: "library" },
-  { key: "chatbot", label: "Study Chat", icon: MessageCircle, view: "chatbot" },
   { key: "account", label: "Account", icon: User, view: "account" },
 ];
 
@@ -29,7 +28,6 @@ export function tabForView(view: AppView): TabKey {
     case "course-detail":
       return "library";
     case "chatbot":
-      return "chatbot";
     case "account":
     case "settings":
     case "all-uploads":
@@ -48,11 +46,11 @@ export function tabForView(view: AppView): TabKey {
 
 /** Views that hide the tab bar so nobody navigates away mid-task. */
 export function hidesTabBar(view: AppView): boolean {
-  return view === "mock-run" || view === "mock-gen" || view === "flashcards-review";
+  return view === "mock-run" || view === "mock-gen" || view === "flashcards-review" || view === "chatbot" || view === "chat-history";
 }
 
 /**
- * Desktop (>= 768px) top navigation. Same five destinations as the mobile
+ * Desktop (>= 768px) top navigation. Same four destinations as the mobile
  * tab bar, no extra items: this is a layout change, not a new feature.
  */
 export function TopNavBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
@@ -133,9 +131,9 @@ export function BottomTabBar() {
           aria-hidden="true"
           data-tab-indicator
           data-tab-indicator-track=""
-          className="pointer-events-none absolute bottom-[6px] left-[10%] z-10 h-[3px] w-7 -translate-x-1/2 rounded-full transition-[translate,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="pointer-events-none absolute bottom-[6px] left-[12.5%] z-10 h-[3px] w-7 -translate-x-1/2 rounded-full transition-[translate,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            translate: "calc(var(--tab-progress, 0) * 20cqi) 0",
+            translate: "calc(var(--tab-progress, 0) * 25cqi) 0",
             opacity: 1,
             backgroundColor: "var(--tab-light-color)",
             boxShadow: "0 0 10px color-mix(in srgb, var(--tab-light-color) 45%, transparent)",

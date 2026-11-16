@@ -13,6 +13,7 @@ import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
 import { getCourseThread, getCourseHistory, getChatUsage, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage, type ChatSource, type ChatUsage } from "@/lib/chat-api";
 import { ChatUsageRing } from "@/components/chat-usage-ring";
+import { LoadingStatus, SkeletonBlock } from "@/components/loading-state";
 import { createOrUpdateChatShare, getChatShareState, revokeChatShare, type ChatShareVisibility } from "@/lib/chat-sharing.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { isAppView } from "@/lib/profile-store";
@@ -251,7 +252,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
-  const [showFullCourseTitle, setShowFullCourseTitle] = useState(false);
   const imageUrls = useRef(new Set<string>());
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; conversationId: string; messages: ChatMessage[] }[]>([]);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
@@ -260,6 +260,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [resumingConvId, setResumingConvId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  useEffect(() => setHistoryOpen(view === "chat-history"), [view]);
   const [draft, setDraft] = useState(() => attachedPage ? `Explain page ${attachedPage.page} of ${attachedPage.fileName}.` : "");
   const [isSending, setIsSending] = useState(false);
   // Non-null once the first chunk of a reply has arrived — used only to hide
@@ -284,6 +285,28 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setMode("Explain");
     setDraft(`Explain page ${pendingPage.page} of ${pendingPage.fileName}.`);
   }, [view, suppliedPageAttachment]);
+
+  useEffect(() => {
+    if (view !== "chatbot") return;
+    let raw: string | null = null;
+    try { raw = sessionStorage.getItem("truefluency-verilo-pending-prompt"); } catch { return; }
+    if (!raw) return;
+    try {
+      const pending = JSON.parse(raw) as { courseCode?: unknown; prompt?: unknown };
+      if (typeof pending.courseCode !== "string" || typeof pending.prompt !== "string") {
+        sessionStorage.removeItem("truefluency-verilo-pending-prompt");
+        return;
+      }
+      if (canonicalCourseCode(pending.courseCode) !== canonicalCourseCode(selected)) return;
+      sessionStorage.removeItem("truefluency-verilo-pending-prompt");
+      if (!draft.trim()) {
+        setDraft(pending.prompt.slice(0, 2_000));
+        setMode("Explain");
+      }
+    } catch {
+      try { sessionStorage.removeItem("truefluency-verilo-pending-prompt"); } catch { /* storage is optional */ }
+    }
+  }, [draft, selected, view]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
@@ -389,7 +412,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setSelected(key);
     navigate(view, { courseCode: key });
     setAttachedPage(null);
-    setShowFullCourseTitle(false);
     setMessages(threadCache.current.get(cacheMapKey(key)) ?? []);
     setDraft("");
     setPhotoFile(null);
@@ -500,7 +522,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           course,
           date,
           conversationId,
-          title: items.find((message) => message.role === "user")?.content ?? "Study chat",
+          title: items.find((message) => message.role === "user")?.content ?? "Verilo",
           messages: items,
         };
       });
@@ -1065,11 +1087,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const capText: string | null = null;
 
   const placeholderCourse = displayCode(selected);
-  const selectedCourse = profile.courses.find(
-    (course) => canonicalCourseCode(course.code) === canonicalCourseCode(selected),
-  );
-  const fullCourseTitle = selectedCourse?.name?.trim() ?? "";
-  const shortCourseTitle = fullCourseTitle.length > 22 ? `${fullCourseTitle.slice(0, 20).trimEnd()}…` : fullCourseTitle;
   const latestAssistantReply = [...messages].reverse().find((message) => message.from === "assistant");
   const sourcePanelVisible = !embedded && Boolean(latestAssistantReply?.sources?.length);
   const sourceLocation = (source: ChatSource) => source.page ? `Page ${source.page}` : source.section || source.location || "Page unavailable";
@@ -1077,74 +1094,44 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   return (
     <div className={`study-chat-screen tf-visual-phase2 min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={cn("chat-layout mx-auto grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
-        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[var(--tf-border-warm)]/25 pb-2">
-          <button
-            type="button"
-            onClick={() => setShowFullCourseTitle((current) => !current)}
-            disabled={isSending || courseOptions.length === 0}
-            aria-expanded={showFullCourseTitle}
-            aria-label={selected ? `Show ${showFullCourseTitle ? "short" : "full"} course title for ${displayCode(selected)}` : "Choose a course"}
-            title={fullCourseTitle || displayCode(selected)}
-            className="inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full border border-[var(--tf-border-warm)]/45 bg-[var(--tf-navy)] px-3 py-2 text-xs font-semibold text-[var(--tf-cream)] disabled:opacity-60"
-          >
-            <span className={cn("min-w-0 whitespace-normal break-words text-left leading-4", showFullCourseTitle ? "line-clamp-none" : "line-clamp-2")}>
-              {selected ? <>
-                {displayCode(selected)}{shortCourseTitle ? ` · ` : ""}
-                <span className="md:hidden">{showFullCourseTitle ? fullCourseTitle : shortCourseTitle}</span>
-                <span className="hidden md:inline">{fullCourseTitle}</span>
-              </> : "Choose a course"}
-            </span>
+        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-border pb-2">
+          <button type="button" onClick={() => { setHistoryOpen(true); navigate("chat-history", { courseCode: selected }); }} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2 text-xs font-semibold leading-3 text-foreground transition hover:bg-muted">
+            <HistoryIcon aria-hidden="true" className="h-4 w-4" />
+            <span><span className="block">History</span><span className="block">Chat</span></span>
           </button>
-          <button
-            type="button"
-            onClick={() => setCoursePickerOpen(true)}
-            disabled={isSending || courseOptions.length === 0}
-            aria-haspopup="dialog"
-            aria-label="Change course"
-            title="Change course"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--tf-border-warm)]/45 bg-[var(--tf-navy)] text-[var(--tf-cream)] disabled:opacity-60"
-          >
-            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--tf-sand-chip)]" />
-          </button>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              disabled={isSending}
-              onClick={async () => {
-                const key = canonicalCourseCode(selected);
-                const previous = messages;
-                loadToken.current += 1; // supersede any in-flight load for this course
-                setIsLoadingThread(false);
-                setMessages([]); // optimistic — reverted below if the archive call fails
-                setDraft("");
-                setPhotoFile(null);
-                setPhotoName(null);
-                try {
-                  await startNewChatThread(key);
-                  persistCache(key, []); // now genuinely correct: the server thread is really empty
-                  setMode("Explain");
-                } catch (error) {
-                  setMessages(previous); // the old thread is still live server-side — don't hide it on a failed archive
-                  toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
-                }
-              }}
-              className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--tf-sand-border)] bg-[var(--tf-sand-chip)] px-2.5 py-1.5 text-xs font-semibold text-[var(--tf-sand-ink)] transition hover:bg-[var(--tf-sand-border)] disabled:opacity-60"
-            >
-              <Plus aria-hidden="true" className="h-3 w-3" />
-              New chat
+          <div className="min-w-0 flex-1 text-center">
+            <p className="text-base font-semibold leading-6 text-foreground">Verilo</p>
+            <button type="button" onClick={() => setCoursePickerOpen(true)} disabled={isSending || courseOptions.length === 0} aria-haspopup="dialog" aria-label="Change course" title="Choose a course" className="inline-flex min-h-7 max-w-full items-center justify-center gap-1 rounded-md px-2 text-xs leading-4 text-muted-foreground disabled:opacity-60">
+              <span className="truncate">{selected ? displayCode(selected) : "Choose a course"}</span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
             </button>
-            <button type="button" onClick={() => setHistoryOpen(true)} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted">
-              <HistoryIcon aria-hidden="true" className="h-3.5 w-3.5" />
-              <span>History</span>
-            </button>
-            {capText ? (
-              <span className="whitespace-nowrap rounded-full bg-[var(--tf-sand-chip)] px-2 py-1.5 text-xs font-semibold text-[var(--tf-navy)]">
-                {capText}
-              </span>
-            ) : null}
           </div>
-        </div>
-        {sourcePanelVisible && latestAssistantReply ? (
+          <button
+            type="button"
+            disabled={isSending}
+            onClick={async () => {
+              const key = canonicalCourseCode(selected);
+              const previous = messages;
+              loadToken.current += 1;
+              setIsLoadingThread(false);
+              setMessages([]);
+              setDraft("");
+              setPhotoFile(null);
+              setPhotoName(null);
+              try {
+                await startNewChatThread(key);
+                persistCache(key, []);
+                setMode("Explain");
+              } catch (error) {
+                setMessages(previous);
+                toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
+              }
+            }}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:opacity-60"
+          >
+            <Plus aria-hidden="true" className="h-3.5 w-3.5" />New chat
+          </button>
+        </div>        {sourcePanelVisible && latestAssistantReply ? (
           <aside aria-label="Sources for the latest answer" className="hidden min-h-0 overflow-y-auto rounded-2xl border border-border bg-card p-4 md:col-start-2 md:row-start-1 md:row-span-3 md:block">
             <h2 className="font-display text-sm font-semibold text-foreground">Sources</h2>
             <p className="mt-1 text-xs text-muted-foreground">Course material used for the latest answer.</p>
@@ -1166,7 +1153,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           data-screen-scroll
           data-swipe-lock
           role="log"
-          aria-label="Study Chat messages"
+          aria-label="Verilo conversation"
           aria-live="polite"
           aria-relevant="additions text"
           aria-busy={isLoadingThread || isSending}
@@ -1183,28 +1170,24 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               </div>
             </div>
           ) : isLoadingThread && messages.length === 0 ? (
-            <div role="status" aria-live="polite" className="flex min-h-full flex-col items-center justify-center px-6 text-center">
-              <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--tf-sand-chip)] text-[var(--tf-navy)] shadow-[0_0_24px_rgba(184,110,10,0.24)]">
-                <Loader2 aria-hidden="true" className="chat-spinner h-7 w-7" />
-              </span>
-              <p className="text-base font-semibold text-foreground">
-                Loading your conversation
-              </p>
-              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                This can take a little while as we open {placeholderCourse} and load your saved conversation. Please keep this screen open.
-              </p>
-              <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-[var(--tf-border-warm)]/40">
-                <div className="chat-loading-progress h-full w-2/5 rounded-full bg-[var(--tf-amber-strong)]" />
-              </div>
-            </div>
+            <LoadingStatus
+              className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center px-6 text-center"
+              label={`Loading your ${placeholderCourse} conversation…`}
+              slowMessage="Your saved conversation is taking longer than usual to open."
+              longMessage="The conversation is still loading. Check your connection or start a new chat."
+            >
+              <SkeletonBlock className="h-5 w-44" />
+              <SkeletonBlock className="mt-2 h-4 w-64 max-w-full" />
+              <SkeletonBlock className="mt-6 h-12 w-full max-w-sm rounded-xl" />
+            </LoadingStatus>
           ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
               <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--tf-sand-chip)]" />
-                Your course, made clearer
+                Verilo
               </div>
               <p className="text-xl font-semibold tracking-tight text-foreground">
-                {selected ? "No conversation active" : "Start a study conversation"}
+                {selected ? `Ask Verilo about ${placeholderCourse}` : "Start a study conversation"}
               </p>
               <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                 {selected ? `Ask a question based on your uploaded ${placeholderCourse} notes, past questions, or slides.` : "Add a course and upload study materials to get grounded explanations."}
@@ -1212,7 +1195,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               {selected ? (
                 <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--tf-border-warm)]/40 bg-[var(--tf-sand-chip)]/15 px-2.5 py-1 text-xs text-foreground">
                   <Check aria-hidden="true" className="h-3 w-3 text-[var(--tf-sand-chip)]" />
-                  Course notes connected
+                  Grounded in course notes
                 </span>
               ) : null}
               <div className="mt-4 grid w-full gap-2">
@@ -1511,12 +1494,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           ) : null}
         </div>
       </div>
-      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-popover text-popover-foreground">
+      <Sheet open={historyOpen} onOpenChange={(open) => {
+        setHistoryOpen(open);
+        if (!open && view === "chat-history") navigate("chatbot", { courseCode: selected, replace: true });
+      }}>
+        <SheetContent side="bottom" className="!inset-0 !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-y-0 !rounded-none overflow-y-auto bg-popover px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-popover-foreground">
           <SheetHeader className="text-left">
-            <SheetTitle>Study Chat history</SheetTitle>
+            <SheetTitle>Conversation history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>
           </SheetHeader>
+          <button type="button" onClick={() => navigate("chatbot", { courseCode: selected })} className="mt-4 min-h-11 rounded-lg px-3 text-left text-sm font-semibold text-foreground hover:bg-secondary">Back to Verilo</button>
           {historyRows.length === 0 && historyLoading ? (
             <p className="py-6 text-sm text-muted-foreground">Loading history…</p>
           ) : historyRows.length === 0 && historyError ? (
@@ -1567,7 +1554,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                               : "rounded-xl border border-border bg-background p-3 text-foreground"}
                           >
                             <div className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: m.role === "user" ? "var(--text-secondary)" : "var(--muted-foreground)" }}>
-                              {m.role === "user" ? "You" : "Study Chat"}
+                              {m.role === "user" ? "You" : "Verilo"}
                             </div>
                             <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
                               <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
@@ -1608,7 +1595,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         <SheetContent side="bottom" className="max-h-[75vh] overflow-y-auto rounded-t-2xl bg-popover text-popover-foreground">
           <SheetHeader className="text-left">
             <SheetTitle className="text-popover-foreground">Choose a course</SheetTitle>
-            <SheetDescription>Study Chat uses the notes for the selected course.</SheetDescription>
+            <SheetDescription>Questions are grounded in notes for the selected course.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-2">
             {courseOptions.map((code) => {
@@ -1696,7 +1683,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{deleteTarget?.title || "Study chat"}” will be permanently removed from your saved Study Chat history. This only deletes this conversation.
+              “{deleteTarget?.title || "Verilo"}” will be permanently removed from your saved Conversation history. This only deletes this conversation.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

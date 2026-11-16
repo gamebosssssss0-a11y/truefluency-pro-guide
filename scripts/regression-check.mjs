@@ -61,6 +61,20 @@ test("mock sharing enforces ownership and strips answers from public previews", 
   assert.match(functions, /\.middleware\(\[requireSupabaseAuth\]\)/);
 });
 
+test("one-time mock shares lock visibility and enforce private owner access and server expiry", async () => {
+  const server = await read("../src/lib/mock-sharing.server.ts");
+  const functions = await read("../src/lib/mock-sharing.functions.ts");
+  const migration = await read("../supabase/migrations/20261116041306_mock_shares_attempt_scoped.sql");
+  assert.match(server, /if \(existing\)\s*\{/);
+  assert.match(server, /data\.owner_id !== requestingUserId/);
+  assert.match(server, /Date\.parse\(data\.expires_at\) <= Date\.now\(\)/);
+  assert.match(functions, /readSignedInMockShare/);
+  assert.match(functions, /readMockShare\(data\.token, true, context\.userId\)/);
+  assert.match(migration, /attempt_id text not null unique/);
+  assert.match(migration, /default \(now\(\) \+ interval '30 minutes'\)/);
+  assert.match(migration, /A revoked mock share cannot be restored/);
+});
+
 test("upload-to-practice is recorded independently and safely", async () => {
   const mockFlow = await read("../src/components/mock-test-flow.tsx");
   assert.match(mockFlow, /eventName: "upload_practice"/);
