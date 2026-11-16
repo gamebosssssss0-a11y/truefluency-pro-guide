@@ -1277,9 +1277,14 @@ body:has([data-tab-swipe-stage][data-swipe-active="true"]) [data-verilo-entry] {
     padding-inline: 12px;
   }
 
+  /* One tidy row on a phone: mode button, "Using ... notes" (cut with ... when it is long) and the usage ring, never a second line. */
+  .chat-composer-meta {
+    flex-wrap: nowrap;
+  }
+
   .chat-connected-context {
-    min-width: 96px;
-    font-size: 10px;
+    min-width: 0;
+    font-size: 11px;
   }
 
   .chat-history-button span {
@@ -1611,4 +1616,12 @@ html[data-theme-transition] *::after {
   html[data-theme-transition] *,
   html[data-theme-transition] *::before,
   html[data-theme-transition] *::after { transition-duration: 0ms !important; }
+}
+
+
+/* Printing or saving a receipt as PDF: only the receipt itself is printed. */
+@media print {
+  body * { visibility: hidden !important; }
+  .tf-receipt-print, .tf-receipt-print * { visibility: visible !important; }
+  .tf-receipt-print { position: absolute; left: 0; top: 0; width: 100%; border: 0 !important; box-shadow: none !important; }
 }
