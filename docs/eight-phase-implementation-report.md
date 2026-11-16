@@ -1,4 +1,35 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíÛyN‹Z–‹­¦ëeŠw¬ÔŒ¥¡ĞµÁ¡…Í”¥µÁ±•µ•¹Ñ…Ñ¥½¸É•Á½ÉĞ()Q¡¥ÌÉ•Á½ÉĞ‘•ÍÉ¥‰•ÌÑ¡”½‘”½¸½‘•à½•¥¡ĞµÁ¡…Í”µ¥µÁ±•µ•¹Ñ…Ñ¥½¹€¸Q¡”‰É…¹ ¥Ì„‘É…™ĞèÑ¡”¥¹½µÁ±•Ñ”¥Ñ•µÌ‰•±½ÜÉ•µ…¥¸½Á•¸…¹¡…Ù”¹½Ğ‰••¸É•ÁÉ•Í•¹Ñ•…Ì™¥¹¥Í¡•¸((ŒŒA¡…Í”€ÄƒŠP5½¬Ù•É¥™¥…Ñ¥½¸…¹™±½Ü((´€¨©I½ÕÑ”ƒŠHµ½Õ¹ĞƒŠH•±•µ•¹Ğè¨¨ÍÉŒ½É½ÕÑ•Ì½¥¹‘•à¹ÑÍá€µ…ÁÌµ½¬µ½¹™¥€°µ½¬µÉÕ¹€°…¹µ½¬µÉ•ÍÕ±Ñ€Ñ¼Ñ¡”½ÉÉ•ÍÁ½¹‘¥¹œÍÉ••¹Ì•áÁ½ÉÑ•‰äÍÉŒ½½µÁ½¹•¹ÑÌ½µ½¬µÑ•ÍĞµ™±½Ü¹ÑÍá€ìÑ•ÍĞµ¡¥ÍÑ½Éå€µ½Õ¹ÑÌQ•ÍÑ!¥ÍÑ½ÉåMÉ••¹€™É½´ÍÉŒ½½µÁ½¹•¹ÑÌ½µ½¬µÑ•ÍÑÌµÑ…ˆ¹ÑÍá€¸(´•¹•É…Ñ¥½¸¥¸ÍÉŒ½±¥ˆ½‰…­•¹µ…Á¤¹ÑÍ€¹¼±½¹•ÈÁ…ÉÍ•Ì°™¥±Ñ•ÉÌ‰ä°½ÈÉ•ÅÕ¥É•ÌÍ½ÕÉ”µÙ•É¥™¥…Ñ¥½¸µ•Ñ…‘…Ñ„¸1•…ä½ÁÑ¥½¹…°ÅÕ•ÍÑ¥½¸™¥•±‘ÌÉ•µ…¥¸ÑåÁ•¥¸ÍÉŒ½±¥ˆ½ÁÉ½™¥±”µÍÑ½É”¹ÑÍá€…¹ÍÉŒ½½µÁ½¹•¹ÑÌ½µ½¬µÑ•ÍĞµ™±½Ü¹ÑÍá€Í¼½±…ÑÑ•µÁÑÌÍÑ¥±°‘•Í•É¥…±¥é”¸(´5½¬É•Ù¥•ÜÉ•…‘Ì…¹Íİ•ÉÌÑ¼É•¹‘•ÈƒŠq9½Ğ…¹Íİ•É•“ŠtìÑ¡”Õ¹…¹Íİ•É•ÍÕ‰µ¥ÍÍ¥½¸Í¡••ĞÉ••¥Ù•Ì¥¹‘¥•Ì…¹É•¹‘•ÉÌ½¹”©ÕµÀ‰ÕÑÑ½¸Á•ÈÅÕ•ÍÑ¥½¸¸Q¡”é•É¼µ…¹Íİ•ÈÕ…É¥Ì¥¸Ñ¡”ÍÕ‰µ¥ĞÁ…Ñ ‰•™½É”Á•ÉÍ¥ÍÑ•¹”¸Q¡”‘¥…±½œ¥Ìµ½Õ¹Ñ•½¹±äİ¡¥±”¥ÑÌÍÑ…Ñ”¥Ì½Á•¸…¹ÕÍ•ÌÑ¡”I…‘¥àµ‰…­•M¡••Ñ€ÁÉ¥µ¥Ñ¥Ù”İ¥Ñ ‰½ÑÑ½´Í…™”µ…É•„Á…‘‘¥¹œ¸(´Q¡”ÅÕ•ÍÑ¥½¸µ…À…¹…±Õ±…Ñ½ÈÕÍ”Ñ¡”Í…µ”Í¡••ĞÁÉ¥µ¥Ñ¥Ù”¸á¥ÍÑ¥¹œ½¹™¥Éµ•‘%¹Ù…±¥‘€…¹¥¹Ù…±¥‘EÕ•ÍÑ¥½¹%¹‘•á•Í€É•Á½ÉÑ¥¹œÍÑ…Ñ”¥ÌÉ•Ñ…¥¹•¸(´€¨©%¹½µÁ±•Ñ”è¨¨¹¼ÁÉ½‘ÕÑ¥½¸¥¹Ñ•É…Ñ¥½¸½‰É½İÍ•È…•ÍÍ¥‰¥±¥Ñä…Õ‘¥Ğ½˜™½ÕÌÉ•ÍÑ½É…Ñ¥½¸İ…ÌÉÕ¸¸((ŒŒA¡…Í”€ÈƒŠP½ÕÈÑ…‰Ì°Íİ¥Á”ÍÑ…”°™±½…Ñ¥¹œY•É¥±¼((´€¨©I½ÕÑ”ƒŠHµ½Õ¹ĞƒŠH•±•µ•¹Ğè¨¨ÍÉŒ½É½ÕÑ•Ì½¥¹‘•à¹ÑÍá€½İ¹ÌI==Q}Q	M€€¡¡½µ•€°µ½¬µÑ•ÍÑÍ€°±¥‰É…Éå€°…½Õ¹Ñ€¤…¹I½½ÑQ…‰Í€¸%Ğµ½Õ¹ÑÌ…Ñ¥Ù”°Ù¥Í¥Ñ•°…¹…‘©…•¹ĞÑ…ˆ½µÁ½¹•¹ÑÌ¥¹Í¥‘”m‘…Ñ„µÑ…ˆµÍİ¥Á”µÍÑ…•u€ìÁ•ÉÍ¥ÍÑ•¹Ğ¡…Ğµ½Õ¹ÑÌÍ•Á…É…Ñ•±ä¥¸m‘…Ñ„µ¡…Ğµ™Õ±±ÍÉ••¹u€™½È¡…Ñ‰½Ñ€€¼¡…Ğµ¡¥ÍÑ½Éå€Ù¥•İÌ¸(´ÍÉŒ½¡½½­Ì½ÕÍ”µÍİ¥Á”µÑ…‰Ì¹ÑÍ€Á…¥¹ÑÌ‘É…œÁÉ½É•ÍÌ…¹½µµ¥ÑÌ¹…Ù¥…Ñ¥½¸½¸É•±•…Í”¸Mİ¥Á•AÉ•Ù¥•İAÉ½Ù¥‘•É€Í½Á•ÌÁÉ•Ù¥•Üµ½¹±ä‰•¡…Ù¥½È¸ÍÉŒ½ÍÑå±•Ì¹ÍÍ€ÍÕÁÁ±¥•ÌÑ¡”ÍÑ…Ñ¥½¹…Éä€¹Ñ…ˆµÍİ¥Á”µ±¥Á€…¹Ù¥Í¥‰±”µ½Ù•É™±½Ü€¹Ñ…ˆµÍİ¥Á”µÍÑ…•€±…å•ÉÌ¸(´Q…‰	…É€É•¹‘•ÉÌÑ¡”™½ÕÈÉ½½Ğ‘•ÍÑ¥¹…Ñ¥½¹Ì…¹Ñ¡”•¹Ñ•É•…Ñ¥Ù”¥¹‘¥…Ñ½È¸Q¡”‘…Í¡‰½…Éµ±•Ù•°™±½…Ñ¥¹œ‰ÕÑÑ½¸¥¸I½ÕÑ•É€¡…Ì…É¥„µ±…‰•°ô‰=Á•¸Y•É¥±¼‰€°¡¥‘•Ì¥¸¡…Ğ½¡¥ÍÑ½Éä…¹İ¡¥±”Ñ¡”­•å‰½…É¥Ì½Á•¸°…¹¥ÌÁ½Í¥Ñ¥½¹•½™…‘•‰äÑ¡”…ÁÀÍ¡•±°ML¸(´Q¡”™¥ÉÍĞ‘…Í¡‰½…É•¹ÑÉä½Á•¹ÌÑ¡”…ÁÁÉ½Ù•Y•É¥±¼±•ÉÑ¥…±½€½Áäì±½…°ÍÑ½É…”É•½É‘Ì‘¥Íµ¥ÍÍ…°¸(´€¨©%¹½µÁ±•Ñ”è¨¨¹…ÉÉ½Üµ‘•Ù¥”Íİ¥Á”‰½Õ¹‘…Éä‰•¡…Ù¥½È¡…Ì¹½Ğ‰••¸Ù¥ÍÕ…±±ä¡•­•…ĞÑ¡”É•ÅÕ•ÍÑ•İ¥‘Ñ¡Ì¸((ŒŒA¡…Í”€ÌƒŠPAÉ…Ñ¥”½¡¥ÍÑ½Éä…É½ÕÍ•±Ì…¹Ñ¡•µ”((´€¨©I½ÕÑ”ƒŠHµ½Õ¹ĞƒŠH•±•µ•¹Ğè¨¨Ñ¡”µ½¬µÑ•ÍÑÍ€É½ÕÑ”µ½Õ¹ÑÌ5½­Q•ÍÑÍMÉ••¹€ì¥ÑÌ½ÕÉÍ”É•¥½¸¥¸ÍÉŒ½½µÁ½¹•¹ÑÌ½µ½¬µÑ•ÍÑÌµÑ…ˆ¹ÑÍá€¥Ì„Í•…É¡…‰±”½ÕÉÍ”µ…É½ÕÍ•°µÑÉ…­€İ¥Ñ Í¹…À…É‘Ì¸=¹±äÑ¡”•¹Ñ•É•½ÕÉÍ”…É•¹…‰±•Ì¥ÑÌ…Ñ¥½¸½¹ÑÉ½±Ìì„¹•¥¡‰½ÈÑ…À•¹Ñ•ÉÌ¥Ğ™¥ÉÍĞ¸(´Ñ•ÍĞµ¡¥ÍÑ½Éå€µ½Õ¹ÑÌQ•ÍÑ!¥ÍÑ½ÉåMÉ••¹€ìÉ•ÍÕ±ÑÌÕÍ”É•ÍÕ±ÑÌµ…É½ÕÍ•°µÑÉ…­€€¼É•ÍÕ±ÑÌµ…É½ÕÍ•°µ…É‘€°¹½Éµ…±¥é”½ÕÉÍ”½‘•Ì°…¹•áÁ½Í”½ÕÉÍ”½Ñ½Á¥Œ™½ÕÍ•ÁÉ…Ñ¥”…Ñ¥½¹Ì¸(´Q¡•µ”¥¹¥Ñ¥…±¥é…Ñ¥½¸…¹½±½ÈÑÉ…¹Í¥Ñ¥½¹Ì±¥Ù”¥¸ÍÉŒ½±¥ˆ½Ñ¡•µ”¹ÑÍá€ìML½±½ÈÑ½­•¹Ì…¹É•‘Õ•µµ½Ñ¥½¸ÉÕ±•Ì…É”¥¸ÍÉŒ½ÍÑå±•Ì¹ÍÍ€¸(´€¨©%¹½µÁ±•Ñ”è¨¨½µÁÉ•¡•¹Í¥Ù”¡…Éµ½‘•µ½±½È½¹Í½±¥‘…Ñ¥½¸…¹„±¥¡Ğ½‘…É¬Íİ••À…Ğ€ÌØÀ°€ÌäÀ°…¹€ĞÌÁÁà…É”ÍÑ¥±°É•ÅÕ¥É•¸((ŒŒA¡…Í”€ĞƒŠPY•É¥±¼¡…Ğ((´€¨©I½ÕÑ”ƒŠHµ½Õ¹ĞƒŠH•±•µ•¹Ğè¨¨I½ÕÑ•É€µ½Õ¹ÑÌ5•µ½¡…Ñ‰½ÑMÉ••¹€½ÕÑÍ¥‘”Ñ¡”™½ÕÈÑ…‰Ì™½È¡…Ñ‰½Ñ€…¹¡…Ğµ¡¥ÍÑ½Éå€¸ÍÉŒ½½µÁ½¹•¹ÑÌ½¡…Ñ‰½Ğ¹ÑÍá€É•¹‘•ÉÌÑ¡”!¥ÍÑ½Éä€¼Y•É¥±¼µ½ÕÉÍ”€¼9•Ü¡…Ğ¡•…‘•È°Ñ¡”•µÁÑäÍÑ…Ñ”°É½Õ¹‘¥¹œÉ½İÌ°Ñ¡É•…°½µÁ½Í•È°…¹™Õ±°µÍÉ••¸¡¥ÍÑ½ÉäÙ¥•Ü¸(´]•…¬µÑ½Á¥Œ…¹QÕÑ½È…Ñ¥½¹ÌÍ•ĞÑÉÕ•™±Õ•¹äµÙ•É¥±¼µÁ•¹‘¥¹œµÁÉ½µÁÑ€İ¥Ñ ½ÕÉÍ”½Ñ½Á¥Œ½ÅÕ•ÍÑ¥½¸½¹Ñ•áĞ…¹¹…Ù¥…Ñ”Ñ¼¡…Ñ‰½Ğ¸¡…Ğ½¹ÍÕµ—m¢G§²ÚîÆ­yÔtachment previews, or chat history navigation during this pass.
+# Eight-phase implementation report
+
+This report describes the code on `codex/eight-phase-implementation`. The branch is a draft: the incomplete items below remain open and have not been represented as finished.
+
+## Phase 1 â€” Mock verification and flow
+
+- **Route â†’ mount â†’ element:** `src/routes/index.tsx` maps `mock-config`, `mock-run`, and `mock-result` to the corresponding screens exported by `src/components/mock-test-flow.tsx`; `test-history` mounts `TestHistoryScreen` from `src/components/mock-tests-tab.tsx`.
+- Generation in `src/lib/backend-api.ts` no longer parses, filters by, or requires source-verification metadata. Legacy optional question fields remain typed in `src/lib/profile-store.tsx` and `src/components/mock-test-flow.tsx` so old attempts still deserialize.
+- Mock review reads answers to render â€œNot answeredâ€; the unanswered submission sheet receives indices and renders one jump button per question. The zero-answer guard is in the submit path before persistence. The dialog is mounted only while its state is open and uses the Radix-backed `Sheet` primitive with bottom safe-area padding.
+- The question map and calculator use the same sheet primitive. Existing `confirmedInvalid` and `invalidQuestionIndexes` reporting state is retained.
+- **Incomplete:** no production interaction/browser accessibility audit of focus restoration was run.
+
+## Phase 2 â€” Four tabs, swipe stage, floating Verilo
+
+- **Route â†’ mount â†’ element:** `src/routes/index.tsx` owns `ROOT_TABS` (`home`, `mock-tests`, `library`, `account`) and `RootTabs`. It mounts active, visited, and adjacent tab components inside `[data-tab-swipe-stage]`; persistent chat mounts separately in `[data-chat-fullscreen]` for `chatbot` / `chat-history` views.
+- `src/hooks/use-swipe-tabs.ts` paints drag progress and commits navigation on release. `SwipePreviewProvider` scopes preview-only behavior. `src/styles.css` supplies the stationary `.tab-swipe-clip` and visible-overflow `.tab-swipe-stage` layers.
+- `TabBar` renders the four root destinations and the centered active indicator. The dashboard-level floating button in `Router` has `aria-label="Open Verilo"`, hides in chat/history and while the keyboard is open, and is positioned/faded by the app shell CSS.
+- The first dashboard entry opens the approved Verilo `AlertDialog` copy; local storage records dismissal.
+- **Incomplete:** narrow-device swipe boundary behavior has not been visually checked at the requested widths.
+
+## Phase 3 â€” Practice/history carousels and theme
+
+- **Route â†’ mount â†’ element:** the `mock-tests` route mounts `MockTestsScreen`; its course region in `src/components/mock-tests-tab.tsx` is a searchable `course-carousel-track` with snap cards. Only the centered course card enables its action controls; a neighbor tap centers it first.
+- `test-history` mounts `TestHistoryScreen`; results use `results-carousel-track` / `results-carousel-card`, normalize course codes, and expose course/topic focused practice actions.
+- Theme initialization and color transitions live in `src/lib/theme.tsx`; CSS color tokens and reduced-motion rules are in `src/styles.css`.
+- **Incomplete:** comprehensive hard-coded-color consolidation and a light/dark sweep at 360, 390, and 430px are still required.
+
+## Phase 4 â€” Verilo chat
+
+- **Route â†’ mount â†’ element:** `Router` mounts `MemoChatbotScreen` outside the four tabs for `chatbot` and `chat-history`. `src/components/chatbot.tsx` renders the History / Verilo-course / New chat header, the empty state, grounding rows, thread, composer, and full-screen history view.
+- Weak-topic and Tutor actions set `truefluency-verilo-pending-prompt` with course/topic/question context and navigate to chatbot. Chat consumes the handoff and seeds the composer while preserving existing chat APIs and actions.
+- **Incomplete:** there was no end-to-end browser check of voice, keyboard, attachment previews, or chat history navigation during this pass.
 
 ## Phase 5 â€” Loading system
 
@@ -10,7 +41,7 @@ YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíÛyN‹Z–‹­¦ëeŠw¬ÔŒ¥¡ĞµÁ¡…Í”¥µÁ±•µ•¹Ñ…Ñ¥½¸É•Á½É
 
 - **Route â†’ mount â†’ element:** result and history actions mount `MockShareSheet`. It offers private/public visibility before creation; an existing link locks the selection and shows copy/countdown/revoke or expired/revoked state.
 - `src/lib/mock-sharing.functions.ts` authenticates create/status/revoke and private preview/start calls. `src/lib/mock-sharing.server.ts` snapshots the saved attempt, enforces owner checks, and rejects expired/revoked links. Public preview omits answers. `src/routes/mock-share.$token.tsx` starts a copied settings snapshot in local practice state.
-- `supabase/migrations/20261115000000_mock_shares_attempt_scoped.sql` adds one unique record per attempt, server-set 30-minute expiry, owner-only row visibility, and irreversible revocation. The migration has **not** been applied to any database.
+- `supabase/migrations/20261115000000_mock_shares_attempt_scoped.sql` adds one unique record per attempt, server-set 30-minute expiry, owner-only row visibility, and irreversible revocation. It was applied to the connected Supabase project as migration `20261116041306_mock_shares_attempt_scoped` after confirming the live `(user_id, id)` unique key.
 - **Incomplete:** live Supabase migration behavior, concurrent share creation, expiry races, and start-before-expiry/continue-after-expiry need a disposable database integration run.
 
 ## Phase 7 â€” Document previews and plan cards
@@ -35,4 +66,4 @@ YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíÛyN‹Z–‹­¦ëeŠw¬ÔŒ¥¡ĞµÁ¡…Í”¥µÁ±•µ•¹Ñ…Ñ¥½¸É•Á½É
 - `node --test scripts/regression-check.mjs scripts/regression-check-extended.mjs`: 48 passing.
 - `node_modules/.bin/eslint src scripts --quiet`: clean.
 - Production build and browser/device checks remain outstanding because the repository build config reads local `.env`, which was not opened for this pass.
-- The branch excludes `.env`; the sharing migration is staged as source only and not applied.
+- The branch excludes `.env`; the sharing migration is applied to the connected Supabase project.
