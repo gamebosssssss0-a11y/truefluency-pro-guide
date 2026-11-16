@@ -43,6 +43,7 @@ begin
   return new;
 end;
 $$;
+revoke execute on function public.prevent_mock_share_identity_changes() from public, anon, authenticated;
 
 create or replace function public.set_mock_share_expiry()
 returns trigger
@@ -55,6 +56,7 @@ begin
   return new;
 end;
 $$;
+revoke execute on function public.set_mock_share_expiry() from public, anon, authenticated;
 
 create trigger mock_shares_server_expiry
   before insert on public.mock_shares
