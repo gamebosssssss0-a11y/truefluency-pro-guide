@@ -157,6 +157,7 @@ export type AppView =
   | "test-history"
   | "library"
   | "chatbot"
+  | "chat-history"
   | "account"
   | "cgpa-goal"
   | "course-detail"
@@ -686,18 +687,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       const shared = JSON.parse(raw) as {
         courseCode?: unknown; courseTitle?: unknown;
         questions?: { id: number; topic: string; question: string; options: string[]; correct_index: number; explanation: string }[];
+        settings?: unknown;
       };
       if (typeof shared.courseCode !== "string" || typeof shared.courseTitle !== "string" ||
           !Array.isArray(shared.questions) || shared.questions.length < 1 || shared.questions.length > 60 ||
           !shared.questions.every((q) => q && typeof q.question === "string" && Array.isArray(q.options) &&
             Number.isInteger(q.correct_index) && q.correct_index >= 0 && q.correct_index < q.options.length)) return;
       const questions = shared.questions;
+      const rawSettings = shared.settings && typeof shared.settings === "object" ? shared.settings as Partial<CourseTestSettings> : {};
+      const difficulty: Difficulty = rawSettings.difficulty === "gentle" || rawSettings.difficulty === "challenging" || rawSettings.difficulty === "exam" ? rawSettings.difficulty : "balanced";
+      const mode: MockMode = rawSettings.mode === "tutor" ? "tutor" : "exam";
+      const minutes = Number.isFinite(rawSettings.minutes) ? Math.max(1, Math.min(180, Math.round(rawSettings.minutes!))) : 40;
+      const settings: CourseTestSettings = {
+        mode,
+        questionCount: questions.length,
+        minutes,
+        difficulty,
+        topicFocus: Array.isArray(rawSettings.topicFocus) ? rawSettings.topicFocus.filter((topic): topic is string => typeof topic === "string").slice(0, 60) : [],
+      };
       const test: InProgressTest = {
         courseCode: shared.courseCode,
         courseTitle: shared.courseTitle,
-        mode: "tutor",
+        mode,
         questionCount: questions.length,
-        durationSec: 40 * 60,
+        durationSec: minutes * 60,
         startedAt: Date.now(),
         analyticsSessionId: crypto.randomUUID(),
         resumedAt: Date.now(),
@@ -716,6 +729,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setProfile((current) => ({
         ...current,
         aiQuestionsByCourse: { ...current.aiQuestionsByCourse, [shared.courseCode as string]: questions },
+        courseTestSettings: { ...current.courseTestSettings, [shared.courseCode as string]: settings },
         inProgressTest: test,
       }));
       setStep("dashboard");

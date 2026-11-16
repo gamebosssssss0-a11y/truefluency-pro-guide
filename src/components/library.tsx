@@ -28,6 +28,7 @@ import { deleteMaterial } from "@/lib/course-materials";
 import { useProfileData, type AIQuestion } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
+import { useDelayedLoading } from "@/components/loading-state";
 import { presignMaterialDownload } from "@/lib/storage.functions";
 import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
@@ -213,6 +214,8 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [shelfLoading, setShelfLoading] = useState(false);
+  const showLockerSkeleton = useDelayedLoading(locker === null && !lockerError);
+  const showShelfSkeleton = useDelayedLoading(shelf === null && !shelfOffline);
 
   const [ownerSheet, setOwnerSheet] = useState<LockerFile | null>(null);
   const [publishTarget, setPublishTarget] = useState<LockerFile | null>(null);
@@ -392,33 +395,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       return;
     }
     setBusy(false);
-    const normalizedName = file.file_name.trim().toLocaleLowerCase();
-    const markSourceRemoved = (questions?: AIQuestion[]) => questions?.map((question) => {
-      const sourceName = question.verification?.sourceFileName?.trim().toLocaleLowerCase();
-      return Boolean(normalizedName) && sourceName === normalizedName
-        ? { ...question, verification: { ...question.verification!, sourceUnavailable: true } }
-        : question;
-    });
     update({
-      attempts: profile.attempts.map((attempt) => ({
-        ...attempt,
-        questions: canonicalCourseCode(attempt.courseCode) === canonicalCourseCode(file.course_code)
-          ? markSourceRemoved(attempt.questions)
-          : attempt.questions,
-      })),
-      inProgressTest: profile.inProgressTest
-        ? { ...profile.inProgressTest, questions: canonicalCourseCode(profile.inProgressTest.courseCode) === canonicalCourseCode(file.course_code)
-          ? markSourceRemoved(profile.inProgressTest.questions)
-          : profile.inProgressTest.questions }
-        : null,
-      aiQuestionsByCourse: Object.fromEntries(
-        Object.entries(profile.aiQuestionsByCourse).map(([course, questions]) => [
-          course,
-          canonicalCourseCode(course) === canonicalCourseCode(file.course_code)
-            ? markSourceRemoved(questions) ?? questions
-            : questions,
-        ]),
-      ),
       courseTopicAnalysis: Object.fromEntries(
         Object.entries(profile.courseTopicAnalysis).filter(([, analysis]) => analysis.materialId !== file.id),
       ),
@@ -428,7 +405,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     setLocker(remaining);
     setDeleteTarget(null);
     setOwnerSheet(null);
-    toast.success("Removed from your locker. Past results are saved and source citations are marked.");
+    toast.success("Removed from your locker. Past results are saved.");
     void loadLocker();
   };
 
@@ -579,7 +556,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {locker === null ? (
               lockerError ? (
                 <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
-              ) : (
+              ) : showLockerSkeleton ? (
                 <div role="status" aria-label="Loading your files" className="space-y-3">
                   <span className="sr-only">Loading your study files…</span>
                   <div aria-hidden="true" className="space-y-3">
@@ -595,7 +572,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                     ))}
                   </div>
                 </div>
-              )
+              ) : <div aria-hidden="true" className="min-h-60" />
             ) : openFolder ? (
               <>
                 {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
@@ -686,7 +663,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {shelfOffline && shelf === null ? (
               <Card><p className="text-sm text-muted-foreground">{SHARING_OFFLINE_MESSAGE}</p></Card>
             ) : shelf === null ? (
-              <div role="status" aria-label="Loading course shelf" aria-busy="true" className="space-y-3"><span className="sr-only">Loading published course materials…</span><div aria-hidden="true" className="space-y-3"><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /></div></div>
+              showShelfSkeleton ? <div role="status" aria-label="Loading course shelf" aria-busy="true" className="space-y-3"><span className="sr-only">Loading published course materials…</span><div aria-hidden="true" className="space-y-3"><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /></div></div> : <div aria-hidden="true" className="min-h-60" />
             ) : (
               <>
                 {shelfLoading ? <p className="text-xs text-muted-foreground" role="status">Updating course shelf…</p> : null}

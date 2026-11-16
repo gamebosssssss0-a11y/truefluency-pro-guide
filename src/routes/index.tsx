@@ -166,8 +166,8 @@ const RootTabs = memo(function RootTabs({
           </div>
         );
       })}
-      <div hidden={view !== "chatbot"} aria-hidden={view !== "chatbot"} inert={view !== "chatbot" ? true : undefined} data-chat-fullscreen="">
-        <MemoChatbotScreen active={view === "chatbot"} />
+      <div hidden={view !== "chatbot" && view !== "chat-history"} aria-hidden={view !== "chatbot" && view !== "chat-history"} inert={view !== "chatbot" && view !== "chat-history" ? true : undefined} data-chat-fullscreen="">
+        <MemoChatbotScreen active={view === "chatbot" || view === "chat-history"} />
       </div>
     </>
   );
@@ -180,6 +180,22 @@ function Router() {
   navigateRef.current = navigate;
   const [leaveTestOpen, setLeaveTestOpen] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [veriloIntroOpen, setVeriloIntroOpen] = useState(false);
+  const veriloIntroChecked = useRef(false);
+
+  useEffect(() => {
+    if (step !== "dashboard" || !hydrated || veriloIntroChecked.current) return;
+    veriloIntroChecked.current = true;
+    try {
+      if (localStorage.getItem("truefluency-verilo-intro-seen") === "true") return;
+    } catch { /* show the intro when storage is unavailable */ }
+    setVeriloIntroOpen(true);
+  }, [hydrated, step]);
+
+  const dismissVeriloIntro = () => {
+    setVeriloIntroOpen(false);
+    try { localStorage.setItem("truefluency-verilo-intro-seen", "true"); } catch { /* session can still continue */ }
+  };
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -319,6 +335,7 @@ function Router() {
       case "attempt-review": return <AttemptReviewScreen />;
       case "library": return null;
       case "chatbot": return null;
+      case "chat-history": return null;
       case "account":
       case "settings": return null;
       case "all-uploads": return <AllUploadsScreen />;
@@ -358,13 +375,13 @@ function Router() {
           {!currentRootTab ? screen : null}
         </div>
       </div>
-      {step === "dashboard" && !keyboardOpen && !["chatbot", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view) ? (
+      {step === "dashboard" && !keyboardOpen && !["chatbot", "chat-history", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view) ? (
         <button
           type="button"
           data-verilo-entry=""
-          aria-label="Open Verilo study chat"
+          aria-label="Open Verilo"
           onClick={() => navigate("chatbot")}
-          className="verilo-fab fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full border border-accent/40 bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:bottom-6"
+          className="verilo-fab fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full border border-border bg-[var(--tf-navy)] text-[var(--tf-cream)] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[var(--tf-cream)] dark:text-[var(--tf-navy)] md:bottom-6"
         >
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
           <span className="sr-only">Verilo</span>
@@ -384,6 +401,19 @@ function Router() {
             <AlertDialogAction onClick={() => navigateRef.current("mock-tests")}>
               Leave test
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={veriloIntroOpen} onOpenChange={(open) => { if (!open) dismissVeriloIntro(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Meet Verilo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verilo is your dedicated AI chatbot, built to help you study from your own notes and materials.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={dismissVeriloIntro}>Got it</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

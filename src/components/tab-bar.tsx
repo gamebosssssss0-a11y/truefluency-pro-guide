@@ -46,7 +46,7 @@ export function tabForView(view: AppView): TabKey {
 
 /** Views that hide the tab bar so nobody navigates away mid-task. */
 export function hidesTabBar(view: AppView): boolean {
-  return view === "mock-run" || view === "mock-gen" || view === "flashcards-review" || view === "chatbot";
+  return view === "mock-run" || view === "mock-gen" || view === "flashcards-review" || view === "chatbot" || view === "chat-history";
 }
 
 /**

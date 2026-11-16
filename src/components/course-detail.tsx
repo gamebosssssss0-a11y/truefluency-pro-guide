@@ -611,30 +611,7 @@ function UploadButton({ courseCode, courseName }: { courseCode: string; courseNa
       if (replaceId) {
         try {
           await deleteMaterial({ id: replaceId });
-          const removedName = replaceName?.trim().toLocaleLowerCase();
-          const markSourceRemoved = (questions?: AIQuestion[]) => questions?.map((question) =>
-            Boolean(removedName) && question.verification?.sourceFileName?.trim().toLocaleLowerCase() === removedName
-              ? { ...question, verification: { ...question.verification!, sourceUnavailable: true } }
-              : question,
-          );
           update({
-            attempts: profile.attempts.map((attempt) => ({
-              ...attempt,
-              questions: canonicalCourseCode(attempt.courseCode) === canonicalCourseCode(courseCode)
-                ? markSourceRemoved(attempt.questions)
-                : attempt.questions,
-            })),
-            inProgressTest: profile.inProgressTest
-              ? { ...profile.inProgressTest, questions: canonicalCourseCode(profile.inProgressTest.courseCode) === canonicalCourseCode(courseCode)
-                ? markSourceRemoved(profile.inProgressTest.questions)
-                : profile.inProgressTest.questions }
-              : null,
-            aiQuestionsByCourse: Object.fromEntries(
-              Object.entries(profile.aiQuestionsByCourse).map(([course, questions]) => [
-                course,
-                canonicalCourseCode(course) === canonicalCourseCode(courseCode) ? markSourceRemoved(questions) ?? questions : questions,
-              ]),
-            ),
             courseTopicAnalysis: Object.fromEntries(
               Object.entries(profile.courseTopicAnalysis).filter(([, analysis]) => analysis.materialId !== replaceId),
             ),

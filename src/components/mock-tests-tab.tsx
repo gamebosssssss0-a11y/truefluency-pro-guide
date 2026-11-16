@@ -20,6 +20,7 @@ import { listMaterialsForCourse } from "@/lib/course-materials";
 import { SOURCE_CHANGE_EVENT, pickSource, readSourceChoice } from "@/lib/material-pick";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { maxSourceFiles } from "@/lib/entitlements";
+import { MockShareSheet } from "@/components/mock-share-sheet";
 
 /* ================= Tab 2: Mock Tests ================= */
 
@@ -255,6 +256,7 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                   })}
                 </div>
               </div>
+            )}
             </>
         )}
 
@@ -325,6 +327,8 @@ export function TestHistoryScreen() {
   const { profile, navigate, update, activeCourseCode } = useProfileData();
   const [tab, setTab] = useState<HistoryTab>("attempts");
   const [courseFilter, setCourseFilter] = useState<string>("all");
+  const [shareAttemptId, setShareAttemptId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
   const [activeAttemptIndex, setActiveAttemptIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
@@ -533,7 +537,7 @@ export function TestHistoryScreen() {
                     </>
                   ) : null}
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -557,6 +561,7 @@ export function TestHistoryScreen() {
                     >
                       <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Retake
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => { setShareAttemptId(a.id); setShareOpen(true); }}>Share</Button>
                   </div>
                 </div>
                 );
@@ -569,6 +574,7 @@ export function TestHistoryScreen() {
           <ProgressPanel profile={profile} activeCourseCode={activeCourseCode} navigate={navigate} update={update} />
         )}
       </div>
+      {shareAttemptId ? <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={shareAttemptId} /> : null}
     </div>
   );
 }
@@ -980,6 +986,21 @@ export function ProgressPanel({
                           disabled={!course}
                         >
                           Practice
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 shrink-0 px-3 text-xs"
+                          disabled={!course}
+                          onClick={() => {
+                            if (!course) return;
+                            try {
+                              sessionStorage.setItem("truefluency-verilo-pending-prompt", JSON.stringify({ courseCode: course.code, prompt: `Help me understand ${entry.topic} in ${canonicalCourseCode(course.code)} and suggest how I can practise it.` }));
+                            } catch { /* chat still opens if session storage is unavailable */ }
+                            navigate("chatbot", { courseCode: course.code });
+                          }}
+                        >
+                          Ask Verilo
                         </Button>
                       </div>
                       <div

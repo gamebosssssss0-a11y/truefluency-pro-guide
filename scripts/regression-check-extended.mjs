@@ -117,7 +117,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(router, /data-chat-thread/);
   assert.match(chat, /thread\.scrollTop = 0/);
   assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
-  assert.match(chat, /whitespace-normal break-words text-left leading-4/);
+  assert.match(chat, /w-full min-w-0 max-w-full break-words/);
   assert.match(chat, /line-clamp-2/);
   assert.doesNotMatch(chat, /mix-blend-difference/);
   assert.match(styles, /\.study-chat-screen\s*\{[\s\S]*?height: 100%/);
@@ -347,11 +347,12 @@ test("mobile chat composer uses the tab-nav-reserved viewport and message text w
 });
 
 
-test("Study Chat warms and prefetches its selected thread before the tab is opened", async () => {
+test("Verilo remains mounted outside the four root tabs and warms its selected thread", async () => {
   const chat = await read("../src/components/chatbot.tsx");
   const router = await read("../src/routes/index.tsx");
   assert.match(router, /const active = activeTab === tab/);
-  assert.match(router, /tab === "chatbot" \? <MemoChatbotScreen active=\{active\} \/>/);
+  assert.match(router, /<MemoChatbotScreen active=\{view === "chatbot" \|\| view === "chat-history"\} \/>/);
+  assert.doesNotMatch(router, /ROOT_TABS[\s\S]{0,240}"chatbot"/);
   assert.ok(chat.includes("if (!active) {"));
   assert.ok(chat.includes("void warmBackend();"));
   assert.ok(chat.includes("getCourseThread(key).then"));
@@ -373,12 +374,13 @@ test("root swipe progress is frame-painted and the mobile tab bar floats", async
   const dashboard = await read("../src/components/dashboard.tsx");
   const practice = await read("../src/components/mock-tests-tab.tsx");
   const chat = await read("../src/components/chatbot.tsx");
+  const router = await read("../src/routes/index.tsx");
   assert.match(hook, /index - dx \/ window\.innerWidth/);
   assert.match(hook, /window\.innerWidth \* 0\.35 \|\| fastEnough/);
   assert.match(hook, /releaseVelocity < -0\.4/);
   const moveHandler = hook.slice(hook.indexOf("const onMove"), hook.indexOf("const onEnd"));
-  assert.equal((moveHandler.match(/setPreview\(/g) || []).length, 1, "mount the neighbor once when a horizontal gesture begins");
-  assert.match(hook, /setPreview\(\{ tab: previewTab, side: previewSide, highlightedTab: null \}\)/);
+  assert.equal((moveHandler.match(/setPreview\(/g) || []).length, 0, "drag progress is painted without React state updates");
+  assert.match(router, /const adjacentTabs = activeIndex < 0 \? \[\] : \[ROOT_TABS\[activeIndex - 1\], ROOT_TABS\[activeIndex \+ 1\]\]/);
   assert.match(tabBar, /mobile-tab-bar fixed inset-x-4/);
   assert.match(tabBar, /h-\[68px\].*rounded-3xl.*backdrop-blur-\[16px\]/);
   assert.match(tabBar, /h-\[3px\] w-7/);

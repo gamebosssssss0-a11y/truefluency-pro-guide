@@ -26,7 +26,8 @@ import { recordMockStreak } from "@/lib/streak.functions";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE, toTeachingExplanation } from "@/lib/why-blocks";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { getStreakState } from "@/lib/streak-state";
-import { createMockShare } from "@/lib/mock-sharing.functions";
+import { MockShareSheet } from "@/components/mock-share-sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 // The analysis service accepts at most 60 questions per request.
 const MAX_GENERATED_QUESTIONS = EXAM_MAX_QUESTIONS;
@@ -261,12 +262,6 @@ export function MockGenerationScreen() {
         if (!questions || questions.length === 0) {
           throw new Error("No questions returned from AI");
         }
-        if (questions.length < allowedCount) {
-          toast.message(`Starting with ${questions.length} verified questions`, {
-            description: `Only questions checked against your selected files are included. Your score will use ${questions.length} questions.`,
-          });
-        }
-
         // The student may leave while generation is still running. Keep the
         // backend job resumable, but do not save a test they chose to abandon.
         if (!aliveRef.current) return;
@@ -362,14 +357,10 @@ export function MockGenerationScreen() {
       <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={STATUS}>
           <ErrorCard
-            title={error.includes("verified questions") ? "Not enough verified questions" : "Mock didn't finish"}
+            title="Mock didn't finish"
             body={error}
-            actionLabel={error.includes("verified questions") ? "Choose another file" : "Try again"}
+            actionLabel="Try again"
             onAction={() => {
-              if (error.includes("verified questions")) {
-                navigate("mock-config", { courseCode: course?.code });
-                return;
-              }
               // Re-issue the same request rather than dumping the student back
               // on the config screen.
               fetchedRef.current = false;
@@ -702,8 +693,11 @@ export function MockConfigScreen() {
                   <button
                     key={n}
                     type="button"
-                    disabled={locked}
                     onClick={() => {
+                      if (locked) {
+                        navigate("upgrade");
+                        return;
+                      }
                       setCount(n);
                       setMinutes(defaultMinutesForCount(n));
                     }}
@@ -1374,6 +1368,23 @@ export function MockRunScreen() {
                       )}
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11"
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem("truefluency-verilo-pending-prompt", JSON.stringify({
+                          courseCode: t.courseCode,
+                          prompt: `Please explain this mock question step by step: ${q.question}\nMy answer: ${chosenText}\nCorrect answer: ${answerText}`,
+                        }));
+                      } catch { /* chat still opens if session storage is unavailable */ }
+                      navigate("chatbot", { courseCode: t.courseCode });
+                    }}
+                  >
+                    Ask Verilo about this question
+                  </Button>
 
                 </section>
               );
@@ -1455,24 +1466,19 @@ function QuestionMapSheet({ total, answers, current, onJump, onClose, onSubmit }
 }) {
   const answered = answers.filter((a) => a !== null && a !== undefined).length;
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="mx-auto w-full max-w-md rounded-t-3xl border border-border bg-card p-5 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-sm font-semibold text-foreground">Question map</div>
-          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="bottom" className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <SheetHeader className="mb-3 text-left">
+          <SheetTitle className="text-sm">Question map</SheetTitle>
+          <SheetDescription>Choose a question to review before submitting.</SheetDescription>
+        </SheetHeader>
         <div className="grid grid-cols-6 gap-2">
           {Array.from({ length: total }).map((_, i) => {
             const isAnswered = answers[i] !== null && answers[i] !== undefined;
             return (
               <button
                 key={i}
-                onClick={() => onJump(i)}
+                onClick={() => { onClose(); onJump(i); }}
                 className={cn(
                   "grid h-10 place-items-center rounded-xl border text-xs font-semibold tabular-nums transition",
                   isAnswered
@@ -1490,8 +1496,8 @@ function QuestionMapSheet({ total, answers, current, onJump, onClose, onSubmit }
           {answered} answered · {total - answered} left
         </p>
         <Button size="lg" className="mt-3 w-full" onClick={onSubmit}>Submit test</Button>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -1501,29 +1507,17 @@ function SubmitConfirmSheet({ unanswered, onReview, onSubmit, onClose }: {
   onSubmit: () => void;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="submit-confirm-title"
-        className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-lg"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="submit-confirm-title" className="text-lg font-semibold text-foreground">
+    <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="bottom" className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <SheetHeader className="text-left">
+          <SheetTitle>
           {unanswered.length} question{unanswered.length > 1 ? "s" : ""} not answered
-        </h2>
-        <p className="mt-1 text-base text-muted-foreground">
-          Blank answers count as missed. Your answers are saved either way.
-        </p>
+          </SheetTitle>
+          <SheetDescription className="mt-1 text-base">
+            Blank answers count as missed. Your answers are saved either way.
+          </SheetDescription>
+        </SheetHeader>
         <div className="mt-4 grid grid-cols-4 gap-2" aria-label="Unanswered questions">
           {unanswered.map((questionIndex) => (
             <Button key={questionIndex} type="button" size="sm" variant="outline" onClick={() => onReview(questionIndex)}>
@@ -1531,10 +1525,10 @@ function SubmitConfirmSheet({ unanswered, onReview, onSubmit, onClose }: {
             </Button>
           ))}
         </div>
-        <Button size="lg" className="mt-4 w-full" onClick={() => onReview(unanswered[0])}>Go to first unanswered</Button>
+        {unanswered.length ? <Button size="lg" className="mt-4 w-full" onClick={() => onReview(unanswered[0])}>Go to first unanswered</Button> : null}
         <Button size="lg" variant="outline" className="mt-2 w-full" onClick={onSubmit}>Submit anyway</Button>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -1614,17 +1608,12 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="mx-auto w-full max-w-md rounded-t-3xl border border-border bg-card p-4 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-2 flex items-center justify-between">
-          <div className="text-sm font-semibold text-foreground">Calculator</div>
-          <button onClick={onClose} aria-label="Close calculator" className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="bottom" className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <SheetHeader className="mb-2 text-left">
+          <SheetTitle className="text-sm">Calculator</SheetTitle>
+          <SheetDescription>Basic keys only. Results are never entered into your answers.</SheetDescription>
+        </SheetHeader>
         <div className="mb-3 rounded-xl border border-border bg-background px-3 py-3 text-right font-display text-2xl font-semibold tabular-nums text-foreground">
           {display}
         </div>
@@ -1649,11 +1638,8 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Basic keys only. Results are never entered into your answers.
-        </p>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -1661,7 +1647,7 @@ function CalculatorSheet({ onClose }: { onClose: () => void }) {
 
 export function MockResultScreen() {
   const { profile, navigate } = useProfile();
-  const [sharing, setSharing] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const { access } = useEntitlement();
   const streak = getStreakState(profile, access?.watToday);
   const attempt = profile.attempts.find((a) => a.id === profile.lastResultId);
@@ -1761,31 +1747,10 @@ export function MockResultScreen() {
           {attempt.flaggedQuestionIndexes?.length ? `Review missed and flagged questions (${attempt.flaggedQuestionIndexes.length} flagged)` : "Review missed and flagged questions"}
         </Button>
 
-        <Button
-          size="lg"
-          variant="outline"
-          className="mt-2 w-full"
-          disabled={sharing || !attempt.questions?.length}
-          onClick={async () => {
-            setSharing(true);
-            try {
-              const result = await createMockShare({ data: { attemptId: attempt.id } });
-              if (!result.ok) {
-                toast.error(result.reason);
-                return;
-              }
-              const url = new URL("/mock-share/" + result.token, window.location.origin).toString();
-              await navigator.clipboard.writeText(url);
-              toast.success("Mock link copied", { description: "Anyone with the link can preview this mock." });
-            } catch {
-              toast.error("Couldn't create a share link. Please try again.");
-            } finally {
-              setSharing(false);
-            }
-          }}
-        >
-          <span className="mr-2">↗</span>{sharing ? "Creating link…" : "Share mock"}
+        <Button size="lg" variant="outline" className="mt-2 w-full" disabled={!attempt.questions?.length} onClick={() => setShareOpen(true)}>
+          <span className="mr-2">↗</span>Share mock
         </Button>
+        <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={attempt.id} />
 
 
         <div className="mt-2 grid grid-cols-2 gap-2">

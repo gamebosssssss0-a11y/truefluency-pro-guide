@@ -18,12 +18,16 @@ function sharingReady() {
 
 export const createMockShare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { attemptId: string }) => ({ attemptId: cleanAttemptId(input?.attemptId) }))
+  .inputValidator((input: { attemptId: string; visibility: "public" | "private" }) => {
+    const visibility: "public" | "private" | null = input?.visibility === "public" ? "public" : input?.visibility === "private" ? "private" : null;
+    if (!visibility) throw new Error("Choose who can view this mock.");
+    return { attemptId: cleanAttemptId(input?.attemptId), visibility };
+  })
   .handler(async ({ data, context }) => {
     if (!sharingReady()) return { ok: false as const, reason: MOCK_SHARE_OFFLINE_MESSAGE };
     try {
       const { createOwnedMockShare } = await import("@/lib/mock-sharing.server");
-      const share = await createOwnedMockShare(context.userId, data.attemptId);
+      const share = await createOwnedMockShare(context.userId, data.attemptId, data.visibility);
       return { ok: true as const, ...share };
     } catch (error) {
       return { ok: false as const, reason: error instanceof Error ? error.message : "Couldn't create this share link." };
@@ -46,13 +50,53 @@ export const readPublicMockShare = createServerFn({ method: "POST" })
 export const readPracticeMockShare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { token: string }) => ({ token: cleanToken(input?.token) }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     if (!sharingReady()) return { ok: false as const, reason: MOCK_SHARE_OFFLINE_MESSAGE };
     try {
       const { readMockShare } = await import("@/lib/mock-sharing.server");
-      const mock = await readMockShare(data.token, true);
+      const mock = await readMockShare(data.token, true, context.userId);
       return mock ? { ok: true as const, mock } : { ok: false as const, reason: "This mock link is no longer available." };
     } catch {
       return { ok: false as const, reason: "This mock link is no longer available." };
+    }
+  });
+
+export const readSignedInMockShare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { token: string }) => ({ token: cleanToken(input?.token) }))
+  .handler(async ({ data, context }) => {
+    if (!sharingReady()) return { ok: false as const, reason: MOCK_SHARE_OFFLINE_MESSAGE };
+    try {
+      const { readMockShare } = await import("@/lib/mock-sharing.server");
+      const mock = await readMockShare(data.token, false, context.userId);
+      return mock ? { ok: true as const, mock } : { ok: false as const, reason: "This mock link is no longer available." };
+    } catch {
+      return { ok: false as const, reason: "This mock link is no longer available." };
+    }
+  });
+
+export const getMockShareStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { attemptId: string }) => ({ attemptId: cleanAttemptId(input?.attemptId) }))
+  .handler(async ({ data, context }) => {
+    if (!sharingReady()) return { ok: false as const, reason: MOCK_SHARE_OFFLINE_MESSAGE };
+    try {
+      const { getOwnedMockShareStatus } = await import("@/lib/mock-sharing.server");
+      return { ok: true as const, share: await getOwnedMockShareStatus(context.userId, data.attemptId) };
+    } catch {
+      return { ok: false as const, reason: "Couldn't load this mock link." };
+    }
+  });
+
+export const revokeMockShare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { attemptId: string }) => ({ attemptId: cleanAttemptId(input?.attemptId) }))
+  .handler(async ({ data, context }) => {
+    if (!sharingReady()) return { ok: false as const, reason: MOCK_SHARE_OFFLINE_MESSAGE };
+    try {
+      const { revokeOwnedMockShare } = await import("@/lib/mock-sharing.server");
+      return { ok: true as const, share: await revokeOwnedMockShare(context.userId, data.attemptId) };
+    } catch {
+      return { ok: false as const, reason: "Couldn't revoke this mock link." };
     }
   });
