@@ -255,3 +255,49 @@ export function calcSteps(text: string): string[] | null {
     .filter((l) => l.length > 0 && /[=]/.test(l));
   return lines.length >= 2 ? lines.slice(0, 4) : null;
 }
+
+// ── the student's own wrong option ───────────────────────────────────────────────────────────────────────────────────────
+
+export type WrongPickNote = {
+  /** A, B, C or D: the option's place on screen (the backend writes these AFTER it shuffles the options). */
+  letter: string;
+  /** The first words of that option, as the backend quoted them, or null. */
+  quote: string | null;
+  note: string;
+};
+
+const PICK_START = /(?:^|[;.]\s+|\s)if you chose\s+([A-D])\b/gi;
+
+/**
+ * The backend writes the "why wrong" part as one line:
+ *   if you chose B ("first words"): note; if you chose C ("first words"): note.
+ * This cuts that line into one entry per option so the screen can show the student's own pick first. It reads the text only: it
+ * invents nothing. Returns null when the text is not written that way (older or hand-made sets), and the caller then shows the
+ * whole text exactly as before.
+ */
+export function splitWrongPicks(text: string | null | undefined): WrongPickNote[] | null {
+  const flat = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (!flat) return null;
+  const starts: Array<{ at: number; end: number; letter: string }> = [];
+  for (const m of flat.matchAll(PICK_START)) {
+    const at = (m.index ?? 0) + (m[0].length - m[0].trimStart().length);
+    starts.push({ at, end: (m.index ?? 0) + m[0].length, letter: m[1].toUpperCase() });
+  }
+  if (!starts.length) return null;
+  const out: WrongPickNote[] = [];
+  const seen = new Set<string>();
+  starts.forEach((s, i) => {
+    const raw = flat.slice(s.end, i + 1 < starts.length ? starts[i + 1].at : flat.length);
+    const head = raw.match(/^\s*(?:\(\s*"([^"]*)"\s*\))?\s*[:：]\s*/);
+    if (!head) return;
+    const note = raw
+      .slice(head[0].length)
+      .replace(/\s*;\s*$/, "")
+      .replace(/\.{2,}$/, ".")
+      .trim();
+    if (!note || seen.has(s.letter)) return;
+    seen.add(s.letter);
+    out.push({ letter: s.letter, quote: head[1]?.trim() || null, note });
+  });
+  return out.length ? out : null;
+}

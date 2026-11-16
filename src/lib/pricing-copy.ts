@@ -4,9 +4,9 @@
  * ever paraphrased, shortened or rounded at the call site.
  */
 export const PRICE_LINE =
-  "Free is ₦0. Core is ₦1,000 / month for the first 25 paying students, then ₦2,000 / month. Exam is ₦4,000 / month.";
+  "Free is ₦0. Core is ₦1,000 for your first 30 days (first 25 paying students), then ₦2,000 every 30 days. Exam is ₦4,000 every 30 days.";
 
-export const EXAM_PRICE_LINE = "Exam is ₦4,000 / month.";
+export const EXAM_PRICE_LINE = "Exam is ₦4,000 every 30 days.";
 
 export const TOPUP_LATER_LINE =
   "Chat top-up is later. It adds tokens for 30 days. It does not unlock WHY, Challenging, 45 questions, or peer-save.";

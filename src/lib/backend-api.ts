@@ -41,6 +41,35 @@ function readErrorDetail(text: string, status: number): string {
   return `The analysis service rejected the request (${status}).`;
 }
 
+/** The Free plan's daily Tutor sessions are used up (the server said so with code "tutor_limit"). Exam mode is still open. */
+export class TutorLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TutorLimitError";
+  }
+}
+
+export type TutorStatus = {
+  plan: string;
+  /** null = this plan has no Tutor limit of its own. */
+  limit: number | null;
+  limited: boolean;
+  used: number;
+  remaining: number | null;
+  resets_at: string;
+  /** false until the server's Tutor counter is installed or when it cannot be read just now. */
+  counting: boolean;
+};
+
+/** Free Tutor sessions left today, for the practice-mode picker. Never throws: the picker just shows no number. */
+export async function getTutorStatus(): Promise<TutorStatus | null> {
+  try {
+    return await getJson<TutorStatus>("/tutor/status");
+  } catch {
+    return null;
+  }
+}
+
 /** Pauses for ms milliseconds — used between polling attempts. */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,6 +108,9 @@ async function startMockJob(body: unknown): Promise<{ job_id: string; resumed: b
 
     if (res.status === 409 && typeof payload?.existing_job_id === "string") {
       return { job_id: payload.existing_job_id, resumed: true };
+    }
+    if (res.status === 402 && payload?.code === "tutor_limit") {
+      throw new TutorLimitError(readErrorDetail(JSON.stringify(payload), res.status));
     }
     if (!res.ok) {
       console.error("[backend] request failed", { path: "/generate-mock/start", status: res.status, payload });
@@ -240,6 +272,8 @@ export async function generateMock(
     courseCode: string;
     courseName: string;
     questionCount: number;
+    /** How the student will practise: "tutor" (explanation after each answer, limited per day on Free) or "exam". */
+    mode?: "tutor" | "exam";
     difficulty: Difficulty;
     topicFocus: string[];
     /** Topics the student left out; the backend keeps them out of the mock. */
@@ -276,6 +310,7 @@ export async function generateMock(
     course_code: input.courseCode,
     course_name: input.courseName,
     question_count: input.questionCount,
+    ...(input.mode ? { mode: input.mode } : {}),
     difficulty: input.difficulty,
     topic_focus: input.topicFocus,
     exclude_topics: input.excludeTopics ?? [],
