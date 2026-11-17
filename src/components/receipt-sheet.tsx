@@ -37,7 +37,7 @@ export function ReceiptSheet({ refCode, onOpenChange, onReport }: { refCode: str
         <SheetHeader className="pr-6 text-left print:hidden">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">Receipt</p>
           <SheetTitle>{receipt?.receipt_no ?? "Your receipt"}</SheetTitle>
-          <SheetDescription>Keep this for your records.</SheetDescription>
+          <SheetDescription>{receipt?.sandbox ? "TEST RECEIPT: Squad sandbox, fake money. This is not a real payment." : "Keep this for your records."}</SheetDescription>
         </SheetHeader>
         {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
         {!receipt && !error ? <p className="mt-4 text-sm text-muted-foreground">Loading…</p> : null}
@@ -72,7 +72,7 @@ export function ReceiptSheet({ refCode, onOpenChange, onReport }: { refCode: str
             </article>
             <div className="mt-3 flex flex-wrap gap-2 print:hidden">
               <Button type="button" variant="outline" onClick={() => window.print()}>Print or save as PDF</Button>
-              {onReport ? <Button type="button" variant="outline" onClick={() => onReport(receipt.reference)}>Report a problem with this payment</Button> : null}
+              {onReport && !receipt.sandbox ? <Button type="button" variant="outline" onClick={() => onReport(receipt.reference)}>Report a problem with this payment</Button> : null}
               {wa ? <Button asChild variant="ghost"><a href={wa} target="_blank" rel="noopener noreferrer">WhatsApp support</a></Button> : null}
             </div>
           </>

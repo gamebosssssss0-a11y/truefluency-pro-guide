@@ -83,6 +83,15 @@ function formatDate(iso?: string | null): string {
 
 const planName = (p?: string | null) => (p === "exam" ? "Exam" : p === "core" ? "Core" : "Free");
 
+/** Shown ONLY to an authorised test account (the server decides): the payment is a Squad sandbox payment with fake money. */
+function TestModeNotice() {
+  return (
+    <p role="note" data-test-mode-notice className="my-4 rounded-xl border border-amber-500/60 bg-amber-500/10 p-3 text-xs leading-relaxed text-foreground">
+      <strong>TEST MODE.</strong> This is a Squad sandbox payment with fake money. Nothing here is real, and your normal TrueFluency plan is not changed.
+    </p>
+  );
+}
+
 export function UpgradeScreen() {
   const { navigate } = useProfile();
   const { access, refresh: refreshAccess } = useEntitlement();
@@ -267,7 +276,7 @@ export function UpgradeScreen() {
       ) : (
         <p className="mt-1 text-xs text-muted-foreground">Tap a receipt above to view, print or save it.</p>
       )}
-      <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setProblem({ open: true, ref: null })}>Report a payment problem</Button>
+      {status?.sandbox ? null : <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => setProblem({ open: true, ref: null })}>Report a payment problem</Button>}
     </section>
   );
 
@@ -281,6 +290,7 @@ export function UpgradeScreen() {
           <HeaderLogo />
           <span className="text-xs font-semibold uppercase tracking-wider text-accent">Premium</span>
         </div>
+        {status?.sandbox ? <TestModeNotice /> : null}
 
         {step === "offer" ? (
           <>
@@ -471,7 +481,7 @@ export function UpgradeScreen() {
             <p className="mt-2 text-sm text-muted-foreground">Some banks take a few minutes. Please don’t pay again: your plan starts as soon as the payment is confirmed, and we keep checking.</p>
             {error ? <p className="mt-2 text-xs text-muted-foreground">{error}</p> : null}
             <Button className="mt-6 w-full" onClick={() => { const ref = returned.current; if (ref) { setStep("verifying"); void check(ref, 10); } else { void loadStatus(); setStep("offer"); } }}>Check again</Button>
-            <Button variant="outline" className="mt-2 w-full" onClick={() => setProblem({ open: true, ref: returned.current })}>Report a payment problem</Button>
+            {status?.sandbox ? null : <Button variant="outline" className="mt-2 w-full" onClick={() => setProblem({ open: true, ref: returned.current })}>Report a payment problem</Button>}
             <Button variant="ghost" className="mt-1 w-full" onClick={() => navigate("support")}>Ask us about this payment</Button>
           </section>
         ) : null}
