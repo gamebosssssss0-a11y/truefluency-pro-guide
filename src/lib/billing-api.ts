@@ -28,6 +28,8 @@ export type PlanQuote = {
 };
 
 export type BillingStatus = {
+  /** true only for an authorised test account: this is the Squad SANDBOX lane (fake money). Absent for everyone else. */
+  sandbox?: boolean;
   /** false until the owner switches payments on: the app then says "payments aren't live yet". */
   enabled: boolean;
   /** false when the billing database could not be read just now. */
@@ -57,6 +59,7 @@ export type BillingStatus = {
 export type CheckoutResult = { checkout_url: string; ref: string; amount_naira: number; then_naira?: number; founding?: boolean; reused?: boolean; auto_renew?: boolean };
 
 export type VerifyResult = {
+  sandbox?: boolean;
   /** success | pending | failed | abandoned | needs_review | refund_due | unknown_ref | underpaid */
   state: string;
   plan?: BillingPlan;
@@ -99,6 +102,8 @@ export class PriceChangedError extends Error {
 }
 
 export type Receipt = {
+  /** true for a test-lane receipt (numbered SBX-...). */
+  sandbox?: boolean;
   receipt_no: string | null;
   reference: string;
   provider_reference: string | null;
@@ -231,7 +236,7 @@ export const cancelAutoRenew = () =>
 const STORE_KEY = "tf_pending_payment_ref";
 const REF_PATTERN = /^[A-Za-z0-9]{8,60}$/;
 /** The references this backend creates: TFPI + 20 hex characters (first payment) or TFPR + ... (a renewal). */
-const OUR_REF_PATTERN = /^TFP[IR][A-Z0-9]{16,40}$/;
+const OUR_REF_PATTERN = /^TF[PS][IR][A-Z0-9]{16,40}$/;
 
 export function rememberCheckout(ref: string): void {
   try { window.localStorage.setItem(STORE_KEY, ref); } catch { /* private mode: the URL still carries it */ }
