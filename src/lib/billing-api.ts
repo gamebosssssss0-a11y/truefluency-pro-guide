@@ -245,6 +245,20 @@ export function rememberCheckout(ref: string): void {
 /** The reference of a payment this browser just came back from, or null. */
 export function readPaymentReturn(): string | null {
   if (typeof window === "undefined") return null;
+  const fromUrl = readPaymentRefFromUrl();
+  if (fromUrl) {
+    capturedReturnRef = fromUrl;
+    return fromUrl;
+  }
+  // The app rewrites the address (?view=home) on start-up, which drops the
+  // reference before the payment check runs; fall back to the one captured
+  // when this module first loaded.
+  return capturedReturnRef;
+}
+
+let capturedReturnRef: string | null = null;
+
+function readPaymentRefFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search);
   const fromUrl = params.get("payment_ref");
   if (fromUrl && REF_PATTERN.test(fromUrl)) return fromUrl;
@@ -267,9 +281,14 @@ export function lastCheckoutRef(): string | null {
 }
 
 export function clearPaymentReturn(): void {
+  capturedReturnRef = null;
   try { window.localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   for (const key of ["payment_ref", "reference", "trxref", "transaction_ref", "transactionRef", "transaction_reference"]) url.searchParams.delete(key);
   window.history.replaceState(window.history.state, "", url.pathname + (url.search || "") + url.hash);
 }
+
+// Capture the return reference as soon as the app loads, before start-up
+// navigation replaces the address.
+if (typeof window !== "undefined") capturedReturnRef = readPaymentRefFromUrl();
