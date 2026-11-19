@@ -43,7 +43,7 @@ function Dots({ index }: { index: 0 | 1 | 2 }) {
           key={i}
           className={cn(
             "h-1.5 rounded-full transition-all",
-            i === index ? "w-6 bg-accent" : "w-1.5 bg-muted-foreground/30",
+            i === index ? "w-6 bg-accent" : "w-1.5 bg-muted-foreground/60",
           )}
         />
       ))}

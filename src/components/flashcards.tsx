@@ -1,3 +1,4 @@
+import { CardFan } from "@/components/loading-state";
 /**
  * Flashcards — wired to the /flashcards/* backend endpoints (flashcard.py on
  * Render), which already implement grounded generation + FSRS scheduling.
@@ -269,10 +270,7 @@ export function FlashcardsScreen() {
         {isLoadingDecks ? (
           <div role="status" aria-live="polite" className="space-y-3">
             <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <div className="flex flex-col items-center justify-center py-4">
-                <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-sand border-t-accent" />
-                <p className="mt-2 text-xs text-muted-foreground">Loading your decks…</p>
-              </div>
+              <CardFan label="Loading your decks…" />
               <div aria-hidden="true" className="space-y-2">
                 <div className="h-3 w-2/5 animate-pulse rounded bg-sand/60" />
                 <div className="h-3 w-1/3 animate-pulse rounded bg-sand/40" />
@@ -517,7 +515,7 @@ export function FlashcardsReviewScreen() {
         </div>
 
         {isLoading ? (
-          <p className="text-center text-sm text-muted-foreground">Loading cards…</p>
+          <CardFan label="Loading cards…" />
         ) : error ? (
           <div className="rounded-2xl border border-border bg-sand/40 p-4 text-center">
             <p className="font-display text-base font-semibold text-navy">

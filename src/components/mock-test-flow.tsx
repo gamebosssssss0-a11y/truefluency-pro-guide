@@ -1,3 +1,4 @@
+import { BrandOrbit, StageSteps } from "@/components/loading-state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings, type MockMode } from "@/lib/profile-store";
 import { toast } from "sonner";
@@ -416,9 +417,7 @@ export function MockGenerationScreen() {
           <HeaderLogo />
         </div>
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-sm">
-            <Sparkles className="h-6 w-6" />
-          </div>
+          <BrandOrbit className="mb-4"><Sparkles className="h-6 w-6" /></BrandOrbit>
           <h1 className="font-display text-2xl font-semibold text-foreground">Preparing your mock</h1>
           <p className="mt-1 text-sm text-muted-foreground">{course?.code ? canonicalCourseCode(course.code) : ""} · {course?.name}</p>
         </div>
@@ -426,6 +425,10 @@ export function MockGenerationScreen() {
         <p className="mt-3 text-center text-sm text-muted-foreground">
           {readyLine ?? genSteps[statusIdx]}
         </p>
+        <StageSteps
+          steps={["Scanning notes and past papers", "Synthesizing exam-level questions", "Calibrating difficulty and rationale"]}
+          active={pct >= 100 ? 3 : Math.min(2, Math.floor((pct / 100) * 3))}
+        />
 
         {analysis && analysis.topics.length > 0 ? (
           <div className="mt-6 overflow-hidden rounded-2xl border border-accent/15 bg-card shadow-sm">

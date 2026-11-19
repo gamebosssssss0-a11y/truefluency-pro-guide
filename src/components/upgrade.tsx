@@ -1,3 +1,5 @@
+import { BrandOrbit } from "@/components/loading-state";
+import { ShieldCheck } from "lucide-react";
 /**
  * Plans and payment. Paying goes through Squad's own page (card details never touch this site); the backend then asks
  * Squad whether the payment really happened before any plan is switched on. Nothing here changes a plan by itself.
@@ -454,9 +456,9 @@ export function UpgradeScreen() {
           </section>
         ) : null}
 
-        {step === "redirecting" ? <div className="py-16 text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-accent/20 border-t-accent" /><h1 className="mt-5 font-display text-2xl font-semibold">Taking you to Squad.</h1><p className="mt-2 text-sm text-muted-foreground">Complete the payment there. You’ll come straight back here.</p></div> : null}
+        {step === "redirecting" ? <div className="py-16 text-center"><BrandOrbit><ShieldCheck className="h-6 w-6" aria-hidden="true" /></BrandOrbit><h1 className="mt-5 font-display text-2xl font-semibold">Taking you to Squad.</h1><p className="mt-2 text-sm text-muted-foreground">Complete the payment there. You’ll come straight back here.</p></div> : null}
 
-        {step === "verifying" ? <div className="py-16 text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-accent/20 border-t-accent" /><h1 className="mt-5 font-display text-2xl font-semibold">Confirming your payment.</h1><p className="mt-2 text-sm text-muted-foreground">We’re asking the bank. This usually takes a few seconds. Please don’t pay again.</p></div> : null}
+        {step === "verifying" ? <div className="py-16 text-center"><BrandOrbit><ShieldCheck className="h-6 w-6" aria-hidden="true" /></BrandOrbit><h1 className="mt-5 font-display text-2xl font-semibold">Confirming your payment.</h1><p className="mt-2 text-sm text-muted-foreground">We’re asking the bank. This usually takes a few seconds. Please don’t pay again.</p></div> : null}
 
         {step === "success" ? (
           <section className="py-10 text-center">

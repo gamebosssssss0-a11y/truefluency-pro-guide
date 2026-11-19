@@ -37,7 +37,7 @@ function StreakGlyph({ state }: { state: StreakState }) {
     <span role="img" aria-label={STREAK_LABEL[state]} className="grid h-10 w-10 shrink-0 place-items-center">
       <Icon
         aria-hidden="true"
-        className={state === "none" ? "h-5 w-5 text-muted-foreground/60" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 fill-accent/15 text-accent"}
+        className={state === "none" ? "h-5 w-5 text-muted-foreground" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 fill-accent/15 text-accent"}
       />
     </span>
   );

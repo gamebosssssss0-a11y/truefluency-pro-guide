@@ -1665,3 +1665,23 @@ html[data-theme-transition] *::after {
   .view-transition-enter { animation: tf-fade-only 100ms linear both; }
 }
 @keyframes tf-fade-only { from { opacity: 0; } to { opacity: 1; } }
+
+/* Branded loaders */
+@keyframes tf-spin { to { transform: rotate(360deg); } }
+@keyframes tf-halo { 0%,100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.08); opacity: .35; } }
+@keyframes tf-step { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes tf-scan { from { left: -35%; } to { left: 100%; } }
+@keyframes tf-fan0 { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-14deg) translateX(-10px); } }
+@keyframes tf-fan2 { 0%,100% { transform: rotate(0); } 50% { transform: rotate(14deg) translateX(10px); } }
+.tf-orbit-arc { animation: tf-spin 1.6s linear infinite; }
+.tf-orbit-arc-rev { animation: tf-spin 2.4s linear infinite reverse; }
+.tf-orbit-halo { animation: tf-halo 2.4s ease-in-out infinite; }
+.tf-step-pulse { animation: tf-step 1.4s ease-out infinite; }
+.tf-scan-beam { animation: tf-scan 1.3s cubic-bezier(.45,0,.2,1) infinite; }
+.tf-fan-0 { animation: tf-fan0 1.8s ease-in-out infinite; }
+.tf-fan-2 { animation: tf-fan2 1.8s ease-in-out infinite; }
+.tf-fan-1 { box-shadow: 0 0 18px -4px var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .tf-orbit-arc, .tf-orbit-arc-rev, .tf-orbit-halo, .tf-step-pulse, .tf-scan-beam, .tf-fan-0, .tf-fan-2 { animation: none; }
+  .tf-scan-beam { left: 0; width: 100%; opacity: .6; }
+}

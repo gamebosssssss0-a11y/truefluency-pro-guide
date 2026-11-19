@@ -52,7 +52,7 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
 
   const sections = [
     { key: "what", label: "What it tests", body: content.whatItTests, tone: "border-primary/15 bg-primary/5" },
-    { key: "plain", label: "Plain-English words", body: content.plainEnglish, tone: "border-violet-500/10 bg-violet-500/5 dark:border-violet-300/10 dark:bg-violet-400/10" },
+    { key: "plain", label: "Plain-English words", body: content.plainEnglish, tone: "border-primary/20 bg-primary/5 dark:border-accent/25 dark:bg-accent/5" },
     { key: "rule", label: "Minimum rule", body: content.minimumRule, tone: "border-accent/20 bg-accent/10" },
     { key: "example", label: "Easy example", body: content.easyExample, tone: "border-success/20 bg-success/10" },
     // Only when the notes are NOT split out below (no pick known, or older text): the one block, exactly as before.
@@ -81,14 +81,30 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
           </div>
         </section>
       ) : null}
-      {sections.map((section) => (
+      {sections.map((section) => {
+        const steps = section.key === "worked" ? splitSteps(section.body ?? "") : null;
+        if (steps) return (
+          <section key={section.key} className={cn("rounded-xl border px-3 py-2.5", section.tone)}>
+            <h4 className="text-xs font-semibold text-foreground">{section.label}</h4>
+            <ol className="mt-2 space-y-2">
+              {steps.map((st, n) => (
+                <li key={n} className="rounded-lg border border-border bg-card px-3 py-2">
+                  <span className="inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-foreground">{st.badge}</span>
+                  <div className="mt-1.5 break-words whitespace-pre-wrap text-sm leading-7 text-foreground"><MathText examMath>{st.text}</MathText></div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        );
+        return (
         <section key={section.key} className={cn("rounded-xl border px-3 py-2.5", section.tone)}>
           <h4 className="text-xs font-semibold text-foreground">{section.label}</h4>
           <div className="mt-1 break-words whitespace-pre-wrap text-sm leading-7 text-foreground">
             <MathText examMath>{section.body}</MathText>
           </div>
         </section>
-      ))}
+        );
+      })}
       {others.length ? <OtherOptions items={others} label={own ? "Why the other options are wrong" : "Why each wrong option fails"} /> : null}
       {content.finalAnswer ? (
         <div className="rounded-lg border border-border bg-card px-3 py-2.5 text-foreground">
@@ -122,4 +138,20 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
       ) : null}
     </div>
   );
+}
+
+
+/** Splits "Step 1: … Step 2: …", "1. … 2. …" or a trailing "Therefore:" into step cards. Null when not multi-step. */
+export function splitSteps(body: string): { badge: string; text: string }[] | null {
+  const re = /(?:^|\n|\s)(?=(?:Step\s*\d+\s*[:.)-])|(?:\d+[.)]\s)|(?:Therefore\s*[:,]))/i;
+  const parts = body.split(new RegExp(re.source, "gi")).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  let n = 0;
+  return parts.map((p) => {
+    const m = p.match(/^(?:Step\s*(\d+)\s*[:.)-]|(\d+)[.)]\s|(Therefore)\s*[:,])\s*/i);
+    if (m?.[3]) return { badge: "Therefore", text: p.slice(m[0].length) };
+    if (m) { n = Number(m[1] ?? m[2]); return { badge: `Step ${n}`, text: p.slice(m[0].length) }; }
+    n += 1;
+    return { badge: n === 1 ? "Setup" : `Step ${n}`, text: p };
+  });
 }

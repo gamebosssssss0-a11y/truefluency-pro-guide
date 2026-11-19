@@ -1,3 +1,4 @@
+import { ScanBeam } from "@/components/loading-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type AIQuestion, type CourseTopicAnalysis } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
@@ -458,7 +459,7 @@ function PredictedTopicsSection({ courseCode, material, analysis }: {
           <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> {statusText}
           </div>
-          <Progress value={undefined} className="mt-2 h-1.5 animate-pulse" />
+          <ScanBeam />
         </div>
       ) : error ? (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs">
@@ -926,6 +927,7 @@ function ExtractingBanner({ page, total, actualTotal, where }: { page?: number; 
         </span>
         <span className="font-normal text-muted-foreground">{seconds}s</span>
       </div>
+      {!paging ? <ScanBeam /> : null}
       {paging ? (
         <Progress value={Math.round((page! / total!) * 100)} className="mt-2 h-1.5" />
       ) : (
