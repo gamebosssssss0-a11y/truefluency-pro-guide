@@ -47,7 +47,7 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
   const ownLetter = pickedWrong ? LETTERS[pickedIndex as number] : null;
   const own = ownLetter && picks ? picks.find((p) => p.letter === ownLetter) ?? null : null;
   // Split the wrong-option notes only when there is something better to do with them than show them as one paragraph.
-  const split = picks && typeof pickedIndex === "number" ? picks : null;
+  const split = picks;
   const others = split ? split.filter((p) => p !== own) : [];
 
   const sections = [
@@ -145,7 +145,11 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
 export function splitSteps(body: string): { badge: string; text: string }[] | null {
   const re = /(?:^|\n|\s)(?=(?:Step\s*\d+\s*[:.)-])|(?:\d+[.)]\s)|(?:Therefore\s*[:,]))/i;
   const parts = body.split(new RegExp(re.source, "gi")).map((p) => p.trim()).filter(Boolean);
-  if (parts.length < 2) return null;
+  if (parts.length < 2) {
+    const semi = body.trim().split(/\s*;\s+/).map((p) => p.trim()).filter(Boolean);
+    if (semi.length < 2) return null;
+    return semi.map((text, i) => ({ badge: i === semi.length - 1 && semi.length > 2 ? "Therefore" : `Step ${i + 1}`, text: text.replace(/^[a-z]/, (c) => c.toUpperCase()) }));
+  }
   let n = 0;
   return parts.map((p) => {
     const m = p.match(/^(?:Step\s*(\d+)\s*[:.)-]|(\d+)[.)]\s|(Therefore)\s*[:,])\s*/i);

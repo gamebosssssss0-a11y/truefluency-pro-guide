@@ -421,14 +421,14 @@ export function AccountScreen() {
         <div className="space-y-2">
           <button
             onClick={() => navigate("edit-identity")}
-            className="surface-wash flex w-full items-center gap-3 p-3.5 text-left transition hover:border-accent/50"
+            className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3.5 text-left text-foreground transition hover:border-accent/50"
           >
             <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
               <User className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Identity</div>
-              <div className="truncate text-sm font-medium text-foreground">
+              <div className="truncate text-sm font-bold text-foreground">
                 {profile.identity?.name ?? "Not set"}
               </div>
               {profile.identity?.email ? (

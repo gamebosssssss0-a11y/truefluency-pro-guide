@@ -140,6 +140,11 @@ export function RichText({ children, tone = "default" }: { children: string | nu
       );
       return;
     }
+    if (/^\s*(?:[-*_]\s*){3,}$/.test(line)) {
+      flushList();
+      blocks.push(<hr key={`hr-${idx}`} className="my-5 border-0 border-t border-border" />);
+      return;
+    }
     const bullet = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
     if (bullet) {
       list.push(bullet[1] ?? "");
@@ -182,7 +187,7 @@ export function RichText({ children, tone = "default" }: { children: string | nu
       return;
     }
     blocks.push(
-      <p key={idx} className="my-1 first:mt-0 last:mb-0">
+      <p key={idx} className="my-2.5 first:mt-0 last:mb-0">
         <Inline text={line} />
       </p>,
     );

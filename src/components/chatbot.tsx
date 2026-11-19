@@ -5,7 +5,7 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
 import { useNavigation, useProfileData } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -1124,6 +1124,11 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     <div className={`study-chat-screen tf-visual-phase2 min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={cn("chat-layout mx-auto grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-border pb-2">
+          {!embedded ? (
+            <button type="button" onClick={() => window.history.back()} aria-label="Go back" title="Back" className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            </button>
+          ) : null}
           <button type="button" onClick={() => { setHistoryOpen(true); navigate("chat-history", { courseCode: selected }); }} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2 text-xs font-semibold leading-3 text-foreground transition hover:bg-muted">
             <HistoryIcon aria-hidden="true" className="h-4 w-4" />
             <span><span className="block">History</span><span className="block">Chat</span></span>
@@ -1313,7 +1318,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="chat-message-content text-base font-medium leading-[1.55] text-foreground">
+                    <div className="chat-message-content text-[16px] sm:text-[17px] font-semibold leading-[1.65] text-foreground">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.sources?.length ? (

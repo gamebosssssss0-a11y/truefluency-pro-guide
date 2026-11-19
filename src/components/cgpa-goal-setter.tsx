@@ -632,7 +632,7 @@ export function CgpaGoalSetterScreen() {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-navy/65">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       {children}

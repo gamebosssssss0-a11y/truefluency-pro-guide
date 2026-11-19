@@ -558,7 +558,7 @@ export function CgpaCalculatorScreen() {
                       <div className="truncate text-xs text-muted-foreground">{c.name}</div>
                     </div>
                     <div
-                      className="grid grid-cols-6 gap-0.5 rounded-xl bg-sand p-1"
+                      className="grid grid-cols-6 gap-0.5 rounded-xl border border-border bg-muted p-1"
                       role="group"
                       aria-label={`Credit units for ${c.code}`}
                     >
@@ -575,10 +575,10 @@ export function CgpaCalculatorScreen() {
                               }))
                             }
                             className={cn(
-                              "h-8 w-7 rounded-lg text-xs font-semibold transition-colors",
+                              "h-8 w-7 rounded-lg text-xs font-bold transition-colors",
                               selected
-                                ? "bg-navy text-white shadow-sm"
-                                : "text-navy/65 hover:bg-card hover:text-navy",
+                                ? "bg-accent text-accent-foreground shadow-sm"
+                                : "text-foreground hover:bg-card",
                             )}
                             aria-label={`${unit} credit units`}
                             aria-pressed={selected}
@@ -631,8 +631,8 @@ export function CgpaCalculatorScreen() {
                               className={cn(
                                 "h-8 w-8 rounded-lg border text-xs font-semibold transition",
                                 on
-                                  ? "border-accent bg-accent/15 text-accent"
-                                  : "border-border bg-background text-muted-foreground hover:border-accent/50",
+                                  ? "border-accent bg-accent text-accent-foreground"
+                                  : "border-border bg-background text-foreground hover:border-accent/50",
                               )}
                               aria-label={`Grade ${l} for ${c.code}`}
                               aria-pressed={on}
@@ -650,7 +650,7 @@ export function CgpaCalculatorScreen() {
                   Number.isFinite(row.percent) &&
                   row.percent >= 0 &&
                   row.percent <= 100 ? (
-                    <p className="mt-2 text-xs font-medium text-navy/70">
+                    <p className="mt-2 text-xs font-semibold text-foreground">
                       {mode === "percent"
                         ? `Entering ${row.percent}% → Grade ${gradeForPercent(row.percent, scale)} (${row.points.toFixed(1)} GP)`
                         : `Grade ${letters[canonicalCourseCode(c.code)]} (${row.points.toFixed(1)} GP)`}
@@ -837,7 +837,7 @@ export function CgpaCalculatorScreen() {
                 <div className="text-sm font-semibold text-navy">
                   {m.session} combined GPA {m.gpa.toFixed(2)}
                 </div>
-                <div className="text-xs text-navy/70">
+                <div className="text-xs text-muted-foreground">
                   Both semesters weighted by credits · {m.units} credits
                 </div>
               </div>

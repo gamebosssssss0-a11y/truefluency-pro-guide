@@ -1685,3 +1685,10 @@ html[data-theme-transition] *::after {
   .tf-orbit-arc, .tf-orbit-arc-rev, .tf-orbit-halo, .tf-step-pulse, .tf-scan-beam, .tf-fan-0, .tf-fan-2 { animation: none; }
   .tf-scan-beam { left: 0; width: 100%; opacity: .6; }
 }
+
+html.dark .surface-wash {
+  --foreground: var(--tf-ink);
+  --card-foreground: var(--tf-ink);
+  --muted-foreground: var(--tf-muted);
+  color: var(--tf-ink);
+}

@@ -208,6 +208,10 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const lockerRequestRef = useRef(0);
   const lockerOwnerRef = useRef<string | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.querySelectorAll<HTMLElement>("[data-screen-scroll]").forEach((n) => { n.scrollTop = 0; });
+  }, [openFolder]);
 
   const [shelf, setShelf] = useState<{ items: ShelfItem[]; courses: { course_code: string; count: number }[] } | null>(null);
   const [shelfOffline, setShelfOffline] = useState(false);

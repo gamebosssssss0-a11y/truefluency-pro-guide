@@ -62,9 +62,9 @@ export function CgpaCoursePicker({
   return (
     <div className="mt-2">
       <Button
-        variant="outline"
+        variant="default"
         size="sm"
-        className="w-full border-border"
+        className="min-h-11 w-full bg-primary font-semibold text-primary-foreground shadow-sm hover:brightness-105"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? (
