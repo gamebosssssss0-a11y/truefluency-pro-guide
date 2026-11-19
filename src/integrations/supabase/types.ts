@@ -71,6 +71,135 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_consents: {
+        Row: {
+          accepted_at: string
+          auto_renew: boolean
+          consent_text: string
+          first_amount_kobo: number
+          first_renewal_on: string | null
+          period_days: number
+          plan: string
+          recurring_amount_kobo: number | null
+          ref: string
+          terms_version: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          auto_renew: boolean
+          consent_text: string
+          first_amount_kobo: number
+          first_renewal_on?: string | null
+          period_days?: number
+          plan: string
+          recurring_amount_kobo?: number | null
+          ref: string
+          terms_version: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          auto_renew?: boolean
+          consent_text?: string
+          first_amount_kobo?: number
+          first_renewal_on?: string | null
+          period_days?: number
+          plan?: string
+          recurring_amount_kobo?: number | null
+          ref?: string
+          terms_version?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      billing_events: {
+        Row: {
+          event: string
+          id: number
+          outcome: string | null
+          received_at: string
+          ref: string | null
+        }
+        Insert: {
+          event: string
+          id?: number
+          outcome?: string | null
+          received_at?: string
+          ref?: string | null
+        }
+        Update: {
+          event?: string
+          id?: number
+          outcome?: string | null
+          received_at?: string
+          ref?: string | null
+        }
+        Relationships: []
+      }
+      billing_profiles: {
+        Row: {
+          auto_renew: boolean
+          cancelled_at: string | null
+          charge_lock_until: string | null
+          created_at: string
+          failed_attempts: number
+          founding: boolean
+          last_failure: string | null
+          next_charge_at: string | null
+          period_end: string | null
+          period_start: string | null
+          plan: string
+          price_kobo: number
+          renewal_lead_days: number
+          squad_auth_code: string | null
+          squad_token: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          charge_lock_until?: string | null
+          created_at?: string
+          failed_attempts?: number
+          founding?: boolean
+          last_failure?: string | null
+          next_charge_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan: string
+          price_kobo: number
+          renewal_lead_days?: number
+          squad_auth_code?: string | null
+          squad_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          charge_lock_until?: string | null
+          created_at?: string
+          failed_attempts?: number
+          founding?: boolean
+          last_failure?: string | null
+          next_charge_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan?: string
+          price_kobo?: number
+          renewal_lead_days?: number
+          squad_auth_code?: string | null
+          squad_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           archived_at: string | null
@@ -347,6 +476,21 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_accounts: {
+        Row: {
+          deleted_at: string
+          user_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          user_id: string
+        }
+        Update: {
+          deleted_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       example_questions: {
         Row: {
           active: boolean
@@ -491,6 +635,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      founding_seats: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          claimed_ref: string | null
+          reserved_for: string | null
+          reserved_ref: string | null
+          reserved_until: string | null
+          seat_no: number
+          state: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          claimed_ref?: string | null
+          reserved_for?: string | null
+          reserved_ref?: string | null
+          reserved_until?: string | null
+          seat_no: number
+          state?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          claimed_ref?: string | null
+          reserved_for?: string | null
+          reserved_ref?: string | null
+          reserved_until?: string | null
+          seat_no?: number
+          state?: string
+        }
+        Relationships: []
       }
       gate_hits: {
         Row: {
@@ -869,6 +1046,202 @@ export type Database = {
         }
         Relationships: []
       }
+      mock_shares: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          owner_id: string
+          revoked_at: string | null
+          snapshot: Json
+          token: string
+          visibility: string
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          owner_id: string
+          revoked_at?: string | null
+          snapshot: Json
+          token: string
+          visibility?: string
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          owner_id?: string
+          revoked_at?: string | null
+          snapshot?: Json
+          token?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_shares_attempt_owner_fk"
+            columns: ["owner_id", "attempt_id"]
+            isOneToOne: false
+            referencedRelation: "mock_attempts"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      payment_dispute_events: {
+        Row: {
+          action: string
+          actor: string
+          at: string
+          detail: string | null
+          dispute_id: string
+          id: number
+        }
+        Insert: {
+          action: string
+          actor: string
+          at?: string
+          detail?: string | null
+          dispute_id: string
+          id?: number
+        }
+        Update: {
+          action?: string
+          actor?: string
+          at?: string
+          detail?: string | null
+          dispute_id?: string
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_dispute_events_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "payment_disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_disputes: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          public_note: string | null
+          ref: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          tracking_no: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          public_note?: string | null
+          ref?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          tracking_no?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          public_note?: string | null
+          ref?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          tracking_no?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          amount_kobo: number
+          applied_at: string | null
+          checkout_url: string | null
+          confirmed_at: string | null
+          created_at: string
+          currency: string
+          founding_seat: number | null
+          gateway_ref: string | null
+          intro_price: boolean
+          kind: string
+          note: string | null
+          period_end: string | null
+          period_start: string | null
+          plan: string
+          receipt_no: string | null
+          ref: string
+          renewal_period: string | null
+          standard_price_kobo: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_kobo: number
+          applied_at?: string | null
+          checkout_url?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          founding_seat?: number | null
+          gateway_ref?: string | null
+          intro_price?: boolean
+          kind: string
+          note?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan: string
+          receipt_no?: string | null
+          ref: string
+          renewal_period?: string | null
+          standard_price_kobo: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_kobo?: number
+          applied_at?: string | null
+          checkout_url?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          founding_seat?: number | null
+          gateway_ref?: string | null
+          intro_price?: boolean
+          kind?: string
+          note?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan?: string
+          receipt_no?: string | null
+          ref?: string
+          renewal_period?: string | null
+          standard_price_kobo?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -956,6 +1329,273 @@ export type Database = {
         }
         Relationships: []
       }
+      sbx_billing_consents: {
+        Row: {
+          accepted_at: string
+          auto_renew: boolean
+          consent_text: string
+          first_amount_kobo: number
+          first_renewal_on: string | null
+          period_days: number
+          plan: string
+          recurring_amount_kobo: number | null
+          ref: string
+          terms_version: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          auto_renew: boolean
+          consent_text: string
+          first_amount_kobo: number
+          first_renewal_on?: string | null
+          period_days?: number
+          plan: string
+          recurring_amount_kobo?: number | null
+          ref: string
+          terms_version: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          auto_renew?: boolean
+          consent_text?: string
+          first_amount_kobo?: number
+          first_renewal_on?: string | null
+          period_days?: number
+          plan?: string
+          recurring_amount_kobo?: number | null
+          ref?: string
+          terms_version?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sbx_billing_events: {
+        Row: {
+          event: string
+          id: number
+          outcome: string | null
+          received_at: string
+          ref: string | null
+        }
+        Insert: {
+          event: string
+          id?: number
+          outcome?: string | null
+          received_at?: string
+          ref?: string | null
+        }
+        Update: {
+          event?: string
+          id?: number
+          outcome?: string | null
+          received_at?: string
+          ref?: string | null
+        }
+        Relationships: []
+      }
+      sbx_billing_profiles: {
+        Row: {
+          auto_renew: boolean
+          cancelled_at: string | null
+          charge_lock_until: string | null
+          created_at: string
+          failed_attempts: number
+          founding: boolean
+          last_failure: string | null
+          next_charge_at: string | null
+          period_end: string | null
+          period_start: string | null
+          plan: string
+          price_kobo: number
+          renewal_lead_days: number
+          squad_auth_code: string | null
+          squad_token: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          charge_lock_until?: string | null
+          created_at?: string
+          failed_attempts?: number
+          founding?: boolean
+          last_failure?: string | null
+          next_charge_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan: string
+          price_kobo: number
+          renewal_lead_days?: number
+          squad_auth_code?: string | null
+          squad_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          charge_lock_until?: string | null
+          created_at?: string
+          failed_attempts?: number
+          founding?: boolean
+          last_failure?: string | null
+          next_charge_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan?: string
+          price_kobo?: number
+          renewal_lead_days?: number
+          squad_auth_code?: string | null
+          squad_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sbx_founding_seats: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          claimed_ref: string | null
+          reserved_for: string | null
+          reserved_ref: string | null
+          reserved_until: string | null
+          seat_no: number
+          state: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          claimed_ref?: string | null
+          reserved_for?: string | null
+          reserved_ref?: string | null
+          reserved_until?: string | null
+          seat_no: number
+          state?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          claimed_ref?: string | null
+          reserved_for?: string | null
+          reserved_ref?: string | null
+          reserved_until?: string | null
+          seat_no?: number
+          state?: string
+        }
+        Relationships: []
+      }
+      sbx_payment_transactions: {
+        Row: {
+          amount_kobo: number
+          applied_at: string | null
+          checkout_url: string | null
+          confirmed_at: string | null
+          created_at: string
+          currency: string
+          founding_seat: number | null
+          gateway_ref: string | null
+          intro_price: boolean
+          kind: string
+          note: string | null
+          period_end: string | null
+          period_start: string | null
+          plan: string
+          receipt_no: string | null
+          ref: string
+          renewal_period: string | null
+          standard_price_kobo: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_kobo: number
+          applied_at?: string | null
+          checkout_url?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          founding_seat?: number | null
+          gateway_ref?: string | null
+          intro_price?: boolean
+          kind: string
+          note?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan: string
+          receipt_no?: string | null
+          ref: string
+          renewal_period?: string | null
+          standard_price_kobo: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_kobo?: number
+          applied_at?: string | null
+          checkout_url?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          founding_seat?: number | null
+          gateway_ref?: string | null
+          intro_price?: boolean
+          kind?: string
+          note?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan?: string
+          receipt_no?: string | null
+          ref?: string
+          renewal_period?: string | null
+          standard_price_kobo?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sbx_subscriptions: {
+        Row: {
+          created_at: string
+          paid_until: string | null
+          paying_user_number: number | null
+          tier: string
+          trial_ends_at: string
+          trial_started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          paid_until?: string | null
+          paying_user_number?: number | null
+          tier?: string
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          paid_until?: string | null
+          paying_user_number?: number | null
+          tier?: string
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           id: boolean
@@ -1010,6 +1650,36 @@ export type Database = {
           trial_ends_at?: string | null
           trial_started_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      tutor_sessions: {
+        Row: {
+          committed_at: string | null
+          created_at: string
+          day: string
+          reserved_until: string
+          session_key: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          committed_at?: string | null
+          created_at?: string
+          day: string
+          reserved_until: string
+          session_key: string
+          state?: string
+          user_id: string
+        }
+        Update: {
+          committed_at?: string | null
+          created_at?: string
+          day?: string
+          reserved_until?: string
+          session_key?: string
+          state?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1109,6 +1779,51 @@ export type Database = {
     }
     Functions: {
       admin_dashboard_stats: { Args: never; Returns: Json }
+      billing_apply_payment: {
+        Args: {
+          p_auth_code?: string
+          p_gateway_ref: string
+          p_paid_kobo: number
+          p_ref: string
+          p_token?: string
+        }
+        Returns: Json
+      }
+      billing_attach_token: {
+        Args: { p_auth_code?: string; p_ref: string; p_token: string }
+        Returns: Json
+      }
+      billing_cancel: { Args: { p_user: string }; Returns: Json }
+      billing_claim_due: {
+        Args: { p_limit?: number }
+        Returns: {
+          amount_kobo: number
+          attempt: number
+          plan: string
+          ref: string
+          renewal_period: string
+          token: string
+          user_id: string
+        }[]
+      }
+      billing_close_account: { Args: { p_user: string }; Returns: Json }
+      billing_first_charge_at: {
+        Args: { p_end: string; p_first_on: string }
+        Returns: string
+      }
+      billing_next_charge_at: {
+        Args: { p_end: string; p_first_on?: string; p_lead: number }
+        Returns: string
+      }
+      billing_record_failure: {
+        Args: { p_reason: string; p_ref: string; p_status?: string }
+        Returns: Json
+      }
+      billing_release_seat: { Args: { p_ref: string }; Returns: undefined }
+      billing_reserve_seat: {
+        Args: { p_minutes?: number; p_ref: string; p_user: string }
+        Returns: number
+      }
       chat_token_usage_prune: { Args: never; Returns: number }
       chat_tokens_add: {
         Args: { p_day: string; p_tokens: number; p_user_id: string }
@@ -1125,6 +1840,7 @@ export type Database = {
           total: number
         }[]
       }
+      founding_seats_left: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1163,6 +1879,51 @@ export type Database = {
           today_wat: string
         }[]
       }
+      sbx_billing_apply_payment: {
+        Args: {
+          p_auth_code?: string
+          p_gateway_ref: string
+          p_paid_kobo: number
+          p_ref: string
+          p_token?: string
+        }
+        Returns: Json
+      }
+      sbx_billing_attach_token: {
+        Args: { p_auth_code?: string; p_ref: string; p_token: string }
+        Returns: Json
+      }
+      sbx_billing_cancel: { Args: { p_user: string }; Returns: Json }
+      sbx_billing_claim_due: {
+        Args: { p_limit?: number }
+        Returns: {
+          amount_kobo: number
+          attempt: number
+          plan: string
+          ref: string
+          renewal_period: string
+          token: string
+          user_id: string
+        }[]
+      }
+      sbx_billing_first_charge_at: {
+        Args: { p_end: string; p_first_on: string }
+        Returns: string
+      }
+      sbx_billing_next_charge_at: {
+        Args: { p_end: string; p_first_on?: string; p_lead: number }
+        Returns: string
+      }
+      sbx_billing_record_failure: {
+        Args: { p_reason: string; p_ref: string; p_status?: string }
+        Returns: Json
+      }
+      sbx_billing_release_seat: { Args: { p_ref: string }; Returns: undefined }
+      sbx_billing_reserve_seat: {
+        Args: { p_minutes?: number; p_ref: string; p_user: string }
+        Returns: number
+      }
+      sbx_founding_seats_left: { Args: never; Returns: number }
       search_material_chunks: {
         Args: {
           p_course_key: string
@@ -1181,6 +1942,22 @@ export type Database = {
           rank: number
         }[]
       }
+      tutor_commit: {
+        Args: { p_day: string; p_key: string; p_user: string }
+        Returns: Json
+      }
+      tutor_release: { Args: { p_key: string; p_user: string }; Returns: Json }
+      tutor_reserve: {
+        Args: {
+          p_day: string
+          p_hold_seconds: number
+          p_key: string
+          p_limit: number
+          p_user: string
+        }
+        Returns: Json
+      }
+      tutor_used: { Args: { p_day: string; p_user: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin"
