@@ -1819,6 +1819,7 @@ export function AttemptReviewScreen() {
   const { profile, navigate, update, activeAttemptId } = useProfile();
   const { explanationsUnlocked } = useEntitlement();
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "missed" | "correct">("all");
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const attempt = profile.attempts.find((a) => a.id === activeAttemptId);
 
@@ -1931,12 +1932,42 @@ export function AttemptReviewScreen() {
             current={reviewIndex}
             onPick={(i) => {
               setReviewIndex(i);
+              setReviewFilter("all");
               questionRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "center" });
             }}
           />
         ) : null}
 
         <AiGeneratedLabel className="mt-4" />
+
+        {questions.length > 0 ? (() => {
+          const correctCount = questions.filter((q, i) => !invalidIndexes.includes(i) && answers[i] != null && answers[i] === q.correct_index).length;
+          const missedCount = questions.filter((q, i) => !invalidIndexes.includes(i) && (answers[i] == null || answers[i] !== q.correct_index)).length;
+          const opts = [
+            { key: "all" as const, label: `All (${questions.length})` },
+            { key: "missed" as const, label: `Missed (${missedCount})` },
+            { key: "correct" as const, label: `Correct (${correctCount})` },
+          ];
+          return (
+            <div role="tablist" aria-label="Filter questions" className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-border bg-card p-1">
+              {opts.map((o) => (
+                <button
+                  key={o.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={reviewFilter === o.key}
+                  onClick={() => setReviewFilter(o.key)}
+                  className={cn(
+                    "min-h-11 rounded-xl px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
+                    reviewFilter === o.key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          );
+        })() : null}
 
 
         {questions.length === 0 ? (
@@ -1950,6 +1981,8 @@ export function AttemptReviewScreen() {
               const selected = answers[i] ?? null;
               const invalid = invalidIndexes.includes(i);
               const isCorrect = selected !== null && selected !== undefined && selected === q.correct_index;
+              if (reviewFilter === "missed" && (invalid || isCorrect)) return null;
+              if (reviewFilter === "correct" && (invalid || !isCorrect)) return null;
               return (
                 <div
                   key={`${q.id}-${i}`}

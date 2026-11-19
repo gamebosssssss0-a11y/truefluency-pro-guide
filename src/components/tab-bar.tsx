@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useNavigation, type AppView, type TabKey } from "@/lib/profile-store";
-import { Home, ClipboardList, Library, User } from "lucide-react";
+import { Home, ClipboardList, Library, User, Sun, Moon, MessageCircle } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import { LogoMark } from "@/components/logo-mark";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function hidesTabBar(view: AppView): boolean {
 export function TopNavBar({ highlightedView }: { highlightedView?: AppView | null } = {}) {
   const { view, navigate } = useNavigation();
   const active = tabForView(highlightedView ?? view);
+  const { theme, toggle } = useTheme();
 
   if (hidesTabBar(view)) return null;
 
@@ -103,6 +105,23 @@ export function TopNavBar({ highlightedView }: { highlightedView?: AppView | nul
               </button>
             );
           })}
+          <button
+            type="button"
+            data-verilo-entry=""
+            onClick={() => navigate("chatbot")}
+            aria-label="Open Verilo"
+            className="ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3 text-sm font-semibold text-foreground transition hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <MessageCircle className="h-4 w-4 text-accent" aria-hidden="true" /> Verilo
+          </button>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4 transition-transform duration-200 motion-safe:animate-in motion-safe:spin-in-90" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
       </div>
     </nav>

@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useProfileData } from "@/lib/profile-store";
@@ -124,7 +125,7 @@ const extensionAvailable = false;
 
 export function AccountScreen() {
   const { profile, navigate, update, resetSetup } = useProfileData();
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { access } = useEntitlement();
   const planLabel =
     access?.tier === "exam"
@@ -453,16 +454,34 @@ export function AccountScreen() {
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Appearance
         </h2>
-        <div className="surface-key-card flex items-center gap-3 p-3.5">
-          <div className="surface-icon-well grid h-9 w-9 shrink-0 place-items-center rounded-xl">
-            {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-foreground">System theme</div>
-            <div className="text-xs text-muted-foreground">
-              Follows your browser or device preference ({theme === "dark" ? "dark" : "light"}).
-            </div>
-          </div>
+        <div role="radiogroup" aria-label="Theme" className="surface-key-card relative grid grid-cols-2 gap-1 p-1.5">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute inset-y-1.5 left-1.5 w-[calc(50%-0.5rem)] rounded-xl bg-primary shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none",
+              theme === "dark" && "translate-x-[calc(100%+0.25rem)]",
+            )}
+          />
+          {(["light", "dark"] as const).map((mode) => {
+            const on = theme === mode;
+            const Icon = mode === "dark" ? Moon : Sun;
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setTheme(mode)}
+                className={cn(
+                  "relative z-10 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  on ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className={cn("h-4 w-4 transition-transform duration-200", on && "rotate-12 scale-110")} aria-hidden="true" />
+                {mode === "dark" ? "Dark" : "Light"}
+              </button>
+            );
+          })}
         </div>
 
         <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

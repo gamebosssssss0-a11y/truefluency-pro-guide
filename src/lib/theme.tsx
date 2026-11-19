@@ -29,28 +29,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             const saved = localStorage.getItem("truefluency-theme");
             if (saved === "light" || saved === "dark") return saved;
           } catch { /* storage is optional */ }
-          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          return "light";
         })()
   );
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
-
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("truefluency-theme")) return;
-    } catch { /* storage is optional */ }
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const syncTheme = () => {
-      const next: ThemeMode = media.matches ? "dark" : "light";
-      setThemeState(next);
-      applyTheme(next);
-    };
-    syncTheme();
-    media.addEventListener?.("change", syncTheme);
-    return () => media.removeEventListener?.("change", syncTheme);
-  }, []);
 
   const setTheme = (next: ThemeMode) => {
     setThemeState(next);

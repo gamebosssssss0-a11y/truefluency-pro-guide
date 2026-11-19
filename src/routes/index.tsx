@@ -17,6 +17,7 @@ import { GoalScreen, TimelineScreen, StudyPreferenceScreen } from "@/components/
 import { CgpaIntroScreen } from "@/components/onboarding/cgpa-intro";
 import { TrialWelcomeScreen } from "@/components/onboarding/trial-welcome";
 import { HomeScreen } from "@/components/dashboard";
+import { DailyFeaturePrompt } from "@/components/daily-feature-prompt";
 import { CourseDetailScreen } from "@/components/course-detail";
 import {
   MockGenerationScreen, MockConfigScreen, MockRunScreen, MockResultScreen, AttemptReviewScreen,
@@ -368,13 +369,13 @@ function Router() {
           data-tab-swipe-stage
           className={cn(
             // With the floating Verilo button on screen the page needs more room under its last row, or the button sits on top of it.
-            hidesTabBar(view) ? undefined : showVeriloButton ? "pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-8" : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
+            hidesTabBar(view) ? undefined : showVeriloButton ? "pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pb-8" : "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
             !flowScreen && "app-stage-wide",
             "tab-swipe-stage relative overflow-visible",
           )}
         >
           <RootTabs view={view} previewTab={swipePreview?.tab ?? null} previewSide={swipePreview?.side ?? null} />
-          {!currentRootTab ? screen : null}
+          {!currentRootTab ? <div key={view} className="view-transition-enter">{screen}</div> : null}
         </div>
       </div>
       {showVeriloButton ? (
@@ -383,13 +384,14 @@ function Router() {
           data-verilo-entry=""
           aria-label="Open Verilo"
           onClick={() => navigate("chatbot")}
-          className="verilo-fab fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full border border-border bg-[var(--tf-navy)] text-[var(--tf-cream)] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[var(--tf-cream)] dark:text-[var(--tf-navy)] md:bottom-6"
+          className="verilo-fab fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full border border-border bg-[var(--tf-navy)] text-[var(--tf-cream)] shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-[var(--tf-cream)] dark:text-[var(--tf-navy)] md:hidden"
         >
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
           <span className="sr-only">Verilo</span>
         </button>
       ) : null}
       <BottomTabBar />
+      {step === "dashboard" && view === "home" ? <DailyFeaturePrompt /> : null}
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

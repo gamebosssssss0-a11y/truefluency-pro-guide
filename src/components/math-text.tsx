@@ -197,8 +197,8 @@ function render(tex: string, display: boolean): string | null {
 
 function MathOutput({ html, display, examMath }: { html: string; display: boolean; examMath: boolean }) {
   const className = display
-    ? `my-3 block max-w-full overflow-x-auto text-center ${examMath ? "text-[20px] exam-math-display" : "text-[1.15em]"}`
-    : "inline";
+    ? `my-4 block max-w-full overflow-x-auto py-2 text-center ${examMath ? "text-[20px] exam-math-display" : "text-[1.15em]"}`
+    : "mx-1 inline px-0.5";
   const Element = display ? "div" : "span";
 
   return <Element className={className} dangerouslySetInnerHTML={{ __html: html }} />;

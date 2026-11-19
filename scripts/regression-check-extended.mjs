@@ -319,14 +319,13 @@ test("file previews recheck share or shelf access on every request and are not c
 });
 
 
-test("theme follows the browser color scheme and does not force dark on app entry", async () => {
+test("theme is Light or Dark only, defaults to light, and never follows the system", async () => {
   const theme = await read("../src/lib/theme.tsx");
   const root = await read("../src/routes/__root.tsx");
-  assert.match(theme, /matchMedia\("\(prefers-color-scheme: dark\)"\)/);
-  assert.match(theme, /media\.addEventListener\?\.\("change", syncTheme\)/);
-  assert.doesNotMatch(theme, /setThemeState\("dark"\)|localStorage\.setItem\(KEY/);
-  assert.doesNotMatch(root, /<html lang="en" className="dark">/);
-  assert.match(root, /window\.matchMedia\('\(prefers-color-scheme: dark\)'\)/);
+  assert.doesNotMatch(theme, /prefers-color-scheme/);
+  assert.doesNotMatch(root, /prefers-color-scheme/);
+  assert.match(theme, /return "light";/);
+  assert.match(root, /localStorage\.getItem\('truefluency-theme'\) === 'dark'/);
 });
 
 test("chat history does not overwrite the active thread cache and tolerates per-course failures", async () => {
