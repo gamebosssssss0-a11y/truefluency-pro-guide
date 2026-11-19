@@ -123,6 +123,18 @@ export function DisclaimerViewScreen() {
 
 export function DisclaimerBlockedScreen() {
   const { go } = useProfile();
+  const [attemptedExit, setAttemptedExit] = useState(false);
+  const handleExit = () => {
+    setAttemptedExit(true);
+    try {
+      window.close();
+      window.setTimeout(() => {
+        if (!window.closed) window.location.replace("about:blank");
+      }, 150);
+    } catch {
+      // The notice below tells the student how to leave.
+    }
+  };
   return (
     <AppShell title="Disclaimer acceptance required" subtitle="Agree to the disclaimer to continue using TrueFluency Pro.">
       <div className="mt-10 rounded-2xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
@@ -138,10 +150,15 @@ export function DisclaimerBlockedScreen() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => { if (typeof window !== "undefined") window.close(); }}
+            onClick={handleExit}
           >
             <XCircle className="mr-2 h-4 w-4" /> Exit app
           </Button>
+          {attemptedExit ? (
+            <p role="status" className="rounded-xl border border-border bg-secondary p-3 text-sm font-medium text-foreground">
+              You must agree to the disclaimer to use TrueFluency Pro. Please close this browser tab to exit.
+            </p>
+          ) : null}
         </div>
       </div>
     </AppShell>

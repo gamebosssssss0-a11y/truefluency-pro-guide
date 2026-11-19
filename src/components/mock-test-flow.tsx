@@ -480,7 +480,7 @@ function GenStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="font-display text-lg font-semibold leading-none">{value}</div>
-      <div className="mt-1 text-xs uppercase tracking-wider text-primary-foreground/60">{label}</div>
+      <div className="mt-1 text-xs uppercase tracking-wider text-primary-foreground/85 font-medium">{label}</div>
     </div>
   );
 }

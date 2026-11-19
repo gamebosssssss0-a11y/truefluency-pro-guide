@@ -216,13 +216,6 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
               </div>
             ) : (
               <div className="mt-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-muted-foreground">{filteredCourses.length ? activeCourseIndex + 1 : 0} of {filteredCourses.length} courses</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon" aria-label="Previous course" onClick={() => moveCourse(-1)} disabled={activeCourseIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" aria-label="Next course" onClick={() => moveCourse(1)} disabled={activeCourseIndex >= filteredCourses.length - 1}><ChevronRight className="h-4 w-4" /></Button>
-                  </div>
-                </div>
                 <div ref={courseCarouselRef} onScroll={syncCourseCarousel} data-swipe-lock="" tabIndex={0} aria-roledescription="carousel" aria-label="Practice courses" className="course-carousel-track flex snap-x snap-mandatory gap-3 overscroll-x-contain overflow-x-auto overflow-y-hidden px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {filteredCourses.map((c, courseIndex) => {
                     const centered = activeCourseIndex === courseIndex;
@@ -237,27 +230,33 @@ export function MockTestsScreen({ active = true }: { active?: boolean } = {}) {
                           event.preventDefault();
                           courseCardRefs.current[courseIndex]?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
                         }}
-                        className="course-carousel-card w-[calc(100%-28px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3 shadow-sm transition-[opacity,transform] duration-200 min-[400px]:w-[calc(100%-40px)] min-[400px]:p-4"
-                        style={{ opacity: centered ? 1 : 0.72, transform: centered ? "scale(1)" : "scale(.96)" }}>
+                        className="course-carousel-card w-[calc(100%-28px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3 shadow-sm transition-[opacity,transform,box-shadow] duration-200 data-[active=true]:shadow-md data-[active=true]:ring-1 data-[active=true]:ring-accent/30 min-[400px]:w-[calc(100%-40px)] min-[400px]:p-4"
+                        data-active={centered ? "true" : undefined}
+                        style={{ opacity: centered ? 1 : 0.7, transform: centered ? "scale(1)" : "scale(.96)" }}>
                         <div className="flex items-start gap-3">
                           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><BookOpen className="h-4.5 w-4.5" /></div>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-semibold text-foreground">{canonicalCourseCode(c.code)}</div><CourseDescription text={c.name} />
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                              {analysis?.topics.length ? <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-accent"><Sparkles className="h-3 w-3" /> {analysis.topics.length} topics predicted</span> : <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">No analysis yet</span>}
+                              {analysis?.topics.length ? <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-accent"><Sparkles className="h-3 w-3" /> {analysis.topics.length} topics identified</span> : <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">No analysis yet</span>}
                               {avg !== null ? <TopicPill label={`Avg ${avg}%`} strength={scoreToStrength(avg)} /> : null}
                             </div>
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-                          <Button variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal py-2 text-center leading-tight" disabled={!centered} onClick={() => navigate("course-detail", { courseCode: c.code })}>Materials</Button>
-                          <Button size="sm" className="h-auto min-h-9 whitespace-normal py-2 text-center leading-tight" disabled={!centered || materialsLoading || Boolean(profile.inProgressTest)} onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}>
-                            <Zap className="mr-1.5 h-3.5 w-3.5" />{profile.inProgressTest ? "Finish current practice first" : materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}
+                          <Button variant="outline" size="sm" className="h-auto min-h-[44px] w-full whitespace-normal px-3 py-2 text-center text-xs leading-tight" disabled={!centered} onClick={() => navigate("course-detail", { courseCode: c.code })}>Materials</Button>
+                          <Button size="sm" className="h-auto min-h-[44px] w-full whitespace-normal px-3 py-2 text-center text-xs leading-tight" disabled={!centered || materialsLoading || Boolean(profile.inProgressTest)} onClick={() => navigate(canCustomize ? "mock-config" : "course-detail", { courseCode: c.code })}>
+                            <Zap className="mr-1.5 h-3.5 w-3.5 shrink-0" /><span>{profile.inProgressTest ? "Finish current practice first" : materialsLoading ? "Checking…" : canCustomize ? "Customize" : readyMaterialId ? "Analyze first" : "Upload material"}</span>
                           </Button>
                         </div>
                       </article>
                     );
                   })}
+                </div>
+                <div className="mt-4 flex items-center justify-center gap-4">
+                  <Button variant="outline" size="icon" aria-label="Previous course" onClick={() => moveCourse(-1)} disabled={activeCourseIndex === 0} className="h-11 w-11 rounded-full border-[var(--tf-gold)] bg-[var(--tf-gold)]/10 text-[var(--tf-gold)] transition hover:bg-[var(--tf-gold)]/20 active:scale-95 disabled:opacity-40"><ChevronLeft className="h-5 w-5" /></Button>
+                  <span className="text-xs font-semibold text-muted-foreground">{filteredCourses.length ? activeCourseIndex + 1 : 0} of {filteredCourses.length}</span>
+                  <Button variant="outline" size="icon" aria-label="Next course" onClick={() => moveCourse(1)} disabled={activeCourseIndex >= filteredCourses.length - 1} className="h-11 w-11 rounded-full border-[var(--tf-gold)] bg-[var(--tf-gold)]/10 text-[var(--tf-gold)] transition hover:bg-[var(--tf-gold)]/20 active:scale-95 disabled:opacity-40"><ChevronRight className="h-5 w-5" /></Button>
                 </div>
               </div>
             )}
@@ -437,13 +436,6 @@ export function TestHistoryScreen() {
 
             {filtered.length > 0 ? (
               <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">{activeAttemptIndex + 1} of {filtered.length}</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon" aria-label="Previous result" onClick={() => moveAttempt(-1)} disabled={activeAttemptIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" aria-label="Next result" onClick={() => moveAttempt(1)} disabled={activeAttemptIndex >= filtered.length - 1}><ChevronRight className="h-4 w-4" /></Button>
-                  </div>
-                </div>
                 <div
                   ref={carouselRef}
                   onScroll={syncCarouselIndex}
@@ -461,7 +453,7 @@ export function TestHistoryScreen() {
                   key={a.id}
                   ref={(node) => { cardRefs.current[cardIndex] = node; }}
                   data-results-carousel-card=""
-                  className="results-carousel-card w-[calc(100%-32px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border border-border bg-card p-4 shadow-sm"
+                  className={`results-carousel-card w-[calc(100%-32px)] max-w-[32rem] shrink-0 snap-center rounded-2xl border bg-card p-4 transition-[opacity,box-shadow] duration-200 ${cardIndex === activeAttemptIndex ? "border-accent shadow-md ring-1 ring-accent/30" : "border-border shadow-sm"}`}
                   style={{
                     "--carousel-offset": Math.max(-1, Math.min(1, cardIndex - activeAttemptIndex)) * -1,
                     "--carousel-scale": cardIndex === activeAttemptIndex ? 1 : 0.88,
@@ -570,6 +562,11 @@ export function TestHistoryScreen() {
                 </div>
                 );
               })}
+                </div>
+                <div className="mt-4 flex items-center justify-center gap-4">
+                  <Button variant="outline" size="icon" aria-label="Previous result" onClick={() => moveAttempt(-1)} disabled={activeAttemptIndex === 0} className="h-11 w-11 rounded-full border-[var(--tf-gold)] bg-[var(--tf-gold)]/10 text-[var(--tf-gold)] transition hover:bg-[var(--tf-gold)]/20 active:scale-95 disabled:opacity-40"><ChevronLeft className="h-5 w-5" /></Button>
+                  <span className="text-xs font-semibold text-muted-foreground">{activeAttemptIndex + 1} of {filtered.length}</span>
+                  <Button variant="outline" size="icon" aria-label="Next result" onClick={() => moveAttempt(1)} disabled={activeAttemptIndex >= filtered.length - 1} className="h-11 w-11 rounded-full border-[var(--tf-gold)] bg-[var(--tf-gold)]/10 text-[var(--tf-gold)] transition hover:bg-[var(--tf-gold)]/20 active:scale-95 disabled:opacity-40"><ChevronRight className="h-5 w-5" /></Button>
                 </div>
               </div>
             ) : null}

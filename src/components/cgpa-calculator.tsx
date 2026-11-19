@@ -454,7 +454,7 @@ export function CgpaCalculatorScreen() {
         <label className="mt-4 block rounded-2xl border border-border bg-card p-3.5">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Grading scale</span>
           <select
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+            className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             value={scale}
             onChange={(event) => {
               const nextScale = event.target.value as Scale;
@@ -911,7 +911,7 @@ function ResultBlock({
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
               Estimated semester GPA
             </div>
             <div className="mt-1 font-display text-3xl font-semibold leading-none">
@@ -922,12 +922,12 @@ function ResultBlock({
                 {result ? result.semesterGpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-xs text-primary-foreground/60">
+            <div className="mt-1 text-xs text-slate-200">
               {result ? `${result.semesterUnits} units included` : "Add valid course results"}
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
               Updated cumulative CGPA
             </div>
             <div className="mt-1 font-display text-3xl font-semibold leading-none">
@@ -938,25 +938,25 @@ function ResultBlock({
                 {result ? result.cumulativeCgpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-xs text-primary-foreground/60">
+            <div className="mt-1 text-xs text-slate-200">
               {result ? `${result.totalUnits} total units` : "Live preview"}
             </div>
           </div>
         </div>
 
         {result ? (
-          <div className="mt-3 border-t border-primary-foreground/15 pt-3">
+          <div className="mt-3 border-t border-slate-700 pt-3">
             <div className="flex items-center justify-between gap-2 text-xs">
               <span className="font-semibold">{scale === "ui-5" ? classify(result.cumulativeCgpa) : "Classification varies by institution"}</span>
               {scale !== "ui-5" ? (
-                <span className="text-right text-primary-foreground/75">CGPA on a 4.00 scale</span>
+                <span className="text-right font-medium text-slate-200">CGPA on a 4.00 scale</span>
               ) : nextBand ? (
-                <span className="text-right text-primary-foreground/75">
+                <span className="text-right font-medium text-slate-200">
                   {(nextBand.min - result.cumulativeCgpa).toFixed(2)} points to {nextBand.label} (
                   {nextBand.min.toFixed(2)})
                 </span>
               ) : (
-                <span className="text-right text-primary-foreground/75">
+                <span className="text-right font-medium text-slate-200">
                   Within First Class ({CLASSIFICATION_BANDS.at(-1)?.min.toFixed(2)}–
                   {maxScale.toFixed(2)})
                 </span>
@@ -975,11 +975,11 @@ function ResultBlock({
                   <span
                     key={band.label}
                     className={
-                      [
-                        "h-full border-r border-primary-foreground/35 last:border-r-0",
-                        "bg-primary-foreground/15",
-                        "bg-primary-foreground/25",
-                        "bg-primary-foreground/35",
+                      "h-full border-r border-slate-900/70 last:border-r-0 " + [
+                        "bg-slate-600",
+                        "bg-slate-500",
+                        "bg-slate-400",
+                        "bg-slate-300",
                         "bg-accent/55",
                         "bg-accent/75",
                         "bg-accent",
@@ -990,19 +990,19 @@ function ResultBlock({
                 ))}
               </div>
               <span
-                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-white shadow"
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--tf-gold)] bg-white shadow-md ring-2 ring-black/40"
                 style={{ left: `${position}%` }}
               />
             </div> : null}
             {result.validCourseCount < result.selectedCourseCount ? (
-              <p className="mt-2 text-xs text-primary-foreground/65">
+              <p className="mt-2 text-xs text-slate-200">
                 Preview uses {result.validCourseCount} of {result.selectedCourseCount} selected
                 courses with complete values.
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 border-t border-primary-foreground/15 pt-3 text-xs text-primary-foreground/70">
+          <p className="mt-3 border-t border-slate-700 pt-3 text-xs text-slate-300">
             Enter a valid result to see your classification and live preview.
           </p>
         )}

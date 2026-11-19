@@ -151,9 +151,9 @@ export function CourseDetailScreen() {
 
 
         <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/85 p-5 text-primary-foreground shadow-sm">
-          <div className="text-xs font-medium text-primary-foreground/70">{canonicalCourseCode(course.code)}</div>
+          <div className="text-xs font-medium text-primary-foreground/90">{canonicalCourseCode(course.code)}</div>
           <div className="mt-0.5 font-display text-2xl font-semibold leading-tight">{course.name}</div>
-          <div className="mt-1 text-xs uppercase tracking-wider text-primary-foreground/60">
+          <div className="mt-1 text-xs uppercase tracking-wider text-primary-foreground/85 font-medium">
             {course.status} · {course.source === "manual" ? "Manually added" : "Verified"}
           </div>
         </div>

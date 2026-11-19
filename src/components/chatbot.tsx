@@ -202,11 +202,18 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
   }, [active, view]);
 
+  // Follow a streaming reply only while the student is already near the bottom;
+  // if they scrolled up to read, leave their position alone.
+  const isNearBottomRef = useRef(true);
+  const handleThreadScroll = () => {
+    const el = threadScrollRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 96;
+  };
   useEffect(() => {
     const thread = threadScrollRef.current;
-    if (!thread) return;
-    // Keep streaming replies in view without scrolling the entire page.
-    thread.scrollTo({ top: thread.scrollHeight, behavior: "auto" });
+    if (!thread || !isNearBottomRef.current) return;
+    thread.scrollTop = thread.scrollHeight;
   }, [messages]);
   // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
   // wiped outright on every auth change (see the effect below) — belt AND
@@ -316,6 +323,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [speechAvailable, setSpeechAvailable] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
   const dictationRef = useRef<DictationRecognition | null>(null);
   const retryFiles = useRef(new Map<number, File>());
   const retryPageAttachments = useRef(new Map<number, PageAttachment>());
@@ -1028,12 +1036,29 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
   };
 
+  const stopDictation = (insert: boolean) => {
+    const rec = dictationRef.current;
+    dictationRef.current = null;
+    rec?.stop();
+    setIsListening(false);
+    if (insert && voiceTranscript.trim()) {
+      const transcript = voiceTranscript.trim();
+      setDraft((current) => {
+        const separator = current && !/\s$/.test(current) ? " " : "";
+        const remaining = Math.max(0, 2000 - current.length - separator.length);
+        return current + separator + transcript.slice(0, remaining);
+      });
+      requestAnimationFrame(resizeComposer);
+    }
+    setVoiceTranscript("");
+  };
+
   const toggleDictation = () => {
     if (dictationRef.current) {
-      dictationRef.current.stop();
-      setIsListening(false);
+      stopDictation(true);
       return;
     }
+    setVoiceTranscript("");
 
     const recognition = createDictationRecognition();
     if (!recognition) {
@@ -1042,17 +1067,14 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
 
     recognition.lang = navigator.language || "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.onresult = (event) => {
-      const transcript = event.results[event.resultIndex]?.[0]?.transcript?.trim();
-      if (!transcript) return;
-      setDraft((current) => {
-        const separator = current && !/\s$/.test(current) ? " " : "";
-        const remaining = Math.max(0, 2000 - current.length - separator.length);
-        return current + separator + transcript.slice(0, remaining);
-      });
-      requestAnimationFrame(resizeComposer);
+      let full = "";
+      for (let i = 0; i < event.results.length; i++) {
+        full += event.results[i]?.[0]?.transcript ?? "";
+      }
+      setVoiceTranscript(full.trim());
     };
     recognition.onerror = (event) => {
       if (event.error !== "no-speech" && event.error !== "aborted") {
@@ -1062,8 +1084,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       dictationRef.current = null;
     };
     recognition.onend = () => {
-      setIsListening(false);
-      dictationRef.current = null;
+      // Browsers end recognition after a pause. Keep recording until the
+      // student taps Insert or Cancel.
+      if (dictationRef.current === recognition) {
+        try { recognition.start(); return; } catch { /* fall through */ }
+      }
+      if (dictationRef.current === recognition) {
+        dictationRef.current = null;
+        setIsListening(false);
+      }
     };
 
     dictationRef.current = recognition;
@@ -1149,6 +1178,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         {/* Thread */}
         <div
           ref={threadScrollRef}
+          onScroll={handleThreadScroll}
           data-chat-thread
           data-screen-scroll
           data-swipe-lock
@@ -1283,7 +1313,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         {displayCode(m.courseTag)}
                       </p>
                     ) : null}
-                    <div className="chat-message-content text-base leading-7">
+                    <div className="chat-message-content text-base font-medium leading-[1.55] text-foreground">
                       <RichText tone="canvas">{cleanAssistantArtifacts(m.text)}</RichText>
                     </div>
                     {m.sources?.length ? (
@@ -1410,6 +1440,26 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               >
                 <X className="h-3.5 w-3.5" />
               </button>
+            </div>
+          ) : null}
+          {isListening ? (
+            <div role="status" className="mb-2 rounded-xl border border-accent/40 bg-accent/10 p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="flex h-4 items-center gap-0.5">
+                    <span className="h-2.5 w-1 animate-pulse rounded-full bg-accent" />
+                    <span className="h-4 w-1 animate-pulse rounded-full bg-accent [animation-delay:150ms]" />
+                    <span className="h-3 w-1 animate-pulse rounded-full bg-accent [animation-delay:300ms]" />
+                    <span className="h-2 w-1 animate-pulse rounded-full bg-accent [animation-delay:75ms]" />
+                  </span>
+                  <span className="text-xs font-semibold text-foreground">Recording voice…</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => stopDictation(false)} className="min-h-11 rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:bg-secondary">Cancel</button>
+                  <button type="button" onClick={() => stopDictation(true)} className="min-h-11 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">OK</button>
+                </div>
+              </div>
+              <p className="mt-2 min-h-5 text-sm text-foreground">{voiceTranscript || <span className="text-muted-foreground">Start speaking…</span>}</p>
             </div>
           ) : null}
           <div className="rounded-[20px] border border-[var(--tf-composer-border)] bg-card p-1.5 shadow-[0_7px_17px_rgba(27,42,74,0.08),inset_0_0_0_1px_rgba(255,255,255,0.55)]">

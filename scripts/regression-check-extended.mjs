@@ -120,7 +120,7 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.match(router, /document\.documentElement\.scrollTop = 0/);
   assert.match(router, /data-chat-thread/);
   assert.match(chat, /thread\.scrollTop = 0/);
-  assert.match(chat, /thread\.scrollTo\(\{ top: thread\.scrollHeight, behavior: "auto" \}\)/);
+  assert.match(chat, /if \(!thread \|\| !isNearBottomRef\.current\) return;\s+thread\.scrollTop = thread\.scrollHeight;/);
   assert.match(chat, /w-full min-w-0 max-w-full break-words/);
   assert.match(chat, /line-clamp-2/);
   assert.doesNotMatch(chat, /mix-blend-difference/);

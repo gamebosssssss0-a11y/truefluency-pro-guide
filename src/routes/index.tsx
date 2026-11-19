@@ -154,8 +154,8 @@ const RootTabs = memo(function RootTabs({
             aria-hidden={!active}
             inert={!active ? true : undefined}
             data-root-tab={tab}
-            className={!active ? "pointer-events-none absolute inset-y-0 z-0 w-full bg-background" : undefined}
-            style={!active ? { left: (preview ? previewSide : side) === "right" ? "100%" : "-100%" } : undefined}
+            className={!active ? "pointer-events-none absolute left-0 top-0 z-0 min-h-full w-full bg-background" : "w-full"}
+            style={!active ? { transform: `translate3d(${(preview ? previewSide : side) === "right" ? "100%" : "-100%"}, 0, 0)` } : undefined}
           >
             <SwipePreviewProvider enabled={preview}>
               {tab === "home" ? <MemoHomeScreen active={active} />
