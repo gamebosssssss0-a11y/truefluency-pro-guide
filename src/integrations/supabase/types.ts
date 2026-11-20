@@ -347,6 +347,33 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_token_windows: {
+        Row: {
+          created_at: string
+          tokens: number
+          turns: number
+          updated_at: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          tokens?: number
+          turns?: number
+          updated_at?: string
+          user_id: string
+          window_start: string
+        }
+        Update: {
+          created_at?: string
+          tokens?: number
+          turns?: number
+          updated_at?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       course_context: {
         Row: {
           content: string
@@ -1829,10 +1856,20 @@ export type Database = {
         Args: { p_day: string; p_tokens: number; p_user_id: string }
         Returns: number
       }
+      chat_tokens_add_window: {
+        Args: {
+          p_tokens: number
+          p_turns?: number
+          p_user_id: string
+          p_window_start: string
+        }
+        Returns: number
+      }
       chat_turn_add: {
         Args: { p_day: string; p_user_id: string }
         Returns: number
       }
+      chat_window_start: { Args: { p_at?: string }; Returns: string }
       flashcard_rating_counts: {
         Args: { p_course_code: string }
         Returns: {
@@ -1870,6 +1907,17 @@ export type Database = {
       }
       record_mock_streak: {
         Args: { answered_count: number }
+        Returns: {
+          event: string
+          freeze_used_on: string
+          freezes_available: number
+          last_active_date: string
+          streak_days: number
+          today_wat: string
+        }[]
+      }
+      record_study_activity: {
+        Args: never
         Returns: {
           event: string
           freeze_used_on: string
