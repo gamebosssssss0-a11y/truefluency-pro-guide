@@ -111,10 +111,10 @@ function SharedChatPage() {
         <header className="mb-7 flex items-center gap-3">
           <LogoMark className="h-8 w-8 shrink-0" />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F3E6C8]/90 drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               TrueFluency Pro
             </p>
-            <h1 className="font-display text-xl font-semibold text-[#F7F3EA] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+            <h1 className="font-display text-xl font-semibold text-foreground">
               Shared Study Chat
             </h1>
           </div>
@@ -122,8 +122,8 @@ function SharedChatPage() {
 
         {state === "loading" ? (
           <div role="status" aria-live="polite" className="flex min-h-48 flex-col items-center justify-center text-center">
-            <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-[#E4C46A] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]" />
-            <p className="mt-3 text-sm text-[#F3E6C8] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">Opening the shared conversation…</p>
+            <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-accent" />
+            <p className="mt-3 text-sm text-muted-foreground">Opening the shared conversation…</p>
           </div>
         ) : state === "offline" ? (
           <section className="rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-sm">
@@ -148,14 +148,14 @@ function SharedChatPage() {
           </section>
         ) : conversation ? (
           <main>
-            <section className="mb-6 border-b border-[#E4DCC8]/35 pb-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F3E6C8]/90 drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+            <section className="mb-6 border-b border-border pb-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                 {conversation.courseCode}
               </p>
-              <h2 className="mt-1 font-display text-2xl font-semibold text-[#F7F3EA] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+              <h2 className="mt-1 font-display text-2xl font-semibold text-foreground">
                 Course conversation
               </h2>
-              <p className="mt-2 text-sm text-[#F3E6C8] drop-shadow-[0_1px_2px_rgba(27,42,74,0.95)]">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {conversation.visibility === "public"
                   ? "Public link · Anyone with this link can view the shared snapshot."
                   : "Private link · Only the account owner can view this conversation."}
@@ -165,18 +165,18 @@ function SharedChatPage() {
 
             <div className="space-y-6">
               {conversation.messages.map((message, index) => message.role === "user" ? (
-                <div key={`${message.createdAt ?? "user"}-${index}`} className="ml-auto w-fit max-w-[85%] rounded-2xl border border-[#E4DCC8] bg-[#F3E6C8] p-3.5 text-sm leading-6 text-[#1B2A4A] shadow-sm">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#5C5C70]">You</p>
+                <div key={`${message.createdAt ?? "user"}-${index}`} className="ml-auto w-fit max-w-[85%] rounded-2xl border border-border bg-secondary p-3.5 text-sm leading-6 text-secondary-foreground shadow-sm">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">You</p>
                   <p className="whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
               ) : (
                 <article key={`${message.createdAt ?? "assistant"}-${index}`} className="text-base leading-6">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#F3E6C8]">TrueFluency</p>
-                  <RichText tone="canvas">{message.content}</RichText>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">TrueFluency</p>
+                  <RichText>{message.content}</RichText>
                 </article>
               ))}
             </div>
-            <section className="mt-8 rounded-2xl border border-[#E4DCC8]/40 bg-card p-4 text-card-foreground shadow-sm">
+            <section className="mt-8 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
               <h3 className="font-display text-base font-semibold">Continue with TrueFluency</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {signedIn

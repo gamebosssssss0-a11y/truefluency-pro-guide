@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { createMockShare, getMockShareStatus, revokeMockShare } from "@/lib/mock-sharing.functions";
 import { toast } from "sonner";
+import type { MockAttempt } from "@/lib/profile-store";
 
 type ShareVisibility = "public" | "private";
 type ShareInfo = { exists: false } | {
@@ -20,10 +21,11 @@ function remainingLabel(expiresAt: string, now: number) {
   return minutes > 0 ? `${minutes}m ${String(seconds % 60).padStart(2, "0")}s` : `${seconds}s`;
 }
 
-export function MockShareSheet({ open, onOpenChange, attemptId }: {
+export function MockShareSheet({ open, onOpenChange, attemptId, attempt }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   attemptId: string;
+  attempt?: MockAttempt;
 }) {
   const [visibility, setVisibility] = useState<ShareVisibility>("private");
   const [share, setShare] = useState<ShareInfo | null>(null);
@@ -60,7 +62,13 @@ export function MockShareSheet({ open, onOpenChange, attemptId }: {
     setBusy(true);
     setError("");
     try {
-      const result = await createMockShare({ data: { attemptId, visibility } });
+      let result = await createMockShare({ data: { attemptId, visibility } });
+      if (!result.ok && attempt && /could not be found/i.test(result.reason)) {
+        // The finished mock may not have reached your account yet: save it, then retry once.
+        const { pushMockAttempt } = await import("@/lib/cloud-sync");
+        await pushMockAttempt(attempt);
+        result = await createMockShare({ data: { attemptId, visibility } });
+      }
       if (!result.ok) { setError(result.reason); return; }
       setShare({ exists: true, ...result });
     } catch {

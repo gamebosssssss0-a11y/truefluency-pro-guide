@@ -1471,7 +1471,7 @@ export function MockRunScreen() {
           </section>
         ) : null}
 
-        <div data-mock-nav="" className="sticky bottom-0 z-30 -mx-4 mt-4 sm:-mx-6 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
+        <div data-mock-nav="" className="relative -mx-4 mt-8 sm:-mx-6 border-t border-border bg-background pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <div className={`${SCREEN} flex items-center gap-3 py-3`}>
             <Button variant="outline" size="lg" onClick={() => move(-1)} disabled={idx === 0} className="flex-1">
               <ChevronLeft className="mr-1 h-4 w-4" /> Prev
@@ -1813,7 +1813,7 @@ export function MockResultScreen() {
         <Button size="lg" variant="outline" className="mt-2 w-full" disabled={!attempt.questions?.length} onClick={() => setShareOpen(true)}>
           <span className="mr-2">↗</span>Share mock
         </Button>
-        <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={attempt.id} />
+        <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={attempt.id} attempt={attempt} />
 
 
         <div className="mt-2 grid grid-cols-2 gap-2">

@@ -198,9 +198,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [isAtBottom, setIsAtBottom] = useState(true);
   const continueAtBottom = useRef(false);
   const snapshotIngested = useRef<string | null>(null);
+  // Header hides while reading downward and returns after a deliberate upward scroll.
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const headerVisibleRef = useRef(true);
+  headerVisibleRef.current = headerVisible;
+  const headerScrollAnchor = useRef(0);
   const handleThreadScroll = () => {
     const el = threadScrollRef.current;
     if (!el) return;
+    const top = el.scrollTop;
+    const delta = top - headerScrollAnchor.current;
+    if (top < 60) { setHeaderVisible(true); headerScrollAnchor.current = top; }
+    else if (delta > 40) { setHeaderVisible(false); headerScrollAnchor.current = top; }
+    else if (delta < -160) { setHeaderVisible(true); headerScrollAnchor.current = top; }
+    if (delta > 0 && !headerVisibleRef.current) headerScrollAnchor.current = top;
     const atBottom = isChatAtBottom(el.scrollHeight, el.scrollTop, el.clientHeight);
     setIsAtBottom(atBottom);
     isNearBottomRef.current = atBottom;
@@ -1252,7 +1263,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   return (
     <div className={`study-chat-screen tf-visual-phase2 min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={cn("chat-layout mx-auto grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
-        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-border pb-2">
+        <div className={cn("flex shrink-0 flex-wrap items-center gap-2 overflow-hidden transition-all duration-300 ease-out motion-reduce:transition-none", headerVisible || activeTutorSnapshot ? "mb-2 max-h-72 border-b border-border pb-2 opacity-100" : "pointer-events-none mb-0 max-h-0 -translate-y-2 border-b border-transparent pb-0 opacity-0")} aria-hidden={!(headerVisible || activeTutorSnapshot)} inert={!(headerVisible || activeTutorSnapshot)}>
           {!embedded ? (
             <BackButton onBack={back} />
           ) : null}

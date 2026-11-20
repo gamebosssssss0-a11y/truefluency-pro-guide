@@ -571,7 +571,7 @@ export function TestHistoryScreen() {
           <ProgressPanel profile={profile} activeCourseCode={activeCourseCode} navigate={navigate} update={update} />
         )}
       </div>
-      {shareAttemptId ? <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={shareAttemptId} /> : null}
+      {shareAttemptId ? <MockShareSheet open={shareOpen} onOpenChange={setShareOpen} attemptId={shareAttemptId} attempt={profile.attempts.find((a) => a.id === shareAttemptId)} /> : null}
     </div>
   );
 }
