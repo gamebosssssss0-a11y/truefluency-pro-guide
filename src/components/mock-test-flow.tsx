@@ -24,7 +24,8 @@ import { PRICE_LINE, EXAM_PRICE_LINE } from "@/lib/pricing-copy";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { MathText } from "@/components/math-text";
 import { ReportQuestionButton } from "@/components/report-question";
-import { recordMockStreak } from "@/lib/streak.functions";
+import { pausePractice } from "@/lib/study-continuity";
+import { supabase } from "@/integrations/supabase/client";
 import { difficultyLabelOf, failsQualityCheck, QUALITY_FAIL_NOTICE } from "@/lib/why-blocks";
 import { TeachingExplanationBlocks } from "@/components/teaching-explanation";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -535,7 +536,7 @@ function smartDefaultsFor(_courseCode: string, _profile: ReturnType<typeof usePr
 
 export function MockConfigScreen() {
   const course = useActiveCourse();
-  const { navigate, update, profile } = useProfile();
+  const { navigate, update, profile, back } = useProfile();
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [readiness, setReadiness] = useState<"checking" | "ready" | "blocked">("checking");
@@ -707,7 +708,7 @@ export function MockConfigScreen() {
       <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <BackButton onBack={() => navigate("mock-tests")} /><span className="text-sm text-muted-foreground">Mock Tests</span>
+          <BackButton onBack={back} />
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
@@ -950,7 +951,7 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeilin
 /* ---------- 3. Run screen ---------- */
 
 export function MockRunScreen() {
-  const { profile, update, navigate } = useProfile();
+  const { profile, update, navigate, setTutorSnapshot, recordStudyActivity } = useProfile();
   const t = profile.inProgressTest;
   // Legacy sessions without a mode retain the existing end-only answer reveal.
   const mode: MockMode = t?.mode ?? "exam";
@@ -1091,6 +1092,7 @@ export function MockRunScreen() {
       hasCompletedFirstMock: true,
       masteredCourses: mastered,
     });
+    recordStudyActivity();
 
     // The result is saved locally first; display it while cloud persistence and
     // the remaining follow-up work continue in the background.
@@ -1098,7 +1100,7 @@ export function MockRunScreen() {
 
     // Two writes belong to a submitted mock, in the same handler:
     // 1. the attempt row (History reads this),
-    // 2. the study streak when at least five answers were given.
+    // 2. meaningful study activity (recorded locally above, then synchronized).
     // (The daily mock-set count is recorded by the generation service.)
     let attemptSaved = false;
     try {
@@ -1128,25 +1130,6 @@ export function MockRunScreen() {
       void import("@/lib/analytics.functions").then(({ recordAnalytics }) =>
         recordAnalytics({ data: { eventName: "mock_submitted", courseCode: attempt.courseCode, attemptId: t.analyticsSessionId! } })
       ).catch(() => undefined);
-    }
-
-    const answeredCount = t.answers.filter((answer) => answer !== null && answer !== undefined).length;
-    if (answeredCount >= 5) {
-      try {
-        const streak = await recordMockStreak({ data: { answeredCount } });
-        if (streak) {
-          update({
-            streakDays: streak.streakDays,
-            lastActiveDate: streak.lastActiveDate,
-            freezesAvailable: streak.freezesAvailable,
-            freezeUsedOn: streak.freezeUsedOn,
-          });
-          if (streak.event === "protected") toast.success("Streak protected. 1 freeze used.");
-        }
-      } catch (error) {
-        console.error("[streak] couldn't save qualifying mock", error);
-        toast.error((error as Error)?.message || "Your study streak couldn't be updated.");
-      }
     }
 
     // Fire-and-forget: send results to backend feedback loop
@@ -1421,13 +1404,16 @@ export function MockRunScreen() {
                     variant="outline"
                     size="sm"
                     className="min-h-11"
-                    onClick={() => {
-                      try {
-                        sessionStorage.setItem("truefluency-verilo-pending-prompt", JSON.stringify({
-                          courseCode: t.courseCode,
-                          prompt: `Please explain this mock question step by step: ${q.question}\nMy answer: ${chosenText}\nCorrect answer: ${answerText}`,
-                        }));
-                      } catch { /* chat still opens if session storage is unavailable */ }
+                    onClick={async () => {
+                      const paused = pausePractice(t, Date.now());
+                      testRef.current = paused;
+                      update({ inProgressTest: paused });
+                      const { data } = await supabase.auth.getSession();
+                      const ownerId = data.session?.user.id;
+                      if (!ownerId) { toast.error("Sign in to ask Verilo. Your test is paused."); return; }
+                      setTutorSnapshot({ ownerId, sessionId: t.analyticsSessionId ?? String(t.startedAt),
+                        courseCode: t.courseCode, questionIndex: idx + 1, totalQuestions: questions.length,
+                        question: { ...q, options: [...q.options] }, selectedAnswer: selected });
                       navigate("chatbot", { courseCode: t.courseCode });
                     }}
                   >

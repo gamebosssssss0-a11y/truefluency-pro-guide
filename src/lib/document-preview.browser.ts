@@ -1,7 +1,7 @@
 /** Thumbnail rendering stays browser-only. No file bytes/URLs are persisted. */
 import { unzipSync, strFromU8 } from "fflate";
 
-export type PreviewSource = { url: string; headers?: Record<string, string> };
+export type PreviewSource = { url: string; headers?: Record<string, string>; cacheable?: boolean; textContent?: string };
 let running = 0;
 const waiters: Array<() => void> = [];
 
@@ -17,17 +17,27 @@ async function withPreviewSlot<T>(signal: AbortSignal, work: () => Promise<T>): 
   }
 }
 
-export async function renderDocumentPreview(canvas: HTMLCanvasElement, type: string, source: PreviewSource, signal: AbortSignal) {
+export async function renderDocumentPreview(canvas: HTMLCanvasElement, type: string, source: PreviewSource, signal: AbortSignal, textContent?: string) {
   return withPreviewSlot(signal, async () => {
-    const response = await fetch(source.url, { headers: source.headers, signal, cache: "no-store" });
-    if (!response.ok) throw new Error("This file is no longer available.");
-    const size = Number(response.headers.get("content-length") || 0);
-    if (size > 25 * 1024 * 1024) throw new Error("Open this large file to preview it.");
-    const buffer = await response.arrayBuffer();
+    let buffer: ArrayBuffer;
+    if (type === "pasted" && (source.textContent ?? textContent)) buffer = new TextEncoder().encode((source.textContent ?? textContent ?? "").slice(0, 4000)).buffer;
+    else {
+      const response = await fetch(source.url, { headers: source.headers, signal, cache: "no-store" });
+      if (!response.ok) throw new Error("This file is no longer available.");
+      const size = Number(response.headers.get("content-length") || 0);
+      if (size > 25 * 1024 * 1024) throw new Error("Open this large file to preview it.");
+      buffer = await response.arrayBuffer();
+    }
     signal.throwIfAborted();
     if (buffer.byteLength > 25 * 1024 * 1024) throw new Error("Open this large file to preview it.");
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Document preview is unavailable.");
+    if (type === "image") {
+      const bitmap = await createImageBitmap(new Blob([buffer]));
+      try { signal.throwIfAborted(); canvas.width = 300; canvas.height = Math.round(300 * bitmap.height / bitmap.width); context.drawImage(bitmap, 0, 0, canvas.width, canvas.height); }
+      finally { bitmap.close(); }
+      return;
+    }
     if (type === "pdf") {
       const [pdfjs, worker] = await Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]);
       signal.throwIfAborted();
@@ -66,7 +76,13 @@ export async function renderDocumentPreview(canvas: HTMLCanvasElement, type: str
           Array.from(paragraph.getElementsByTagNameNS("*", "br")).some((node) => node.getAttribute("w:type") === "page")) break;
         if (paragraphs.join(" ").length > 4_000) break;
       }
-    } else if (type === "txt" || type === "text") {
+    } else if (type === "pptx") {
+      const zip = unzipSync(new Uint8Array(buffer), { filter: (entry) => entry.name === "ppt/slides/slide1.xml" && entry.originalSize <= 2 * 1024 * 1024 });
+      const xml = zip["ppt/slides/slide1.xml"];
+      if (!xml) throw new Error("Open this presentation to preview it.");
+      const slide = new DOMParser().parseFromString(strFromU8(xml), "application/xml");
+      paragraphs = Array.from(slide.getElementsByTagNameNS("*", "t")).map((node) => node.textContent ?? "").filter(Boolean);
+    } else if (type === "txt" || type === "text" || type === "pasted") {
       paragraphs = new TextDecoder().decode(buffer).split(/\r?\n/).filter((line) => line.trim());
     } else {
       throw new Error("Open this document to preview it.");

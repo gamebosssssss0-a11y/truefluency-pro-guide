@@ -2,6 +2,19 @@ import { lagosDay } from "@/lib/wat-day";
 
 export type StreakState = "fire" | "frozen" | "none";
 
+export function advanceStudyStreak(input: { streakDays: number; lastActiveDate: string | null; freezesAvailable: number; freezeUsedOn: string | null }, now = Date.now()) {
+  const today = lagosDay(now);
+  const last = input.lastActiveDate ? Date.parse(`${input.lastActiveDate}T00:00:00Z`) : NaN;
+  const gap = (Date.parse(`${today}T00:00:00Z`) - last) / 86_400_000;
+  if (gap === 0 && input.streakDays > 0) return input;
+  if (gap === 2 && input.streakDays > 0 && input.freezesAvailable > 0) {
+    return { ...input, lastActiveDate: today, freezesAvailable: input.freezesAvailable - 1, freezeUsedOn: today };
+  }
+  const streakDays = gap === 1 && input.streakDays > 0 ? input.streakDays + 1 : 1;
+  return { ...input, streakDays, lastActiveDate: today,
+    freezesAvailable: streakDays === 7 ? Math.min(2, input.freezesAvailable + 1) : input.freezesAvailable };
+}
+
 export function getStreakState(
   input: {
     streakDays: number;

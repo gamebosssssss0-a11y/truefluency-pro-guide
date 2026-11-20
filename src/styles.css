@@ -571,6 +571,59 @@
   overflow: visible;
 }
 
+/* Identical pane geometry: only active content scrolls; neighbors never resize
+   the viewport or contribute document height during a gesture. */
+html, body { overscroll-behavior: none; }
+.tab-swipe-clip {
+  height: 100dvh;
+  min-height: 0;
+  overflow: clip;
+}
+.tab-swipe-clip > [data-tab-swipe-stage] {
+  height: 100%;
+  min-height: 0;
+  padding-inline: 0;
+  padding-bottom: 0;
+  contain: layout size;
+}
+[data-app-viewport] > .tab-swipe-clip { flex: 1; height: auto; }
+[data-app-viewport] [data-chat-fullscreen] { height: 100%; }
+.tab-swipe-pane, [data-subview-scroll] {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  contain: layout paint;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+.tab-swipe-pane[inert] { overflow-y: hidden; }
+.tab-swipe-pane :is(.min-h-screen, .reference-home), [data-subview-scroll] .min-h-screen { min-height: 100%; }
+[data-subview-scroll]:has(.mock-stage) { padding-bottom: 0; }
+[data-subview-scroll] [data-app-shell] { height: 100%; }
+[data-chat-fullscreen] .chat-layout > :first-child { flex-wrap: wrap; }
+html[data-view-direction="shelf"] [data-chat-fullscreen] { animation: shelfFlipIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.shelf-flip-exit { transform-origin: center; animation: shelfFlipOut 160ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes shelfFlipOut {
+  from { transform: perspective(1000px) rotateY(0); opacity: 1; }
+  to { transform: perspective(1000px) rotateY(-75deg); opacity: 0; }
+}
+@keyframes shelfFlipIn {
+  from { transform: perspective(1000px) rotateY(75deg); opacity: 0; }
+  to { transform: perspective(1000px) rotateY(0); opacity: 1; }
+}
+@media (min-width: 768px) {
+  .tab-swipe-clip { height: calc(100dvh - 3.5rem); }
+  .tab-swipe-pane, [data-subview-scroll] { padding-bottom: 2rem; }
+  .tab-swipe-clip [data-chat-fullscreen] { height: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shelf-flip-exit, html[data-view-direction="shelf"] [data-chat-fullscreen] { animation: none; }
+}
+
 /* The root tab stage already reserves space for the persistent navigation.
    Keep the chat viewport inside that stage instead of letting its own fixed
    height extend behind the mobile tab bar. */
@@ -1343,6 +1396,9 @@ body:has([data-tab-swipe-stage][data-swipe-active="true"]) [data-verilo-entry] {
    too tall and a scrollbar appeared with nothing to scroll. Real conversations are not affected. */
 .study-chat-screen [data-chat-thread] > .min-h-full {
   margin-bottom: 0 !important;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding-block: 0.5rem;
 }
 
 /* Phones scroll by touch: no scrollbar track inside the chat. */

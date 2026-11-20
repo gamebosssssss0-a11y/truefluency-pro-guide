@@ -1,4 +1,8 @@
 import { BackButton } from "@/components/ui/back-button";
+import { DocumentThumbnail } from "@/components/ui/document-thumbnail";
+import { presignMaterialDownload } from "@/lib/storage.functions";
+import { clearThumbnailCache } from "@/lib/document-preview-cache";
+import { supabase } from "@/integrations/supabase/client";
 import { ScanBeam } from "@/components/loading-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type AIQuestion, type CourseTopicAnalysis } from "@/lib/profile-store";
@@ -1074,6 +1078,8 @@ export function MaterialRow({
     setDeleting(true);
     try {
       await onDelete();
+      const { data } = await supabase.auth.getSession();
+      if (data.session) void clearThumbnailCache(data.session.user.id, m.id);
       setConfirmDelete(false);
     } catch (error) {
       console.error("[materials] delete failed", error);
@@ -1084,26 +1090,13 @@ export function MaterialRow({
   };
 
 
-  // Locked file-type chips. PDF must never fall back to the primary/navy token.
-  const chip: { label: string; tone: string } = (() => {
-    if (t === "pdf") return { label: "PDF", tone: "bg-wine text-white" };
-    if (t === "docx") return { label: "DOC", tone: "bg-doc-blue text-white" };
-    if (t === "pptx") return { label: "PPT", tone: "bg-ppt-amber text-white" };
-    if (t === "pasted") return { label: "Note", tone: "border border-border bg-cream text-navy" };
-    return { label: "IMG", tone: "bg-navy text-white" };
-  })();
-
   return (
     <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
       <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-bold tracking-wider",
-            chip.tone,
-          )}
-        >
-          {chip.label}
-        </div>
+        <DocumentThumbnail fileId={m.id} revision={m.created_at} fileName={m.file_name} fileType={m.file_type}
+          persistent textContent={isPasted ? m.extracted_content ?? undefined : undefined}
+          resolveSource={() => presignMaterialDownload({ data: { materialId: m.id } })}
+          className="w-14" />
         <div className="min-w-0 flex-1">
           <div className="break-words text-sm font-semibold leading-snug text-foreground">{m.file_name}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
@@ -1128,24 +1121,24 @@ export function MaterialRow({
           ) : null}
         </div>
         {canRetry ? (
-          <button
+          <Button type="button" variant="ghost" size="icon"
             onClick={() => void handleRetry()}
             disabled={retrying}
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-50"
+            className="size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-50"
             aria-label="Retry text extraction"
             title="Retry text extraction"
           >
             <RefreshCw className={cn("h-4 w-4", retrying && "animate-spin")} />
-          </button>
+          </Button>
         ) : null}
-        <button
+        <Button type="button" variant="ghost" size="icon"
           onClick={() => setConfirmDelete(true)}
           disabled={deleting}
-          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
+          className="size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
           aria-label="Delete"
         >
           <Trash2 className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {hasExtraction ? <ExtractionGuidance material={m} /> : null}
@@ -1178,13 +1171,13 @@ export function MaterialRow({
             <p>{METADATA_NOTE}</p>
             <p className="mt-1 text-muted-foreground">{flag}</p>
           </div>
-          <button
+          <Button type="button" variant="ghost" size="icon"
             onClick={() => { dismissMetadataFlag(m.id); setFlag(null); }}
-            className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+            className="size-11 shrink-0 rounded-lg text-muted-foreground hover:bg-muted"
             aria-label="Dismiss note"
           >
             <X className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

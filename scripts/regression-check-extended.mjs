@@ -161,7 +161,7 @@ test("chat thinking animation remains visible independently of the empty-thread 
   const chat = await read("../src/components/chatbot.tsx");
   const indicator = chat.indexOf("          {isSending && streamingBubbleId === null ? (");
   const thinking = chat.indexOf("chat-thinking-label font-medium");
-  const anchor = chat.indexOf('<div ref={scrollAnchorRef} />');
+  const anchor = chat.indexOf('<div ref={scrollAnchorRef}');
   assert.notEqual(indicator, -1);
   assert.notEqual(thinking, -1);
   assert.ok(chat.slice(indicator - 30, indicator).includes(") : null}"), "indicator must be outside the empty-thread conditional");
@@ -224,7 +224,7 @@ test("peer-save quota course is required and must match the verified source", as
 
 test("mock answer counts do not treat missing legacy answers as answered", async () => {
   const flow = await read("../src/components/mock-test-flow.tsx");
-  assert.match(flow, /const answeredCount = t\.answers\.filter\(\(answer\) => answer !== null && answer !== undefined\)\.length/);
+  assert.match(flow, /const answeredBeforeSubmit = t\.answers\.filter\(\(answer\) => answer !== null && answer !== undefined\)\.length/);
   assert.match(flow, /const answered = t\.answers\.filter\(\(a\) => a !== null && a !== undefined\)\.length/);
 });
 
@@ -357,9 +357,10 @@ test("Verilo remains mounted outside the four root tabs and warms its selected t
   assert.ok(chat.includes("[selected, reloadNonce, active, accountEpoch]"));
 });
 
-test("chat history contrast is explicit and the chat column no longer caps width", async () => {
+test("chat history never exposes an inline transcript", async () => {
   const chat = await read("../src/components/chatbot.tsx");
-  assert.ok(chat.includes('style={{ color: m.role === "user" ? "var(--text-secondary)" : "var(--muted-foreground)" }}'));
+  assert.doesNotMatch(chat, /aria-label="Conversation messages"/);
+  assert.doesNotMatch(chat, /expandedConvId|isExpanded/);
   assert.ok(chat.includes("max-w-[96%] break-words [overflow-wrap:anywhere]"));
   assert.ok(chat.includes("w-full px-3 sm:px-4 md:pt-4"));
   assert.ok(!chat.includes("max-w-[640px] px-4 sm:px-5 md:pt-4"));

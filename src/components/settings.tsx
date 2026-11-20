@@ -654,7 +654,7 @@ function Row({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: strin
 /* -------- All my uploads screen -------- */
 
 export function AllUploadsScreen() {
-  const { profile, navigate } = useProfileData();
+  const { profile, navigate, back } = useProfileData();
   const [items, setItems] = useState<CourseMaterial[] | null>(null);
   const activeCodes = new Set(profile.courses.map((c) => c.code));
 
@@ -685,7 +685,7 @@ export function AllUploadsScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
+          <BackButton onBack={back} />
         </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -47,9 +47,9 @@ export const EXAM_DAILY_LIMITS: Record<GatedFeature, number | null> = {
 export const TRIAL_DAILY_LIMITS: Record<GatedFeature, number | null> = { ...CORE_DAILY_LIMITS };
 
 /**
- * Study Chat usage per day, in tokens (what the AI provider counts: your question, the notes and instructions sent
- * with it, and the reply). Core and the trial give 2x the free usage, Exam 4x. Refreshes at midnight Lagos time.
- * Mirrors usage_meter.py on the backend, which enforces it.
+ * Study Chat allowance per active four-hour WAT window, once the matching backend is deployed.
+ * Core/trial give 2x Free and Exam 4x. The legacy exported name is retained for existing callers.
+ * The live server meter, not a client timer, determines the remaining allowance.
  */
 export const CHAT_DAILY_TOKENS: Record<"free" | "trial" | "core" | "exam", number> = {
   free: 36_000,
@@ -87,10 +87,15 @@ export function formatResetTime(when: Date): string {
   return `${day}, ${time}`;
 }
 
-/** The next time the chat allowance refreshes: midnight in Lagos (a fixed UTC+1, no daylight saving). */
+/** Fixed four-hour Lagos windows; other feature limits remain daily. */
+export function chatWindowStart(now: Date = new Date()): Date {
+  const offset = 60 * 60 * 1000;
+  const window = 4 * 60 * 60 * 1000;
+  return new Date(Math.floor((now.getTime() + offset) / window) * window - offset);
+}
+
 export function nextChatReset(now: Date = new Date()): Date {
-  const lagos = new Date(now.getTime() + 60 * 60 * 1000);
-  return new Date(Date.UTC(lagos.getUTCFullYear(), lagos.getUTCMonth(), lagos.getUTCDate() + 1) - 60 * 60 * 1000);
+  return new Date(chatWindowStart(now).getTime() + 4 * 60 * 60 * 1000);
 }
 
 export const FREE_MAX_QUESTIONS = 30;
@@ -164,8 +169,8 @@ export function paywallCopy(
   if (feature === "chatbot_messages") {
     const more = tier === "exam" ? "" : ` ${nextPlan}`;
     return {
-      title: "That's your chat usage for today",
-      body: `It resets ${formatResetTime(nextChatReset())}.${more}`,
+      title: "That's your chat usage for this window",
+      body: `Your 4-hour chat allowance resets at ${formatResetTime(nextChatReset())}.${more}`,
     };
   }
 

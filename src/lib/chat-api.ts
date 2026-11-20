@@ -59,10 +59,17 @@ export type ChatUsage = {
   resets_at: string;
   /** false when the backend couldn't record usage just now: the ring hides rather than show a wrong number. */
   metering?: boolean;
+  /** Four-hour UI is enabled only with an actual four-hour server meter. */
+  window_hours?: 4;
 };
 
 /** Today's usage, for the ring when the chat opens. Returns null if it can't be read (the ring just stays hidden). */
 export async function getChatUsage(): Promise<ChatUsage | null> {
+  try {
+    const { getFourHourChatUsage } = await import("./chat-usage.functions");
+    const currentWindow = await getFourHourChatUsage();
+    if (currentWindow) return currentWindow;
+  } catch { /* Backend migration pending: retain the existing authoritative meter. */ }
   try {
     const res = await fetch(`${base()}/chat/usage`, { headers: await authHeader() });
     return res.ok ? ((await res.json()) as ChatUsage) : null;
@@ -79,7 +86,7 @@ function readErrorDetail(text: string, status: number): string {
   } catch {
     /* not JSON */
   }
-  if (status === 402) return "You've hit your free chat limit for today.";
+  if (status === 402) return "You've used your current chat allowance.";
   if (status === 413) return "That message is too long. Shorten it and try again.";
   if (status === 429) return "You're sending messages too fast. Wait a few seconds and try again.";
   if (status === 502) return "The study chat couldn't get a reply right now. Try again.";

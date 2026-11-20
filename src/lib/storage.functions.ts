@@ -77,19 +77,23 @@ export const presignMaterialDownload = createServerFn({ method: "POST" })
     if (!materialId || materialId.length > 64) throw new Error("This file couldn't be opened.");
     return { materialId };
   })
-  .handler(async ({ data, context }): Promise<{ url: string }> => {
+  .handler(async ({ data, context }): Promise<{ url: string; cacheable: boolean; textContent?: string }> => {
     const { data: material, error } = await context.supabase
       .from("course_materials")
-      .select("file_path")
+      .select("file_path,is_peer_copy,file_type,extracted_content")
       .eq("id", data.materialId)
       .eq("user_id", context.userId)
       .maybeSingle();
-    const path = material?.file_path;
+    if (error || !material) throw new Error("This file couldn't be opened.");
+    if (material.file_type === "pasted" && material.extracted_content) {
+      return { url: "", cacheable: material.is_peer_copy === false, textContent: material.extracted_content.slice(0, 4000) };
+    }
+    const path = material.file_path;
     if (error || !path || !isOwnedMaterialPath(path, context.userId)) {
       throw new Error("This file couldn't be opened.");
     }
     const url = await storage.presignDownload({ path, expiresInSeconds: 60 * 30 });
-    return { url };
+    return { url, cacheable: material.is_peer_copy === false };
   });
 
 /** Deletes one or more of the CALLER'S OWN files. Every path is checked

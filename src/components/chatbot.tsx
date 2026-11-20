@@ -7,6 +7,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
+import { Button } from "@/components/ui/button";
+import { isChatAtBottom, tutorPrompt, tutorSnapshotMatches } from "@/lib/study-continuity";
 import { clearChatMirrors, flushChatMirrors, readChatMirror, reconcileThread, writeChatMirror } from "@/lib/chat-cache";
 import { useNavigation, useProfileData } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
@@ -147,7 +149,7 @@ function speechSupported() {
 }
 
 export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAttachment, active = true }: { embedded?: boolean; pageAttachment?: PageAttachment | null; active?: boolean } = {}) {
-  const { profile, activeCourseCode, navigate } = useProfileData();
+  const { profile, activeCourseCode, navigate, back, update, tutorSnapshot, setTutorSnapshot, recordStudyActivity } = useProfileData();
   const { view } = useNavigation();
   const { access, refresh: refreshAccess } = useEntitlement();
   // Opening the chat is the moment to wake a sleeping (free-plan) backend, so
@@ -155,7 +157,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   useEffect(() => {
     warmBackend();
   }, []);
-  const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
+  const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? null);
 
   const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
     ? canonicalCourseCode(activeCourseCode ?? "")
@@ -186,24 +188,51 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     // scrollIntoView() can also scroll the outer document, making the chat
     // appear to float or leaving the next screen positioned halfway down.
     thread.scrollTop = 0;
-    if (active && messages.length > 0) {
-      thread.scrollTop = thread.scrollHeight;
-    }
+    isNearBottomRef.current = false;
+    setIsAtBottom(isChatAtBottom(thread.scrollHeight, thread.scrollTop, thread.clientHeight));
   }, [active, view]);
 
   // Follow a streaming reply only while the student is already near the bottom;
   // if they scrolled up to read, leave their position alone.
   const isNearBottomRef = useRef(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const continueAtBottom = useRef(false);
+  const snapshotIngested = useRef<string | null>(null);
   const handleThreadScroll = () => {
     const el = threadScrollRef.current;
     if (!el) return;
-    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 96;
+    const atBottom = isChatAtBottom(el.scrollHeight, el.scrollTop, el.clientHeight);
+    setIsAtBottom(atBottom);
+    isNearBottomRef.current = atBottom;
   };
   useEffect(() => {
     const thread = threadScrollRef.current;
     if (!thread || !isNearBottomRef.current) return;
     thread.scrollTop = thread.scrollHeight;
   }, [messages]);
+  useEffect(() => {
+    if (!active) return;
+    const thread = threadScrollRef.current;
+    if (!thread) return;
+    const observer = new ResizeObserver(() => {
+      if (isNearBottomRef.current) thread.scrollTop = thread.scrollHeight;
+      setIsAtBottom(isChatAtBottom(thread.scrollHeight, thread.scrollTop, thread.clientHeight));
+    });
+    for (const child of Array.from(thread.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [active, messages]);
+  useEffect(() => {
+    if (!continueAtBottom.current || !active || isLoadingThread) return;
+    continueAtBottom.current = false;
+    const frame = requestAnimationFrame(() => {
+      const thread = threadScrollRef.current;
+      if (thread) thread.scrollTo({ top: thread.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      isNearBottomRef.current = true;
+      setIsAtBottom(true);
+      composerRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [active, isLoadingThread, messages]);
   // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
   // wiped outright on every auth change (see the effect below) — belt AND
   // suspenders. A course code alone is not unique to one student: shared
@@ -233,6 +262,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         setIsSending(false);
         setStreamingBubbleId(null);
         setHistoryRows([]);
+        setDraft("");
+        setAttachedPage(null);
+        setUsage(null);
+        snapshotIngested.current = null;
         setAccountEpoch((value) => value + 1);
       }
       currentUid.current = nextUid;
@@ -254,7 +287,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const imageUrls = useRef(new Set<string>());
   const [historyRows, setHistoryRows] = useState<{ course: string; date: string; title: string; conversationId: string; messages: ChatMessage[] }[]>([]);
-  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ conversationId: string; course: string; title: string } | null>(null);
   const [resumingConvId, setResumingConvId] = useState<string | null>(null);
@@ -268,6 +300,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // instead of it.
   const [streamingBubbleId, setStreamingBubbleId] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("Explain");
+  useEffect(() => {
+    if (!active || !activeCourseCode) return;
+    const course = canonicalCourseCode(activeCourseCode);
+    if (profile.courses.some((entry) => canonicalCourseCode(entry.code) === course)) setSelected(course);
+  }, [active, activeCourseCode]);
+  const activeTutorSnapshot = tutorSnapshot && profile.inProgressTest?.isPaused && tutorSnapshotMatches(tutorSnapshot, currentUid.current, profile.inProgressTest) ? tutorSnapshot : null;
+  useEffect(() => {
+    if (!active || !activeTutorSnapshot || snapshotIngested.current === `${activeTutorSnapshot.sessionId}:${activeTutorSnapshot.question.id}`) return;
+    snapshotIngested.current = `${activeTutorSnapshot.sessionId}:${activeTutorSnapshot.question.id}`;
+    setSelected(canonicalCourseCode(activeTutorSnapshot.courseCode));
+    setAttachedPage(null);
+    setMode("Explain");
+    setDraft(tutorPrompt(activeTutorSnapshot).slice(0, 2000));
+  }, [active, activeTutorSnapshot]);
 
   useEffect(() => {
     if (suppliedPageAttachment) {
@@ -418,7 +464,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const selectCourse = (course: string) => {
     const key = canonicalCourseCode(course);
     setSelected(key);
-    navigate(view, { courseCode: key });
+    if (active && (view === "chatbot" || view === "chat-history")) navigate(view, { courseCode: key });
     setAttachedPage(null);
     setMessages(threadCache.current.get(cacheMapKey(key)) ?? []);
     setDraft("");
@@ -573,9 +619,13 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   }, [historyOpen, profile.courses, accountEpoch]);
 
   const handleResumeConversation = async (conversationId: string) => {
+    if (resumingConvId) return;
+    const owner = currentUid.current;
+    const epoch = authEpoch.current;
     setResumingConvId(conversationId);
     try {
       const { courseCode } = await resumeConversation(conversationId);
+      if (authEpoch.current !== epoch || currentUid.current !== owner) return;
       // Prevents the load effect's own "start fresh" step from immediately
       // archiving the conversation we just resumed — without this, opening
       // the live chat screen for the first time this session would
@@ -586,11 +636,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (currentUid.current) clearChatMirrors(currentUid.current, canonicalCourseCode(courseCode));
       threadCache.current.delete(cacheMapKey(courseCode)); // force a real fetch, not a stale cached view
       preloadedThreadCache.delete(cacheMapKey(courseCode));
-      if (resumedRow) persistCache(courseCode, toUiMessages(resumedRow.messages));
+      if (resumedRow) {
+        const resumedMessages = toUiMessages(resumedRow.messages);
+        persistCache(courseCode, resumedMessages);
+        setMessages(resumedMessages);
+      }
+      continueAtBottom.current = true;
+      isNearBottomRef.current = true;
       setSelected(courseCode);
       setReloadNonce((n) => n + 1);
-      setExpandedConvId(null);
       setHistoryOpen(false);
+      navigate("chatbot", { courseCode: canonicalCourseCode(courseCode), replace: true });
       toast.success("Continuing that conversation.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't resume that conversation.");
@@ -605,7 +661,6 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       await deleteChatConversation(conversationId);
       invalidateChatReads(course);
       setHistoryRows((cur) => cur.filter((row) => row.conversationId !== conversationId));
-      if (expandedConvId === conversationId) setExpandedConvId(null);
       // If this was the course's currently-active conversation, the live
       // chat screen would otherwise keep showing now-deleted messages from
       // its own cache until the next real reload — force one.
@@ -666,14 +721,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     }
   }, [active]);
 
-  // Study Chat is a usage plan: a daily token allowance, shown as a small ring under the box (see chat-usage-ring.tsx).
+  // Allowance dates come from the server; no optimistic local resets.
   const [usage, setUsage] = useState<ChatUsage | null>(null);
   useEffect(() => {
     if (!active) return;
     let live = true;
-    void getChatUsage().then((u) => { if (live && u) setUsage(u); });
-    return () => { live = false; };
-  }, [active]);
+    const refresh = () => { void getChatUsage().then((u) => { if (live) setUsage(u); }); };
+    refresh();
+    const untilReset = usage?.resets_at ? Date.parse(usage.resets_at) - Date.now() + 100 : 60_000;
+    const timer = window.setTimeout(refresh, Math.min(60_000, Math.max(1000, untilReset)));
+    const polling = window.setInterval(refresh, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { live = false; clearTimeout(timer); clearInterval(polling); document.removeEventListener("visibilitychange", onVisible); };
+  }, [active, accountEpoch, usage?.resets_at]);
   const chatCapReached = !!usage && usage.remaining_tokens <= 0;
 
   const notice = (text: string) =>
@@ -782,7 +843,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // bot asked a fresh question instead of marking the answer.
       // The attached page travels in its own field: inside the message it
       // pushed most real pages past the 2,000-character limit ("Couldn't send.").
-      const pageContext = pageToSend
+      const pageContext = activeTutorSnapshot && canonicalCourseCode(course) === canonicalCourseCode(activeTutorSnapshot.courseCode)
+        ? `${tutorPrompt(activeTutorSnapshot)}\nSaved explanation: ${activeTutorSnapshot.question.explanation.slice(0, 4000)}`
+        : pageToSend
         ? `Attached PDF page ${pageToSend.page} from ${pageToSend.fileName}:\n${pageToSend.text.slice(0, 4000)}`
         : null;
 
@@ -862,7 +925,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // used to call the website's own counter as well, so every reply cost a
       // free student TWO of their daily replies. Just re-read the count.
       if (usageAfter) setUsage(usageAfter);
+      void getChatUsage().then((value) => { if (authEpoch.current === sendAuthEpoch && value) setUsage(value); });
       if (!moderated) {
+        recordStudyActivity();
         void refreshAccess().catch((e) => console.warn("[chat] couldn't refresh access", e));
       }
     } catch (error) {
@@ -1176,7 +1241,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       <div className={cn("chat-layout mx-auto grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-border pb-2">
           {!embedded ? (
-            <BackButton onBack={() => navigate("home")} />
+            <BackButton onBack={back} />
           ) : null}
           <button type="button" onClick={() => { setHistoryOpen(true); navigate("chat-history", { courseCode: selected }); }} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2 text-xs font-semibold leading-3 text-foreground transition hover:bg-muted">
             <HistoryIcon aria-hidden="true" className="h-4 w-4" />
@@ -1184,10 +1249,10 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           </button>
           <div className="min-w-0 flex-1 text-center">
             <p className="text-base font-semibold leading-6 text-foreground">Verilo</p>
-            <button type="button" onClick={() => setCoursePickerOpen(true)} disabled={isSending || courseOptions.length === 0} aria-haspopup="dialog" aria-label="Change course" title="Choose a course" className="inline-flex min-h-7 max-w-full items-center justify-center gap-1 rounded-md px-2 text-xs leading-4 text-muted-foreground disabled:opacity-60">
+            <Button variant="ghost" type="button" onClick={() => setCoursePickerOpen(true)} disabled={isSending || courseOptions.length === 0} aria-haspopup="dialog" aria-label="Change course" title="Choose a course" className="inline-flex h-11 max-w-full items-center justify-center gap-1 rounded-md px-2 text-xs leading-4 text-muted-foreground disabled:opacity-60">
               <span className="truncate">{selected ? displayCode(selected) : "Choose a course"}</span>
               <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-            </button>
+            </Button>
           </div>
           <button
             type="button"
@@ -1197,6 +1262,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           >
             <Plus aria-hidden="true" className="h-3.5 w-3.5" />New chat
           </button>
+          {activeTutorSnapshot ? <div role="status" className="basis-full rounded-lg border border-accent/40 bg-accent/10 p-2 text-xs text-foreground">
+            <span>Mock test paused at Question {activeTutorSnapshot.questionIndex}. Your timer is stopped.</span>
+            <Button variant="outline" size="sm" className="mt-2 min-h-11 w-full" onClick={() => {
+              const test = profile.inProgressTest;
+              if (!test || !tutorSnapshotMatches(activeTutorSnapshot, currentUid.current, test)) { setTutorSnapshot(null); return; }
+              update({ inProgressTest: { ...test, isPaused: false, resumedAt: Date.now() } });
+              setTutorSnapshot(null);
+              navigate("mock-run", { courseCode: test.courseCode });
+            }}>Resume Test →</Button>
+          </div> : null}
         </div>        {sourcePanelVisible && latestAssistantReply ? (
           <aside aria-label="Sources for the latest answer" className="hidden min-h-0 overflow-y-auto rounded-2xl border border-border bg-card p-4 md:col-start-2 md:row-start-1 md:row-span-3 md:block">
             <h2 className="font-display text-sm font-semibold text-foreground">Sources</h2>
@@ -1224,7 +1299,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           aria-live="polite"
           aria-relevant="additions text"
           aria-busy={isLoadingThread || isSending}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-3 touch-pan-y"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-none py-3 touch-pan-y [overflow-anchor:none]"
         >
           {threadLoadTimedOut && messages.length === 0 ? (
             <div role="alert" aria-live="assertive" className="chat-load-state flex min-h-full flex-col items-center justify-center px-6 text-center">
@@ -1440,7 +1515,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <span className="chat-thinking-dots" aria-hidden="true"><i /><i /><i /></span>
             </div>
           ) : null}
-          <div ref={scrollAnchorRef} />
+          <div ref={scrollAnchorRef} hidden={messages.length === 0 && !isSending} />
         </div>
 
         {/* Composer — sits clear of the bottom tab bar */}
@@ -1499,20 +1574,27 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <p className="mt-2 min-h-5 text-sm text-foreground">{voiceTranscript || <span className="text-muted-foreground">Start speaking…</span>}</p>
             </div>
           ) : null}
+          {!isAtBottom ? <Button type="button" variant="outline" size="icon" aria-label="Scroll to newest messages" title="Newest messages" className="absolute -top-12 right-1 size-11 rounded-full bg-card shadow-md" onClick={() => {
+            const thread = threadScrollRef.current;
+            if (!thread) return;
+            isNearBottomRef.current = true;
+            thread.scrollTo({ top: thread.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+            setIsAtBottom(true);
+          }}><ChevronDown className="size-5 text-accent" />{isSending ? <span aria-hidden="true" className="absolute right-0 top-0 size-2 rounded-full bg-accent motion-safe:animate-pulse" /> : null}</Button> : null}
           <div className="rounded-[20px] border border-[var(--tf-composer-border)] bg-card p-1.5 shadow-[0_7px_17px_rgba(27,42,74,0.08),inset_0_0_0_1px_rgba(255,255,255,0.55)]">
             <div className="chat-composer-meta mb-1 flex min-w-0 items-center justify-between gap-2 px-1">
               <div className="relative shrink-0">
-                <button
+                <Button variant="ghost"
                   type="button"
                   aria-haspopup="menu"
                   aria-expanded={modeMenuOpen}
                   onClick={() => setModeMenuOpen((open) => !open)}
                   aria-label={`Reply mode: ${mode}`}
-                  className="inline-flex min-h-9 min-w-[84px] items-center justify-center gap-1 rounded-full border border-[var(--tf-border-warm)] bg-[var(--tf-sand-chip)] px-2 text-xs font-semibold text-[var(--tf-navy)]"
+                  className="inline-flex h-11 min-w-[84px] items-center justify-center gap-1 rounded-full border border-border bg-secondary px-2 text-xs font-semibold text-foreground"
                 >
                   <span>{mode === "Work a problem" ? "Work" : mode}</span>
                   <ChevronDown className="h-3.5 w-3.5" />
-                </button>
+                </Button>
                 {modeMenuOpen ? (
                   <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 w-60 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
                     {MODES.map((item) => (
@@ -1539,9 +1621,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <ChatUsageRing usage={usage} className="shrink-0" />
             </div>
             <div className="flex min-w-0 items-end gap-1">
-              <button type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="grid min-h-10 min-w-10 shrink-0 place-items-center rounded-full border border-[var(--tf-border-warm)] bg-[var(--tf-sand-chip)] text-[var(--tf-navy)] disabled:opacity-60">
+              <Button variant="outline" size="icon" type="button" onClick={() => setAttachOpen(true)} disabled={isSending || isUploadingPhoto || isPreparingPhoto} aria-label="Attach photo" className="size-11 shrink-0 rounded-full bg-secondary text-foreground disabled:opacity-60">
                 <Plus className="h-3.5 w-3.5" />
-              </button>
+              </Button>
               <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void pickPhoto(f); }} />
               <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void pickPhoto(f); }} />
               <textarea
@@ -1560,23 +1642,23 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                 placeholder={selected ? `Ask about ${placeholderCourse}…` : "Add a course first."}
                 className="chat-composer-textarea max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-sm leading-6 text-chat-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[var(--tf-amber-strong)]/45 disabled:opacity-60"
               />
-              <button type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`grid min-h-10 min-w-10 shrink-0 place-items-center rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
+              <Button variant="ghost" size="icon" type="button" onClick={toggleDictation} disabled={!selected || isSending || isLoadingThread || isUploadingPhoto} aria-label={isListening ? "Stop voice input" : "Start voice input"} aria-pressed={isListening} title={isListening ? "Stop voice input" : "Voice input"} className={`size-11 shrink-0 rounded-full transition ${isListening ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary"}`}>
                 <Mic className="h-4 w-4" />
-              </button>
+              </Button>
               {isSending ? (
-                <button type="button" onClick={stopGeneration} disabled={isUploadingPhoto} aria-label="Stop response generation" title="Stop generation" className="grid min-h-10 min-w-10 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-50">
+                <Button variant="destructive" size="icon" type="button" onClick={stopGeneration} disabled={isUploadingPhoto} aria-label="Stop response generation" title="Stop generation" className="size-11 shrink-0 rounded-full disabled:opacity-50">
                   <Square className="h-4 w-4 fill-current" />
-                </button>
+                </Button>
               ) : (
-                <button type="button" onClick={() => send()} disabled={!selected || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="grid min-h-10 min-w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                <Button size="icon" type="button" onClick={() => send()} disabled={!selected || isLoadingThread || isUploadingPhoto || isPreparingPhoto} aria-label="Send" className="size-11 shrink-0 rounded-full disabled:opacity-60">
                   <Send className="h-5 w-5" />
-                </button>
+                </Button>
               )}
             </div>
           </div>
           {chatCapReached ? (
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Today's chat usage is used up. It resets {formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.
+              {usage?.window_hours === 4 ? "Your 4-hour chat allowance resets at" : "Your current chat allowance resets at"} {formatResetTime(usage?.resets_at ? new Date(usage.resets_at) : nextChatReset())}.
             </p>
           ) : null}
         </div>
@@ -1585,7 +1667,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         setHistoryOpen(open);
         if (!open && view === "chat-history") navigate("chatbot", { courseCode: selected, replace: true });
       }}>
-        <SheetContent side="bottom" className="!inset-0 !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-y-0 !rounded-none overflow-y-auto bg-popover px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-popover-foreground">
+        <SheetContent side="bottom" className="!inset-0 !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-y-0 !rounded-none overflow-y-auto overscroll-y-none bg-popover px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-popover-foreground">
           <SheetHeader className="text-left">
             <SheetTitle>Conversation history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>
@@ -1604,15 +1686,15 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             <div className="mt-4 space-y-2">
               {historyLoading ? <p role="status" className="text-xs text-muted-foreground">Loading more conversations…</p> : null}
               {historyRows.map((row) => {
-                const isExpanded = expandedConvId === row.conversationId;
                 const previewText = plainText(row.messages[row.messages.length - 1]?.content ?? "");
                 return (
                   <div key={row.conversationId} className="rounded-xl border border-border border-l-4 border-l-accent bg-card text-card-foreground">
                     <div className="flex items-start gap-2 p-3">
-                      <button
+                      <Button variant="ghost"
                         type="button"
-                        onClick={() => setExpandedConvId(isExpanded ? null : row.conversationId)}
-                        className="min-w-0 flex-1 text-left"
+                        disabled={resumingConvId !== null}
+                        onClick={() => void handleResumeConversation(row.conversationId)}
+                        className="h-auto min-w-0 flex-1 flex-col items-start whitespace-normal p-0 text-left"
                       >
                         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {displayCode(row.course)} · {row.date}
@@ -1620,57 +1702,24 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                         <div className="mt-1 line-clamp-2 text-sm font-semibold">{row.title}</div>
                         {previewText ? <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{previewText}</div> : null}
                         <div className="mt-1 text-xs text-muted-foreground">{row.messages.length} messages</div>
-                      </button>
-                      <button
+                      </Button>
+                      <Button variant="ghost" size="icon"
                         type="button"
                         aria-label="Delete this conversation"
                         disabled={deletingConvId === row.conversationId}
                         onClick={() => setDeleteTarget({ conversationId: row.conversationId, course: row.course, title: row.title })}
-                        className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                        className="size-11 shrink-0 rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
-                    {isExpanded ? (
-                      <div aria-label="Conversation messages" className="max-h-[52vh] space-y-3 overflow-y-auto border-t border-border p-3">
-                        {row.messages.map((m, i) => (
-                          <div
-                            key={i}
-                            className={m.role === "user"
-                              ? "rounded-xl border border-[var(--tf-border-warm)] bg-[var(--tf-sand-chip)] p-3 text-[var(--tf-navy)]"
-                              : "rounded-xl border border-border bg-background p-3 text-foreground"}
-                          >
-                            <div className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: m.role === "user" ? "var(--text-secondary)" : "var(--muted-foreground)" }}>
-                              {m.role === "user" ? "You" : "Verilo"}
-                            </div>
-                            <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
-                              <RichText>{m.role === "user" ? m.content : cleanAssistantArtifacts(m.content)}</RichText>
-                            </div>
-                            {m.role === "assistant" && m.sources?.length ? (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {m.sources.map((source, index) => (
-                                  <span key={`${source.fileName}-${sourceLocation(source)}-${index}`} className="rounded-full border border-border bg-card px-2 py-1 text-xs text-foreground">
-                                    {source.fileName} · {sourceLocation(source)}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : m.role === "assistant" && m.grounded === false ? (
-                              <p className="mt-2 text-xs text-muted-foreground">General explanation · course files don’t cover this answer.</p>
-                            ) : m.role === "assistant" && m.grounded === true ? (
-                              <p className="mt-2 text-xs text-warning">No file or page citation was returned for this answer.</p>
-                            ) : null}
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          disabled={resumingConvId === row.conversationId}
-                          onClick={() => void handleResumeConversation(row.conversationId)}
-                          className="mt-2 w-full rounded-lg border border-accent/60 bg-accent/10 py-2 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60"
-                        >
-                          {resumingConvId === row.conversationId ? "Opening…" : "Continue this conversation →"}
-                        </button>
-                      </div>
-                    ) : null}
+                    <div className="border-t border-border p-3">
+                      <Button type="button" variant="outline" disabled={resumingConvId !== null}
+                        onClick={() => void handleResumeConversation(row.conversationId)}
+                        className="min-h-11 w-full whitespace-normal border-accent/40 bg-accent/10 text-foreground hover:bg-accent/20">
+                        {resumingConvId === row.conversationId ? "Opening conversation…" : "Continue to this conversation →"}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

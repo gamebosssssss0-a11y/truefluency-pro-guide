@@ -18,8 +18,8 @@ export function AppShell({
 }) {
   const pct = step && total ? Math.round((step / total) * 100) : 0;
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
+    <div data-app-shell data-screen-scroll className="h-dvh min-h-0 overflow-y-auto overscroll-y-none">
+      <div className="mx-auto flex min-h-full max-w-md flex-col px-5 pb-8 pt-6">
         <header className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LogoMark className="h-8 w-8" />
@@ -56,7 +56,7 @@ export function AppShell({
           </div>
         ) : null}
 
-        <div className="flex-1">{children}</div>
+        <div className="min-h-0 flex-1">{children}</div>
       </div>
     </div>
   );

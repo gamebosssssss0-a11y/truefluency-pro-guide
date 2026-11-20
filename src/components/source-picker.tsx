@@ -7,6 +7,8 @@ import { Check, FileText } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { maxSourceFiles } from "@/lib/entitlements";
+import { DocumentThumbnail } from "@/components/ui/document-thumbnail";
+import { presignMaterialDownload } from "@/lib/storage.functions";
 import {
   effectiveIds, readyList, toggleChoice, useSourceChoice, type CourseFile,
 } from "@/lib/material-pick";
@@ -49,7 +51,7 @@ export function SourcePicker({
     if (!showSingle) return null;
     return (
       <div className={`flex items-center gap-2 text-xs ${muted} ${className}`}>
-        <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <DocumentThumbnail fileId={ready[0].id} revision={ready[0].created_at} persistent fileName={ready[0].file_name} fileType={ready[0].file_type} resolveSource={() => presignMaterialDownload({ data: { materialId: ready[0].id } })} className="w-10" />
         <span className="min-w-0 truncate">Study from: {ready[0].file_name}</span>
       </div>
     );
@@ -70,7 +72,7 @@ export function SourcePicker({
         <label className={`block text-xs font-semibold uppercase tracking-wider ${muted}`}>Study from</label>
         <span className={`text-xs tabular-nums ${muted}`}>{ticked.length} of {limit} {limit === 1 ? "file" : "files"}</span>
       </div>
-      <div role={limit === 1 ? "radiogroup" : "group"} aria-label="Choose which of your files to use" className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
+      <div data-swipe-lock role={limit === 1 ? "radiogroup" : "group"} aria-label="Choose which of your files to use" className="max-h-56 space-y-1.5 overflow-y-auto overscroll-y-none pr-0.5">
         {ready.map((file) => {
           const on = ticked.includes(file.id);
           const blocked = !on && limit > 1 && atLimit;
@@ -96,6 +98,7 @@ export function SourcePicker({
                 {on ? <Check className="h-3.5 w-3.5" /> : null}
               </span>
               <span className="min-w-0 flex-1 truncate text-foreground">{file.file_name}</span>
+              <DocumentThumbnail fileId={file.id} revision={file.created_at} persistent fileName={file.file_name} fileType={file.file_type} resolveSource={() => presignMaterialDownload({ data: { materialId: file.id } })} className="w-10" />
               {shortDate(file.created_at) ? <span className="shrink-0 text-xs text-muted-foreground">{shortDate(file.created_at)}</span> : null}
             </button>
           );

@@ -32,6 +32,8 @@ import { canonicalCourseCode } from "@/lib/course-code";
 import { LockerSkeletonLoader, useDelayedLoading } from "@/components/loading-state";
 import { BackButton } from "@/components/ui/back-button";
 import { DocumentThumbnail } from "@/components/ui/document-thumbnail";
+import { clearThumbnailCache } from "@/lib/document-preview-cache";
+import { cn } from "@/lib/utils";
 import { presignMaterialDownload } from "@/lib/storage.functions";
 import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
@@ -193,9 +195,12 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const [shelfOffline, setShelfOffline] = useState(false);
   const [shelfCourse, setShelfCourse] = useState<string | null>(null);
   useEffect(() => {
+    if (!active) return;
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.querySelectorAll<HTMLElement>("[data-screen-scroll]").forEach((node) => { node.scrollTop = 0; });
-  }, [openFolder, shelfCourse, rail]);
+    const pane = document.querySelector<HTMLElement>('[data-root-tab="library"]');
+    if (pane) pane.scrollTop = 0;
+    pane?.querySelectorAll<HTMLElement>("[data-screen-scroll]").forEach((node) => { node.scrollTop = 0; });
+  }, [openFolder, shelfCourse, rail, active]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [shelfLoading, setShelfLoading] = useState(false);
@@ -212,6 +217,16 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     { id: string; file_name: string; file_type: string; course_code: string; url: string | null; readyForMocks: boolean; peer: boolean; headers?: Record<string, string>; failed?: boolean; reason?: string } | null
   >(null);
   const [pageExplanation, setPageExplanation] = useState<{ courseCode: string; page: number; fileName: string; text: string; previewUrl?: string } | null>(null);
+  const [flippingToChat, setFlippingToChat] = useState(false);
+  const handoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (handoverTimer.current) clearTimeout(handoverTimer.current); }, []);
+  useEffect(() => {
+    if (active) return;
+    if (handoverTimer.current) clearTimeout(handoverTimer.current);
+    setFlippingToChat(false);
+    setPreview(null);
+    setPageExplanation(null);
+  }, [active]);
 
   const [busy, setBusy] = useState(false);
   // Attribution choices for the publish confirmation. Both start off every time.
@@ -373,6 +388,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     setBusy(true);
     try {
       await deleteMaterial({ id: file.id });
+      if (lockerOwnerRef.current) void clearThumbnailCache(lockerOwnerRef.current, file.id);
     } catch (error) {
       setBusy(false);
       toast.error(error instanceof Error ? error.message : "We couldn't remove that file.");
@@ -461,7 +477,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
 
 
   const explainPageInChat = (data: { page: number; fileName: string; text: string; previewUrl?: string }) => {
-    if (!preview) return;
+    if (!preview || flippingToChat) return;
     const attachment = {
       courseCode: canonicalCourseCode(preview.course_code),
       page: data.page,
@@ -469,15 +485,19 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       text: data.text.slice(0, 4000),
       previewUrl: data.previewUrl,
     };
-    if (window.matchMedia("(min-width: 768px)").matches) {
-      setPageExplanation(attachment);
-      return;
-    }
-    sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify(attachment));
-    setPageExplanation(null);
-    setOwnerSheet(null);
-    setPreview(null);
-    navigate("chatbot", { courseCode: attachment.courseCode });
+    try { sessionStorage.setItem("truefluency-chat-explain-page", JSON.stringify(attachment)); }
+    catch { toast.error("Couldn't attach this page. Please try again."); return; }
+    const handover = () => {
+      handoverTimer.current = null;
+      setPageExplanation(null);
+      setOwnerSheet(null);
+      setPreview(null);
+      setFlippingToChat(false);
+      document.documentElement.dataset.nextViewDirection = "shelf";
+      navigate("chatbot", { courseCode: attachment.courseCode });
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) handover();
+    else { setFlippingToChat(true); handoverTimer.current = setTimeout(handover, 160); }
   };
 
   const retryPreview = async () => {
@@ -564,7 +584,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                   <Card key={f.id}>
                     <div className="flex items-start justify-between gap-3">
                       <Button variant="ghost" className="h-auto shrink-0 p-0" aria-label={`View ${f.file_name}`} onClick={() => void openPreview(f, false)} disabled={busy}>
-                        <DocumentThumbnail fileName={f.file_name} fileType={f.file_type} active={active && rail === "locker" && openFolder !== null} resolveSource={() => thumbnailSource(f.id, false)} peer={f.is_peer_copy ? { alias: f.peer_alias ?? "A peer" } : undefined} />
+                        <DocumentThumbnail fileId={f.id} revision={f.created_at} persistent={!f.is_peer_copy} fileName={f.file_name} fileType={f.file_type} active={active && rail === "locker" && openFolder !== null} resolveSource={() => thumbnailSource(f.id, false)} peer={f.is_peer_copy ? { alias: f.peer_alias ?? "A peer" } : undefined} />
                       </Button>
                       <div className="min-w-0 flex-1">
                         <div>
@@ -667,7 +687,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                   <Card key={it.id}>
                     <div className="flex items-start gap-3">
                       <Button variant="ghost" className="h-auto shrink-0 p-0" aria-label={`View ${it.file_name}`} onClick={() => void openPreview(it, true)} disabled={busy}>
-                        <DocumentThumbnail fileName={it.file_name} fileType={it.file_type} active={active && rail === "shelf" && Boolean(shelfCourse)} resolveSource={() => thumbnailSource(it.id, true)} peer={{ alias: it.peer_alias, avatarUrl: it.avatar_url }} />
+                        <DocumentThumbnail fileId={it.id} fileName={it.file_name} fileType={it.file_type} active={active && rail === "shelf" && Boolean(shelfCourse)} resolveSource={() => thumbnailSource(it.id, true)} peer={{ alias: it.peer_alias, avatarUrl: it.avatar_url }} />
                       </Button>
                       <div className="min-w-0 flex-1">
                         <span className="break-words text-sm font-semibold text-foreground">{it.file_name}</span>
@@ -842,7 +862,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
 
       {/* In-app preview */}
       <Sheet open={preview !== null} onOpenChange={(o) => { if (!o) { setPreview(null); setPageExplanation(null); } }}>
-        <SheetContent side="bottom" className="h-[92vh] min-w-0 w-full max-w-full overflow-x-hidden rounded-t-2xl bg-card text-card-foreground md:inset-4 md:flex md:h-auto md:w-auto md:max-w-none md:flex-col md:rounded-2xl">
+        <SheetContent side="bottom" onCloseAutoFocus={(event) => { if (flippingToChat) event.preventDefault(); }} className={cn("h-[92vh] min-w-0 w-full max-w-full overflow-x-hidden rounded-t-2xl bg-card text-card-foreground md:inset-4 md:flex md:h-auto md:w-auto md:max-w-none md:flex-col md:rounded-2xl", flippingToChat && "shelf-flip-exit")}>
           <SheetHeader>
             <SheetTitle className="break-words text-foreground">{preview?.file_name}</SheetTitle>
             <SheetDescription className="text-muted-foreground">

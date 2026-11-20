@@ -4,7 +4,7 @@ import { useProfileData } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight, Flame, Snowflake, Quote as QuoteIcon, Lightbulb, Calculator, Target,
-  Layers, GraduationCap,
+  Layers, GraduationCap, CircleDashed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TopicPill } from "@/components/common";
@@ -32,7 +32,7 @@ const STREAK_LABEL: Record<StreakState, string> = {
 };
 
 function StreakGlyph({ state }: { state: StreakState }) {
-  const Icon = state === "frozen" ? Snowflake : Flame;
+  const Icon = state === "none" ? CircleDashed : state === "frozen" ? Snowflake : Flame;
   return (
     <span role="img" aria-label={STREAK_LABEL[state]} className="grid h-10 w-10 shrink-0 place-items-center">
       <Icon
@@ -413,18 +413,18 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
 
         {!showFirstUseLayout ? (
           <>
-        {/* Streak: cloud-backed qualifying mock activity only. */}
+        {/* Meaningful daily study activity, with local feedback and cloud sync. */}
         <div className="reference-home-card reference-stat-card reference-streak mb-6 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
+            <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", streak.state === "none" ? "bg-muted text-muted-foreground" : "bg-accent/15 text-accent")}>
               <StreakGlyph state={streak.state} />
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">Current streak</div>
               <div className="break-words text-xs leading-4 text-muted-foreground">
                 {streak.state === "frozen"
-                  ? "Frozen: you missed yesterday. Complete a mock today to keep your streak."
+                  ? "Frozen: you missed yesterday. Study today to keep your streak."
                   : streak.state === "none"
-                    ? "No streak yet. Complete a mock test to start one."
+                    ? "No streak yet. Practise or ask Verilo to start one."
                     : activeToday
                       ? "Qualified today."
                       : `${profile.freezesAvailable} ${profile.freezesAvailable === 1 ? "freeze" : "freezes"} available`}

@@ -24,8 +24,8 @@ export const recordMockStreak = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { answeredCount: number }) => {
     const answeredCount = Number(input?.answeredCount);
-    if (!Number.isInteger(answeredCount) || answeredCount < 5 || answeredCount > 100) {
-      throw new Error("At least five answers are required to update your streak.");
+    if (!Number.isInteger(answeredCount) || answeredCount < 1 || answeredCount > 100) {
+      throw new Error("At least one answer is required to update your streak.");
     }
     return { answeredCount };
   })
@@ -53,4 +53,17 @@ export const recordMockStreak = createServerFn({ method: "POST" })
       event,
       todayWat: row.today_wat,
     };
+  });
+
+export const recordStudyStreak = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<StreakUpdate> => {
+    const rpc = context.supabase.rpc as unknown as (name: string) => Promise<{ data: StreakRow[] | null; error: { message: string } | null }>;
+    const { data: rows, error } = await rpc("record_study_activity");
+    if (error) throw new Error(error.message);
+    const row = rows?.[0];
+    if (!row) throw new Error("Couldn't update your study streak.");
+    return { streakDays: row.streak_days, lastActiveDate: row.last_active_date,
+      freezesAvailable: row.freezes_available, freezeUsedOn: row.freeze_used_on,
+      event: row.event === "protected" || row.event === "incremented" || row.event === "reset" ? row.event : "none", todayWat: row.today_wat };
   });

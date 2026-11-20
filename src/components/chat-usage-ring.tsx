@@ -8,6 +8,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ChatUsage } from "@/lib/chat-api";
 import { formatResetTime } from "@/lib/entitlements";
+import { Button } from "@/components/ui/button";
 
 const SIZE = 20;
 const STROKE = 3;
@@ -28,10 +29,10 @@ export function ChatUsageRing({ usage, className }: { usage: ChatUsage | null; c
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
+        <Button variant="ghost"
           type="button"
-          aria-label={`Chat usage: ${pct}% used today. Tap for details.`}
-          className={`inline-flex h-7 items-center gap-1 rounded-full px-1.5 text-xs font-medium text-[var(--tf-muted-ink)] transition hover:bg-secondary ${className ?? ""}`}
+          aria-label={`Chat usage: ${pct}% used${usage.window_hours === 4 ? " in this 4-hour window" : ""}. Tap for details.`}
+          className={`inline-flex h-11 items-center gap-1 rounded-full px-1.5 text-xs font-medium text-muted-foreground transition hover:bg-secondary ${className ?? ""}`}
         >
           <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" className="-rotate-90">
             <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE} className="stroke-[var(--tf-border-warm)]" />
@@ -42,15 +43,15 @@ export function ChatUsageRing({ usage, className }: { usage: ChatUsage | null; c
             />
           </svg>
           <span className="tabular-nums">{pct}%</span>
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent side="top" align="end" className="w-64 text-sm">
         <div className="font-semibold text-foreground">Chat usage</div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {PLAN_NAME[usage.plan] ?? "Your"} plan · {pct}% used today.
+          {PLAN_NAME[usage.plan] ?? "Your"} plan · {pct}% used{usage.window_hours === 4 ? " in this 4-hour window" : ""}.
         </p>
         <p className="mt-1 text-xs font-medium text-foreground">
-          {pct >= 100 ? "Used up. " : ""}Resets {resetText(usage.resets_at)}.
+          {pct >= 100 ? "Used up. " : ""}{usage.window_hours === 4 ? "Your 4-hour chat allowance resets at" : "Resets"} {resetText(usage.resets_at)}.
         </p>
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
           Long chats use more. Start a new chat for a new topic.

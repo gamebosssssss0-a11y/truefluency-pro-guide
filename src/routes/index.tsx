@@ -155,10 +155,11 @@ const RootTabs = memo(function RootTabs({
             aria-hidden={!active}
             inert={!active ? true : undefined}
             data-root-tab={tab}
-            className={!active ? "pointer-events-none absolute left-0 top-0 z-0 min-h-full w-full bg-background" : "tf-root-entry w-full"}
+            data-screen-scroll
+            className={cn("tab-swipe-pane", !active ? "pointer-events-none absolute left-0 top-0 z-0 w-full bg-background" : "tf-root-entry w-full")}
             style={!active ? { transform: `translate3d(${(preview ? previewSide : side) === "right" ? "100%" : "-100%"}, 0, 0)` } : undefined}
           >
-            <SwipePreviewProvider enabled={preview}>
+            <SwipePreviewProvider enabled={!active}>
               {tab === "home" ? <MemoHomeScreen active={active} />
                 : tab === "mock-tests" ? <MemoMockTestsScreen active={active} />
                   : tab === "library" ? <MemoLibraryScreen active={active} />
@@ -242,7 +243,9 @@ function Router() {
       node.scrollTop = 0;
       node.scrollLeft = 0;
     });
-  }, [view]);
+    const chat = document.querySelector<HTMLElement>("[data-chat-thread]");
+    if (chat && (view === "chatbot" || view === "chat-history")) chat.scrollTop = 0;
+  }, [view, step]);
 
   useEffect(() => {
     const onBack = () => { document.documentElement.dataset.nextViewDirection = "back"; };
@@ -375,7 +378,7 @@ function Router() {
   const showVeriloButton = step === "dashboard" && !keyboardOpen && !["chatbot", "chat-history", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view);
 
   return (
-    <>
+    <div data-app-viewport className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <TopNavBar highlightedView={swipePreview?.highlightedTab} />
       {/* Padding keeps the persistent mobile tab bar from covering content. */}
       <div className="tab-swipe-clip overflow-x-clip">
@@ -389,7 +392,7 @@ function Router() {
           )}
         >
           <RootTabs view={view} previewTab={swipePreview?.tab ?? null} previewSide={swipePreview?.side ?? null} />
-          {!currentRootTab ? <div key={view} className="view-transition-enter">{screen}</div> : null}
+          {!currentRootTab && view !== "chatbot" && view !== "chat-history" ? <div key={view} data-subview-scroll data-screen-scroll className="view-transition-enter">{screen}</div> : null}
         </div>
       </div>
       {showVeriloButton ? (
@@ -435,6 +438,6 @@ function Router() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

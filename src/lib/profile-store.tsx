@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogEntry, Level } from "./uni-data";
+import { advanceStudyStreak } from "./streak-state";
+import { clearThumbnailCache } from "./document-preview-cache";
+import type { TutorSnapshot } from "./study-continuity";
 
 const SwipePreviewContext = createContext(false);
 
@@ -427,7 +430,7 @@ export function sanitizeProfile(raw: unknown): Profile {
         : typeof p.lastQualifyingDay === "string"
           ? p.lastQualifyingDay
           : null,
-    freezesAvailable: Math.max(0, Math.min(2, Number(p.freezesAvailable) || 1)),
+    freezesAvailable: Math.max(0, Math.min(2, typeof p.freezesAvailable === "number" && Number.isFinite(p.freezesAvailable) ? p.freezesAvailable : 1)),
     freezeUsedOn: typeof p.freezeUsedOn === "string" ? p.freezeUsedOn : null,
   };
 }
@@ -444,6 +447,10 @@ type Ctx = {
   /** True after the saved local profile has been restored from localStorage. */
   hydrated: boolean;
   update: (p: Partial<Profile>) => void;
+  back: () => void;
+  tutorSnapshot: TutorSnapshot | null;
+  setTutorSnapshot: (snapshot: TutorSnapshot | null) => void;
+  recordStudyActivity: () => void;
   go: (s: OnboardingStep | "dashboard") => void;
   navigate: (
     v: AppView,
@@ -503,7 +510,7 @@ const APP_VIEWS: AppView[] = [
   "dashboard", "home", "mock-tests", "test-history", "library", "chatbot", "account", "cgpa-goal",
   "course-detail", "mock-gen", "mock-config", "mock-run", "mock-result", "settings", "flashcards",
   "flashcards-review", "add-course", "all-uploads", "attempt-review", "cgpa", "support", "upgrade",
-  "edit-identity", "disclaimer-view",
+  "edit-identity", "disclaimer-view", "chat-history",
 ];
 const HISTORY_SESSION_KEY = "truefluency-history-session";
 const HISTORY_SESSION_MARKER = "__trueFluencySession";
@@ -625,6 +632,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   viewRef.current = view;
   const routeRef = useRef({ view, activeCourseCode, activeAttemptId, activeDeckId });
   routeRef.current = { view, activeCourseCode, activeAttemptId, activeDeckId };
+  const parentRoutes = useRef(new Map<AppView, typeof routeRef.current>());
+  const [tutorSnapshot, setTutorSnapshot] = useState<TutorSnapshot | null>(null);
+  const studySync = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -774,12 +784,18 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const ownerId = storageOwnerIdRef.current;
     const email = profile.identity?.kind === "email" ? profile.identity.email : undefined;
     if (!ownerId && !email) return;
-    const timer = window.setTimeout(() => {
+    const save = () => {
       try {
-        localStorage.setItem(ownerId ? profileCacheKey(ownerId) : emailCacheKey(email!), JSON.stringify(profile));
+        if (storageOwnerIdRef.current !== ownerId) return;
+        const key = ownerId ? profileCacheKey(ownerId) : email ? emailCacheKey(email) : null;
+        if (key) localStorage.setItem(key, JSON.stringify(profileRef.current));
       } catch { /* ignore unavailable local storage */ }
-    }, 250);
-    return () => window.clearTimeout(timer);
+    };
+    const timer = window.setTimeout(save, 250);
+    const onHidden = () => { if (document.visibilityState === "hidden") save(); };
+    window.addEventListener("pagehide", save);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => { window.clearTimeout(timer); window.removeEventListener("pagehide", save); document.removeEventListener("visibilitychange", onHidden); };
   }, [profile, hydrated]);
 
   /* ---------- Cloud sync ----------
@@ -850,6 +866,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         if (event === "SIGNED_OUT") {
+          if (storageOwnerIdRef.current) void clearThumbnailCache(storageOwnerIdRef.current);
+          setTutorSnapshot(null);
+          parentRoutes.current.clear();
           const hadAccount = !!profileRef.current.identity;
           activeUserIdRef.current = null;
           storageOwnerIdRef.current = null;
@@ -885,12 +904,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       // (including when a guest's anonymous session is first established).
       // Sync it in the background; don't replace the active screen with
       // "Signing you in…" or route an in-progress upload back to Home.
-      const keepCurrentDashboard =
-        event !== "INITIAL_SESSION" &&
-        currentProfileMatchesSession &&
-        stepRef.current === "dashboard";
+      const keepCurrentDashboard = currentProfileMatchesSession &&
+        (!accountChanged || adoptUnboundGuest) && stepRef.current === "dashboard";
       if (!keepCurrentDashboard) holdAuthPending();
       if (accountChanged || !currentProfileMatchesSession) {
+        if (storageOwnerIdRef.current) void clearThumbnailCache(storageOwnerIdRef.current);
+        setTutorSnapshot(null);
+        parentRoutes.current.clear();
         cloudReady.current = false;
         syncPromise = null;
         activeUserIdRef.current = userId;
@@ -979,7 +999,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         routeAfterSignIn(syncResult ?? profileRef.current);
         if (didTimeOut) {
           void syncPromiseForAccount.then((lateProfile) => {
-            if (lateProfile) routeAfterSignIn(lateProfile);
+            // A delayed restore must not hijack a screen the student opened.
+            if (lateProfile && stepRef.current !== "dashboard") routeAfterSignIn(lateProfile);
           });
         }
       })().catch((err) => {
@@ -1058,6 +1079,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       current.activeAttemptId === nextAttemptId &&
       current.activeDeckId === nextDeckId
     ) return;
+    const roots: AppView[] = ["home", "dashboard", "mock-tests", "library", "account", "settings"];
+    if ((typeof document === "undefined" || document.documentElement.dataset.nextViewDirection !== "back") && !roots.includes(v) && v !== "chat-history" && !(current.view === "chat-history" && v === "chatbot") &&
+      !(current.view === "flashcards-review" && v === "flashcards") &&
+      !(current.view === "chatbot" && v === "mock-run")) {
+      parentRoutes.current.set(v, current);
+    }
+    if (typeof document !== "undefined" && document.documentElement.dataset.nextViewDirection !== "swipe") {
+      document.documentElement.dataset.nextViewDirection ??= "forward";
+    }
     routeRef.current = { view: v, activeCourseCode: nextCourseCode, activeAttemptId: nextAttemptId, activeDeckId: nextDeckId };
     setView(v);
     writeAppLocation(v, {
@@ -1069,6 +1099,35 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setActiveAttemptId(nextAttemptId);
     setActiveDeckId(nextDeckId);
   }, []);
+  const back = useCallback(() => {
+    const current = routeRef.current;
+    const parent = parentRoutes.current.get(current.view);
+    const fallback: AppView = current.view === "flashcards-review" ? "flashcards"
+      : current.view === "chat-history" ? "chatbot"
+      : current.view === "flashcards" && current.activeCourseCode ? "course-detail"
+      : current.view === "all-uploads" ? "library"
+      : current.view === "mock-config" ? (current.activeCourseCode ? "course-detail" : "mock-tests") : "home";
+    const target = parent ?? { ...current, view: fallback };
+    document.documentElement.dataset.nextViewDirection = "back";
+    navigate(target.view, { courseCode: target.activeCourseCode, attemptId: target.activeAttemptId, deckId: target.activeDeckId });
+  }, [navigate]);
+
+  const recordStudyActivity = useCallback(() => {
+    const owner = activeUserIdRef.current;
+    const next = advanceStudyStreak(profileRef.current);
+    update({ streakDays: next.streakDays, lastActiveDate: next.lastActiveDate,
+      freezesAvailable: next.freezesAvailable, freezeUsedOn: next.freezeUsedOn });
+    if (!owner || studySync.current) return;
+    const pending = import("./streak.functions").then(({ recordStudyStreak }) => recordStudyStreak())
+      .then((result) => {
+        if (!result || activeUserIdRef.current !== owner) return;
+        update({ streakDays: result.streakDays, lastActiveDate: result.lastActiveDate,
+          freezesAvailable: result.freezesAvailable, freezeUsedOn: result.freezeUsedOn });
+      }).catch(() => {
+        // Local streak remains available offline; do not claim server sync succeeded.
+      }).finally(() => { if (studySync.current === pending) studySync.current = null; });
+    studySync.current = pending;
+  }, [update]);
   const resetSetup = useCallback(() => {
     setProfile(emptyProfile);
     setStep("splash");
@@ -1100,10 +1159,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     authPending,
     hydrated,
     update,
+    back,
+    tutorSnapshot,
+    setTutorSnapshot,
+    recordStudyActivity,
     go,
     navigate,
     resetSetup,
-  }), [profile, activeCourseCode, activeAttemptId, activeDeckId, authPending, hydrated, update, go, navigate, resetSetup]);
+  }), [profile, activeCourseCode, activeAttemptId, activeDeckId, authPending, hydrated, update, back, tutorSnapshot, recordStudyActivity, go, navigate, resetSetup]);
   const navigation = useMemo<NavigationCtx>(() => ({ step, view, navigate, go }), [step, view, navigate, go]);
 
   return (

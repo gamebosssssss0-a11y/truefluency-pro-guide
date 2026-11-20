@@ -65,7 +65,7 @@ function deckLabel(deck: FlashcardDeck): string {
 }
 
 export function FlashcardsScreen() {
-  const { profile, activeCourseCode, navigate } = useProfile();
+  const { profile, activeCourseCode, navigate, back } = useProfile();
   const { access, refresh } = useEntitlement();
   const [selected, setSelected] = useState<string>(activeCourseCode ? canonicalCourseCode(activeCourseCode) : ALL_SCOPE);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
@@ -90,18 +90,7 @@ export function FlashcardsScreen() {
   }, [selected]);
 
   const returnToOrigin = () => {
-    const stored = sessionStorage.getItem(FLASHCARDS_ORIGIN_KEY);
-    sessionStorage.removeItem(FLASHCARDS_ORIGIN_KEY);
-    const allowedOrigins: FlashcardsOrigin[] = ["home", "mock-tests", "account", "course-detail"];
-    const origin: FlashcardsOrigin = allowedOrigins.includes(stored as FlashcardsOrigin)
-      ? (stored as FlashcardsOrigin)
-      : "mock-tests";
-    navigate(
-      origin,
-      origin === "course-detail" && activeCourseCode
-        ? { courseCode: activeCourseCode }
-        : undefined,
-    );
+    back();
   };
 
   const courseOptions = [
@@ -225,7 +214,7 @@ export function FlashcardsScreen() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-24 pt-[max(1.5rem,env(safe-area-inset-top))] md:pb-8">
-        <div className="mb-4 flex items-center gap-3"><BackButton onBack={returnToOrigin} /><span className="text-sm text-muted-foreground">Back: Home</span></div>
+        <div className="mb-4 flex items-center gap-3"><BackButton onBack={returnToOrigin} /></div>
 
         {/* Header card: white, cream border, navy left edge */}
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-card p-4">
@@ -355,7 +344,7 @@ export function FlashcardsScreen() {
 }
 
 export function FlashcardsReviewScreen() {
-  const { activeCourseCode, activeDeckId, navigate } = useProfile();
+  const { activeCourseCode, activeDeckId, navigate, recordStudyActivity } = useProfile();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [index, setIndex] = useState(0);
   const [reviewedCount, setReviewedCount] = useState(0);
@@ -378,6 +367,12 @@ export function FlashcardsReviewScreen() {
   const current = cards[0];
   const sessionKey = activeDeckId ? `truefluency-flashcard-session:${activeDeckId}:${reviewMode}` : null;
   const sessionComplete = totalCards > 0 && cards.length === 0;
+  const completionRecorded = useRef(false);
+  useEffect(() => {
+    if (!sessionComplete || isLoading || reviewedCount === 0 || completionRecorded.current) return;
+    completionRecorded.current = true;
+    recordStudyActivity();
+  }, [sessionComplete, isLoading, reviewedCount, recordStudyActivity]);
 
   useEffect(() => {
     if (!activeDeckId) return;
