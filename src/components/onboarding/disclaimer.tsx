@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
 import { useProfile } from "@/lib/profile-store";
 import { AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, XCircle } from "lucide-react";
 
@@ -81,6 +82,7 @@ export function DisclaimerViewScreen() {
 
   return (
     <AppShell title="Disclaimer" subtitle="How TrueFluency Pro should be used.">
+      <BackButton className="mb-4" onBack={() => navigate("account")} />
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-amber">
           <ShieldCheck className="h-4 w-4" />

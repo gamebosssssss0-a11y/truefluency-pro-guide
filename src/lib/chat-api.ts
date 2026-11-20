@@ -8,6 +8,7 @@
  * conversation_id itself.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { clearChatMirrors, readChatMirror, writeChatMirror } from "@/lib/chat-cache";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string | undefined;
 
@@ -16,8 +17,8 @@ export function isChatConfigured(): boolean {
 }
 
 function base(): string {
-  if (!isChatConfigured()) throw new Error("Chat service isn't configured yet");
-  return BACKEND_URL!.replace(/\/+$/, "");
+  if (typeof BACKEND_URL !== "string" || !BACKEND_URL.trim()) throw new Error("Chat service isn't configured yet");
+  return BACKEND_URL.replace(/\/+$/, "");
 }
 
 /** A "jump to a feature" chip the assistant suggested (validated server-side). */
@@ -106,6 +107,72 @@ export type ChatMessage = {
   grounded?: boolean;
 };
 
+let readEpoch = 0;
+let readOwner: string | null = null;
+const pendingReads = new Map<string, Promise<unknown>>();
+const courseReadVersions = new Map<string, number>();
+const historySnapshots = new Map<string, { savedAt: number; value: { messages: ChatMessage[] } }>();
+supabase.auth.onAuthStateChange((_event, session) => {
+  const owner = session?.user.id ?? null;
+  if (owner === readOwner) return;
+  if (readOwner) clearChatMirrors(readOwner);
+  readOwner = owner;
+  readEpoch += 1;
+  pendingReads.clear();
+  historySnapshots.clear();
+});
+
+async function readChat<T>(course: string, kind: "thread" | "history", map: (data: { conversation_id?: string; messages?: ChatMessage[] }) => T): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) throw new Error("Sign in to use study chat.");
+  const owner = session.user.id;
+  const epoch = readEpoch;
+  const version = courseReadVersions.get(course) ?? 0;
+  const key = `${owner}:${kind}:${course}`;
+  const existing = pendingReads.get(key);
+  if (existing) return existing as Promise<T>;
+  const request: Promise<T> = (async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const res = await fetch(`${base()}/chat/${kind}/${encodeURIComponent(course)}`, { headers: { Authorization: `Bearer ${session.access_token}` }, signal: controller.signal });
+      if (!res.ok) throw new Error(readErrorDetail(await res.text().catch(() => ""), res.status));
+      const result = map(await res.json());
+      if (readEpoch !== epoch) throw new Error("Your account changed. Please reopen the conversation.");
+      if ((courseReadVersions.get(course) ?? 0) !== version) throw new Error("This conversation changed. Please reopen it.");
+      if (kind === "history") {
+        historySnapshots.set(key, { savedAt: Date.now(), value: result as { messages: ChatMessage[] } });
+        writeChatMirror(owner, `history:${course}`, result);
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw new Error("Study chat timed out. Try again.");
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  })();
+  pendingReads.set(key, request);
+  void request.then(() => {
+    if (pendingReads.get(key) === request) pendingReads.delete(key);
+  }, () => {
+    if (pendingReads.get(key) === request) pendingReads.delete(key);
+  });
+  return request;
+}
+
+export function cachedCourseHistory(owner: string, course: string) {
+  return historySnapshots.get(`${owner}:history:${course}`)?.value ?? readChatMirror<{ messages: ChatMessage[] }>(owner, `history:${course}`);
+}
+
+export function invalidateChatReads(course: string) {
+  courseReadVersions.set(course, (courseReadVersions.get(course) ?? 0) + 1);
+  for (const key of pendingReads.keys()) if (key.endsWith(`:${course}`)) pendingReads.delete(key);
+  for (const key of historySnapshots.keys()) if (key.endsWith(`:history:${course}`)) historySnapshots.delete(key);
+  if (readOwner) clearChatMirrors(readOwner, `history:${course}`);
+}
+
 /**
  * Sends one message in the given course's thread and gets a
  * reply grounded in that course's uploaded material. The thread itself is
@@ -186,18 +253,10 @@ export async function sendChatMessage(
 export async function getCourseThread(
   courseCode: string,
 ): Promise<{ conversationId: string; messages: ChatMessage[] }> {
-  const url = `${base()}/chat/thread/${encodeURIComponent(courseCode)}`;
-  const auth = await authHeader();
-  const res = await fetch(url, { method: "GET", headers: auth });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(readErrorDetail(text, res.status));
-  }
-  const data = (await res.json()) as { conversation_id: string; messages: ChatMessage[] };
-  return { conversationId: data.conversation_id, messages: (data.messages ?? []).map((message) => ({
+  return readChat(courseCode, "thread", (data) => ({ conversationId: data.conversation_id ?? "", messages: (data.messages ?? []).map((message) => ({
     ...message,
     sources: normalizeChatSources(message.sources),
-  })) };
+  })) }));
 }
 
 /**
@@ -208,18 +267,14 @@ export async function getCourseThread(
 export async function getCourseHistory(
   courseCode: string,
 ): Promise<{ messages: ChatMessage[] }> {
-  const url = `${base()}/chat/history/${encodeURIComponent(courseCode)}`;
-  const auth = await authHeader();
-  const res = await fetch(url, { method: "GET", headers: auth });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(readErrorDetail(text, res.status));
-  }
-  const data = (await res.json()) as { messages: ChatMessage[] };
-  return { messages: (data.messages ?? []).map((message) => ({
+  const { data } = await supabase.auth.getSession();
+  const owner = data.session?.user.id;
+  const snapshot = owner ? historySnapshots.get(`${owner}:history:${courseCode}`) : undefined;
+  if (snapshot && Date.now() - snapshot.savedAt < 30_000) return snapshot.value;
+  return readChat(courseCode, "history", (data) => ({ messages: (data.messages ?? []).map((message) => ({
     ...message,
     sources: normalizeChatSources(message.sources),
-  })) };
+  })) }));
 }
 
 /**

@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { useMemo, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
@@ -5,7 +6,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ChevronRight, LifeBuoy } from "lucide-react";
+import { ChevronRight, LifeBuoy } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { SUPPORT_ISSUES } from "@/lib/support-issues";
 
@@ -109,13 +110,7 @@ export function SupportScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            type="button"
-            onClick={() => navigate("account")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Account
-          </button>
+          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
         </div>
 
         <div className="surface-icon-well grid h-12 w-12 place-items-center rounded-2xl">

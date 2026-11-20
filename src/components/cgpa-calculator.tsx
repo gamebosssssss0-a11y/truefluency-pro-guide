@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { useProfile, type CgpaActual, type CgpaSemester, type CgpaCalculation } from "@/lib/profile-store";
 import { CLASSIFICATION_BANDS, GRADE_SCALE, classify, PROBATION_THRESHOLD } from "@/lib/cgpa";
@@ -10,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ArrowLeft, Calculator, AlertCircle, Target, Info, ShieldCheck } from "lucide-react";
+import { Calculator, AlertCircle, Target, Info, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CgpaCoursePicker, useCgpaCourseSelection } from "@/components/cgpa-course-picker";
 import { canonicalCourseCode } from "@/lib/course-code";
@@ -427,12 +428,7 @@ export function CgpaCalculatorScreen() {
       <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("account")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Account
-          </button>
+          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-xs font-medium text-navy">
             <ShieldCheck className="h-3 w-3" /> Select your grading scale
           </span>

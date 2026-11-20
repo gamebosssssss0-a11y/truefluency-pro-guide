@@ -14,6 +14,10 @@ export const Route = createFileRoute("/mock-share/$token")({
     meta: [
       { title: "Shared Practice Mock | TrueFluency Pro" },
       { name: "description", content: "Preview a practice mock shared from TrueFluency Pro." },
+      { property: "og:title", content: "Shared Practice Mock | TrueFluency Pro" },
+      { property: "og:description", content: "Preview a practice mock shared from TrueFluency Pro." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

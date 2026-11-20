@@ -6,7 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { deriveSupabasePassword } from "@/lib/supabase-session";
 import { HeaderLogo } from "@/components/brand";
 
-export const Route = createFileRoute("/reset")({ component: ResetPasswordPage });
+export const Route = createFileRoute("/reset")({ component: ResetPasswordPage, head: () => ({ meta: [
+  { title: "Reset Password | TrueFluency Pro" },
+  { name: "description", content: "Securely reset your TrueFluency Pro account password." },
+  { property: "og:title", content: "Reset Password | TrueFluency Pro" },
+  { property: "og:description", content: "Securely reset your TrueFluency Pro account password." },
+  { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+] }) });
 
 function ResetPasswordPage() {
   const [email, setEmail] = useState("");

@@ -4,7 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AdminPaymentProblems } from "@/components/admin-payment-problems";
 
-export const Route = createFileRoute("/admin")({ component: AdminPage });
+export const Route = createFileRoute("/admin")({ component: AdminPage, head: () => ({ meta: [
+  { title: "Administration | TrueFluency Pro" },
+  { name: "description", content: "TrueFluency Pro account and study service administration." },
+  { property: "og:title", content: "Administration | TrueFluency Pro" },
+  { property: "og:description", content: "TrueFluency Pro account and study service administration." },
+  { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  { name: "robots", content: "noindex, nofollow" },
+] }) });
 
 type CourseRow = { course_code: string; uploads: number; submitted_mocks: number; distinct_students: number };
 type FailedRow = { material_id: string; course_code: string; status: string; created_at: string };

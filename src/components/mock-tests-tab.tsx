@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { canonicalCourseCode } from "@/lib/course-code";
 import { useProfile, useProfileData, averageForCourse, type MockAttempt } from "@/lib/profile-store";
@@ -14,7 +15,7 @@ import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  ArrowLeft, BookOpen, ChevronDown, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw, Trash2,
+  BookOpen, ChevronDown, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
@@ -387,12 +388,7 @@ export function TestHistoryScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("mock-tests")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Mock Tests
-          </button>
+          <BackButton onBack={() => navigate("mock-tests")} /><span className="text-sm text-muted-foreground">Mock Tests</span>
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Test history</h1>

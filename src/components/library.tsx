@@ -6,7 +6,7 @@
 import { ErrorCard } from "@/components/error-card";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
+  Copy, Eye, FolderOpen, Loader2, MoreHorizontal, Search, Share2, Trash2, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PlanBanner } from "@/components/plan-banner";
@@ -29,7 +29,9 @@ import { deleteMaterial } from "@/lib/course-materials";
 import { useProfileData, type AIQuestion } from "@/lib/profile-store";
 import { PRICE_LINE } from "@/lib/pricing-copy";
 import { canonicalCourseCode } from "@/lib/course-code";
-import { useDelayedLoading } from "@/components/loading-state";
+import { LockerSkeletonLoader, useDelayedLoading } from "@/components/loading-state";
+import { BackButton } from "@/components/ui/back-button";
+import { DocumentThumbnail } from "@/components/ui/document-thumbnail";
 import { presignMaterialDownload } from "@/lib/storage.functions";
 import {
   createOneFileLink, getShelfPreview, listShelfItems, revokeOneFileLink,
@@ -145,27 +147,6 @@ type ShelfItem = {
   readyForMocks: boolean;
 };
 
-function typeChip(fileType: string): { label: string; color: string; textColor: string } {
-  const t = fileType.toLowerCase();
-  if (t === "pdf") return { label: "PDF", color: "var(--tf-file-pdf)", textColor: "var(--tf-cream)" };
-  if (t === "docx" || t === "doc") return { label: "DOC", color: "var(--tf-file-doc)", textColor: "var(--tf-cream)" };
-  if (t === "pptx" || t === "ppt") return { label: "PPT", color: "var(--tf-amber-strong)", textColor: "var(--tf-ink-dark)" };
-  return { label: "TXT", color: "var(--tf-muted-warm)", textColor: "var(--tf-cream)" };
-}
-
-function TypeChip({ fileType }: { fileType: string }) {
-  const { label, color, textColor } = typeChip(fileType);
-  return (
-    <span
-      className="rounded-md px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-      style={{ backgroundColor: color, color: textColor }}
-    >
-      {label}
-    </span>
-  );
-}
-
-
 function ReadyPill({ ready }: { ready: boolean }) {
   return ready ? (
     <span className="rounded-full bg-good/15 px-2 py-0.5 text-xs font-semibold text-good">
@@ -208,14 +189,13 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
   const lockerRequestRef = useRef(0);
   const lockerOwnerRef = useRef<string | null>(null);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.querySelectorAll<HTMLElement>("[data-screen-scroll]").forEach((n) => { n.scrollTop = 0; });
-  }, [openFolder]);
-
   const [shelf, setShelf] = useState<{ items: ShelfItem[]; courses: { course_code: string; count: number }[] } | null>(null);
   const [shelfOffline, setShelfOffline] = useState(false);
   const [shelfCourse, setShelfCourse] = useState<string | null>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.querySelectorAll<HTMLElement>("[data-screen-scroll]").forEach((node) => { node.scrollTop = 0; });
+  }, [openFolder, shelfCourse, rail]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [shelfLoading, setShelfLoading] = useState(false);
@@ -469,6 +449,16 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
     }
   };
 
+  const thumbnailSource = async (id: string, peer: boolean) => {
+    if (!peer) return presignMaterialDownload({ data: { materialId: id } });
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Sign in to view this file.");
+    const result = await getShelfPreview({ data: { materialId: id } });
+    if (!result.ok || !result.url) throw new Error("This file is no longer available.");
+    return { url: result.url, headers: { Authorization: `Bearer ${token}` } };
+  };
+
 
   const explainPageInChat = (data: { page: number; fileName: string; text: string; previewUrl?: string }) => {
     if (!preview) return;
@@ -564,37 +554,20 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
               lockerError ? (
                 <ErrorCard title="We couldn't load your locker." body="Your files are still saved. Try again to refresh the list." actionLabel="Retry" onAction={() => void loadLocker()} />
               ) : showLockerSkeleton ? (
-                <div role="status" aria-label="Loading your files" className="space-y-3">
-                  <span className="sr-only">Loading your study files…</span>
-                  <div aria-hidden="true" className="space-y-3">
-                    {[0, 1, 2].map((row) => (
-                      <div key={row} className="locker-skeleton-row flex h-20 items-center gap-3 rounded-xl border border-border bg-card px-4">
-                        <div className="locker-skeleton-block h-10 w-10 shrink-0 rounded-lg" />
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <div className="locker-skeleton-block h-3 w-2/5 rounded" />
-                          <div className="locker-skeleton-block h-2.5 w-1/4 rounded" />
-                        </div>
-                        <div className="locker-skeleton-block h-6 w-20 rounded-full" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <LockerSkeletonLoader files={Boolean(openFolder)} />
               ) : <div aria-hidden="true" className="min-h-60" />
             ) : openFolder ? (
               <>
                 {lockerError ? <Card><button type="button" className="text-sm font-medium text-foreground underline" onClick={() => void loadLocker()}>Couldn't refresh your files. Retry</button></Card> : null}
-                <button
-                  onClick={() => setOpenFolder(null)}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-foreground"
-                >
-                  <ArrowLeft className="h-4 w-4" /> My locker
-                </button>
+                <div className="flex items-center gap-3"><BackButton onBack={() => setOpenFolder(null)} /><span className="text-sm font-semibold text-foreground">My locker</span></div>
                 {(locker.filter((f) => canonicalCourseCode(f.course_code) === openFolder)).map((f) => (
                   <Card key={f.id}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <TypeChip fileType={f.file_type} />
+                      <Button variant="ghost" className="h-auto shrink-0 p-0" aria-label={`View ${f.file_name}`} onClick={() => void openPreview(f, false)} disabled={busy}>
+                        <DocumentThumbnail fileName={f.file_name} fileType={f.file_type} active={active && rail === "locker" && openFolder !== null} resolveSource={() => thumbnailSource(f.id, false)} peer={f.is_peer_copy ? { alias: f.peer_alias ?? "A peer" } : undefined} />
+                      </Button>
+                      <div className="min-w-0 flex-1">
+                        <div>
                           <span className="break-words text-sm font-semibold text-foreground">{f.file_name}</span>
                           <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{formatFileSize(f.size_bytes)} · Added {formatFileDate(f.created_at)}</div>
                         </div>
@@ -610,13 +583,13 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                           ) : null}
                         </div>
                       </div>
-                      <button
+                      <Button variant="ghost" size="icon"
                         aria-label="File actions"
                         onClick={() => setOwnerSheet(f)}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground"
+                        className="shrink-0 rounded-lg border border-border text-muted-foreground"
                       >
                         <MoreHorizontal className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </div>
                   </Card>
                 ))}
@@ -670,18 +643,13 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
             {shelfOffline && shelf === null ? (
               <Card><p className="text-sm text-muted-foreground">{SHARING_OFFLINE_MESSAGE}</p></Card>
             ) : shelf === null ? (
-              showShelfSkeleton ? <div role="status" aria-label="Loading course shelf" aria-busy="true" className="space-y-3"><span className="sr-only">Loading published course materials…</span><div aria-hidden="true" className="space-y-3"><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /><div className="h-16 rounded-xl border border-border bg-card" /></div></div> : <div aria-hidden="true" className="min-h-60" />
+              showShelfSkeleton ? <LockerSkeletonLoader shelf files={Boolean(shelfCourse)} /> : <div aria-hidden="true" className="min-h-60" />
             ) : (
               <>
                 {shelfLoading ? <p className="text-xs text-muted-foreground" role="status">Updating course shelf…</p> : null}
                 {shelfOffline ? <Card><p className="text-sm text-muted-foreground">Couldn't refresh the course shelf. Showing the last results.</p></Card> : null}
                 {shelfCourse ? (
-                  <button
-                    onClick={() => setShelfCourse(null)}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-foreground"
-                  >
-                    <ArrowLeft className="h-4 w-4" /> Course shelf
-                  </button>
+                  <div className="flex items-center gap-3"><BackButton onBack={() => setShelfCourse(null)} /><span className="text-sm font-semibold text-foreground">Course shelf</span></div>
                 ) : (
                   filteredShelfCourses.map((c) => (
                     <button key={c.course_code} onClick={() => setShelfCourse(c.course_code)} className="w-full text-left">
@@ -697,31 +665,28 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
 
                 {(shelfCourse ? (shelf?.items ?? []) : []).map((it) => (
                   <Card key={it.id}>
-                    <div className="flex items-center gap-2">
-                      <TypeChip fileType={it.file_type} />
-                      <span className="break-words text-sm font-semibold text-foreground">{it.file_name}</span>
-                      <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{formatFileSize(it.size_bytes)} · Shared {formatFileDate(it.created_at)}</div>
-                    </div>
+                    <div className="flex items-start gap-3">
+                      <Button variant="ghost" className="h-auto shrink-0 p-0" aria-label={`View ${it.file_name}`} onClick={() => void openPreview(it, true)} disabled={busy}>
+                        <DocumentThumbnail fileName={it.file_name} fileType={it.file_type} active={active && rail === "shelf" && Boolean(shelfCourse)} resolveSource={() => thumbnailSource(it.id, true)} peer={{ alias: it.peer_alias, avatarUrl: it.avatar_url }} />
+                      </Button>
+                      <div className="min-w-0 flex-1">
+                        <span className="break-words text-sm font-semibold text-foreground">{it.file_name}</span>
+                        <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{formatFileSize(it.size_bytes)} · Shared {formatFileDate(it.created_at)}</div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
                       <span className="flex items-center gap-1.5 rounded-full bg-doc-blue/10 px-2 py-0.5 text-xs font-semibold text-doc-blue">
-                        {it.avatar_url ? (
-                          <img
-                            src={it.avatar_url}
-                            alt=""
-                            className="h-5 w-5 rounded-full object-cover"
-                          />
-                        ) : null}
                         Peer copy: {it.peer_alias}
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button variant="outline" className="h-10 border-border" onClick={() => void openPreview(it, true)} disabled={busy}>
+                      <Button variant="outline" className="min-h-11 border-border" onClick={() => void openPreview(it, true)} disabled={busy}>
                         <Eye className="mr-2 h-4 w-4" /> View
                       </Button>
-                      <Button className="h-10 bg-amber text-cream hover:bg-amber/90" onClick={() => void doSave(it)} disabled={busy}>
+                      <Button className="min-h-11 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => void doSave(it)} disabled={busy}>
                         Save to locker
                       </Button>
+                    </div>
+                    </div>
                     </div>
                   </Card>
                 ))}

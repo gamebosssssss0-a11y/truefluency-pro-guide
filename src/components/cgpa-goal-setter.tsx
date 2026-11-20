@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   useProfile,
@@ -35,7 +36,6 @@ import { canonicalCourseCode } from "@/lib/course-code";
 import { pushPlanHistory } from "@/lib/cloud-sync";
 import {
   AlertCircle,
-  ArrowLeft,
   BookOpen,
   Calculator,
   CalendarDays,
@@ -370,12 +370,7 @@ export function CgpaGoalSetterScreen() {
       <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-32 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("account")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Account
-          </button>
+          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-navy">CGPA goal setter</h1>

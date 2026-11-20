@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { ScanBeam } from "@/components/loading-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProfile, averageForCourse, type AIQuestion, type CourseTopicAnalysis } from "@/lib/profile-store";
@@ -14,7 +15,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
+  Zap, Upload, Sparkles, ChevronRight, Wand2, ClipboardPaste, X,
   Trash2, AlertCircle, CheckCircle2, Loader2, RotateCw, RefreshCw,
 } from "lucide-react";
 import { AiGeneratedLabel, TopicPill, scoreToStrength } from "@/components/common";
@@ -125,7 +126,7 @@ export function CourseDetailScreen() {
     return (
       <div className="min-h-screen">
         <div className="mx-auto max-w-md px-5 pt-6">
-          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
+          <BackButton onBack={() => navigate("home")} />
           <p className="mt-6 text-sm text-muted-foreground">Course not found.</p>
         </div>
       </div>
@@ -142,12 +143,7 @@ export function CourseDetailScreen() {
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("home")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Home
-          </button>
+          <BackButton onBack={() => navigate("home")} /><span className="text-sm text-muted-foreground">Home</span>
         </div>
 
 

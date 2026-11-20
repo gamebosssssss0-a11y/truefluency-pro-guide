@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -8,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
+  User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
   RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor, Compass,
 } from "lucide-react";
@@ -471,7 +472,7 @@ export function AccountScreen() {
                 type="button"
                 role="radio"
                 aria-checked={on}
-                onClick={() => setTheme(mode)}
+                onClick={(event) => setTheme(mode, event)}
                 className={cn(
                   "relative z-10 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   on ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
@@ -684,12 +685,7 @@ export function AllUploadsScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("account")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Account
-          </button>
+          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
         </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">All my uploads</h1>
         <p className="mt-1 text-sm text-muted-foreground">

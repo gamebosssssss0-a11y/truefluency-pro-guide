@@ -5,13 +5,15 @@
  * Cached messages paint immediately while the selected course revalidates.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
+import { BookOpen, CalendarDays, Calculator, Camera, Check, ChevronDown, CircleHelp, FileText, History as HistoryIcon, Image as ImageIcon, Lightbulb, ListChecks, Loader2, Mic, Plus, Send, Sparkles, Target, Volume2, VolumeX, X, Copy, Share2, Trash2, RotateCcw, Square } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
+import { clearChatMirrors, flushChatMirrors, readChatMirror, reconcileThread, writeChatMirror } from "@/lib/chat-cache";
 import { useNavigation, useProfileData } from "@/lib/profile-store";
 import { cn } from "@/lib/utils";
 import { useEntitlement } from "@/hooks/use-entitlement";
 import { LogoMark } from "@/components/logo-mark";
 import { RichText, plainText } from "@/components/rich-text";
-import { getCourseThread, getCourseHistory, getChatUsage, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage, type ChatSource, type ChatUsage } from "@/lib/chat-api";
+import { cachedCourseHistory, invalidateChatReads, getCourseThread, getCourseHistory, getChatUsage, startNewChatThread, streamChatMessage, deleteChatConversation, resumeConversation, type ChatAction, type ChatMessage, type ChatSource, type ChatUsage } from "@/lib/chat-api";
 import { ChatUsageRing } from "@/components/chat-usage-ring";
 import { LoadingStatus, SkeletonBlock } from "@/components/loading-state";
 import { createOrUpdateChatShare, getChatShareState, revokeChatShare, type ChatShareVisibility } from "@/lib/chat-sharing.functions";
@@ -123,19 +125,6 @@ const STARTERS: Record<Mode, { title: string; subtitle: string; value: string; i
   ],
 };
 
-/* The thread is cached per-tab (sessionStorage, keyed by user + scope) purely
- * as a fallback for when the server can't be reached; the server is always the
- * source of truth when it answers. */
-async function cacheKey(scope: string): Promise<string | null> {
-  try {
-    const { data } = await supabase.auth.getSession();
-    const uid = data.session?.user.id;
-    return uid ? `tf-chat-v1:${uid}:${scope}` : null;
-  } catch {
-    return null;
-  }
-}
-
 function displayCode(code: string) {
   return canonicalCourseCode(code);
 }
@@ -169,7 +158,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [attachedPage, setAttachedPage] = useState<PageAttachment | null>(() => suppliedPageAttachment ?? readPendingPageAttachment());
 
   const defaultCourse = profile.courses.some((course) => canonicalCourseCode(course.code) === canonicalCourseCode(activeCourseCode))
-    ? canonicalCourseCode(activeCourseCode!)
+    ? canonicalCourseCode(activeCourseCode ?? "")
     : canonicalCourseCode(profile.courses[0]?.code ?? "");
   const [selected, setSelected] = useState<string>(() => attachedPage?.courseCode ?? defaultCourse);
   // Bumped on every History-row click so the load effect below always
@@ -227,10 +216,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   // before that effect fires.
   const currentUid = useRef<string | null>(null);
   const authEpoch = useRef(0);
+  const [accountEpoch, setAccountEpoch] = useState(0);
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUid = session?.user.id ?? null;
       if (nextUid !== currentUid.current) {
+        if (currentUid.current) clearChatMirrors(currentUid.current);
         authEpoch.current += 1;
         loadToken.current += 1;
         streamAbortRef.current?.abort();
@@ -241,6 +232,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         setMessages([]);
         setIsSending(false);
         setStreamingBubbleId(null);
+        setHistoryRows([]);
+        setAccountEpoch((value) => value + 1);
       }
       currentUid.current = nextUid;
     });
@@ -397,15 +390,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const expectedUid = currentUid.current;
     const scope = canonicalCourseCode(course);
     threadCache.current.set(cacheMapKey(scope), thread);
-    // Do not let an async getSession() resolve after sign-out and write the
-    // previous account's conversation into the next account's session cache.
     if (!expectedUid) return;
-    void cacheKey(scope).then((key) => {
-      if (!key || currentUid.current !== expectedUid || key !== `tf-chat-v1:${expectedUid}:${scope}`) return;
-      try { sessionStorage.setItem(key, JSON.stringify(thread.slice(-60))); }
-      catch { /* optional cache */ }
-    });
+    if (currentUid.current !== expectedUid) return;
+    // The bounded mirror never stores transient photos, bearer tokens or URLs.
+    writeChatMirror(expectedUid, scope, thread.slice(-60).map(({ imageUrl: _imageUrl, ...message }) => message));
   };
+
+  useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === "hidden") flushChatMirrors(); };
+    window.addEventListener("pagehide", flushChatMirrors);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flushChatMirrors);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushChatMirrors();
+    };
+  }, []);
 
   useEffect(() => {
     if (!suppliedPageAttachment) return;
@@ -430,16 +430,30 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     if (!selected) { setMessages([]); setIsLoadingThread(false); return; }
     let alive = true;
     const key = canonicalCourseCode(selected);
+    const owner = currentUid.current;
+    if (!owner) { setIsLoadingThread(false); return; }
+    const expectedEpoch = authEpoch.current;
+    const canPaint = () => alive && authEpoch.current === expectedEpoch && currentUid.current === owner;
+    const memoryKey = cacheMapKey(key);
+    const mirror = readChatMirror<Message[]>(owner, key);
+    const cached = threadCache.current.get(memoryKey) ?? preloadedThreadCache.get(memoryKey) ??
+      (Array.isArray(mirror) ? mirror.filter((message) => typeof message.id === "number" && typeof message.text === "string" && ["student", "assistant", "notice"].includes(message.from)) : undefined);
+    if (cached) {
+      nextId.current = Math.max(nextId.current, ...cached.map((message) => message.id + 1));
+      setMessages(cached);
+      threadCache.current.set(memoryKey, cached);
+      setIsLoadingThread(false);
+    }
 
     // Warm the API and prefetch the selected thread while the chatbot tab is
     // hidden. Do not archive/create a fresh thread until the student opens it.
     if (!active) {
       void warmBackend();
       void getCourseThread(key).then(({ messages: thread }) => {
-        if (!alive) return;
+        if (!canPaint()) return;
         const painted = toUiMessages(thread);
-        threadCache.current.set(cacheMapKey(key), painted);
-        preloadedThreadCache.set(key, painted);
+        persistCache(key, painted);
+        preloadedThreadCache.set(memoryKey, painted);
       }).catch(() => {
         // Background prefetch is opportunistic; foreground loading handles errors.
       });
@@ -457,37 +471,20 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     // Use the hidden-tab prefetch immediately. The foreground refresh below
     // still revalidates after the fresh-thread operation, but the student no
     // longer waits on a blank loading screen while that request completes.
-    const cached = threadCache.current.get(cacheMapKey(key)) ?? preloadedThreadCache.get(key);
-    if (cached) setMessages(cached);
     setIsLoadingThread(!cached);
 
     // Opening Study Chat is read-only. Do not archive/start a thread here:
     // that extra round trip was the main reason the loading screen was slower
     // than History. Archiving is explicit through New chat.
     void getCourseThread(key).then(({ messages: thread }) => {
-      if (!alive || loadToken.current !== token) return;
+      if (!canPaint() || loadToken.current !== token || streamAbortRef.current) return;
       setThreadLoadTimedOut(false);
-      const painted = toUiMessages(thread);
+      const painted = reconcileThread(threadCache.current.get(memoryKey) ?? [], toUiMessages(thread));
       persistCache(key, painted);
-      preloadedThreadCache.set(key, painted);
+      preloadedThreadCache.set(memoryKey, painted);
       setMessages(painted);
-    }).catch(async (error) => {
-      if (!alive || loadToken.current !== token) return;
-      if (!cached) {
-        try {
-          const storageKey = await cacheKey(key);
-          const fallback = storageKey ? JSON.parse(sessionStorage.getItem(storageKey) || "[]") as Message[] : [];
-          if (fallback.length && alive) {
-            const restored = fallback.map((message) => ({
-              ...message,
-              id: nextId.current++,
-              imageUrl: undefined,
-            }));
-            threadCache.current.set(cacheMapKey(key), restored);
-            setMessages(restored);
-          }
-        } catch { /* unavailable cache */ }
-      }
+    }).catch((error) => {
+      if (!canPaint() || loadToken.current !== token) return;
       setThreadLoadTimedOut(true);
       toast.error(error instanceof Error ? error.message : "Couldn't load this conversation.");
     }).finally(() => {
@@ -495,15 +492,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       if (alive && loadToken.current === token) setIsLoadingThread(false);
     });
     return () => { alive = false; window.clearTimeout(timeoutId); };
-  }, [selected, reloadNonce, active]);
+  }, [selected, reloadNonce, active, accountEpoch]);
 
   useEffect(() => {
     // Refresh whenever the history sheet opens. Render each course as soon as
     // it arrives instead of waiting for the slowest course's network request.
     if (!historyOpen) return;
     let alive = true;
+    const epoch = authEpoch.current;
+    const owner = currentUid.current;
+    if (!owner) return;
     setHistoryError(null);
-    setHistoryRows([]);
     setHistoryLoading(true);
     const historyTimeoutId = window.setTimeout(() => {
       if (alive) {
@@ -512,8 +511,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       }
     }, 10000);
 
-    const loadCourse = async (course: string) => {
-      const raw = (await getCourseHistory(course)).messages;
+    const groupCourse = (course: string, raw: ChatMessage[]) => {
       const grouped = new Map<string, ChatMessage[]>();
       for (const message of raw) {
         const convKey = message.conversation_id ?? `legacy:${course}`;
@@ -536,10 +534,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       });
     };
 
+    const cachedRows = courseOptions.flatMap((course) => {
+      const snapshot = cachedCourseHistory(owner, course);
+      return snapshot && Array.isArray(snapshot.messages) ? groupCourse(course, snapshot.messages) : [];
+    });
+    setHistoryRows(cachedRows);
+    const loadCourse = async (course: string) => groupCourse(course, (await getCourseHistory(course)).messages);
+
     let failureCount = 0;
     const requests = courseOptions.map((course) =>
       loadCourse(course).then((rows) => {
-        if (!alive) return;
+        if (!alive || authEpoch.current !== epoch) return;
         setHistoryRows((current) => [
           ...current.filter((row) => row.course !== course),
           ...rows,
@@ -565,7 +570,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     });
 
     return () => { alive = false; window.clearTimeout(historyTimeoutId); };
-  }, [historyOpen, profile.courses]);
+  }, [historyOpen, profile.courses, accountEpoch]);
 
   const handleResumeConversation = async (conversationId: string) => {
     setResumingConvId(conversationId);
@@ -576,7 +581,12 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // the live chat screen for the first time this session would
       // re-archive it right back the moment it loads, undoing the resume.
       markStartedFreshThisSession();
+      invalidateChatReads(courseCode);
+      const resumedRow = historyRows.find((row) => row.conversationId === conversationId);
+      if (currentUid.current) clearChatMirrors(currentUid.current, canonicalCourseCode(courseCode));
       threadCache.current.delete(cacheMapKey(courseCode)); // force a real fetch, not a stale cached view
+      preloadedThreadCache.delete(cacheMapKey(courseCode));
+      if (resumedRow) persistCache(courseCode, toUiMessages(resumedRow.messages));
       setSelected(courseCode);
       setReloadNonce((n) => n + 1);
       setExpandedConvId(null);
@@ -593,6 +603,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setDeletingConvId(conversationId);
     try {
       await deleteChatConversation(conversationId);
+      invalidateChatReads(course);
       setHistoryRows((cur) => cur.filter((row) => row.conversationId !== conversationId));
       if (expandedConvId === conversationId) setExpandedConvId(null);
       // If this was the course's currently-active conversation, the live
@@ -600,6 +611,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       // its own cache until the next real reload — force one.
       if (course === selected) {
         threadCache.current.delete(cacheMapKey(course));
+        preloadedThreadCache.delete(cacheMapKey(course));
+        if (currentUid.current) clearChatMirrors(currentUid.current, canonicalCourseCode(course));
+        setMessages([]);
         setReloadNonce((n) => n + 1);
       }
       toast.success("Conversation deleted.");
@@ -691,7 +705,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     const fileToSend = retry ? retryFiles.current.get(retry.messageId) ?? null : photoFile;
     const pageToSend = retry ? retryPageAttachments.current.get(retry.messageId) ?? null : attachedPage;
     if (!course || (!text && !fileToSend)) return;
-    if (isSending || isUploadingPhoto || isPreparingPhoto) return;
+    if (isSending || streamAbortRef.current || isUploadingPhoto || isPreparingPhoto) return;
     const sendAuthEpoch = authEpoch.current;
 
     // A photo on its own is a complete message: the AI reads it and helps with what is on it.
@@ -730,6 +744,25 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setIsSending(true);
     // Shared with catch so partial assistant text can be removed after a stream failure.
     let streamId: number | null = null;
+    // Create an optimistic assistant placeholder without waiting for the API.
+    // Buffer streaming updates to one render per frame, not one per token.
+    const placeholderId = nextId.current++;
+    streamId = placeholderId;
+    setMessages((cur) => [...cur, { id: placeholderId, from: "assistant", text: "", createdAt: new Date().toISOString() }]);
+    let accumulated = "";
+    let frame = 0;
+    const paintDelta = () => {
+      frame = 0;
+      if (authEpoch.current !== sendAuthEpoch || streamId === null) return;
+      const content = accumulated;
+      const id = streamId;
+      setStreamingBubbleId(id);
+      setMessages((cur) => {
+        const next = cur.map((msg) => msg.id === id ? { ...msg, text: content } : msg);
+        persistCache(course, next);
+        return next;
+      });
+    };
 
     try {
       let imagePath: string | null = null;
@@ -776,26 +809,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         imagePath,
         (delta) => {
           if (authEpoch.current !== sendAuthEpoch) return;
-          if (streamId === null) {
-            const id = nextId.current++;
-            const createdAt = new Date().toISOString();
-            streamId = id;
-            setStreamingBubbleId(id);
-            setMessages((cur) => [...cur, {
-              id,
-              from: "assistant" as const,
-              text: delta,
-              createdAt,
-            }]);
-            return;
-          }
-          const id = streamId;
-          setMessages((cur) => cur.map((msg) => (msg.id === id ? { ...msg, text: msg.text + delta } : msg)));
+          accumulated += delta;
+          if (!frame) frame = window.requestAnimationFrame(paintDelta);
         },
         pageContext,
         { signal: controller.signal, idempotencyKey: requestId },
       );
       if (authEpoch.current !== sendAuthEpoch) return;
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+      invalidateChatReads(course);
 
       // One corrective pass once the full reply is known: the moderation
       // short-circuit path (blocked message, image rejected) isn't streamed
@@ -889,6 +912,8 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         return next;
       });
     } finally {
+      if (frame) window.cancelAnimationFrame(frame);
+      flushChatMirrors();
       if (authEpoch.current === sendAuthEpoch) {
         setIsSending(false);
         setStreamingBubbleId(null);
@@ -1119,15 +1144,39 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const latestAssistantReply = [...messages].reverse().find((message) => message.from === "assistant");
   const sourcePanelVisible = !embedded && Boolean(latestAssistantReply?.sources?.length);
   const sourceLocation = (source: ChatSource) => source.page ? `Page ${source.page}` : source.section || source.location || "Page unavailable";
+  const startFreshConversation = async () => {
+    if (isSending) return;
+    const key = canonicalCourseCode(selected);
+    const epoch = authEpoch.current;
+    const previous = messages;
+    loadToken.current += 1;
+    setIsLoadingThread(false);
+    setThreadLoadTimedOut(false);
+    setMessages([]);
+    setDraft("");
+    setPhotoFile(null);
+    setPhotoName(null);
+    try {
+      await startNewChatThread(key);
+      if (authEpoch.current !== epoch) return;
+      invalidateChatReads(key);
+      preloadedThreadCache.delete(cacheMapKey(key));
+      persistCache(key, []);
+      flushChatMirrors();
+      setMode("Explain");
+    } catch (error) {
+      if (authEpoch.current !== epoch) return;
+      setMessages(previous);
+      toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
+    }
+  };
 
   return (
     <div className={`study-chat-screen tf-visual-phase2 min-h-0 overflow-hidden text-foreground ${embedded ? "study-chat-embedded h-full" : ""}`}>
       <div className={cn("chat-layout mx-auto grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] pb-2 pt-3", embedded ? "w-full px-3" : "w-full px-3 sm:px-4 md:pt-4", sourcePanelVisible && "md:grid-cols-[minmax(0,1fr)_17rem] md:gap-4")}>
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-border pb-2">
           {!embedded ? (
-            <button type="button" onClick={() => window.history.back()} aria-label="Go back" title="Back" className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            </button>
+            <BackButton onBack={() => navigate("home")} />
           ) : null}
           <button type="button" onClick={() => { setHistoryOpen(true); navigate("chat-history", { courseCode: selected }); }} aria-label="Open conversation history" title="Conversation history" className="chat-history-button inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2 text-xs font-semibold leading-3 text-foreground transition hover:bg-muted">
             <HistoryIcon aria-hidden="true" className="h-4 w-4" />
@@ -1143,24 +1192,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           <button
             type="button"
             disabled={isSending}
-            onClick={async () => {
-              const key = canonicalCourseCode(selected);
-              const previous = messages;
-              loadToken.current += 1;
-              setIsLoadingThread(false);
-              setMessages([]);
-              setDraft("");
-              setPhotoFile(null);
-              setPhotoName(null);
-              try {
-                await startNewChatThread(key);
-                persistCache(key, []);
-                setMode("Explain");
-              } catch (error) {
-                setMessages(previous);
-                toast.error(error instanceof Error ? error.message : "Couldn't start a new chat.");
-              }
-            }}
+            onClick={() => void startFreshConversation()}
             className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:opacity-60"
           >
             <Plus aria-hidden="true" className="h-3.5 w-3.5" />New chat
@@ -1201,7 +1233,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
               <p className="mt-1 max-w-xs text-sm text-muted-foreground">Your saved chat is safe. Retry the connection or open a fresh conversation.</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <button type="button" onClick={() => { setThreadLoadTimedOut(false); setReloadNonce((n) => n + 1); }} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Retry loading</button>
-                <button type="button" onClick={() => { setThreadLoadTimedOut(false); setMessages([]); setIsLoadingThread(false); void startNewChatThread(canonicalCourseCode(selected)).catch(() => undefined); }} className="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground">Start new chat</button>
+                <button type="button" onClick={() => void startFreshConversation()} className="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground">Start new chat</button>
               </div>
             </div>
           ) : isLoadingThread && messages.length === 0 ? (
@@ -1259,7 +1291,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </div>
           ) : messages.length > 0 ? (
             <>
-              {messages.map((m) =>
+              {messages.filter((message) => message.from !== "assistant" || message.text.length > 0).map((m) =>
                 m.from === "student" ? (
                   <div key={m.id} className="ml-auto w-fit min-w-0 max-w-[96%] break-words [overflow-wrap:anywhere]">
                     {m.courseTag ? (

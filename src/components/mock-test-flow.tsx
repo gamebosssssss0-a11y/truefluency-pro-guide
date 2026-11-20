@@ -1,10 +1,11 @@
-import { BrandOrbit, StageSteps } from "@/components/loading-state";
+import { BackButton } from "@/components/ui/back-button";
+import { MockGeneratingLoader, StageSteps } from "@/components/loading-state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type CourseTestSettings, type MockMode } from "@/lib/profile-store";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
@@ -413,11 +414,12 @@ export function MockGenerationScreen() {
   return (
     <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={STATUS}>
-        <div className="absolute left-5 top-6">
+        <div className="absolute left-5 top-6 flex items-center gap-2">
+          <BackButton onBack={() => window.dispatchEvent(new Event("truefluency-request-mock-leave"))} />
           <HeaderLogo />
         </div>
         <div className="mb-8 text-center">
-          <BrandOrbit className="mb-4"><Sparkles className="h-6 w-6" /></BrandOrbit>
+          <MockGeneratingLoader className="mb-4" />
           <h1 className="font-display text-2xl font-semibold text-foreground">Preparing your mock</h1>
           <p className="mt-1 text-sm text-muted-foreground">{course?.code ? canonicalCourseCode(course.code) : ""} · {course?.name}</p>
         </div>
@@ -705,12 +707,7 @@ export function MockConfigScreen() {
       <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("mock-tests")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Mock Tests
-          </button>
+          <BackButton onBack={() => navigate("mock-tests")} /><span className="text-sm text-muted-foreground">Mock Tests</span>
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
@@ -1003,7 +1000,7 @@ export function MockRunScreen() {
   // Persist current state periodically without changing the active-time baseline.
   useEffect(() => {
     if (!t) return;
-    const id = window.setInterval(() => updateRef.current({ inProgressTest: { ...testRef.current! } }), 15_000);
+    const id = window.setInterval(() => { const current = testRef.current; if (current) updateRef.current({ inProgressTest: { ...current } }); }, 15_000);
     return () => window.clearInterval(id);
   }, [Boolean(t)]);
 
@@ -1187,7 +1184,7 @@ export function MockRunScreen() {
     return (
       <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
-          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
+          <BackButton onBack={() => navigate("home")} />
           <section className="mt-6 rounded-2xl border border-border bg-card p-5">
             <h1 className="font-display text-lg font-semibold text-foreground">No questions yet</h1>
             <p className="mt-2 text-sm text-muted-foreground">Start a practice set from one of your courses. Your progress will be saved as you go.</p>
@@ -1288,9 +1285,10 @@ export function MockRunScreen() {
     <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={`${SCREEN} pb-8 pt-6`}>
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <BackButton onBack={() => window.dispatchEvent(new Event("truefluency-request-mock-leave"))} />
             <HeaderLogo />
-            <div>
+            <div className="min-w-0">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">{t.courseCode}</div>
             <div className="truncate text-sm font-semibold text-foreground">{t.courseTitle}</div>
             </div>
@@ -1300,7 +1298,7 @@ export function MockRunScreen() {
               type="button"
               onClick={() => setCalcOpen(true)}
               aria-label="Open calculator"
-              className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:text-foreground"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:text-foreground"
             >
               <CalcIcon className="h-4 w-4" />
             </button>
@@ -1706,7 +1704,7 @@ export function MockResultScreen() {
     return (
       <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
-          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
+          <BackButton onBack={() => navigate("home")} />
           <p className="mt-6 text-sm text-muted-foreground">No result to show.</p>
         </div>
       </div>
@@ -1737,6 +1735,7 @@ export function MockResultScreen() {
           <HeaderLogo />
         </div>
         <div className="rounded-3xl border border-border bg-card p-6 text-center">
+          <div className="mb-3 flex justify-start"><BackButton onBack={() => navigate("mock-tests")} /></div>
           <div className={cn("mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl",
             celebratory ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
             <Trophy className="h-6 w-6" />
@@ -1831,7 +1830,7 @@ export function AttemptReviewScreen() {
     return (
       <div className="study-utility-page tf-visual-phase2 min-h-screen">
         <div className={`${SCREEN} pt-6`}>
-          <Button variant="ghost" onClick={() => navigate("home")}>← Back</Button>
+          <BackButton onBack={() => navigate("home")} />
           <p className="mt-6 text-sm text-muted-foreground">That attempt is no longer available.</p>
         </div>
       </div>
@@ -1883,12 +1882,7 @@ export function AttemptReviewScreen() {
       <div className={`${SCREEN} pb-16 pt-6`}>
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("test-history")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Test history
-          </button>
+          <BackButton onBack={() => navigate("test-history")} /><span className="text-sm text-muted-foreground">Test history</span>
         </div>
 
         {/* Header */}

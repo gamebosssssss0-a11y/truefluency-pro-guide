@@ -1,6 +1,6 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
+@source "../src";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -1473,38 +1473,42 @@ body:has([data-tab-swipe-stage][data-swipe-active="true"]) [data-verilo-entry] {
 
 .flashcard-3d-card {
   transform-style: preserve-3d;
-  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 440ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform: translateZ(0);
 }
 
 .flashcard-3d-card.is-flipped {
-  transform: rotateY(180deg);
+  transform: translateZ(0) rotateY(180deg);
 }
 
 .flashcard-face {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  transform: translateZ(1px);
 }
 
 .flashcard-back {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(1px);
 }
 
 @keyframes question-slide-in-right {
-  from { opacity: 0; transform: translateX(18px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translate3d(16px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 @keyframes question-slide-in-left {
-  from { opacity: 0; transform: translateX(-18px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translate3d(-16px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 .animate-question-next {
-  animation: question-slide-in-right 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: question-slide-in-right 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .animate-question-prev {
-  animation: question-slide-in-left 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: question-slide-in-left 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1631,19 +1635,12 @@ h2 { font-family: Inter, var(--font-sans); font-size: var(--tf-section-title-siz
 }
 
 
-/* Theme changes animate only color properties after a user action. */
-html[data-theme-transition] *,
-html[data-theme-transition] *::before,
-html[data-theme-transition] *::after {
-  transition-property: color, background-color, border-color, fill, stroke !important;
-  transition-duration: 180ms !important;
-  transition-timing-function: ease-out !important;
-}
-@media (prefers-reduced-motion: reduce) {
-  html[data-theme-transition] *,
-  html[data-theme-transition] *::before,
-  html[data-theme-transition] *::after { transition-duration: 0ms !important; }
-}
+/* Snapshot reveal prevents thousands of per-element colour transitions. */
+html[data-radial-theme]::view-transition-old(root),
+html[data-radial-theme]::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html[data-radial-theme]::view-transition-old(root) { z-index: 1; }
+html[data-radial-theme]::view-transition-new(root) { z-index: 2; }
+html[data-radial-theme]::view-transition-group(root) { animation-duration: 0s; }
 
 
 /* Printing or saving a receipt as PDF: only the receipt itself is printed. */
@@ -1659,10 +1656,16 @@ html[data-theme-transition] *::after {
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 .view-transition-enter {
-  animation: tf-view-enter 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: tf-view-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+.view-transition-back { animation-name: question-slide-in-left; }
+html[data-view-direction="back"] .view-transition-enter { animation-name: question-slide-in-left; }
+.tf-root-entry { animation: tf-view-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+html[data-view-direction="back"] .tf-root-entry { animation-name: question-slide-in-left; }
+html[data-view-direction="swipe"] .tf-root-entry,
+[data-swipe-active="true"] .tf-root-entry { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .view-transition-enter { animation: tf-fade-only 100ms linear both; }
+  .view-transition-enter, .tf-root-entry { animation: none; }
 }
 @keyframes tf-fade-only { from { opacity: 0; } to { opacity: 1; } }
 
@@ -1670,7 +1673,7 @@ html[data-theme-transition] *::after {
 @keyframes tf-spin { to { transform: rotate(360deg); } }
 @keyframes tf-halo { 0%,100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.08); opacity: .35; } }
 @keyframes tf-step { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
-@keyframes tf-scan { from { left: -35%; } to { left: 100%; } }
+@keyframes tf-scan { from { transform: translate3d(-110%, 0, 0); } to { transform: translate3d(410%, 0, 0); } }
 @keyframes tf-fan0 { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-14deg) translateX(-10px); } }
 @keyframes tf-fan2 { 0%,100% { transform: rotate(0); } 50% { transform: rotate(14deg) translateX(10px); } }
 .tf-orbit-arc { animation: tf-spin 1.6s linear infinite; }
@@ -1691,4 +1694,45 @@ html.dark .surface-wash {
   --card-foreground: var(--tf-ink);
   --muted-foreground: var(--tf-muted);
   color: var(--tf-ink);
+}
+
+/* Roles use only existing brand colours; navy lighting replaces off-brand cyan. */
+:root {
+  --tf-back-shadow: 0 2px 8px color-mix(in srgb, var(--tf-navy) 12%, transparent);
+  --tf-back-light: color-mix(in srgb, var(--tf-navy) 22%, transparent);
+  --tf-preview-paper: var(--tf-cream);
+  --tf-preview-ink: var(--tf-navy);
+  --tf-preview-shadow: 0 2px 6px color-mix(in srgb, var(--tf-navy) 14%, transparent);
+  --tf-loader-beam: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
+}
+.dark {
+  --tf-back-shadow: 0 0 14px color-mix(in srgb, var(--tf-navy) 80%, transparent), 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+  --tf-back-light: color-mix(in srgb, var(--accent) 60%, var(--border));
+}
+.tf-back-button {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--tf-back-light);
+  box-shadow: var(--tf-back-shadow);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+.dark .tf-back-button { color: var(--accent); }
+.tf-back-button:hover { background: var(--card); color: var(--accent); border-color: var(--accent); }
+.tf-back-button:active { transform: scale(.95); }
+.tf-back-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.tf-document-thumbnail { box-shadow: var(--tf-preview-shadow); }
+.tf-file-skeleton .loading-skeleton { background: color-mix(in srgb, var(--border) 48%, var(--card)); }
+.tf-binder > svg { color: var(--accent); }
+.dark .tf-peer-badge { color: var(--accent); }
+.tf-document-scan { background: var(--tf-loader-beam); animation: tf-scan 2s ease-in-out infinite; }
+.tf-binder { perspective: 500px; }
+.tf-binder-cover { transform-origin: left center; animation: tf-binder-open 2.4s ease-in-out infinite; }
+.tf-compass { animation: tf-compass-turn 6s linear infinite; }
+@keyframes tf-binder-open { 0%,100% { transform: rotateY(0deg); } 45%,65% { transform: rotateY(-65deg); } }
+@keyframes tf-compass-turn { from { transform: rotate(45deg); } to { transform: rotate(405deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tf-back-button { transition: none; }
+  .tf-back-button:active { transform: none; }
+  .tf-document-scan, .tf-binder-cover, .tf-compass { animation: none; }
+  .tf-binder-cover { transform: rotateY(-55deg); }
 }

@@ -155,7 +155,7 @@ const RootTabs = memo(function RootTabs({
             aria-hidden={!active}
             inert={!active ? true : undefined}
             data-root-tab={tab}
-            className={!active ? "pointer-events-none absolute left-0 top-0 z-0 min-h-full w-full bg-background" : "w-full"}
+            className={!active ? "pointer-events-none absolute left-0 top-0 z-0 min-h-full w-full bg-background" : "tf-root-entry w-full"}
             style={!active ? { transform: `translate3d(${(preview ? previewSide : side) === "right" ? "100%" : "-100%"}, 0, 0)` } : undefined}
           >
             <SwipePreviewProvider enabled={preview}>
@@ -220,6 +220,9 @@ function Router() {
   }, [step, hydrated]);
 
   useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.viewDirection = root.dataset.nextViewDirection ?? "forward";
+    delete root.dataset.nextViewDirection;
     const stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");
     if (stage) {
       // The destination is committed before this layout effect runs. Resetting
@@ -240,6 +243,17 @@ function Router() {
       node.scrollLeft = 0;
     });
   }, [view]);
+
+  useEffect(() => {
+    const onBack = () => { document.documentElement.dataset.nextViewDirection = "back"; };
+    const onMockLeave = () => setLeaveTestOpen(true);
+    window.addEventListener("popstate", onBack, { capture: true });
+    window.addEventListener("truefluency-request-mock-leave", onMockLeave);
+    return () => {
+      window.removeEventListener("popstate", onBack, { capture: true });
+      window.removeEventListener("truefluency-request-mock-leave", onMockLeave);
+    };
+  }, []);
 
   // Keep one leave guard across generation and the active attempt. Transitioning
   // from mock-gen to mock-run must not tear down and recreate the history entry.

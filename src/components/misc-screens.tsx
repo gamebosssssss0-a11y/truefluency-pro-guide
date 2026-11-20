@@ -1,6 +1,6 @@
+import { BackButton } from "@/components/ui/back-button";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { HeaderLogo } from "@/components/brand";
 import { AddCourseFlow } from "@/components/add-course-flow";
 
@@ -11,12 +11,7 @@ export function AddCourseScreen() {
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("account")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Account
-          </button>
+          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
         </div>
         <h1 className="font-display text-3xl font-semibold text-foreground">Add a course</h1>
         <p className="mt-1 text-sm text-muted-foreground">

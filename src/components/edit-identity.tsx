@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/ui/back-button";
 import { useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { facultyData, type Level } from "@/lib/uni-data";
-import { ArrowLeft, Loader2, UserCog } from "lucide-react";
+import { Loader2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 const LEVELS: Level[] = ["100", "200", "300", "400", "500"];
@@ -82,12 +83,7 @@ export function EditIdentityScreen() {
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <button
-            onClick={() => navigate("account")}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> Account
-          </button>
+          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
         </div>
 
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-secondary text-primary">

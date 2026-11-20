@@ -39,6 +39,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
     let previewSide: "left" | "right" | null = null;
     let settleTimer = 0;
     let lightFrame = 0;
+    let dragFrame = 0;
+    let stageWidth = 0;
     let samples: Array<{ x: number; time: number }> = [];
     let clickTarget: Element | null = null;
     let cancelNextClick = false;
@@ -107,7 +109,9 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       }
       stage = document.querySelector<HTMLElement>("[data-tab-swipe-stage]");
       if (!stage || stage.dataset.swipeActive === "true") return;
-      const touch = event.touches[0]!;
+      const touch = event.touches[0];
+      if (!touch) return;
+      stageWidth = stage.getBoundingClientRect().width || window.innerWidth;
       startX = touch.clientX;
       startY = touch.clientY;
       deltaX = 0;
@@ -130,7 +134,8 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
         }
         return;
       }
-      const touch = event.touches[0]!;
+      const touch = event.touches[0];
+      if (!touch) return;
       const dx = touch.clientX - startX;
       const dy = touch.clientY - startY;
       if (!horizontal) {
@@ -152,15 +157,19 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const now = performance.now();
       samples.push({ x: touch.clientX, time: now });
       if (samples.length > 3) samples.shift();
-      const first = samples[0]!;
-      const last = samples[samples.length - 1]!;
-      const velocity = last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
-      const progress = Math.max(0, Math.min(ORDER.length - 1, index - dx / window.innerWidth));
+      const first = samples[0];
+      const last = samples[samples.length - 1];
+      const velocity = first && last && last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
+      const progress = Math.max(0, Math.min(ORDER.length - 1, index - dx / stageWidth));
       paintTabLight(progress, velocity);
 
       if (!reducedMotion()) {
-        stage.style.transition = "none";
-        stage.style.transform = `translate3d(${previewTab ? dx : dx * 0.25}px, 0, 0)`;
+        if (!dragFrame) dragFrame = window.requestAnimationFrame(() => {
+          dragFrame = 0;
+          if (!stage || !tracking) return;
+          stage.style.transition = "none";
+          stage.style.transform = `translate3d(${previewTab ? deltaX : deltaX * 0.25}px, 0, 0)`;
+        });
       }
       stage.dataset.swipeActive = "true";
       if (clickTarget && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) cancelNextClick = true;
@@ -177,7 +186,9 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       const last = samples[samples.length - 1];
       const releaseVelocity = first && last && last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
       const fastEnough = target != null && (deltaX < 0 ? releaseVelocity < -0.4 : releaseVelocity > 0.4);
-      const shouldCommit = Boolean(horizontal && target && (Math.abs(deltaX) > window.innerWidth * 0.35 || fastEnough));
+      if (dragFrame) window.cancelAnimationFrame(dragFrame);
+      dragFrame = 0;
+      const shouldCommit = Boolean(horizontal && target && (Math.abs(deltaX) > stageWidth * 0.35 || fastEnough));
       if (!shouldCommit || !target) {
         if (horizontal) restoreStage(node);
         else {
@@ -188,6 +199,7 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       }
 
       if (reducedMotion()) {
+        document.documentElement.dataset.nextViewDirection = "swipe";
         navigateRef.current(target, { replace: true });
         finishPreview();
         return;
@@ -196,11 +208,12 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       paintTabLight(targetIndex, 0, true);
       setPreview({ tab: target, side: deltaX < 0 ? "right" : "left", highlightedTab: target });
       node.style.transition = `transform ${SETTLE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-      node.style.transform = `translate3d(${deltaX < 0 ? -window.innerWidth : window.innerWidth}px, 0, 0)`;
+      node.style.transform = `translate3d(${deltaX < 0 ? -stageWidth : stageWidth}px, 0, 0)`;
       window.clearTimeout(settleTimer);
       settleTimer = window.setTimeout(() => {
         if (!node.isConnected) return;
         finishPreview();
+        document.documentElement.dataset.nextViewDirection = "swipe";
         navigateRef.current(target, { replace: true });
       }, SETTLE_MS);
     };
@@ -222,20 +235,27 @@ export function useSwipeTabs(enabled = true): SwipePreview | null {
       if (stage) restoreStage(stage);
       else finishPreview();
     };
+    const onResize = () => {
+      if (tracking || horizontal) onCancel();
+      else if (stage?.dataset.swipeActive === "true") restoreStage(stage);
+    };
 
     window.addEventListener("touchstart", onStart, { passive: true });
     window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onEnd, { passive: true });
     window.addEventListener("touchcancel", onCancel, { passive: true });
     window.addEventListener("click", onClickCapture, true);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("touchstart", onStart);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onCancel);
       window.removeEventListener("click", onClickCapture, true);
+      window.removeEventListener("resize", onResize);
       window.clearTimeout(settleTimer);
       if (lightFrame) window.cancelAnimationFrame(lightFrame);
+      if (dragFrame) window.cancelAnimationFrame(dragFrame);
       if (stage) {
         stage.style.transition = "";
         stage.style.transform = "";

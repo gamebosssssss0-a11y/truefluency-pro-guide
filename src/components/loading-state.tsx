@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { BookOpen, ShieldCheck, Sparkles } from "lucide-react";
 
 export function useDelayedLoading(loading: boolean, delayMs = 150, minimumVisibleMs = 300) {
   const [visible, setVisible] = useState(false);
@@ -125,4 +126,42 @@ export function ScanBeam({ className }: { className?: string }) {
       <span className="tf-scan-beam absolute inset-y-0 w-1/3 rounded-full bg-accent" />
     </div>
   );
+}
+
+/** No fictional progress: ornament moves while the caller reports real status. */
+export function MockGeneratingLoader({ className }: { className?: string }) {
+  return <div aria-hidden="true" className={cn("tf-generating relative mx-auto grid size-28 place-items-center", className)}>
+    <span className="tf-orbit-arc absolute inset-0 rounded-full border border-border border-t-accent" />
+    <span className="tf-orbit-arc-rev absolute inset-3 rounded-full border border-border border-b-accent" />
+    <span className="tf-compass absolute inset-8 rounded-lg border border-accent bg-card shadow-sm" />
+    <Sparkles className="relative size-7 text-accent" />
+  </div>;
+}
+
+export function PaymentVerifyingLoader() {
+  return <div aria-hidden="true" className="tf-payment relative mx-auto grid size-28 place-items-center">
+    <span className="tf-orbit-arc absolute inset-0 rounded-full border-2 border-border border-t-accent" />
+    <span className="tf-orbit-halo absolute inset-3 rounded-full border border-accent/40" />
+    <ShieldCheck className="relative size-12 text-accent" strokeWidth={1.4} />
+  </div>;
+}
+
+/** Sized like the real folder list; the binder and scan are purely decorative. */
+export function LockerSkeletonLoader({ shelf = false, files = false }: { shelf?: boolean; files?: boolean }) {
+  return <div role="status" aria-label={shelf ? "Loading course shelf" : "Loading your files"} aria-busy="true" className="space-y-3">
+    <div className="flex min-h-16 items-center gap-3 px-1">
+      <div aria-hidden="true" className="tf-binder relative grid size-12 shrink-0 place-items-center rounded-lg border border-accent/40 bg-card">
+        <BookOpen className="size-6 text-accent" />
+        <span className="tf-binder-cover absolute inset-0 rounded-lg border border-accent/50 bg-card/80" />
+      </div>
+      <p className="text-sm font-medium text-muted-foreground">{shelf ? "Loading published course materials…" : "Loading your study files…"}</p>
+    </div>
+    <div aria-hidden="true" className="space-y-3">
+      {[0, 1, 2].map((row) => <div key={row} className={cn("tf-file-skeleton locker-skeleton-row relative flex items-center gap-3 overflow-hidden rounded-xl border border-border bg-card px-4", files ? "h-36" : "h-20")}>
+        <SkeletonBlock className={files ? "h-24 w-18 shrink-0" : "size-10 shrink-0"} />
+        <div className="min-w-0 flex-1 space-y-2"><SkeletonBlock className="h-3 w-2/3" /><SkeletonBlock className="h-2.5 w-1/3" /></div>
+        <span className="tf-document-scan pointer-events-none absolute inset-y-0 w-1/4" />
+      </div>)}
+    </div>
+  </div>;
 }

@@ -1,11 +1,12 @@
-import { BrandOrbit } from "@/components/loading-state";
+import { BackButton } from "@/components/ui/back-button";
+import { PaymentVerifyingLoader } from "@/components/loading-state";
 import { ShieldCheck } from "lucide-react";
 /**
  * Plans and payment. Paying goes through Squad's own page (card details never touch this site); the backend then asks
  * Squad whether the payment really happened before any plan is switched on. Nothing here changes a plan by itself.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
@@ -286,9 +287,7 @@ export function UpgradeScreen() {
     <div className="min-h-screen bg-transparent text-foreground">
       <div className="mx-auto max-w-md px-5 pb-8 pt-6">
         <div className="mb-5 flex items-center gap-2">
-          <button type="button" onClick={back} aria-label="Go back" className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+          <BackButton onBack={back} />
           <HeaderLogo />
           <span className="text-xs font-semibold uppercase tracking-wider text-accent">Premium</span>
         </div>
@@ -456,9 +455,9 @@ export function UpgradeScreen() {
           </section>
         ) : null}
 
-        {step === "redirecting" ? <div className="py-16 text-center"><BrandOrbit><ShieldCheck className="h-6 w-6" aria-hidden="true" /></BrandOrbit><h1 className="mt-5 font-display text-2xl font-semibold">Taking you to Squad.</h1><p className="mt-2 text-sm text-muted-foreground">Complete the payment there. You’ll come straight back here.</p></div> : null}
+        {step === "redirecting" ? <div className="py-16 text-center"><PaymentVerifyingLoader /><h1 className="mt-5 font-display text-2xl font-semibold">Taking you to Squad.</h1><p className="mt-2 text-sm text-muted-foreground">Complete the payment there. You’ll come straight back here.</p></div> : null}
 
-        {step === "verifying" ? <div className="py-16 text-center"><BrandOrbit><ShieldCheck className="h-6 w-6" aria-hidden="true" /></BrandOrbit><h1 className="mt-5 font-display text-2xl font-semibold">Confirming your payment.</h1><p className="mt-2 text-sm text-muted-foreground">We’re asking the bank. This usually takes a few seconds. Please don’t pay again.</p></div> : null}
+        {step === "verifying" ? <div className="py-16 text-center"><PaymentVerifyingLoader /><h1 className="mt-5 font-display text-2xl font-semibold">Confirming your payment.</h1><p className="mt-2 text-sm text-muted-foreground">We’re asking the bank. This usually takes a few seconds. Please don’t pay again.</p></div> : null}
 
         {step === "success" ? (
           <section className="py-10 text-center">

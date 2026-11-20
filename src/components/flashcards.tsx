@@ -1,3 +1,5 @@
+import { BackButton } from "@/components/ui/back-button";
+import { Button } from "@/components/ui/button";
 import { CardFan } from "@/components/loading-state";
 /**
  * Flashcards — wired to the /flashcards/* backend endpoints (flashcard.py on
@@ -6,7 +8,7 @@ import { CardFan } from "@/components/loading-state";
  * real decks from the student's uploaded material and reviews real cards.
  */
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { ArrowLeft, Layers } from "lucide-react";
+import { Layers } from "lucide-react";
 import { useProfile } from "@/lib/profile-store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -223,12 +225,7 @@ export function FlashcardsScreen() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-md px-5 pb-24 pt-[max(1.5rem,env(safe-area-inset-top))] md:pb-8">
-        <button
-          onClick={returnToOrigin}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-[var(--tf-sand-chip)]/80 hover:text-[var(--tf-cream)] dark:text-[var(--tf-dark-muted)] dark:hover:text-[var(--tf-cream)]"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back: Home
-        </button>
+        <div className="mb-4 flex items-center gap-3"><BackButton onBack={returnToOrigin} /><span className="text-sm text-muted-foreground">Back: Home</span></div>
 
         {/* Header card: white, cream border, navy left edge */}
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-card p-4">
@@ -414,7 +411,7 @@ export function FlashcardsReviewScreen() {
           ? loaded.filter((card) => card.last_reviewed_at === null || card.reps === 0).slice(0, 15)
           : loaded;
         const byId = new Map((savedQueue ? loaded : initialList).map((card) => [card.id, card]));
-        const list = savedQueue ? savedQueue.flatMap((id) => byId.has(id) ? [byId.get(id)!] : []) : initialList;
+        const list = savedQueue ? savedQueue.flatMap((id) => { const card = byId.get(id); return card ? [card] : []; }) : initialList;
         if (!savedQueue && sessionKey) localStorage.setItem(sessionKey, JSON.stringify({ cardIds: list.map((card) => card.id), reviewedCount: 0, totalCards: list.length }));
         setCards(list);
         setIndex(0);
@@ -501,12 +498,7 @@ export function FlashcardsReviewScreen() {
     <div className="min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-10 pt-6">
         <div className="mb-6 flex items-center justify-between">
-          <button
-            onClick={() => navigate("flashcards")}
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--tf-sand-chip)]/80 hover:text-[var(--tf-cream)] dark:text-[var(--tf-dark-muted)] dark:hover:text-[var(--tf-cream)]"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </button>
+          <BackButton onBack={() => navigate("flashcards")} />
           {current ? (
             <span className="text-sm font-semibold text-foreground">
               {code} · {reviewedCount + 1} of {totalCards}
@@ -542,8 +534,8 @@ export function FlashcardsReviewScreen() {
         ) : (
           <>
             {/* A two-sided card that flips without hiding its source details. */}
-            <div className="flashcard-3d-stage w-full">
-              <button
+            <div key={current.id} data-swipe-lock className="flashcard-3d-stage animate-question-next w-full">
+              <Button variant="ghost"
                 type="button"
                 aria-label={flipped ? "Show flashcard question" : "Show flashcard answer"}
                 aria-pressed={flipped}
@@ -555,35 +547,35 @@ export function FlashcardsReviewScreen() {
                   if (!wasFlipped) setHasRevealedAnswer(true);
                   return !wasFlipped;
                 })}
-                className={`flashcard-3d-card relative min-h-[22rem] w-full rounded-3xl text-center ${flipped ? "is-flipped" : ""}`}
+                className={`flashcard-3d-card relative grid h-auto min-h-[22rem] w-full whitespace-normal rounded-3xl p-0 text-center hover:bg-transparent ${flipped ? "is-flipped" : ""}`}
               >
                 <div
                   aria-hidden={flipped}
-                  className="flashcard-face absolute inset-0 flex flex-col justify-between rounded-3xl border border-border bg-card p-8 text-foreground"
+                  className="flashcard-face col-start-1 row-start-1 min-h-[22rem] flex flex-col justify-between rounded-3xl border border-border bg-card p-8 text-foreground"
                 >
                   <span className="flex-1" />
                   <div className="font-display text-2xl font-semibold leading-snug"><RichText>{current.front}</RichText></div>
                   <span className="flex-1" />
                   <div className="flex items-center justify-between gap-2 text-left text-xs text-muted-foreground">
                     <span className="min-w-0 truncate">{current.source_file_name || deckSourceFileName || "Course file"}</span>
-                    <span className="shrink-0">{current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}</span>
+                    <span className="max-w-[45%] shrink-0 break-words text-right">{current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}</span>
                   </div>
                   <span className="mt-2 text-xs text-muted-foreground">Tap to flip</span>
                 </div>
                 <div
                   aria-hidden={!flipped}
-                  className="flashcard-face flashcard-back absolute inset-0 flex flex-col justify-between rounded-3xl border border-primary bg-primary p-8 text-primary-foreground"
+                  className="flashcard-face flashcard-back col-start-1 row-start-1 min-h-[22rem] flex flex-col justify-between rounded-3xl border border-primary bg-primary p-8 text-primary-foreground"
                 >
                   <span className="flex-1" />
-                  <div className="font-display text-xl font-semibold leading-relaxed text-cream"><RichText>{current.back}</RichText></div>
+                  <div className="font-display text-xl font-semibold leading-relaxed text-primary-foreground"><RichText>{current.back}</RichText></div>
                   <span className="flex-1" />
-                  <div className="flex items-center justify-between gap-2 text-left text-xs text-cream/70">
+                  <div className="flex items-center justify-between gap-2 text-left text-xs text-primary-foreground">
                     <span className="min-w-0 truncate">{current.source_file_name || deckSourceFileName || "Course file"}</span>
-                    <span className="shrink-0">{current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}</span>
+                    <span className="max-w-[45%] shrink-0 break-words text-right">{current.source_page ? `Page ${current.source_page}` : current.source_section ? `Section: ${current.source_section}` : "Page unavailable"}</span>
                   </div>
-                  <span className="mt-2 text-xs text-cream/70">From your notes</span>
+                  <span className="mt-2 text-xs text-primary-foreground">From your notes</span>
                 </div>
-              </button>
+              </Button>
             </div>
 
             {reviewMode === "cram" ? (
