@@ -64,6 +64,17 @@ function deckLabel(deck: FlashcardDeck): string {
   return short ? `${code} · ${short}` : code;
 }
 
+function DeckCapBanner({ limit, onUpgrade }: { limit: number; onUpgrade: () => void }) {
+  return (
+    <div role="status" className="mx-auto mt-3 w-full max-w-xs rounded-2xl border border-amber/50 bg-card p-3 text-center">
+      <p className="text-sm text-foreground">You've generated your {limit} decks for today. Quota resets at midnight WAT.</p>
+      <button type="button" onClick={onUpgrade} className="mt-2 min-h-11 w-full rounded-full bg-amber px-4 text-sm font-semibold text-cream transition hover:bg-amber/90">
+        Upgrade for More Decks
+      </button>
+    </div>
+  );
+}
+
 export function FlashcardsScreen() {
   const { profile, activeCourseCode, navigate, back } = useProfile();
   const { access, refresh } = useEntitlement();
@@ -301,9 +312,7 @@ export function FlashcardsScreen() {
                 {isGenerating ? "Generating…" : "Make another 15-card deck"}
               </button>
             ) : null}
-            {deckCapReached ? (
-              <p className="mt-2 text-center text-xs text-muted-foreground">{PRICE_LINE}</p>
-            ) : null}
+            {deckCapReached ? <DeckCapBanner limit={deckLimit} onUpgrade={() => navigate("upgrade")} /> : null}
           </div>
         ) : (
           <div className="flex flex-col items-center text-center">
@@ -313,7 +322,7 @@ export function FlashcardsScreen() {
             <p className="mb-5 font-display text-2xl font-semibold text-foreground">No deck yet</p>
 
             {deckCapReached ? (
-              <p className="max-w-xs text-xs text-muted-foreground">{PRICE_LINE}</p>
+              <DeckCapBanner limit={deckLimit} onUpgrade={() => navigate("upgrade")} />
             ) : (
               <>
                 <button

@@ -99,7 +99,7 @@ test("Tutor Mode shows X on a wrong selection and check on the correct answer on
   assert.match(flow, /isCorrectOption \? <Check[\s\S]*?isWrongSelection \? <X/);
   assert.match(flow, /mode === "tutor" && locked && isCorrectOption/);
   assert.match(flow, /mode === "tutor" && locked && isWrongSelection/);
-  assert.match(flow, /const mode: MockMode = t\?\.mode \?\? "exam"/);
+  assert.match(flow, /const mode: MockMode = tutorPlanLocked \? "exam" : \(t\?\.mode \?\? "exam"\)/);
 });
 
 test("screen navigation resets nested scroll, chat resets on exit, and mobile controls stay clear", async () => {

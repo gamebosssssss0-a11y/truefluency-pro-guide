@@ -22,3 +22,13 @@ The same SQL replaces the mock-only five-answer streak requirement with a nonbla
 ## Privacy decisions
 
 Only owner-uploaded thumbnails may be persisted; `presignMaterialDownload` returns server-verified `cacheable: false` for saved peer copies. Each cached preview still requires a fresh authorization check. Peer shelf and saved peer-copy previews remain ephemeral. Account change/sign-out and file deletion clear cached owner thumbnails. Word and slide previews show actual leading text, not a fabricated page-layout screenshot; unavailable formats remain honestly unavailable.
+## Tier entitlements (Render must enforce)
+
+The app now blocks these in the interface, but only the Render service can make them impossible to bypass:
+
+1. **Tutor mode is paid-only** (Core, Exam, trial). On `/generate-mock/start`, if the caller's plan is Free, force `mode = "exam"` and return every question with `explanation: ""`. Retire the Free daily Tutor counter (`/tutor/status` may return `limit: 0`).
+2. **Daily mock sets** (Free 2, Core 3, Exam 6): reject with 402 before generating.
+3. **Question cap** (Free 30, Core 45, Exam 60): clamp `question_count` server-side.
+4. **Files combined** (Free 1, Core 3, Exam 6): slice `source_ids` to the plan limit.
+5. **Flashcard decks** (Free 2, Core 4, Exam 8): reject with 402 before generating.
+6. **Explanations on review**: never return stored explanations to Free accounts.

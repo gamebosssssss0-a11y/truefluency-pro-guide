@@ -98,6 +98,11 @@ export function nextChatReset(now: Date = new Date()): Date {
   return new Date(chatWindowStart(now).getTime() + 4 * 60 * 60 * 1000);
 }
 
+/** Tutor mode (an explanation after every answer) is paid-only: Core, Exam and the Core trial. Unknown plan = locked. */
+export function canUseTutorMode(tier?: string | null): boolean {
+  return tier === "core" || tier === "exam" || tier === "trial";
+}
+
 export const FREE_MAX_QUESTIONS = 30;
 export const CORE_MAX_QUESTIONS = 45;
 export const EXAM_MAX_QUESTIONS = 60;

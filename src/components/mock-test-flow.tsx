@@ -13,9 +13,9 @@ import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse, type CourseMaterial } from "@/lib/course-materials";
 import { SourcePicker } from "@/components/source-picker";
 import { apiSource, pickSource, readSourceChoice, useSourceChoice } from "@/lib/material-pick";
-import { maxSourceFiles } from "@/lib/entitlements";
+import { canUseTutorMode, maxSourceFiles } from "@/lib/entitlements";
 import { STUDY_QUOTES } from "@/lib/study-quotes";
-import { findResumableMockJob, generateMock, getTutorStatus, submitResults, TutorLimitError, type TutorStatus } from "@/lib/backend-api";
+import { findResumableMockJob, generateMock, submitResults, TutorLimitError } from "@/lib/backend-api";
 import { consumeFeatureQuota } from "@/lib/entitlements.functions";
 import { FREE_MAX_QUESTIONS, PAID_MAX_QUESTIONS, EXAM_MAX_QUESTIONS, type QuotaVerdict } from "@/lib/entitlements";
 import { PaywallNotice } from "@/components/paywall-notice";
@@ -242,7 +242,7 @@ export function MockGenerationScreen() {
             courseCode: course.code,
             courseName: course.name,
             questionCount: allowedCount,
-            mode: settings?.mode ?? "tutor",
+            mode: canUseTutorMode(genAccess?.tier) ? (settings?.mode ?? "tutor") : "exam",
             difficulty,
             topicFocus,
             excludeTopics,
@@ -602,14 +602,14 @@ export function MockConfigScreen() {
   const [count, setCount] = useState(initialCount);
   const [minutes, setMinutes] = useState(initial?.minutes ?? defaultMinutesForCount(initialCount));
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? "balanced");
-  const [mode, setMode] = useState<MockMode>(initial?.mode ?? "tutor");
-  // Free plan: how many of the 2 daily Tutor sessions are left (the server counts; this only shows it).
-  const [tutorStatus, setTutorStatus] = useState<TutorStatus | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void getTutorStatus().then((st) => { if (alive) setTutorStatus(st); });
-    return () => { alive = false; };
-  }, []);
+  const tutorLocked = !canUseTutorMode(access?.tier);
+  const [mode, setMode] = useState<MockMode>(initial?.mode ?? "exam");
+  // Tutor mode is paid-only: Free (or a plan that hasn't loaded) always practises in Exam mode.
+  useEffect(() => { if (tutorLocked) setMode("exam"); }, [tutorLocked]);
+  const mockLimit = access?.dailyLimits.mock_sets ?? null;
+  const mocksUsedToday = access?.usageToday.mock_sets ?? 0;
+  const mockCapReached = !!access && mockLimit !== null && mocksUsedToday >= mockLimit;
+  const nextTierName = access?.tier === "exam" ? null : access?.tier === "free" ? "Core" : "Exam";
 
   // Topic options come from THIS course's stored analysis, not from a
   // previously generated question set (which may belong to another course).
@@ -690,8 +690,9 @@ export function MockConfigScreen() {
         : access?.tier === "core" || access?.tier === "trial"
           ? difficulty === "exam" ? "challenging" : difficulty
           : "balanced";
+    if (mockCapReached) { navigate("upgrade"); return; }
     const nextSettings: CourseTestSettings = {
-      mode,
+      mode: tutorLocked ? "exam" : mode,
       questionCount: effectiveCount,
       minutes,
       difficulty: effectiveDifficulty,
@@ -778,10 +779,8 @@ export function MockConfigScreen() {
                 {
                   key: "tutor",
                   title: "Tutor",
-                  detail: tutorStatus?.limited && tutorStatus.counting && tutorStatus.remaining !== null
-                    ? (tutorStatus.remaining > 0
-                      ? `See an explanation after each answer. ${tutorStatus.remaining} of ${tutorStatus.limit} free Tutor sessions left today.`
-                      : "Your free Tutor sessions are used up for today. Exam mode is open.")
+                  detail: tutorLocked
+                    ? "Instant step-by-step guidance after each question. Unlocked on Core & Exam plans."
                     : "See an explanation after each answer.",
                 },
                 { key: "exam", title: "Exam", detail: "Review answers after you finish." },
@@ -790,12 +789,22 @@ export function MockConfigScreen() {
                   key={option.key}
                   type="button"
                   aria-pressed={mode === option.key}
-                  onClick={() => setMode(option.key)}
+                  aria-label={option.key === "tutor" && tutorLocked ? "Tutor mode, locked. Available on Core and Exam plans" : undefined}
+                  onClick={() => {
+                    if (option.key === "tutor" && tutorLocked) { navigate("upgrade"); return; }
+                    setMode(option.key);
+                  }}
                   className={cn(
-                    "rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                    "relative min-h-11 rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                     mode === option.key ? "border-accent bg-accent/10" : "border-border bg-background hover:border-accent/50",
+                    option.key === "tutor" && tutorLocked && "bg-sand/40",
                   )}
                 >
+                  {option.key === "tutor" && tutorLocked ? (
+                    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-amber/15 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
+                      <Lock className="h-3 w-3 text-amber" aria-hidden="true" /> Core / Exam
+                    </span>
+                  ) : null}
                   <span className="block text-sm font-semibold text-foreground">{option.title}</span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{option.detail}</span>
                 </button>
@@ -898,6 +907,20 @@ export function MockConfigScreen() {
               Resume test
             </Button>
           </div>
+        ) : mockCapReached ? (
+          <div role="status" className="mt-5 rounded-2xl border border-amber/50 bg-card p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Lock className="h-4 w-4 text-amber" aria-hidden="true" /> Daily Mock Limit Reached
+            </div>
+            <p className="mt-1 text-sm text-foreground">
+              You have used all {mockLimit} of your mock tests for today. Your daily quota refreshes at midnight (Lagos WAT).
+            </p>
+            {nextTierName ? (
+              <Button size="lg" className="mt-3 min-h-11 w-full bg-amber text-cream hover:bg-amber/90" onClick={() => navigate("upgrade")}>
+                Upgrade to {nextTierName} Plan
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
             <Zap className="mr-2 h-4 w-4" />
@@ -953,8 +976,11 @@ function ConfigSlider({ label, unit, value, min, max, step, onChange, hardCeilin
 export function MockRunScreen() {
   const { profile, update, navigate, setTutorSnapshot, recordStudyActivity } = useProfile();
   const t = profile.inProgressTest;
-  // Legacy sessions without a mode retain the existing end-only answer reveal.
-  const mode: MockMode = t?.mode ?? "exam";
+  const { access: runAccess } = useEntitlement();
+  // Legacy sessions without a mode retain the existing end-only answer reveal. A saved
+  // "tutor" session never unlocks Tutor for a Free plan (e.g. after a plan lapses).
+  const tutorPlanLocked = !!runAccess && !canUseTutorMode(runAccess.tier);
+  const mode: MockMode = tutorPlanLocked ? "exam" : (t?.mode ?? "exam");
   // Only this course's generated set, so questions never cross courses.
   const aiQuestions: AIQuestion[] = t ? (t.questions ?? profile.aiQuestionsByCourse[t.courseCode] ?? []) : [];
 
