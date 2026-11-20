@@ -139,6 +139,7 @@ function writeLockerCache(userId: string, files: LockerFile[]): void {
 
 type ShelfItem = {
   id: string;
+  is_own?: boolean;
   course_code: string;
   file_name: string;
   file_type: string;
@@ -687,24 +688,30 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
                   <Card key={it.id}>
                     <div className="flex items-start gap-3">
                       <Button variant="ghost" className="h-auto shrink-0 p-0" aria-label={`View ${it.file_name}`} onClick={() => void openPreview(it, true)} disabled={busy}>
-                        <DocumentThumbnail fileId={it.id} fileName={it.file_name} fileType={it.file_type} active={active && rail === "shelf" && Boolean(shelfCourse)} resolveSource={() => thumbnailSource(it.id, true)} peer={{ alias: it.peer_alias, avatarUrl: it.avatar_url }} />
+                        <DocumentThumbnail fileId={it.id} fileName={it.file_name} fileType={it.file_type} active={active && rail === "shelf" && Boolean(shelfCourse)} resolveSource={() => thumbnailSource(it.id, true)} peer={it.is_own ? undefined : { alias: it.peer_alias, avatarUrl: it.avatar_url }} />
                       </Button>
                       <div className="min-w-0 flex-1">
                         <span className="break-words text-sm font-semibold text-foreground">{it.file_name}</span>
                         <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{formatFileSize(it.size_bytes)} · Shared {formatFileDate(it.created_at)}</div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <ReadyPill ready={it.readyForMocks} />
-                      <span className="flex items-center gap-1.5 rounded-full bg-doc-blue/10 px-2 py-0.5 text-xs font-semibold text-doc-blue">
-                        Peer copy: {it.peer_alias}
-                      </span>
+                      {it.is_own ? (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">Your upload · Published</span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 rounded-full bg-doc-blue/10 px-2 py-0.5 text-xs font-semibold text-doc-blue">
+                          Peer copy: {it.peer_alias}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button variant="outline" className="min-h-11 border-border" onClick={() => void openPreview(it, true)} disabled={busy}>
                         <Eye className="mr-2 h-4 w-4" /> View
                       </Button>
-                      <Button className="min-h-11 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => void doSave(it)} disabled={busy}>
-                        Save to locker
-                      </Button>
+                      {it.is_own ? null : (
+                        <Button className="min-h-11 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => void doSave(it)} disabled={busy}>
+                          Save to locker
+                        </Button>
+                      )}
                     </div>
                     </div>
                     </div>

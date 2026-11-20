@@ -18,6 +18,7 @@ export const REDEEM_MISS_MESSAGE = "This link is no longer available.";
 
 export type ShelfItem = {
   id: string;
+  is_own: boolean;
   course_code: string;
   file_name: string;
   file_type: string;
@@ -153,7 +154,7 @@ async function attributionFor(
   }
 }
 
-/** Published files from other students. Never returns extracted text. */
+/** Published files from all students, including the viewer's own (flagged is_own). Never returns extracted text. */
 export async function listShelf(opts: {
   viewerId: string;
   courseCode?: string | undefined;
@@ -167,7 +168,6 @@ export async function listShelf(opts: {
     )
     .eq("published", true)
     .eq("is_peer_copy", false)
-    .neq("user_id", opts.viewerId)
     .order("created_at", { ascending: false })
     .limit(300);
 
@@ -198,14 +198,16 @@ export async function listShelf(opts: {
       attribution = await attributionFor(r.user_id ?? "", r.show_owner_name, r.show_owner_photo);
       cache.set(key, attribution);
     }
+    const isOwn = r.user_id === opts.viewerId;
     items.push({
       id: r.id,
+      is_own: isOwn,
       course_code: r.course_code,
       file_name: r.file_name,
       file_type: r.file_type,
       size_bytes: r.size_bytes,
       created_at: r.created_at ?? "",
-      peer_alias: attribution.peer_alias,
+      peer_alias: isOwn ? "You" : attribution.peer_alias,
       avatar_url: attribution.avatar_url,
       readyForMocks: ready(r.extracted_content),
     });
@@ -456,7 +458,6 @@ export async function shelfPreviewUrl(materialId: string, viewerId: string): Pro
     .select("id, user_id, file_path, file_name, file_type, course_code, published, extracted_content")
     .eq("id", materialId)
     .eq("published", true)
-    .neq("user_id", viewerId)
     .eq("is_peer_copy", false)
     .maybeSingle();
   if (
@@ -495,7 +496,6 @@ export async function readShelfPreview(materialId: string, viewerId: string, ran
     .eq("id", materialId)
     .eq("published", true)
     .eq("is_peer_copy", false)
-    .neq("user_id", viewerId)
     .maybeSingle();
   if (!material || !material.user_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
   return {
@@ -523,7 +523,6 @@ export async function headShelfPreview(materialId: string, viewerId: string) {
     .eq("id", materialId)
     .eq("published", true)
     .eq("is_peer_copy", false)
-    .neq("user_id", viewerId)
     .maybeSingle();
   if (!material?.user_id || !isOwnedMaterialPath(material.file_path, material.user_id)) return null;
   return {
