@@ -65,7 +65,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         if (transitionRef.current !== transition) return;
         return document.documentElement.animate({ clipPath: [
           `circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`,
-        ] }, { duration: 380, easing: "cubic-bezier(0.4, 0, 0.2, 1)", pseudoElement: "::view-transition-new(root)", fill: "both" }).finished;
+        ] }, { duration: 350, easing: "cubic-bezier(0.4, 0, 0.2, 1)", pseudoElement: "::view-transition-new(root)", fill: "both" }).finished;
       }).catch(() => { /* skipped/unavailable snapshot: theme is still applied */ });
       void transition.finished.catch(() => {}).finally(() => {
         if (transitionRef.current !== transition) return;

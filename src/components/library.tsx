@@ -493,12 +493,13 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
       setPageExplanation(null);
       setOwnerSheet(null);
       setPreview(null);
-      setFlippingToChat(false);
+      // Keep the sheet hidden while it unmounts so its closing slide and empty-state never flash.
+      handoverTimer.current = setTimeout(() => { handoverTimer.current = null; setFlippingToChat(false); }, 450);
       document.documentElement.dataset.nextViewDirection = "shelf";
       navigate("chatbot", { courseCode: attachment.courseCode });
     };
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) handover();
-    else { setFlippingToChat(true); handoverTimer.current = setTimeout(handover, 160); }
+    else { setFlippingToChat(true); handoverTimer.current = setTimeout(handover, 400); }
   };
 
   const retryPreview = async () => {

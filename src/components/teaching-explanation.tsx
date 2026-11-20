@@ -10,6 +10,8 @@ type Props = {
    *  note is shown first, under "Why your answer was wrong", and the notes for the other options are tucked under one tap. */
   pickedIndex?: number | null;
   correctIndex?: number;
+  /** Tutor first wrong try: show only why the picked option fails, never the answer or worked solution. */
+  hintOnly?: boolean;
 };
 
 function OtherOptions({ items, label }: { items: WrongPickNote[]; label: string }) {
@@ -39,7 +41,7 @@ function OtherOptions({ items, label }: { items: WrongPickNote[]; label: string 
  * With `pickedIndex` it also answers the question every student asks first: "why was MY answer wrong?". Nothing is generated or
  * guessed here; text that is not written in the expected shape is shown exactly as it always was.
  */
-export function TeachingExplanationBlocks({ explanation, pickedIndex, correctIndex }: Props) {
+export function TeachingExplanationBlocks({ explanation, pickedIndex, correctIndex, hintOnly = false }: Props) {
   const content = toTeachingExplanation(explanation);
   const picks = splitWrongPicks(content.commonMistake);
 
@@ -65,6 +67,22 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
     { label: "Therefore", body: content.recap.therefore },
   ].filter((item) => Boolean(item.body));
   const hasRecap = recapItems.length > 0 || Boolean(content.recap.intro);
+
+  if (hintOnly) {
+    return own ? (
+      <section className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5">
+        <h4 className="text-xs font-semibold text-foreground">Why your answer was wrong</h4>
+        <div className="mt-1 break-words text-sm leading-7 text-foreground">
+          <span className="font-semibold">You chose {own.letter}</span>
+          {own.quote ? <span className="text-muted-foreground"> ({own.quote})</span> : null}
+          <span>: </span>
+          <MathText examMath>{own.note}</MathText>
+        </div>
+      </section>
+    ) : (
+      <p className="text-sm text-muted-foreground">Look at the question again and pick another option.</p>
+    );
+  }
 
   if (sections.length === 0 && !content.finalAnswer && !hasRecap && !split) return null;
 
@@ -141,20 +159,17 @@ export function TeachingExplanationBlocks({ explanation, pickedIndex, correctInd
 }
 
 
-/** Splits "Step 1: … Step 2: …", "1. … 2. …" or a trailing "Therefore:" into step cards. Null when not multi-step. */
+/** Splits only explicit "Step 1:" / "Therefore:" headers that start a line or sentence into step cards.
+ *  Numbers and semicolons inside equations are never treated as step breaks; otherwise the text stays whole. */
 export function splitSteps(body: string): { badge: string; text: string }[] | null {
-  const re = /(?:^|\n|\s)(?=(?:Step\s*\d+\s*[:.)-])|(?:\d+[.)]\s)|(?:Therefore\s*[:,]))/i;
-  const parts = body.split(new RegExp(re.source, "gi")).map((p) => p.trim()).filter(Boolean);
-  if (parts.length < 2) {
-    const semi = body.trim().split(/\s*;\s+/).map((p) => p.trim()).filter(Boolean);
-    if (semi.length < 2) return null;
-    return semi.map((text, i) => ({ badge: i === semi.length - 1 && semi.length > 2 ? "Therefore" : `Step ${i + 1}`, text: text.replace(/^[a-z]/, (c) => c.toUpperCase()) }));
-  }
+  const marker = /(?:^|\n|(?<=[.!?])\s+)(?=(?:Step\s*\d+\s*[:.)-]\s)|(?:Therefore\s*[:,]\s))/gi;
+  const parts = body.split(marker).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
   let n = 0;
   return parts.map((p) => {
-    const m = p.match(/^(?:Step\s*(\d+)\s*[:.)-]|(\d+)[.)]\s|(Therefore)\s*[:,])\s*/i);
-    if (m?.[3]) return { badge: "Therefore", text: p.slice(m[0].length) };
-    if (m) { n = Number(m[1] ?? m[2]); return { badge: `Step ${n}`, text: p.slice(m[0].length) }; }
+    const m = p.match(/^(?:Step\s*(\d+)\s*[:.)-]|(Therefore)\s*[:,])\s*/i);
+    if (m?.[2]) return { badge: "Therefore", text: p.slice(m[0].length) };
+    if (m) { n = Number(m[1]); return { badge: `Step ${n}`, text: p.slice(m[0].length) }; }
     n += 1;
     return { badge: n === 1 ? "Setup" : `Step ${n}`, text: p };
   });

@@ -15,7 +15,7 @@ import { FREE_MAX_QUESTIONS } from "@/lib/entitlements";
 import { HeaderLogo } from "@/components/brand";
 import { TopicPill, scoreToStrength, AiGeneratedLabel, CourseDescription } from "@/components/common";
 import {
-  BookOpen, ChevronDown, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw, Trash2,
+  BookOpen, ChevronLeft, ChevronRight, History, Search, Sparkles, Zap, RotateCcw, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { difficultyLabelOf } from "@/lib/why-blocks";
@@ -633,10 +633,8 @@ export function ProgressPanel({
   ) ?? null;
   const courseCode = course?.code ?? null;
   const [selectedTopic, setSelectedTopic] = useState("all");
-  const [expandedProgressTopics, setExpandedProgressTopics] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     setSelectedTopic("all");
-    setExpandedProgressTopics(new Set());
   }, [courseCode]);
   const courseTopics = useMemo(() => {
     if (!courseCode) return [] as ProgressTopic[];
@@ -936,88 +934,64 @@ export function ProgressPanel({
 
       <section aria-labelledby="weakest-topics">
         <h2 id="weakest-topics" className="font-display text-lg font-semibold text-foreground">Topics, weakest first</h2>
-        <p className="mb-2 text-xs text-muted-foreground">Open a topic to see your exact score and practice it.</p>
+        <p className="mb-2 text-xs text-muted-foreground">Swipe through your topics to see each score and practice it.</p>
         {courseTopics.length > 0 ? (
-          <div className="space-y-2">
-            {visibleTopics.map((entry, index) => {
+          <div data-swipe-lock="" aria-label="Topic progress carousel" className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {visibleTopics.map((entry) => {
               const score = entry.score ?? 0;
               const masteredTopic = entry.score !== null && score >= 80;
               const learningTopic = entry.score !== null && score >= 40 && score < 80;
               const status = masteredTopic ? "Mastered" : learningTopic ? "Learning" : entry.score === null ? "Not attempted" : "Weak";
               const color = masteredTopic ? "var(--tf-chart-success)" : learningTopic ? "var(--tf-amber-strong)" : "var(--tf-chart-muted)";
-              const expanded = expandedProgressTopics.has(entry.topic);
-              const panelId = `topic-progress-${index}`;
               return (
-                <article key={entry.topic} className="overflow-hidden rounded-xl border border-border bg-card">
-                  <button
-                    type="button"
-                    aria-expanded={expanded}
-                    aria-controls={panelId}
-                    aria-label={`${expanded ? "Hide" : "Show"} progress details for ${entry.topic}`}
-                    onClick={() => setExpandedProgressTopics((current) => {
-                      const next = new Set(current);
-                      if (next.has(entry.topic)) next.delete(entry.topic);
-                      else next.add(entry.topic);
-                      return next;
-                    })}
-                    className="flex min-h-12 w-full items-center justify-between gap-3 p-3 text-left transition hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{entry.topic}</span>
-                    <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">{status}</span>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent">
-                      {expanded ? "Hide" : "See progress"}
-                      <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} aria-hidden="true" />
-                    </span>
-                  </button>
-                  {expanded ? (
-                    <div id={panelId} className="border-t border-border px-3 pb-3 pt-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-display text-2xl font-semibold text-foreground">
-                            {entry.score === null ? "—" : `${entry.score}%`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {entry.score === null ? "No score recorded yet" : `Your progress · ${status.toLowerCase()}`}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 shrink-0 px-3 text-xs"
-                          onClick={() => course && navigate("mock-config", { courseCode: course.code })}
-                          disabled={!course}
-                        >
-                          Practice
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 shrink-0 px-3 text-xs"
-                          disabled={!course}
-                          onClick={() => {
-                            if (!course) return;
-                            try {
-                              sessionStorage.setItem("truefluency-verilo-pending-prompt", JSON.stringify({ courseCode: course.code, prompt: `Help me understand ${entry.topic} in ${canonicalCourseCode(course.code)} and suggest how I can practise it.` }));
-                            } catch { /* chat still opens if session storage is unavailable */ }
-                            navigate("chatbot", { courseCode: course.code });
-                          }}
-                        >
-                          Ask Verilo
-                        </Button>
-                      </div>
-                      <div
-                        className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
-                        role="progressbar"
-                        aria-label={`${entry.topic} progress`}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={score}
-                        aria-valuetext={entry.score === null ? "Not attempted" : `${entry.score}%`}
-                      >
-                        <div className="h-full rounded-full transition-[width]" style={{ width: `${score}%`, backgroundColor: color }} />
-                      </div>
+                <article key={entry.topic} className="flex w-[78%] max-w-[280px] shrink-0 snap-center flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground">{status}</span>
+                      <span className="font-display text-lg font-semibold tabular-nums text-foreground">{entry.score === null ? "—" : `${entry.score}%`}</span>
                     </div>
-                  ) : null}
+                    <h3 className="mt-2.5 line-clamp-3 text-sm font-semibold leading-snug text-foreground">{entry.topic}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {entry.score === null ? "No score recorded yet" : `Your progress · ${status.toLowerCase()}`}
+                    </p>
+                    <div
+                      className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-label={`${entry.topic} progress`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={score}
+                      aria-valuetext={entry.score === null ? "Not attempted" : `${entry.score}%`}
+                    >
+                      <div className="h-full rounded-full transition-[width]" style={{ width: `${score}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 flex-1 text-xs"
+                      onClick={() => course && navigate("mock-config", { courseCode: course.code })}
+                      disabled={!course}
+                    >
+                      Practice
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-11 flex-1 text-xs"
+                      disabled={!course}
+                      onClick={() => {
+                        if (!course) return;
+                        try {
+                          sessionStorage.setItem("truefluency-verilo-pending-prompt", JSON.stringify({ courseCode: course.code, prompt: `Help me understand ${entry.topic} in ${canonicalCourseCode(course.code)} and suggest how I can practise it.` }));
+                        } catch { /* chat still opens if session storage is unavailable */ }
+                        navigate("chatbot", { courseCode: course.code });
+                      }}
+                    >
+                      Ask Verilo
+                    </Button>
+                  </div>
                 </article>
               );
             })}

@@ -1390,6 +1390,8 @@ export function MockRunScreen() {
               const explanation = q.explanation?.trim() ?? "";
               const chosenText = q.options[selected] ?? "your selected option";
               const answerText = q.options[q.correct_index] ?? "the correct option";
+              // First wrong try in Tutor mode: no correct answer, no worked solution, only why this pick fails.
+              const isFirstWrongAttempt = wasWrong && !(t.tutorRetryUsed?.[idx] ?? false);
               return (
                 <section
                   className={`animate-explanation-unfurl mt-4 space-y-3 rounded-xl border border-border bg-background p-4 ${PROSE}`}
@@ -1404,21 +1406,21 @@ export function MockRunScreen() {
                     <h2 className="text-sm font-semibold text-foreground">{wasWrong ? "Not quite" : "Correct"}</h2>
                   </div>
                   {wasWrong && !(t.tutorRetryUsed?.[idx] ?? false) ? (
-                    <p className="text-xs font-medium text-accent">Choose one more answer to retry before moving on.</p>
+                    <p className="text-sm font-medium text-accent">Not quite. Choose one more answer to retry before moving on.</p>
                   ) : wasWrong && (t.tutorRetryUsed?.[idx] ?? false) ? (
                     <p className="text-xs text-muted-foreground">Retry used. Continue when you’re ready.</p>
                   ) : null}
                   <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
+                      {isFirstWrongAttempt ? "Hint before your retry" : wasWrong ? "Why your selected answer was wrong" : "Why this answer is correct"}
                     </h3>
                     <div className="mt-1 break-words whitespace-pre-wrap text-base leading-7 text-foreground">
                       {failsQualityCheck(explanation) ? (
                         <p className="text-muted-foreground">{QUALITY_FAIL_NOTICE}</p>
                       ) : explanation ? (
                         <>
-                          {wasWrong ? <div className="mb-2 text-muted-foreground">Your answer: <MathText examMath>{chosenText}</MathText>. Correct answer: <MathText examMath>{answerText}</MathText>.</div> : null}
-                          <TeachingExplanationBlocks explanation={explanation} pickedIndex={selected} correctIndex={q.correct_index} />
+                          {wasWrong && !isFirstWrongAttempt ? <div className="mb-2 text-muted-foreground">Your answer: <MathText examMath>{chosenText}</MathText>. Correct answer: <MathText examMath>{answerText}</MathText>.</div> : null}
+                          <TeachingExplanationBlocks explanation={explanation} pickedIndex={selected} correctIndex={q.correct_index} hintOnly={isFirstWrongAttempt} />
                         </>
                       ) : (
                         <p className="text-muted-foreground">No explanation was saved for this question.</p>
@@ -1469,8 +1471,8 @@ export function MockRunScreen() {
           </section>
         ) : null}
 
-        <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur">
-          <div className={`${SCREEN} flex items-center gap-2 py-3`}>
+        <div data-mock-nav="" className="sticky bottom-0 z-30 -mx-4 mt-4 sm:-mx-6 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
+          <div className={`${SCREEN} flex items-center gap-3 py-3`}>
             <Button variant="outline" size="lg" onClick={() => move(-1)} disabled={idx === 0} className="flex-1">
               <ChevronLeft className="mr-1 h-4 w-4" /> Prev
             </Button>

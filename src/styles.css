@@ -598,21 +598,22 @@ html, body { overscroll-behavior: none; }
   overflow-y: auto;
   overscroll-behavior: none;
   contain: layout paint;
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
 }
 .tab-swipe-pane[inert] { overflow-y: hidden; }
 .tab-swipe-pane :is(.min-h-screen, .reference-home), [data-subview-scroll] .min-h-screen { min-height: 100%; }
 [data-subview-scroll]:has(.mock-stage) { padding-bottom: 0; }
 [data-subview-scroll] [data-app-shell] { height: 100%; }
 [data-chat-fullscreen] .chat-layout > :first-child { flex-wrap: wrap; }
-html[data-view-direction="shelf"] [data-chat-fullscreen] { animation: shelfFlipIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.shelf-flip-exit { transform-origin: center; animation: shelfFlipOut 160ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+html[data-view-direction="shelf"] [data-chat-fullscreen] { animation: shelfFlipIn 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.shelf-flip-exit { transform-origin: center; transition: none !important; animation: shelfFlipOut 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both !important; }
+.shelf-flip-exit[data-state="closed"] { opacity: 0 !important; animation: none !important; }
 @keyframes shelfFlipOut {
   from { transform: perspective(1000px) rotateY(0); opacity: 1; }
-  to { transform: perspective(1000px) rotateY(-75deg); opacity: 0; }
+  to { transform: perspective(1000px) rotateY(-80deg) scale(0.92); opacity: 0; }
 }
 @keyframes shelfFlipIn {
-  from { transform: perspective(1000px) rotateY(75deg); opacity: 0; }
+  from { transform: perspective(1000px) rotateY(80deg) scale(0.92); opacity: 0; }
   to { transform: perspective(1000px) rotateY(0); opacity: 1; }
 }
 @media (min-width: 768px) {

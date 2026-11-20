@@ -280,6 +280,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   const [shareGenerating, setShareGenerating] = useState(false);
   const [shareRevoking, setShareRevoking] = useState(false);
   const [shareConversationId, setShareConversationId] = useState<string | null>(null);
+  const [shareMessageCount, setShareMessageCount] = useState(0);
   const [shareVisibility, setShareVisibility] = useState<ChatShareVisibility>("private");
   const [savedShareVisibility, setSavedShareVisibility] = useState<ChatShareVisibility | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -1060,8 +1061,17 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setSavedShareVisibility(null);
     setShareVisibility("private");
     try {
-      const thread = await getCourseThread(selected);
-      if (!thread.messages.length) throw new Error("Add a saved message before sharing.");
+      // Always read fresh so the link includes the message you just sent; a reply that is still
+      // being saved gets one short retry before we ask the student to wait.
+      invalidateChatReads(selected);
+      let thread = await getCourseThread(selected);
+      if (!thread.messages.length && messages.length) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        invalidateChatReads(selected);
+        thread = await getCourseThread(selected);
+      }
+      if (!thread.messages.length) throw new Error(messages.length ? "Your latest message is still saving. Try again in a moment." : "Send a message before sharing.");
+      setShareMessageCount(thread.messages.length);
       setShareConversationId(thread.conversationId);
       const current = await getChatShareState({ data: { conversationId: thread.conversationId } });
       if (!current.ok) throw new Error(current.reason);
@@ -1082,6 +1092,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     setShareGenerating(true);
     setShareError(null);
     try {
+      invalidateChatReads(selected);
+      const latest = await getCourseThread(selected).catch(() => null);
+      if (latest?.messages.length) setShareMessageCount(latest.messages.length);
       const result = await createOrUpdateChatShare({
         data: { conversationId: shareConversationId, visibility: shareVisibility },
       });
@@ -1090,7 +1103,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
       setShareUrl(new URL(`/chat-share/${result.share.token}`, window.location.origin).toString());
       setShareVisibility(result.share.visibility);
       setSavedShareVisibility(result.share.visibility);
-      toast.success(result.share.visibility === "public" ? "Public link is ready." : "Private link is ready.");
+      toast.success(`${result.share.visibility === "public" ? "Public" : "Private"} link updated with your latest messages.`);
     } catch (error) {
       setShareError(error instanceof Error ? error.message : "Couldn't create this share link.");
     } finally {
@@ -1771,6 +1784,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
           </fieldset>
           {shareError ? <p role="alert" className="mt-3 text-sm text-destructive">{shareError}</p> : null}
           {shareLoading ? <p role="status" className="mt-3 text-sm text-muted-foreground">Loading your conversation link…</p> : null}
+          {!shareLoading && shareMessageCount > 0 ? <p className="mt-3 text-sm text-foreground">Snapshot includes all {shareMessageCount} saved messages, up to your latest one.</p> : null}
           {shareUrl ? (
             <div className="mt-4 space-y-2">
               <label htmlFor="chat-share-url" className="text-xs font-semibold text-muted-foreground">Active {savedShareVisibility === "public" ? "public" : "private"} link</label>
