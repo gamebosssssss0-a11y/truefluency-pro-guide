@@ -25,3 +25,11 @@
 - Track subview owners in ProfileProvider and keep Tutor question handovers account/session-scoped in memory; this prevents stale origin jumps and preserves paused practice without browser-storage disclosure.
 - Root panes have identical viewport bounds and independently scroll only active content; this prevents neighboring page height from resizing swipes.
 - Meter chat on the server's fixed WAT window, never clear usage optimistically in the browser; this prevents a false allowance reset while backend deployment is pending.
+
+## Surgical surface polish
+
+- Bottom-positioned SheetContent owns responsive geometry and motion centrally while Radix retains focus/Escape behavior; consumers must not override its dimensions.
+- Reuse the existing bounded owner thumbnail cache only after authorization, and keep owner renders alive across intersection changes; peer previews still disappear when hidden.
+- Landing showcase examples stay separate from live study state and are labelled as examples; public previews must not disclose student data or imply verified endorsements.
+
+- Support response timing is read from the shared support policy module; this keeps every display aligned with the owner-confirmed commitment.

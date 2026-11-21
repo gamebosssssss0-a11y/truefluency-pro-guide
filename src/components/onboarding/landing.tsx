@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo-mark";
 import { BrainCircuit, Calculator, FileText, LineChart, Sparkles } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
-import productPreview from "@/assets/product-preview.png.asset.json";
+import { StudyShowcase } from "@/components/onboarding/study-showcase";
 
 /**
  * Landing screen. Honesty contract: no exam-probability percentages and no
@@ -36,7 +36,6 @@ const features = [
   },
 ];
 
-
 const FACULTIES = "Science, Clinical, Arts, Law, Technology, Social Sciences";
 
 export function LandingScreen() {
@@ -44,40 +43,54 @@ export function LandingScreen() {
   const insideRef = useRef<HTMLDetailsElement | null>(null);
 
   return (
-    <div className="on-sand min-h-screen">
-      <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col px-5 pb-10 pt-6">
-        <header className="mb-8 flex items-center gap-2">
-          <LogoMark className="h-8 w-8" />
-          <span className="font-display text-base font-semibold tracking-tight text-foreground">
-            TrueFluency <span className="text-accent">Pro</span>
-          </span>
-          <button
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 pb-10 pt-6 md:py-12">
+        <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex">
+          <div className="flex min-w-0 items-center gap-2">
+            <LogoMark className="h-8 w-8 shrink-0" />
+            <span className="font-display text-base font-semibold text-foreground">
+              TrueFluency <span className="text-accent-ink">Pro</span>
+            </span>
+          </div>
+          <nav aria-label="Landing sections" className="ml-auto hidden items-center gap-2 md:flex">
+            <Button asChild variant="ghost">
+              <a href="#study-examples">Study examples</a>
+            </Button>
+            <Button asChild variant="ghost">
+              <a href="#inside">What's inside</a>
+            </Button>
+          </nav>
+          <Button
             type="button"
             onClick={() => {
-              try { sessionStorage.setItem("truefluency-open-identity-auth", "1"); }
-              catch { /* the identity screen still offers account access */ }
+              try {
+                sessionStorage.setItem("truefluency-open-identity-auth", "1");
+              } catch {
+                /* the identity screen still offers account access */
+              }
               go("identity");
             }}
-            className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            variant="ghost"
+            className="ml-auto h-auto min-h-11 max-w-32 whitespace-normal text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground sm:max-w-none"
           >
             Already have an account? Log in
-          </button>
+          </Button>
         </header>
 
-        <section>
-          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-accent" />
+        <section className="mx-auto w-full max-w-2xl">
+          <div className="mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-accent-ink" />
             Every faculty, every department, 100L to final year
           </div>
           <h1 className="font-display text-[2rem] font-semibold leading-tight text-foreground">
             Turn your UI slides and notes into practice exams.
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Upload a PDF, slides or photos of your notes, and get study topics
-            and mock tests built from your own lecturer's material.
+            Upload a PDF, slides or photos of your notes, and get study topics and mock tests built
+            from your own lecturer's material.
           </p>
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-4 space-y-3">
             <Button
               size="lg"
               className="h-12 min-h-[48px] w-full bg-accent text-accent-foreground hover:bg-accent/90"
@@ -89,16 +102,6 @@ export function LandingScreen() {
               <p>No card required up front.</p>
               <p>No automatic debit.</p>
             </div>
-            <details className="rounded-xl border border-border bg-card p-3">
-              <summary className="cursor-pointer text-center text-xs font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                Trial and plan details
-              </summary>
-              <div className="mt-3 space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
-                <p>{TRIAL_LINE}</p>
-                <p className="break-words">{PRICE_LINE}</p>
-                <p>Trial runs 7 days. Pay when you upgrade.</p>
-              </div>
-            </details>
             <Button
               size="lg"
               variant="outline"
@@ -107,7 +110,12 @@ export function LandingScreen() {
                 (() => {
                   if (!insideRef.current) return;
                   insideRef.current.open = true;
-                  insideRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+                  insideRef.current.scrollIntoView({
+                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                      ? "auto"
+                      : "smooth",
+                    block: "start",
+                  });
                 })()
               }
             >
@@ -116,84 +124,40 @@ export function LandingScreen() {
           </div>
         </section>
 
-        {/* Hero: one static frame of the real app, drawn in the page itself so
-            it paints with the first render (no image request, no layout shift). */}
-        <div
-          className="mt-9 overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-sm"
-          style={{ aspectRatio: "4 / 5" }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-display text-lg font-semibold text-foreground">CHE 105</div>
-              <div className="text-xs text-muted-foreground">
-                Introductory Physical Chemistry
-              </div>
-            </div>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              PDF
-            </span>
-          </div>
+        <StudyShowcase />
 
-          <div className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Topics in this upload
-          </div>
-          <div className="mt-2 space-y-2">
-            <TopicRow topic="Chemical equilibrium" pill="Strong in this upload" tone="strong" />
-            <TopicRow topic="Thermodynamics" pill="Appears moderately" tone="moderate" />
-            <TopicRow topic="Reaction kinetics" pill="Mentioned briefly" tone="brief" />
-          </div>
-
-          <div className="on-sand mt-4 rounded-xl border border-border bg-background p-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Mock test
+        <div className="mx-auto mt-6 w-full max-w-2xl">
+          <details className="rounded-xl border border-border bg-card p-3">
+            <summary className="cursor-pointer text-center text-xs font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              Trial and plan details
+            </summary>
+            <div className="mt-3 space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
+              <p>{TRIAL_LINE}</p>
+              <p className="break-words">{PRICE_LINE}</p>
+              <p>Trial runs 7 days. Pay when you upgrade.</p>
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-foreground">
-              Which change shifts an exothermic equilibrium towards the
-              reactants?
-            </p>
-            <div className="mt-2 space-y-1.5">
-              {["Raising the temperature", "Adding a catalyst", "Reducing the volume"].map((o) => (
-                <div
-                  key={o}
-                  className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground"
-                >
-                  {o}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-xl bg-accent px-3 py-2 text-center text-xs font-semibold text-accent-foreground">
-            Take a mock
-          </div>
+          </details>
         </div>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Topics and mock tests, generated from your own courses.
-        </p>
 
         <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
           Built for University of Ibadan students across {FACULTIES}.
         </p>
 
-        <details ref={insideRef} className="mt-10 scroll-mt-4 rounded-2xl border border-border bg-card p-4">
+        <details
+          id="inside"
+          ref={insideRef}
+          className="mt-10 scroll-mt-4 rounded-2xl border border-border bg-card p-4"
+        >
           <summary className="cursor-pointer list-none font-display text-xl font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
             What's inside
           </summary>
-          <figure className="mt-4">
-            <img
-              src={productPreview.url}
-              alt="TrueFluency Pro Home from your own upload, not exam percentages"
-              className="w-full rounded-2xl border border-border"
-              loading="lazy"
-            />
-            <figcaption className="mt-2 text-center text-xs text-muted-foreground">
-              The Home screen after you upload a file.
-            </figcaption>
-          </figure>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {features.map((f) => (
-              <div key={f.title} className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-                <div className="mb-2 grid h-9 w-9 place-items-center rounded-xl bg-accent/10 text-accent">
+              <div
+                key={f.title}
+                className="rounded-lg border border-border bg-surface p-4 shadow-sm"
+              >
+                <div className="mb-2 grid h-9 w-9 place-items-center rounded-xl bg-accent/10 text-accent-ink">
                   <f.icon className="h-4 w-4" />
                 </div>
                 <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
@@ -208,49 +172,23 @@ export function LandingScreen() {
             Why TrueFluency is built for UI students
           </summary>
           <div className="mt-4 rounded-2xl border border-border bg-surface p-5 shadow-sm">
-          <h2 className="font-display text-lg font-semibold text-foreground">
-            Built for UI, across every faculty and department
-          </h2>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            Most Nigerian exam prep tools cover one level or one department and
-            stop there. TrueFluency Pro was built by a UI student to work across
-            Science, Clinical, Arts, Law, Technology and Social Sciences, so it
-            still fits when you move from 100L to 200L and beyond.
-          </p>
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            To be clear with you: this is a study aid, not a replacement for
-            lectures. It shows you what your own material leans on, and it never
-            promises which questions will appear.
-          </p>
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Built for UI, across every faculty and department
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Most Nigerian exam prep tools cover one level or one department and stop there.
+              TrueFluency Pro was built by a UI student to work across Science, Clinical, Arts, Law,
+              Technology and Social Sciences, so it still fits when you move from 100L to 200L and
+              beyond.
+            </p>
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              To be clear with you: this is a study aid, not a replacement for lectures. It shows
+              you what your own material leans on, and it never promises which questions will
+              appear.
+            </p>
           </div>
         </details>
-
       </div>
-    </div>
-  );
-}
-
-function TopicRow({
-  topic,
-  pill,
-  tone,
-}: {
-  topic: string;
-  pill: string;
-  tone: "strong" | "moderate" | "brief";
-}) {
-  const pillClass =
-    tone === "strong"
-      ? "bg-accent text-accent-foreground"
-      : tone === "moderate"
-        ? "bg-secondary text-secondary-foreground"
-        : "bg-background text-muted-foreground border border-border";
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
-      <span className="truncate text-xs font-medium text-foreground">{topic}</span>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${pillClass}`}>
-        {pill}
-      </span>
     </div>
   );
 }

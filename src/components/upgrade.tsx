@@ -89,7 +89,7 @@ const planName = (p?: string | null) => (p === "exam" ? "Exam" : p === "core" ? 
 /** Shown ONLY to an authorised test account (the server decides): the payment is a Squad sandbox payment with fake money. */
 function TestModeNotice() {
   return (
-    <p role="note" data-test-mode-notice className="my-4 rounded-xl border border-amber-500/60 bg-amber-500/10 p-3 text-xs leading-relaxed text-foreground">
+    <p role="note" data-test-mode-notice className="my-4 rounded-xl border border-accent/60 bg-secondary p-3 text-xs leading-relaxed text-foreground">
       <strong>TEST MODE.</strong> This is a Squad sandbox payment with fake money. Nothing here is real, and your normal TrueFluency plan is not changed.
     </p>
   );
@@ -229,7 +229,7 @@ export function UpgradeScreen() {
 
   const manage = activePlan ? (
     <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-      <p className="text-xs font-semibold uppercase tracking-wider text-accent">Your plan</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Your plan</p>
       <h2 className="mt-1 font-display text-xl font-semibold">{planName(activePlan)} · valid until {formatDate(status?.period_end)}</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {status?.auto_renew
@@ -289,13 +289,13 @@ export function UpgradeScreen() {
         <div className="mb-5 flex items-center gap-2">
           <BackButton onBack={back} />
           <HeaderLogo />
-          <span className="text-xs font-semibold uppercase tracking-wider text-accent">Premium</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Premium</span>
         </div>
         {status?.sandbox ? <TestModeNotice /> : null}
 
         {step === "offer" ? (
           <>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">A calmer way to prepare</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink">A calmer way to prepare</p>
             <h1 className="mt-2 font-display text-3xl font-bold text-foreground">Full access to your next level.</h1>
             <p className="mt-2 text-sm leading-relaxed text-foreground">Make every study session count with a little more room to practise.</p>
             <div className="mt-5 rounded-2xl border-2 border-accent bg-accent/10 p-5">
@@ -318,7 +318,7 @@ export function UpgradeScreen() {
               <h2 className="text-sm font-semibold">Your studies, with more support</h2>
               <ul className="mt-3 space-y-3">{PLAN_FEATURES.core.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
             </section>
-            <Button className="mt-5 h-12 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"}</Button>
+            <Button className="mt-5 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"}</Button>
             <Button variant="outline" className="mt-3 h-12 w-full" onClick={() => navigate("support")}>Ask us about payment</Button>
             <Button variant="ghost" className="mt-2 w-full" onClick={() => setStep("plans")}>Compare plans</Button>
             {status && !live ? <p className="mt-2 text-center text-xs text-muted-foreground">Payments aren’t live yet. Nothing will be charged.</p> : null}
@@ -330,7 +330,7 @@ export function UpgradeScreen() {
             <h1 className="font-display text-3xl font-bold text-foreground">Choose what works for you.</h1>
             <p className="mt-2 text-sm text-foreground">Review your current plan, then compare the plans available to you.</p>
             <section aria-labelledby="current-plan-heading" className="mt-5 rounded-2xl border border-border bg-card p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-accent">Your current plan</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Your current plan</p>
               <h2 id="current-plan-heading" className="mt-1 font-display text-xl font-semibold">
                 {access?.tier === "trial" ? "Core trial" : planName(currentPlan)}
               </h2>
@@ -352,7 +352,7 @@ export function UpgradeScreen() {
                   <li>{FREE_DAILY_LIMITS.mock_sets} mock sets per day</li>
                   <li>{FREE_MAX_QUESTIONS} questions per set</li>
                   <li>Balanced difficulty</li>
-                  <li>Explanations in Tutor mode, 2 sessions a day</li>
+                  <li>Tutor mode requires Core or Exam</li>
                   <li>No “why” explanations in the final review</li>
                   <li>No peer-save</li>
                   <li>{filesLine("free")}</li>
@@ -382,7 +382,7 @@ export function UpgradeScreen() {
                       : plan === "core" ? "Standard price" : "Available plan"}
                   </p>
                   <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{PLAN_FEATURES[plan].map((line) => <li key={line}>✓ {line}</li>)}</ul>
-                  <span className="mt-3 inline-flex text-xs font-semibold text-accent">Choose {planName(plan)}</span>
+                  <span className="mt-3 inline-flex text-xs font-semibold text-accent-ink">Choose {planName(plan)}</span>
                 </button>
               ))}
             </div>
@@ -392,7 +392,7 @@ export function UpgradeScreen() {
 
         {step === "review" ? (
           <section className="rounded-2xl border border-border bg-card p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent">Review</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Review</p>
             <h1 className="mt-2 font-display text-3xl font-bold">{planName(selectedPlan)} plan</h1>
             <p className="mt-2 text-sm font-semibold text-foreground">
               {formatNaira(price)} for 30 days{introNow ? " · introductory price" : ""}
@@ -448,7 +448,7 @@ export function UpgradeScreen() {
               <span>{consentLine ?? "Loading the exact terms…"}</span>
             </label>
             {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
-            <Button disabled={busy || !agreed || !consentLine || (status !== null && !live)} className="mt-4 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => void pay()}>
+            <Button disabled={busy || !agreed || !consentLine || (status !== null && !live)} className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void pay()}>
               {busy ? "Opening Squad…" : status !== null && !live ? "Payments aren’t live yet" : !agreed ? "Tick the box above to continue" : `Pay ${formatNaira(price)} with Squad`}
             </Button>
             <Button variant="outline" className="mt-2 w-full" disabled={busy} onClick={() => setStep("plans")}>Back to plans</Button>
@@ -513,9 +513,9 @@ export function UpgradeReminderSheet({ open, onOpenChange }: { open: boolean; on
   const { navigate } = useProfile();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="mx-auto max-w-md rounded-t-3xl">
-        <SheetHeader className="pr-6 text-left"><p className="text-xs font-semibold uppercase tracking-wider text-accent">A gentle reminder</p><SheetTitle>A little more room to practise?</SheetTitle><SheetDescription>Core gives you more daily mock sets and clearer answer explanations, whenever you’re ready.</SheetDescription></SheetHeader>
-        <SheetFooter className="mt-5 flex-col gap-2 sm:flex-col sm:space-x-0"><Button className="w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]" onClick={() => { onOpenChange(false); navigate("upgrade"); }}>See plans</Button><Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Not now</Button></SheetFooter>
+      <SheetContent side="bottom">
+        <SheetHeader className="pr-6 text-left"><p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">A gentle reminder</p><SheetTitle>A little more room to practise?</SheetTitle><SheetDescription>Core gives you more daily mock sets and clearer answer explanations, whenever you’re ready.</SheetDescription></SheetHeader>
+        <SheetFooter className="mt-5 flex-col gap-2 sm:flex-col sm:space-x-0"><Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { onOpenChange(false); navigate("upgrade"); }}>See plans</Button><Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Not now</Button></SheetFooter>
       </SheetContent>
     </Sheet>
   );

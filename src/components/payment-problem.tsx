@@ -74,9 +74,9 @@ export function PaymentProblemSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="mx-auto max-h-[92dvh] max-w-md overflow-y-auto rounded-t-3xl px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <SheetContent side="bottom">
         <SheetHeader className="pr-6 text-left">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Billing help</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Billing help</p>
           <SheetTitle>Report a payment problem</SheetTitle>
           <SheetDescription>
             Tell us what happened and we’ll give you a reference number. Sending a report does not cancel your plan, refund you or charge you again.
@@ -131,7 +131,7 @@ export function PaymentProblemSheet({
               Never write your card number, PIN, OTP or password here. We will never ask for them.
             </p>
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" disabled={!ready} className="h-12 w-full bg-[var(--tf-amber-strong)] text-[var(--tf-ink-dark)] hover:bg-[var(--tf-amber-strong)]">
+            <Button type="submit" disabled={!ready} className="h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90">
               {busy ? "Sending…" : "Send report"}
             </Button>
           </form>

@@ -16,30 +16,40 @@ export function DocumentThumbnail({ fileName, fileType, resolveSource, active = 
   const sourceRef = useRef(resolveSource);
   sourceRef.current = resolveSource;
   const [visible, setVisible] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [image, setImage] = useState<string | null>(null);
+  const [authorized, setAuthorized] = useState(false);
   const [accountEpoch, setAccountEpoch] = useState(0);
   const account = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       const next = session?.user.id ?? null;
-      if (next !== account.current) { account.current = next; setImage(null); setStatus("loading"); setAccountEpoch((value) => value + 1); }
+      if (next !== account.current) { account.current = next; setImage(null); setAuthorized(false); setStatus("loading"); setAccountEpoch((value) => value + 1); }
     });
     return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
     const node = root.current;
     if (!node || !active) { setVisible(false); return; }
-    const observer = new IntersectionObserver(([entry]) => setVisible(Boolean(entry?.isIntersecting)), { rootMargin: "120px" });
+    const observer = new IntersectionObserver(([entry]) => {
+      const intersects = Boolean(entry?.isIntersecting);
+      setVisible(intersects);
+      if (intersects) setRequested(true);
+    }, { rootMargin: "120px" });
     observer.observe(node);
     return () => observer.disconnect();
   }, [active]);
+  const shouldRender = active && (persistent ? requested : visible);
   useEffect(() => {
-    if (!active || !visible) return;
-    const controller = new AbortController();
-    setStatus("loading");
     setImage(null);
+    setAuthorized(false);
+    setStatus("loading");
+  }, [fileId, revision, fileName, fileType, textContent, accountEpoch]);
+  useEffect(() => {
+    if (!shouldRender) return;
+    const controller = new AbortController();
     void (async () => {
       try {
         const { data } = await supabase.auth.getSession();
@@ -54,7 +64,7 @@ export function DocumentThumbnail({ fileName, fileType, resolveSource, active = 
           const { data: current } = await supabase.auth.getSession();
           controller.signal.throwIfAborted();
           if (current.session?.user.id !== ownerId) return;
-          setImage(cached); setStatus("ready"); return;
+          setAuthorized(true); setImage(cached); setStatus("ready"); return;
         }
         const { renderDocumentPreview } = await import("@/lib/document-preview.browser");
         const target = canvas.current;
@@ -65,21 +75,22 @@ export function DocumentThumbnail({ fileName, fileType, resolveSource, active = 
         controller.signal.throwIfAborted();
         if (current.session?.user.id !== ownerId) return;
         if (key) await setCachedThumbnail(key, rendered);
-        if (!controller.signal.aborted) { setImage(rendered); setStatus("ready"); }
+        if (!controller.signal.aborted) { setAuthorized(true); setImage(rendered); setStatus("ready"); }
       } catch {
-        if (!controller.signal.aborted) setStatus("fallback");
+        if (!controller.signal.aborted) { setImage(null); setStatus("fallback"); }
       }
     })();
     return () => {
       controller.abort();
+      setAuthorized(false);
       if (!persistent) setImage(null);
       const target = canvas.current;
       if (target) { target.width = 0; target.height = 0; }
     };
-  }, [active, visible, fileName, fileType, fileId, revision, persistent, textContent, accountEpoch]);
+  }, [shouldRender, fileName, fileType, fileId, revision, persistent, textContent, accountEpoch]);
   return <div ref={root} className={cn("tf-document-thumbnail relative aspect-[3/4] w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-card", className)}>
     <canvas ref={canvas} className="hidden" />
-    {image && active && visible ? <img src={image} alt={`First-page preview of ${fileName}`} className="h-full w-full object-cover object-top" /> : null}
+    {image && authorized && active && (persistent || visible) ? <img src={image} alt={`First-page preview of ${fileName}`} className="h-full w-full object-cover object-top" /> : null}
     {status !== "ready" ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-2 text-center text-muted-foreground">
       <FileText className="size-6 text-accent" aria-hidden="true" />
       {status === "loading" ? <div aria-hidden="true" className="w-full space-y-1.5"><span className="loading-skeleton block h-1.5 w-4/5 rounded" /><span className="loading-skeleton block h-1.5 w-full rounded" /><span className="loading-skeleton block h-1.5 w-2/3 rounded" /></div>

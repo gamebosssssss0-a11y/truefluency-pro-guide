@@ -21,3 +21,11 @@
 - [x] Branded shelf, locker, mock-generation, and payment loading states.
 - [x] Regression and desktop/phone guest checks; commit changes.
 - [ ] Authenticated production flow verification: blocked by external unmanaged authentication; no test session is available.
+# Current surgical polish
+
+- [x] Replace outdated landing preview with interactive, clearly labelled study examples.
+- [x] Fix mock timer, plan-banner and Home-card overflow; strengthen study-screen contrast.
+- [x] Retain authorised owner thumbnails across scrolling without caching peer content.
+- [x] Polish Support using verified contacts, honest availability and the confirmed within-24-hours response time.
+- [x] Unify upgrade, mock-share, receipt and payment-problem sheets.
+- [x] Run existing checks and verify phone/desktop rendering; commit changes.

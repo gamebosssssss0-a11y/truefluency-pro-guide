@@ -19,6 +19,8 @@ import { listAllUserMaterials, type CourseMaterial } from "@/lib/course-material
 import { getMyAvatar } from "@/lib/avatar";
 import { lagosDay } from "@/lib/wat-day";
 import { getStreakState, type StreakState } from "@/lib/streak-state";
+import { DocumentThumbnail } from "@/components/ui/document-thumbnail";
+import { presignMaterialDownload } from "@/lib/storage.functions";
 import { UpgradeReminderSheet } from "@/components/upgrade";
 
 /* ================= Tab 1: Home ================= */
@@ -37,7 +39,7 @@ function StreakGlyph({ state }: { state: StreakState }) {
     <span role="img" aria-label={STREAK_LABEL[state]} className="grid h-10 w-10 shrink-0 place-items-center">
       <Icon
         aria-hidden="true"
-        className={state === "none" ? "h-5 w-5 text-muted-foreground" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 fill-accent/15 text-accent"}
+        className={state === "none" ? "h-5 w-5 text-muted-foreground" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 fill-accent/15 text-accent-ink"}
       />
     </span>
   );
@@ -67,33 +69,19 @@ function writeHomeDisplayCache(update: HomeDisplayCache) {
   catch { /* display cache is optional */ }
 }
 
-const TYPE_CHIP: Record<string, { label: string; color: string; textColor: string }> = {
-  pdf: { label: "PDF", color: "var(--tf-file-pdf)", textColor: "var(--tf-cream)" },
-  docx: { label: "DOC", color: "var(--tf-file-doc)", textColor: "var(--tf-cream)" },
-  pptx: { label: "PPT", color: "var(--tf-amber-strong)", textColor: "var(--tf-ink-dark)" },
-  image: { label: "IMG", color: "var(--tf-navy)", textColor: "var(--tf-cream)" },
-  pasted: { label: "TXT", color: "var(--tf-navy)", textColor: "var(--tf-cream)" },
-};
-
 /** Latest file this student uploaded themselves. Peer copies never appear here. */
 function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
   const { navigate } = useProfileData();
 
   if (!latest) return null;
-  const chip = TYPE_CHIP[latest.file_type] ?? TYPE_CHIP.pasted;
   const processing = latest.extraction_status === "pending";
   const processingFailed =
     latest.extraction_status === "failed" || latest.extraction_status === "timeout";
 
   return (
-    <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+    <div className="mb-6 grid grid-cols-1 items-center sm:grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
       <div className="flex min-w-0 items-center gap-3">
-        <div
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-bold"
-          style={{ backgroundColor: chip.color, color: chip.textColor }}
-        >
-          {chip.label}
-        </div>
+        <DocumentThumbnail fileId={latest.id} revision={latest.created_at} persistent={true} fileName={latest.file_name} fileType={latest.file_type} className="w-14" resolveSource={() => presignMaterialDownload({ data: { materialId: latest.id } })} />
         <div className="min-w-0">
           <div className="text-sm font-semibold text-foreground">Continue your file</div>
           <div className="break-words text-xs text-muted-foreground">
@@ -115,6 +103,7 @@ function ContinueFileCard({ latest }: { latest: CourseMaterial | null }) {
       <Button
         size="sm"
         variant="outline"
+        className="w-full sm:w-auto"
         onClick={() => navigate("course-detail", { courseCode: latest.course_code })}
       >
         Continue <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
@@ -252,7 +241,7 @@ function StrengthsCard() {
         <h2 className="text-sm font-semibold text-foreground">Your strengths</h2>
         <button
           onClick={() => navigate("course-detail", { courseCode: entry.code })}
-          className="shrink-0 text-xs font-medium text-accent hover:text-accent/80"
+          className="shrink-0 text-xs font-medium text-accent-ink hover:text-accent-ink/80"
         >
           Refresh topics
         </button>
@@ -414,8 +403,8 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         {!showFirstUseLayout ? (
           <>
         {/* Meaningful daily study activity, with local feedback and cloud sync. */}
-        <div className="reference-home-card reference-stat-card reference-streak mb-6 grid h-[112px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
-            <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", streak.state === "none" ? "bg-muted text-muted-foreground" : "bg-accent/15 text-accent")}>
+        <div className="reference-home-card reference-stat-card reference-streak mb-6 grid min-h-[112px] h-auto grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border border-l-4 border-l-accent bg-card p-3.5">
+            <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", streak.state === "none" ? "bg-muted text-muted-foreground" : "bg-accent/15 text-accent-ink")}>
               <StreakGlyph state={streak.state} />
             </div>
             <div className="min-w-0">
@@ -431,7 +420,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               </div>
             </div>
             <div className="text-right">
-              <div className="font-display text-xl font-semibold text-accent">
+              <div className="font-display text-xl font-semibold text-accent-ink">
                 {streak.days}
               </div>
               <div className="text-xs tracking-wider text-muted-foreground">{streak.days === 1 ? "day" : "days"}</div>
@@ -447,7 +436,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
                   {mocksToday >= 2 ? "Daily target reached." : "Mock sets completed today"}
                 </div>
               </div>
-              <div className="shrink-0 font-display text-lg font-semibold text-accent">
+              <div className="shrink-0 font-display text-lg font-semibold text-accent-ink">
                 {Math.min(mocksToday, 2)} of 2 mocks today
               </div>
             </div>
@@ -526,7 +515,7 @@ function HomeRowLink({ label, onClick }: { label: string; onClick: () => void })
       className="reference-home-card flex w-full items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-left"
     >
       <span className="min-w-0 flex-1 text-sm font-medium text-card-foreground">{label}</span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-accent" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-accent-ink" />
     </button>
   );
 }
@@ -631,7 +620,7 @@ function RotatingWisdomCard({ active }: { active: boolean }) {
       {item.kind === "quote" ? (
         <div className="relative">
           <QuoteIcon
-            className="pointer-events-none absolute -left-5 -top-4 h-16 w-16 text-accent/25"
+            className="pointer-events-none absolute -left-5 -top-4 h-16 w-16 text-accent-ink/25"
             aria-hidden="true"
           />
           <blockquote className="quote-text relative font-display text-base font-semibold leading-relaxed">
@@ -644,10 +633,10 @@ function RotatingWisdomCard({ active }: { active: boolean }) {
       ) : (
         <div className="relative flex min-h-20 flex-col items-center justify-center">
           <Lightbulb
-            className="pointer-events-none absolute -left-4 -top-3 h-14 w-14 text-accent/25"
+            className="pointer-events-none absolute -left-4 -top-3 h-14 w-14 text-accent-ink/25"
             aria-hidden="true"
           />
-          <div className="relative text-xs font-semibold uppercase tracking-wider text-accent">
+          <div className="relative text-xs font-semibold uppercase tracking-wider text-accent-ink">
             Study tip
           </div>
           <p className="quote-text relative mt-1 font-display text-base font-semibold leading-relaxed">

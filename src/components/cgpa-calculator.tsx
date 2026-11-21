@@ -429,7 +429,7 @@ export function CgpaCalculatorScreen() {
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-xs font-medium text-navy">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-xs font-medium text-foreground">
             <ShieldCheck className="h-3 w-3" /> Select your grading scale
           </span>
         </div>
@@ -708,7 +708,7 @@ export function CgpaCalculatorScreen() {
           className="mt-3 rounded-2xl border border-border bg-card px-4 shadow-sm"
         >
           <AccordionItem value="calculation" className="border-0">
-            <AccordionTrigger className="py-3 text-xs font-semibold text-navy hover:no-underline">
+            <AccordionTrigger className="py-3 text-xs font-semibold text-foreground hover:no-underline">
               How this CGPA is calculated
             </AccordionTrigger>
             <AccordionContent className="space-y-2 text-xs leading-relaxed text-muted-foreground">
@@ -732,7 +732,7 @@ export function CgpaCalculatorScreen() {
 
         {mode === "letter" ? (
           <div className="mt-3 flex items-start gap-2 rounded-2xl border border-accent/40 bg-accent/10 p-3 text-xs text-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
             <p>
               Letter grades map to exact grade points, so your GPA is precise. The percentage shown
               per course is the middle of the band, used only for display.
@@ -830,7 +830,7 @@ export function CgpaCalculatorScreen() {
 
             {sessionMerges.map((m) => (
               <div key={m.session} className="rounded-2xl border border-border bg-sand p-3.5">
-                <div className="text-sm font-semibold text-navy">
+                <div className="text-sm font-semibold text-foreground">
                   {m.session} combined GPA {m.gpa.toFixed(2)}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -841,7 +841,7 @@ export function CgpaCalculatorScreen() {
 
             {allYears ? (
               <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-                <div className="text-sm font-semibold text-navy">
+                <div className="text-sm font-semibold text-foreground">
                   All saved semesters: {allYears.gpa.toFixed(2)}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -903,11 +903,11 @@ function ResultBlock({
     <>
       <section
         aria-live="polite"
-        className="relative z-10 rounded-2xl border border-slate-300 bg-slate-900 p-4 text-white shadow-md dark:border-slate-600 dark:bg-slate-800"
+        className="relative z-10 rounded-2xl border border-border bg-card p-4 text-foreground shadow-md"
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Estimated semester GPA
             </div>
             <div className="mt-1 font-display text-3xl font-semibold leading-none">
@@ -918,12 +918,12 @@ function ResultBlock({
                 {result ? result.semesterGpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-xs text-slate-200">
+            <div className="mt-1 text-xs text-muted-foreground">
               {result ? `${result.semesterUnits} units included` : "Add valid course results"}
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Updated cumulative CGPA
             </div>
             <div className="mt-1 font-display text-3xl font-semibold leading-none">
@@ -934,25 +934,25 @@ function ResultBlock({
                 {result ? result.cumulativeCgpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-xs text-slate-200">
+            <div className="mt-1 text-xs text-muted-foreground">
               {result ? `${result.totalUnits} total units` : "Live preview"}
             </div>
           </div>
         </div>
 
         {result ? (
-          <div className="mt-3 border-t border-slate-700 pt-3">
+          <div className="mt-3 border-t border-border pt-3">
             <div className="flex items-center justify-between gap-2 text-xs">
               <span className="font-semibold">{scale === "ui-5" ? classify(result.cumulativeCgpa) : "Classification varies by institution"}</span>
               {scale !== "ui-5" ? (
-                <span className="text-right font-medium text-slate-200">CGPA on a 4.00 scale</span>
+                <span className="text-right font-medium text-muted-foreground">Selected grading scale</span>
               ) : nextBand ? (
-                <span className="text-right font-medium text-slate-200">
+                <span className="text-right font-medium text-muted-foreground">
                   {(nextBand.min - result.cumulativeCgpa).toFixed(2)} points to {nextBand.label} (
                   {nextBand.min.toFixed(2)})
                 </span>
               ) : (
-                <span className="text-right font-medium text-slate-200">
+                <span className="text-right font-medium text-muted-foreground">
                   Within First Class ({CLASSIFICATION_BANDS.at(-1)?.min.toFixed(2)}–
                   {maxScale.toFixed(2)})
                 </span>
@@ -971,11 +971,11 @@ function ResultBlock({
                   <span
                     key={band.label}
                     className={
-                      "h-full border-r border-slate-900/70 last:border-r-0 " + [
-                        "bg-slate-600",
-                        "bg-slate-500",
-                        "bg-slate-400",
-                        "bg-slate-300",
+                      "h-full border-r border-border last:border-r-0 " + [
+                        "bg-accent/40",
+                        "bg-accent/50",
+                        "bg-accent/60",
+                        "bg-accent/80",
                         "bg-accent/55",
                         "bg-accent/75",
                         "bg-accent",
@@ -986,19 +986,19 @@ function ResultBlock({
                 ))}
               </div>
               <span
-                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--tf-gold)] bg-white shadow-md ring-2 ring-black/40"
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-foreground shadow-md ring-2 ring-background"
                 style={{ left: `${position}%` }}
               />
             </div> : null}
             {result.validCourseCount < result.selectedCourseCount ? (
-              <p className="mt-2 text-xs text-slate-200">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Preview uses {result.validCourseCount} of {result.selectedCourseCount} selected
                 courses with complete values.
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 border-t border-slate-700 pt-3 text-xs text-slate-300">
+          <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
             Enter a valid result to see your classification and live preview.
           </p>
         )}

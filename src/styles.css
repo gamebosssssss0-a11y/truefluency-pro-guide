@@ -29,6 +29,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-on-sand);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -1792,4 +1793,39 @@ html.dark .surface-wash {
   .tf-back-button:active { transform: none; }
   .tf-document-scan, .tf-binder-cover, .tf-compass { animation: none; }
   .tf-binder-cover { transform: rotateY(-55deg); }
+}
+
+/* Shared mobile-sheet / desktop-dialog geometry. Radix owns modal interaction. */
+:root {
+  --sheet-scrim: color-mix(in srgb, var(--tf-navy) 65%, transparent);
+  --sheet-shadow: 0 20px 60px color-mix(in srgb, var(--tf-navy) 24%, transparent);
+}
+.tf-sheet-overlay { background: var(--sheet-scrim); }
+.tf-sheet-overlay[data-state="open"] { animation: tf-sheet-fade-in 350ms ease-out both; }
+.tf-sheet-overlay[data-state="closed"] { animation: tf-sheet-fade-out 180ms ease-in both; }
+.tf-responsive-sheet {
+  inset: auto 0 0;
+  width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+  box-shadow: var(--sheet-shadow);
+  overflow-wrap: anywhere;
+}
+.tf-responsive-sheet[data-state="open"] { animation: tf-sheet-enter 350ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.tf-responsive-sheet[data-state="closed"] { animation: tf-sheet-exit 180ms ease-in both; }
+.tf-responsive-sheet :is(button, [role="button"]) { min-height: 44px; height: auto; white-space: normal; }
+
+@keyframes tf-sheet-enter { from { opacity: 0; translate: 0 32px; } to { opacity: 1; translate: 0 0; } }
+@keyframes tf-sheet-exit { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 24px; } }
+@keyframes tf-sheet-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tf-sheet-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (min-width: 640px) {
+  .tf-responsive-sheet { inset: 50% auto auto 50%; width: min(460px, calc(100vw - 48px)); transform: translate(-50%, -50%); border-radius: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tf-responsive-sheet[data-state="open"] { animation: tf-sheet-fade-in 150ms ease-out both; }
+  .tf-responsive-sheet[data-state="closed"] { animation: tf-sheet-fade-out 150ms ease-in both; }
 }

@@ -105,7 +105,7 @@ export function MockShareSheet({ open, onOpenChange, attemptId, attempt }: {
   const label = (value: ShareVisibility) => value === "public" ? "Anyone with the link" : "Only me";
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-card pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-card-foreground">
+      <SheetContent side="bottom">
         <SheetHeader className="text-left">
           <SheetTitle>Share this mock</SheetTitle>
           <SheetDescription>One link is created for this test. It expires 30 minutes after creation and cannot be renewed.</SheetDescription>

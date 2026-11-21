@@ -7,6 +7,7 @@
  * Prices and benefits come from the same constants and the same billing status the Premium screen uses; nothing is typed in twice.
  */
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ChevronRight, Sparkles } from "lucide-react";
 import { useProfileData } from "@/lib/profile-store";
 import { useEntitlement } from "@/hooks/use-entitlement";
@@ -51,17 +52,17 @@ export function PlanBanner({ className = "" }: { className?: string }) {
   if (!access) return null;                                              // nothing until we know: never flash the wrong plan
 
   const go = () => navigate("upgrade");
-  const shell = "mb-5 flex w-full items-center gap-3 rounded-2xl border border-[var(--tf-amber-strong)]/40 bg-[var(--tf-navy)] px-3.5 py-3 text-[var(--tf-cream)] shadow-sm dark:bg-[var(--tf-cream)] dark:text-[var(--tf-navy)]";
-  const cta = "inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl bg-[var(--tf-amber-strong)] px-3.5 text-xs font-semibold text-[var(--tf-ink-dark)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const shell = "mb-5 flex w-full min-w-0 flex-col items-stretch gap-3 rounded-2xl border border-accent/40 bg-card px-4 py-3 text-foreground shadow-sm sm:flex-row sm:items-center";
+  const cta = "min-h-11 w-full shrink-0 gap-1 whitespace-normal bg-primary px-4 text-xs font-semibold text-primary-foreground sm:w-auto";
 
   const Strip = ({ label, line, action, extra }: { label: string; line: string; action: string; extra?: React.ReactNode }) => (
     <section aria-label="Your plan" className={`${shell} ${className}`}>
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--tf-amber-strong)]"><Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />{label}</p>
-        <p className="mt-0.5 break-words text-xs leading-snug opacity-90">{line}</p>
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent-ink"><Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />{label}</p>
+        <p className="mt-0.5 break-words text-xs leading-snug">{line}</p>
         {extra}
       </div>
-      <button type="button" onClick={go} className={cta}>{action}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></button>
+      <Button type="button" onClick={go} className={cta}>{action}<ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /></Button>
     </section>
   );
 
@@ -97,10 +98,10 @@ export function PlanBanner({ className = "" }: { className?: string }) {
       action="Upgrade"
       extra={
         <details className="group mt-1.5 text-xs">
-          <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 font-medium text-[var(--tf-amber-strong)] [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-accent-ink [&::-webkit-details-marker]:hidden">
             What you get <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
           </summary>
-          <ul className="space-y-0.5 pb-1 opacity-90">
+          <ul className="space-y-0.5 pb-1">
             <li>Core: {CORE_DAILY_LIMITS.mock_sets} mock sets a day, up to {CORE_MAX_QUESTIONS} questions, “why” explanations</li>
             <li>Exam: {EXAM_DAILY_LIMITS.mock_sets} mock sets a day, up to {EXAM_MAX_QUESTIONS} questions, exam-level difficulty</li>
           </ul>

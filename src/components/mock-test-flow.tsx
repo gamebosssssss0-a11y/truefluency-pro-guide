@@ -1248,7 +1248,7 @@ export function MockRunScreen() {
   const q = questions[idx];
   const answered = t.answers.filter((a) => a !== null && a !== undefined).length;
   const pct = Math.round((remaining / t.durationSec) * 100);
-  const timerColor = pct <= 20 ? "text-destructive" : pct <= 50 ? "text-warning" : "text-primary";
+  const timerColor = pct <= 20 ? "text-destructive" : pct <= 50 ? "text-accent-ink" : "text-primary";
 
   const setAnswer = (a: number) => {
     const previous = t.answers[idx];
@@ -1293,25 +1293,25 @@ export function MockRunScreen() {
   return (
     <div className="study-utility-page tf-visual-phase2 min-h-screen">
       <div className={`${SCREEN} pb-8 pt-6`}>
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-between">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <BackButton onBack={() => window.dispatchEvent(new Event("truefluency-request-mock-leave"))} />
-            <HeaderLogo />
+            <HeaderLogo className="hidden min-[400px]:block shrink-0" />
             <div className="min-w-0">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">{t.courseCode}</div>
             <div className="truncate text-sm font-semibold text-foreground">{t.courseTitle}</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
               type="button"
               onClick={() => setCalcOpen(true)}
               aria-label="Open calculator"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:text-foreground"
+              variant="outline" size="icon" className="h-11 w-11 shrink-0"
             >
               <CalcIcon className="h-4 w-4" />
-            </button>
-            <div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`} className={cn("min-w-[4.5rem] rounded-xl border border-border bg-card px-3 py-2 text-center font-display text-xl font-semibold tabular-nums shadow-sm", timerColor)}>
+            </Button>
+            <div role="timer" aria-label={`${mm} minutes ${ss} seconds remaining`} className={cn("shrink-0 whitespace-nowrap rounded-xl border border-border bg-card px-2.5 py-1.5 text-center font-display text-base font-semibold tabular-nums shadow-sm sm:px-3 sm:py-2 sm:text-lg", timerColor)}>
               {mm}:{String(ss).padStart(2, "0")}
             </div>
           </div>

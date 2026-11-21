@@ -33,9 +33,9 @@ export function ReceiptSheet({ refCode, onOpenChange, onReport }: { refCode: str
 
   return (
     <Sheet open={Boolean(refCode)} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="mx-auto max-h-[92dvh] max-w-md overflow-y-auto rounded-t-3xl px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <SheetContent side="bottom">
         <SheetHeader className="pr-6 text-left print:hidden">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Receipt</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Receipt</p>
           <SheetTitle>{receipt?.receipt_no ?? "Your receipt"}</SheetTitle>
           <SheetDescription>{receipt?.sandbox ? "TEST RECEIPT: Squad sandbox, fake money. This is not a real payment." : "Keep this for your records."}</SheetDescription>
         </SheetHeader>
@@ -44,9 +44,9 @@ export function ReceiptSheet({ refCode, onOpenChange, onReport }: { refCode: str
         {receipt ? (
           <>
             <article className="tf-receipt-print mt-4 rounded-2xl border border-border bg-card p-4 text-sm">
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <h2 className="font-display text-lg font-semibold">{BUSINESS_NAME}</h2>
-                <span className="font-mono text-xs font-semibold">{receipt.receipt_no ?? receipt.reference}</span>
+                <span className="break-all font-mono text-xs font-semibold">{receipt.receipt_no ?? receipt.reference}</span>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">{receipt.business.status_note || BUSINESS_STATUS_NOTE}</p>
               <dl className="mt-3 divide-y divide-border">
@@ -70,7 +70,7 @@ export function ReceiptSheet({ refCode, onOpenChange, onReport }: { refCode: str
                 Questions about this payment: {wa ? "WhatsApp support from the Help screen" : "use the Help screen"}{receipt.business.support_email ?? SUPPORT_EMAIL ? `, or ${receipt.business.support_email ?? SUPPORT_EMAIL}` : ""}.
               </p>
             </article>
-            <div className="mt-3 flex flex-wrap gap-2 print:hidden">
+            <div className="mt-3 grid grid-cols-1 gap-2 print:hidden">
               <Button type="button" variant="outline" onClick={() => window.print()}>Print or save as PDF</Button>
               {onReport && !receipt.sandbox ? <Button type="button" variant="outline" onClick={() => onReport(receipt.reference)}>Report a problem with this payment</Button> : null}
               {wa ? <Button asChild variant="ghost"><a href={wa} target="_blank" rel="noopener noreferrer">WhatsApp support</a></Button> : null}

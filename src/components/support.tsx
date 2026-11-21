@@ -3,10 +3,16 @@ import { useMemo, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { HeaderLogo } from "@/components/brand";
 import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, LifeBuoy } from "lucide-react";
+import { ChevronRight, LifeBuoy, MessageCircle, CreditCard, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SUPPORT_EMAIL, whatsappLink } from "@/lib/business-info";
+import { SUPPORT_RESPONSE_HOURS } from "@/lib/support-policy";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { SUPPORT_ISSUES } from "@/lib/support-issues";
 
@@ -42,7 +48,6 @@ const FAQS = [
   },
 ];
 
-
 function getIssueHref(issue: (typeof SUPPORT_ISSUES)[number]) {
   const message = `TrueFluency Pro support — #${issue.id} · ${issue.area}: ${issue.text}`;
   return `https://wa.me/${issue.phone}?text=${encodeURIComponent(message)}`;
@@ -55,8 +60,10 @@ const STUDY_TERMS = ["mock", "flash", "chat", "file", "pdf", "upload"];
 
 const matches = (question: string): boolean => {
   const normalized = question.toLocaleLowerCase();
-  return !ACCOUNT_TERMS.some((word) => normalized.includes(word)) &&
-    !STUDY_TERMS.some((word) => normalized.includes(word));
+  return (
+    !ACCOUNT_TERMS.some((word) => normalized.includes(word)) &&
+    !STUDY_TERMS.some((word) => normalized.includes(word))
+  );
 };
 
 const FAQ_GROUPS: FaqGroup[] = [
@@ -81,21 +88,25 @@ export function SupportScreen() {
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredFaqs = useMemo(
-    () => normalizedSearch
-      ? FAQS.filter((faq) =>
-          faq.q.toLocaleLowerCase().includes(normalizedSearch) ||
-          faq.a.toLocaleLowerCase().includes(normalizedSearch),
-        )
-      : FAQS,
+    () =>
+      normalizedSearch
+        ? FAQS.filter(
+            (faq) =>
+              faq.q.toLocaleLowerCase().includes(normalizedSearch) ||
+              faq.a.toLocaleLowerCase().includes(normalizedSearch),
+          )
+        : FAQS,
     [normalizedSearch],
   );
   const filteredIssues = useMemo(
-    () => normalizedSearch
-      ? SUPPORT_ISSUES.filter((issue) =>
-          issue.text.toLocaleLowerCase().includes(normalizedSearch) ||
-          issue.area.toLocaleLowerCase().includes(normalizedSearch),
-        )
-      : SUPPORT_ISSUES,
+    () =>
+      normalizedSearch
+        ? SUPPORT_ISSUES.filter(
+            (issue) =>
+              issue.text.toLocaleLowerCase().includes(normalizedSearch) ||
+              issue.area.toLocaleLowerCase().includes(normalizedSearch),
+          )
+        : SUPPORT_ISSUES,
     [normalizedSearch],
   );
   const faqSections = FAQ_GROUPS.map((group) => ({
@@ -103,99 +114,170 @@ export function SupportScreen() {
     faqs: filteredFaqs.filter((faq) => group.matches(faq.q)),
   })).filter((group) => group.faqs.length > 0);
   const issueAreas = [...new Set(filteredIssues.map((issue) => issue.area))];
-  const noMatches = normalizedSearch.length > 0 && filteredFaqs.length === 0 && filteredIssues.length === 0;
+  const noMatches =
+    normalizedSearch.length > 0 && filteredFaqs.length === 0 && filteredIssues.length === 0;
 
   return (
     <div className="study-utility-page study-page-blend min-h-screen">
-      <div className="mx-auto max-w-md px-5 pb-8 pt-6">
+      <div className="mx-auto max-w-5xl px-5 pb-8 pt-6 md:py-8">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
+          <BackButton onBack={() => navigate("account")} />
+          <span className="text-sm text-muted-foreground">Account</span>
         </div>
 
-        <div className="surface-icon-well grid h-12 w-12 place-items-center rounded-2xl">
+        <div className="surface-icon-well hidden h-12 w-12 place-items-center rounded-2xl md:grid">
           <LifeBuoy className="h-5 w-5" />
         </div>
-        <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent">HELP</p>
-        <h1 className="font-display text-3xl font-semibold text-foreground">How can we help?</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Search answers or choose an issue to message us on WhatsApp.
+        <p className="mt-3 hidden text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink md:block">
+          HELP
         </p>
+        <h1 className="font-display text-3xl font-semibold text-foreground">How can we help?</h1>
+        <div className="mt-4 grid grid-cols-1 items-start gap-8 md:mt-6 md:grid-cols-[minmax(0,1fr)_320px]">
+          <aside className="order-1 min-w-0 space-y-4 md:order-2">
+            <div className="border-b border-border pb-4">
+              <p className="text-xs font-semibold text-foreground">Support availability</p>
+              <p className="mt-1 text-sm text-foreground">Within {SUPPORT_RESPONSE_HOURS} hours</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Live service status is not currently available.
+              </p>
+            </div>
+            <section
+              aria-labelledby="priority-help"
+              className="rounded-lg border border-accent/50 bg-card p-5"
+            >
+              <CreditCard className="size-5 text-accent-ink" aria-hidden="true" />
+              <h2 id="priority-help" className="mt-3 text-lg font-semibold text-foreground">
+                Payment & access
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Tell us about a payment or sign-in problem. Never send your PIN, OTP or password.
+              </p>
+              {whatsappLink("Hello TrueFluency, I need help with payment or account access.") ? (
+                <Button asChild className="mt-4 h-auto min-h-11 w-full whitespace-normal">
+                  <a
+                    href={
+                      whatsappLink(
+                        "Hello TrueFluency, I need help with payment or account access.",
+                      ) ?? ""
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="size-4 shrink-0" />
+                    WhatsApp support
+                  </a>
+                </Button>
+              ) : null}
+              {SUPPORT_EMAIL ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="mt-2 h-auto min-h-11 w-full whitespace-normal"
+                >
+                  <a href={`mailto:${SUPPORT_EMAIL}`}>
+                    <Mail className="size-4 shrink-0" />
+                    Email us
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="mt-2 h-auto min-h-11 w-full whitespace-normal"
+                  onClick={() => navigate("upgrade")}
+                >
+                  Report a payment problem
+                </Button>
+              )}
+            </section>
+          </aside>
+          <div className="order-2 min-w-0 md:order-1">
+            <p className="mb-3 text-sm text-muted-foreground">
+              Search answers or choose an issue to message us on WhatsApp.
+            </p>
+            <Input
+              className="min-h-11"
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search questions or issues"
+              aria-label="Search questions or issues"
+            />
 
-        <Input
-          className="mt-5"
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search questions or issues"
-          aria-label="Search questions or issues"
-        />
-
-        {noMatches ? (
-          <p className="mt-5 text-sm text-muted-foreground">
-            No matches. Try a different word or report an issue.
-          </p>
-        ) : (
-          <>
-            {faqSections.map((group) => (
-              <section key={group.label} className="mt-6">
-                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </h2>
-                <div className="surface-key-card px-4">
-                  <Accordion type="single" collapsible>
-                    {group.faqs.map((faq) => {
-                      const index = FAQS.indexOf(faq);
-                      return (
-                        <AccordionItem
-                          key={faq.q}
-                          value={`faq-${index}`}
-                          className={faq === group.faqs[group.faqs.length - 1] ? "border-b-0" : ""}
-                        >
-                          <AccordionTrigger className="text-left text-sm font-semibold text-foreground">
-                            {faq.q}
-                          </AccordionTrigger>
-                          <AccordionContent className="text-xs leading-relaxed text-muted-foreground">
-                            {faq.a}
-                          </AccordionContent>
-                        </AccordionItem>
-                      );
-                    })}
-                  </Accordion>
-                </div>
-              </section>
-            ))}
-
-            {filteredIssues.length > 0 ? (
-              <section className="mt-7">
-                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Report an issue
-                </h2>
-                {issueAreas.map((area) => (
-                  <div key={area} className="mb-5">
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {area}
-                    </h3>
-                    <div className="space-y-2">
-                      {filteredIssues.filter((issue) => issue.area === area).map((issue) => (
-                        <a
-                          key={issue.id}
-                          href={getIssueHref(issue)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="surface-list-row flex items-center gap-3 p-4 text-sm text-foreground transition hover:border-accent/50"
-                        >
-                          <span className="min-w-0 flex-1">{issue.text}</span>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        </a>
-                      ))}
+            {noMatches ? (
+              <p className="mt-5 text-sm text-muted-foreground">
+                No matches. Try a different word or report an issue.
+              </p>
+            ) : (
+              <>
+                {faqSections.map((group) => (
+                  <section key={group.label} className="mt-6">
+                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {group.label}
+                    </h2>
+                    <div className="surface-key-card px-4">
+                      <Accordion type="single" collapsible>
+                        {group.faqs.map((faq) => {
+                          const index = FAQS.indexOf(faq);
+                          return (
+                            <AccordionItem
+                              key={faq.q}
+                              value={`faq-${index}`}
+                              className={
+                                faq === group.faqs[group.faqs.length - 1] ? "border-b-0" : ""
+                              }
+                            >
+                              <AccordionTrigger className="min-h-[52px] text-left text-sm font-semibold text-foreground">
+                                {faq.q}
+                              </AccordionTrigger>
+                              <AccordionContent className="text-xs leading-relaxed text-muted-foreground">
+                                {faq.a}
+                              </AccordionContent>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
                     </div>
-                  </div>
+                  </section>
                 ))}
-              </section>
-            ) : null}
-          </>
-        )}
+
+                {filteredIssues.length > 0 ? (
+                  <section className="mt-7">
+                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Report an issue
+                    </h2>
+                    {issueAreas.map((area) => (
+                      <div key={area} className="mb-5">
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {area}
+                        </h3>
+                        <div className="space-y-2">
+                          {filteredIssues
+                            .filter((issue) => issue.area === area)
+                            .map((issue) => (
+                              <a
+                                key={issue.id}
+                                href={getIssueHref(issue)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="surface-list-row flex items-center gap-3 p-4 text-sm text-foreground transition hover:border-accent/50"
+                              >
+                                <span className="min-w-0 flex-1">{issue.text}</span>
+                                <ChevronRight
+                                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
+                              </a>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -239,7 +239,7 @@ export function FlashcardsScreen() {
             </p>
           </div>
           {capText ? (
-            <span className="shrink-0 rounded-full bg-sand px-2.5 py-1 text-xs font-medium text-navy">
+            <span className="shrink-0 rounded-full bg-sand px-2.5 py-1 text-xs font-medium text-foreground">
               {capText}
             </span>
           ) : null}
@@ -317,7 +317,7 @@ export function FlashcardsScreen() {
         ) : (
           <div className="flex flex-col items-center text-center">
             <div className="mb-4 grid h-20 w-20 place-items-center rounded-full bg-sand">
-              <Layers className="h-9 w-9 text-navy" />
+              <Layers className="h-9 w-9 text-foreground" />
             </div>
             <p className="mb-5 font-display text-2xl font-semibold text-foreground">No deck yet</p>
 
@@ -342,8 +342,8 @@ export function FlashcardsScreen() {
         )}
 
         {error ? (
-          <div className="mt-6 w-full rounded-2xl border border-border bg-sand/40 p-4">
-            <p className="font-display text-base font-semibold text-navy">Couldn't do that</p>
+          <div className="mt-6 w-full rounded-2xl border border-border bg-card p-4">
+            <p className="font-display text-base font-semibold text-foreground">Couldn't do that</p>
             <p className="mt-1 text-sm text-muted-foreground">{error}</p>
           </div>
         ) : null}
@@ -513,8 +513,8 @@ export function FlashcardsReviewScreen() {
         {isLoading ? (
           <CardFan label="Loading cards…" />
         ) : error ? (
-          <div className="rounded-2xl border border-border bg-sand/40 p-4 text-center">
-            <p className="font-display text-base font-semibold text-navy">
+          <div className="rounded-2xl border border-border bg-card p-4 text-center">
+            <p className="font-display text-base font-semibold text-foreground">
               Couldn't load this deck
             </p>
             <p className="mt-1 text-sm text-muted-foreground">{error}</p>
@@ -523,12 +523,12 @@ export function FlashcardsReviewScreen() {
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             {sessionComplete ? (
               <>
-                <p className="font-display text-xl font-semibold text-navy">Session complete</p>
+                <p className="font-display text-xl font-semibold text-foreground">Session complete</p>
                 <p className="mt-1 text-sm text-muted-foreground">You've finished this review session.</p>
               </>
             ) : (
               <>
-                <p className="font-display text-xl font-semibold text-navy">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
+                <p className="font-display text-xl font-semibold text-foreground">{reviewMode === "cram" ? "End of deck" : reviewMode === "new" ? "No new cards" : "All caught up"}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {reviewMode === "due" ? "Nothing due. Come back tomorrow or use Cram." : reviewMode === "new" ? "No new cards in this deck." : "You've reached the end of this deck."}
                 </p>
