@@ -243,8 +243,10 @@ function Router() {
       node.scrollTop = 0;
       node.scrollLeft = 0;
     });
+    // Chat history opens at the top; the live chatbot positions itself on the
+    // newest message after its thread loads, so it must not be pinned here.
     const chat = document.querySelector<HTMLElement>("[data-chat-thread]");
-    if (chat && (view === "chatbot" || view === "chat-history")) chat.scrollTop = 0;
+    if (chat && view === "chat-history") chat.scrollTop = 0;
   }, [view, step]);
 
   useEffect(() => {

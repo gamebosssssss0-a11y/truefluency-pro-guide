@@ -184,12 +184,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
   useEffect(() => {
     const thread = threadScrollRef.current;
     if (!thread) return;
-    // Reset the chat's own scroll position when leaving or entering a screen.
+    // Reset the chat's own scroll position when leaving a screen.
     // scrollIntoView() can also scroll the outer document, making the chat
     // appear to float or leaving the next screen positioned halfway down.
-    thread.scrollTop = 0;
-    isNearBottomRef.current = false;
-    setIsAtBottom(isChatAtBottom(thread.scrollHeight, thread.scrollTop, thread.clientHeight));
+    // Entering is handled by the land-at-bottom effect below: a conversation
+    // must open on its newest message, not the oldest.
+    if (!active) {
+      thread.scrollTop = 0;
+      isNearBottomRef.current = false;
+      setIsAtBottom(true);
+    }
   }, [active, view]);
 
   // Follow a streaming reply only while the student is already near the bottom;
@@ -244,6 +248,22 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
     });
     return () => cancelAnimationFrame(frame);
   }, [active, isLoadingThread, messages]);
+  // Land on the newest message whenever a conversation finishes loading or the
+  // screen opens with one already cached. Opening at the oldest message hid
+  // fresh questions and streaming replies below the fold. The rAF runs after
+  // the route's scroll reset, so this final position wins. The history-resume
+  // path (continueAtBottom) scrolls smoothly itself — skip it here.
+  useEffect(() => {
+    if (!active || isLoadingThread || continueAtBottom.current) return;
+    const thread = threadScrollRef.current;
+    if (!thread) return;
+    const frame = requestAnimationFrame(() => {
+      thread.scrollTop = thread.scrollHeight;
+      isNearBottomRef.current = true;
+      setIsAtBottom(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [active, isLoadingThread]);
   // SECURITY: every threadCache key is {uid}:{courseCode}, and the cache is
   // wiped outright on every auth change (see the effect below) — belt AND
   // suspenders. A course code alone is not unique to one student: shared
@@ -796,6 +816,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
 
     const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : pageToSend?.previewUrl;
     const messageId = retry?.messageId ?? nextId.current++;
+    // Sending means the student wants to see the reply: follow the thread to
+    // the bottom even if they had scrolled up to read earlier messages.
+    isNearBottomRef.current = true;
     if (retry) {
       setMessages((cur) => cur.map((message) => message.id === messageId
         ? { ...message, requestId, sendError: undefined, sendErrorText: undefined }
