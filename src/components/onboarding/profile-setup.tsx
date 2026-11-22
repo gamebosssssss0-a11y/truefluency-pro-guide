@@ -161,7 +161,7 @@ export function LevelScreen() {
           >
             <span className="font-display text-3xl font-semibold text-primary group-hover:text-accent">{l}L</span>
             <span className="text-xs text-muted-foreground">
-              {l === "100" ? "Freshman" : l === "200" ? "Sophomore" : l === "300" ? "Junior" : l === "400" ? "Senior" : "Final year"}
+              {l === "500" ? "500 Level (Final Year)" : `${l} Level`}
             </span>
           </button>
         ))}

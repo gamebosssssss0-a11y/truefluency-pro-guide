@@ -84,7 +84,7 @@ function formatDate(iso?: string | null): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" });
 }
 
-const planName = (p?: string | null) => (p === "exam" ? "Exam" : p === "core" ? "Core" : "Free");
+const planName = (p?: string | null) => (p === "exam" ? "Mastery" : p === "core" ? "Prep" : "Free");
 
 /** Shown ONLY to an authorised test account (the server decides): the payment is a Squad sandbox payment with fake money. */
 function TestModeNotice() {
@@ -300,7 +300,7 @@ export function UpgradeScreen() {
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Step-by-step Tutor guidance, more practice room and calmer exam preparation.</p>
             <div className="relative mt-7 overflow-hidden rounded-3xl border-2 border-accent bg-card p-6 shadow-lg">
               <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-accent/15 blur-2xl" />
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Introductory price" : "Core"}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Introductory price" : "Prep"}</span>
               <div className="mt-4 flex flex-wrap items-end gap-x-2"><span className="font-display text-5xl font-bold tabular-nums tracking-tight">{formatNaira(corePrice)}</span><span className="pb-2 text-sm text-muted-foreground">{foundingOpen ? "first 30 days" : "/ 30 days"}</span></div>
               {foundingOpen ? (
                 <>
@@ -337,7 +337,7 @@ export function UpgradeScreen() {
             <section aria-labelledby="current-plan-heading" className="mt-5 rounded-2xl border border-border bg-card p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">Your current plan</p>
               <h2 id="current-plan-heading" className="mt-1 font-display text-xl font-semibold">
-                {access?.tier === "trial" ? "Core trial" : planName(currentPlan)}
+                {access?.tier === "trial" ? "Prep trial" : planName(currentPlan)}
               </h2>
               {activePlan && status?.period_end ? (
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -357,7 +357,7 @@ export function UpgradeScreen() {
                   <li>{FREE_DAILY_LIMITS.mock_sets} mock sets per day</li>
                   <li>{FREE_MAX_QUESTIONS} questions per set</li>
                   <li>Balanced difficulty</li>
-                  <li>Tutor mode requires Core or Exam</li>
+                  <li>Tutor mode requires Prep or Mastery</li>
                   <li>No “why” explanations in the final review</li>
                   <li>No peer-save</li>
                   <li>{filesLine("free")}</li>
@@ -376,18 +376,19 @@ export function UpgradeScreen() {
             <h2 className="mt-6 text-sm font-semibold text-foreground">Available plans</h2>
             <div className="mt-3 space-y-3">
               {(["core", "exam"] as BillingPlan[]).filter((plan) => plan !== activePlan).map((plan) => (
-                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setAgreed(false); setStep("review"); }} className="w-full rounded-2xl border border-border bg-card p-4 text-left transition hover:border-accent/60 hover:bg-accent/5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="font-display text-xl font-semibold">{planName(plan)}</h2>
+                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setAgreed(false); setStep("review"); }} className={`relative w-full overflow-hidden rounded-3xl border-2 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${plan === "exam" ? "border-accent bg-primary text-primary-foreground" : "border-accent/50 bg-card"}`}>
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${plan === "exam" ? "bg-accent text-accent-foreground" : "bg-accent/15 text-accent-ink"}`}>{plan === "exam" ? "Maximum power" : foundingOpen ? "Introductory price" : "Everyday study"}</span>
+                  <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                    <h2 className="font-display text-2xl font-bold">TrueFluency {planName(plan)}</h2>
                     <span className="text-right text-sm font-semibold">{formatNaira(plan === "core" ? corePrice : examPrice)}{plan === "core" && foundingOpen ? " first 30 days" : " / 30 days"}</span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className={`mt-1 text-xs ${plan === "exam" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                     {plan === "core" && foundingOpen
                       ? `Then ${formatNaira(coreThen)} every 30 days${seatsLeft !== null ? ` · ${seatsLeft} introductory places remain` : ""}`
-                      : plan === "core" ? "Standard price" : "Available plan"}
+                      : plan === "core" ? "For steady weekly revision" : "For exam season and top-grade targets"}
                   </p>
-                  <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{PLAN_FEATURES[plan].map((line) => <li key={line}>✓ {line}</li>)}</ul>
-                  <span className="mt-3 inline-flex text-xs font-semibold text-accent-ink">Choose {planName(plan)}</span>
+                  <ul className={`mt-3 space-y-1.5 text-xs ${plan === "exam" ? "text-primary-foreground/90" : "text-foreground"}`}>{PLAN_FEATURES[plan].map((line) => <li key={line} className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" /><span>{line}</span></li>)}</ul>
+                  <span className={`mt-4 flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-semibold ${plan === "exam" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"}`}>Choose {planName(plan)}</span>
                 </button>
               ))}
             </div>
@@ -448,9 +449,9 @@ export function UpgradeScreen() {
               Secured by Squad · Card · Bank Transfer · USSD. You pay on Squad’s secure page; we never see your card number. Your plan starts only after Squad confirms the payment.
               {autoRenew ? " If you delete your account, your plan is cancelled and your saved card is removed, so you are never charged again." : ""}
             </p>
-            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
+            <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border-2 border-accent/50 bg-background p-3 text-sm font-medium text-foreground">
               <Checkbox checked={agreed} disabled={!consentLine} onCheckedChange={(v) => setAgreed(v === true)} aria-label="I agree to the amounts and schedule" className="mt-0.5" />
-              <span>{consentLine ?? "Loading the exact terms…"}</span>
+              <span className="text-xs font-normal leading-relaxed">{consentLine ?? "Loading the exact terms…"}</span>
             </label>
             {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
             <Button disabled={busy || !agreed || !consentLine || (status !== null && !live)} className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void pay()}>
@@ -519,7 +520,7 @@ export function UpgradeReminderSheet({ open, onOpenChange }: { open: boolean; on
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom">
-        <SheetHeader className="pr-6 text-left"><p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">A gentle reminder</p><SheetTitle>A little more room to practise?</SheetTitle><SheetDescription>Core gives you more daily mock sets and clearer answer explanations, whenever you’re ready.</SheetDescription></SheetHeader>
+        <SheetHeader className="pr-6 text-left"><p className="text-xs font-semibold uppercase tracking-wider text-accent-ink">A gentle reminder</p><SheetTitle>A little more room to practise?</SheetTitle><SheetDescription>Prep gives you more daily mock sets and clearer answer explanations, whenever you’re ready.</SheetDescription></SheetHeader>
         <SheetFooter className="mt-5 flex-col gap-2 sm:flex-col sm:space-x-0"><Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { onOpenChange(false); navigate("upgrade"); }}>See plans</Button><Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Not now</Button></SheetFooter>
       </SheetContent>
     </Sheet>

@@ -62,9 +62,9 @@ export function SourcePicker({
   const canTickMore = limit > 1;
   const tier = access?.tier;
   const nextPlanLine =
-    tier === "exam" ? `Your Exam plan uses up to ${limit} files together.`
-      : tier === "core" || tier === "trial" ? `Core uses up to ${limit} files together. Exam uses up to 6.`
-        : "Free uses 1 file at a time. Core uses up to 3, Exam up to 6.";
+    tier === "exam" ? `Your Mastery plan uses up to ${limit} files together.`
+      : tier === "core" || tier === "trial" ? `Prep uses up to ${limit} files together. Mastery uses up to 6.`
+        : "Free uses 1 file at a time. Prep uses up to 3, Mastery up to 6.";
 
   return (
     <div className={className}>

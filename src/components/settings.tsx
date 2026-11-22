@@ -130,11 +130,11 @@ export function AccountScreen() {
   const { access } = useEntitlement();
   const planLabel =
     access?.tier === "exam"
-      ? "Exam"
+      ? "Mastery"
       : access?.tier === "core"
-        ? "Core"
+        ? "Prep"
         : access?.tier === "trial"
-          ? "Core trial"
+          ? "Prep trial"
           : "Free";
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);

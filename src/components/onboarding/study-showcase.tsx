@@ -102,7 +102,7 @@ export function StudyShowcase() {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Tutor mode is available on Core and Exam.
+              Tutor mode is available on Prep and Mastery.
             </p>
           </TabsContent>
           <TabsContent

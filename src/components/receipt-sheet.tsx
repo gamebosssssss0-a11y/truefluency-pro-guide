@@ -51,7 +51,7 @@ export function ReceiptSheet({ refCode, onOpenChange, onReport }: { refCode: str
               <p className="mt-0.5 text-xs text-muted-foreground">{receipt.business.status_note || BUSINESS_STATUS_NOTE}</p>
               <dl className="mt-3 divide-y divide-border">
                 <Row k="Paid on" v={dt(receipt.paid_at, true)} />
-                <Row k="Plan" v={`${receipt.plan === "exam" ? "Exam" : "Core"} · 30 days`} />
+                <Row k="Plan" v={`${receipt.plan === "exam" ? "Mastery" : "Prep"} · 30 days`} />
                 <Row k="Access from" v={dt(receipt.period_start)} />
                 <Row k="Access until" v={dt(receipt.period_end)} />
                 <Row k="Amount paid" v={formatNaira(receipt.amount_naira)} strong />

@@ -72,14 +72,14 @@ export function PlanBanner({ className = "" }: { className?: string }) {
     const left = new Date(access.trialEndsAt).getTime() - Date.now();
     if (left > 0) {
       const days = Math.max(1, Math.ceil(left / 86_400_000));
-      return <Strip label={`Core trial · ${days} ${days === 1 ? "day" : "days"} left`}
-        line={access.foundingPriceAvailable ? `Keep Core after your trial: ${formatNaira(FOUNDING_PRICE_NAIRA)} for your first 30 days, then ${formatNaira(STANDARD_PRICE_NAIRA)} every 30 days.` : `Keep Core after your trial for ${formatNaira(STANDARD_PRICE_NAIRA)} every 30 days.`}
+      return <Strip label={`Prep trial · ${days} ${days === 1 ? "day" : "days"} left`}
+        line={access.foundingPriceAvailable ? `Keep Prep after your trial: ${formatNaira(FOUNDING_PRICE_NAIRA)} for your first 30 days, then ${formatNaira(STANDARD_PRICE_NAIRA)} every 30 days.` : `Keep Prep after your trial for ${formatNaira(STANDARD_PRICE_NAIRA)} every 30 days.`}
         action="See plans" />;
     }
   }
 
   if (paidTier) {
-    const plan = access.tier === "exam" ? "Exam" : "Core";
+    const plan = access.tier === "exam" ? "Mastery" : "Prep";
     const until = day(billing?.period_end ?? access.paidUntil);
     const renew = billing?.auto_renew
       ? `Renews automatically for ${formatNaira(billing.renewal_price_naira ?? (access.tier === "exam" ? EXAM_PRICE_NAIRA : STANDARD_PRICE_NAIRA))}.`
@@ -93,8 +93,8 @@ export function PlanBanner({ className = "" }: { className?: string }) {
     <Strip
       label="Free plan"
       line={intro
-        ? `Core ${formatNaira(FOUNDING_PRICE_NAIRA)} for your first 30 days, then ${formatNaira(STANDARD_PRICE_NAIRA)}. Exam ${formatNaira(EXAM_PRICE_NAIRA)}.`
-        : `Core ${formatNaira(STANDARD_PRICE_NAIRA)} every 30 days. Exam ${formatNaira(EXAM_PRICE_NAIRA)}.`}
+        ? `Prep ${formatNaira(FOUNDING_PRICE_NAIRA)} for your first 30 days, then ${formatNaira(STANDARD_PRICE_NAIRA)}. Mastery ${formatNaira(EXAM_PRICE_NAIRA)}.`
+        : `Prep ${formatNaira(STANDARD_PRICE_NAIRA)} every 30 days. Mastery ${formatNaira(EXAM_PRICE_NAIRA)}.`}
       action="Upgrade"
       extra={
         <details className="group mt-1.5 text-xs">
@@ -102,8 +102,8 @@ export function PlanBanner({ className = "" }: { className?: string }) {
             What you get <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
           </summary>
           <ul className="space-y-0.5 pb-1">
-            <li>Core: {CORE_DAILY_LIMITS.mock_sets} mock sets a day, up to {CORE_MAX_QUESTIONS} questions, “why” explanations</li>
-            <li>Exam: {EXAM_DAILY_LIMITS.mock_sets} mock sets a day, up to {EXAM_MAX_QUESTIONS} questions, exam-level difficulty</li>
+            <li>Prep: {CORE_DAILY_LIMITS.mock_sets} mock sets a day, up to {CORE_MAX_QUESTIONS} questions, “why” explanations</li>
+            <li>Mastery: {EXAM_DAILY_LIMITS.mock_sets} mock sets a day, up to {EXAM_MAX_QUESTIONS} questions, exam-level difficulty</li>
           </ul>
         </details>
       }

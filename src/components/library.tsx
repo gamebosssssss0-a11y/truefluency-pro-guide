@@ -870,7 +870,7 @@ export function LibraryScreen({ active = true }: { active?: boolean } = {}) {
 
       {/* In-app preview */}
       <Sheet open={preview !== null} onOpenChange={(o) => { if (!o) { setPreview(null); setPageExplanation(null); } }}>
-        <SheetContent side="bottom" onCloseAutoFocus={(event) => { if (flippingToChat) event.preventDefault(); }} className={cn("h-[92vh] min-w-0 w-full max-w-full overflow-x-hidden rounded-t-2xl bg-card text-card-foreground md:inset-4 md:flex md:h-auto md:w-auto md:max-w-none md:flex-col md:rounded-2xl", flippingToChat && "shelf-flip-exit")}>
+        <SheetContent side="bottom" size="wide" onCloseAutoFocus={(event) => { if (flippingToChat) event.preventDefault(); }} className={cn("h-[92vh] min-w-0 w-full max-w-full overflow-x-hidden rounded-t-2xl bg-card text-card-foreground sm:h-auto md:rounded-2xl", flippingToChat && "shelf-flip-exit")}>
           <SheetHeader>
             <SheetTitle className="break-words text-foreground">{preview?.file_name}</SheetTitle>
             <SheetDescription className="text-muted-foreground">

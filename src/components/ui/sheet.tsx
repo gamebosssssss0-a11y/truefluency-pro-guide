@@ -49,15 +49,18 @@ const sheetVariants = cva(
 interface SheetContentProps
   extends
     React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /** Bottom sheets only: "wide" fills the screen with a margin on tablets/desktops (document viewers); "fullscreen" covers the whole screen at every size. */
+  size?: "default" | "wide" | "fullscreen";
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", size = "default", className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
-    <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+    <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), side === "bottom" && size === "wide" && "tf-sheet-wide", side === "bottom" && size === "fullscreen" && "tf-sheet-fullscreen", className)} {...props}>
       {side === "bottom" ? (
         <div
           aria-hidden="true"

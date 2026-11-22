@@ -1824,7 +1824,10 @@ html.dark .surface-wash {
 @keyframes tf-sheet-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @media (min-width: 640px) {
   .tf-responsive-sheet { inset: 50% auto auto 50%; width: min(460px, calc(100vw - 48px)); transform: translate(-50%, -50%); border-radius: 16px; }
+  .tf-responsive-sheet.tf-sheet-wide { inset: 24px; width: auto; max-height: none; transform: none; display: flex; flex-direction: column; }
+  .tf-responsive-sheet.tf-sheet-fullscreen { inset: 0; width: 100vw; max-height: 100dvh; height: 100dvh; transform: none; border-radius: 0; }
 }
+.tf-responsive-sheet.tf-sheet-fullscreen { inset: 0; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
 @media (prefers-reduced-motion: reduce) {
   .tf-responsive-sheet[data-state="open"] { animation: tf-sheet-fade-in 150ms ease-out both; }
   .tf-responsive-sheet[data-state="closed"] { animation: tf-sheet-fade-out 150ms ease-in both; }

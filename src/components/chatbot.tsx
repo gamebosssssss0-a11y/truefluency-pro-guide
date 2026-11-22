@@ -1714,7 +1714,7 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
         setHistoryOpen(open);
         if (!open && view === "chat-history") navigate("chatbot", { courseCode: selected, replace: true });
       }}>
-        <SheetContent side="bottom" className="!inset-0 !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-y-0 !rounded-none overflow-y-auto overscroll-y-none bg-popover px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-popover-foreground">
+        <SheetContent side="bottom" size="fullscreen" className="overflow-y-auto overscroll-y-none bg-popover px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-popover-foreground">
           <SheetHeader className="text-left">
             <SheetTitle>Conversation history</SheetTitle>
             <SheetDescription>Saved conversations grouped by course and WAT date.</SheetDescription>

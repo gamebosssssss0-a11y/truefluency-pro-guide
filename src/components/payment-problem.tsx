@@ -113,7 +113,7 @@ export function PaymentProblemSheet({
               <select id="pp-ref" value={ref} onChange={(e) => setRef(e.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
                 <option value="">Not sure / no particular payment</option>
                 {receipts.map((r) => (
-                  <option key={r.ref} value={r.ref}>{when(r.paid_at)} · {r.plan === "exam" ? "Exam" : "Core"} · {formatNaira(r.amount_naira)} · {r.ref}</option>
+                  <option key={r.ref} value={r.ref}>{when(r.paid_at)} · {r.plan === "exam" ? "Mastery" : "Prep"} · {formatNaira(r.amount_naira)} · {r.ref}</option>
                 ))}
                 {presetRef && !receipts.some((r) => r.ref === presetRef) ? <option value={presetRef}>Payment {presetRef}</option> : null}
               </select>

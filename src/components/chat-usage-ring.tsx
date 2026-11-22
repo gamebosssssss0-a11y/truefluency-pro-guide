@@ -15,7 +15,7 @@ const STROKE = 3;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-const PLAN_NAME: Record<string, string> = { free: "Free", trial: "Trial", core: "Core", exam: "Exam" };
+const PLAN_NAME: Record<string, string> = { free: "Free", trial: "Trial", core: "Prep", exam: "Mastery" };
 
 /** The exact moment it refreshes, e.g. "Tuesday, 12:00 am", in the student's own time zone. */
 function resetText(iso: string): string {

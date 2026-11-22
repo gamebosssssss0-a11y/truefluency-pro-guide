@@ -609,7 +609,7 @@ export function MockConfigScreen() {
   const mockLimit = access?.dailyLimits.mock_sets ?? null;
   const mocksUsedToday = access?.usageToday.mock_sets ?? 0;
   const mockCapReached = !!access && mockLimit !== null && mocksUsedToday >= mockLimit;
-  const nextTierName = access?.tier === "exam" ? null : access?.tier === "free" ? "Core" : "Exam";
+  const nextTierName = access?.tier === "exam" ? null : access?.tier === "free" ? "Prep" : "Mastery";
 
   // Topic options come from THIS course's stored analysis, not from a
   // previously generated question set (which may belong to another course).
@@ -755,7 +755,7 @@ export function MockConfigScreen() {
                     ) : null}
                     <div className="font-display text-xl font-semibold text-foreground">{n}</div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {locked ? (n === EXAM_MAX_QUESTIONS ? "Exam plan" : "Core plan") : label}
+                      {locked ? (n === EXAM_MAX_QUESTIONS ? "Mastery plan" : "Prep plan") : label}
                     </div>
                   </button>
                 );
@@ -780,7 +780,7 @@ export function MockConfigScreen() {
                   key: "tutor",
                   title: "Tutor",
                   detail: tutorLocked
-                    ? "Instant step-by-step guidance after each question. Unlocked on Core & Exam plans."
+                    ? "Instant step-by-step guidance after each question. Unlocked on Prep & Mastery plans."
                     : "See an explanation after each answer.",
                 },
                 { key: "exam", title: "Exam", detail: "Review answers after you finish." },
@@ -789,7 +789,7 @@ export function MockConfigScreen() {
                   key={option.key}
                   type="button"
                   aria-pressed={mode === option.key}
-                  aria-label={option.key === "tutor" && tutorLocked ? "Tutor mode, locked. Available on Core and Exam plans" : undefined}
+                  aria-label={option.key === "tutor" && tutorLocked ? "Tutor mode, locked. Available on Prep and Mastery plans" : undefined}
                   onClick={() => {
                     if (option.key === "tutor" && tutorLocked) { navigate("upgrade"); return; }
                     setMode(option.key);
