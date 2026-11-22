@@ -297,28 +297,33 @@ export function UpgradeScreen() {
           <>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink">A calmer way to prepare</p>
             <h1 className="mt-2 font-display text-3xl font-bold text-foreground">Full access to your next level.</h1>
-            <p className="mt-2 text-sm leading-relaxed text-foreground">Make every study session count with a little more room to practise.</p>
-            <div className="mt-5 rounded-2xl border-2 border-accent bg-accent/10 p-5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Introductory price" : "Core"}</span>
-              <div className="mt-3 flex flex-wrap items-end gap-x-2"><span className="font-display text-4xl font-semibold">{formatNaira(corePrice)}</span><span className="pb-1 text-sm text-muted-foreground">{foundingOpen ? "for your first 30 days" : "every 30 days"}</span></div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Step-by-step Tutor guidance, more practice room and calmer exam preparation.</p>
+            <div className="relative mt-7 overflow-hidden rounded-3xl border-2 border-accent bg-card p-6 shadow-lg">
+              <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-accent/15 blur-2xl" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Introductory price" : "Core"}</span>
+              <div className="mt-4 flex flex-wrap items-end gap-x-2"><span className="font-display text-5xl font-bold tabular-nums tracking-tight">{formatNaira(corePrice)}</span><span className="pb-2 text-sm text-muted-foreground">{foundingOpen ? "first 30 days" : "/ 30 days"}</span></div>
               {foundingOpen ? (
                 <>
-                  <p className="mt-1 text-sm font-medium text-foreground">Then {formatNaira(coreThen)} every 30 days.</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Introductory offer for the first {FOUNDING_USER_LIMIT} paying students{seatsLeft !== null ? ` · ${seatsLeft} of ${FOUNDING_USER_LIMIT} places remain` : ""} · cancel any time
-                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">Then <span className="tabular-nums">{formatNaira(coreThen)}</span> every 30 days.</p>
+                  {seatsLeft !== null ? (
+                    <div className="mt-4">
+                      <div className="flex justify-between text-xs text-muted-foreground"><span>Introductory places</span><span className="tabular-nums font-semibold text-accent-ink">{seatsLeft} of {FOUNDING_USER_LIMIT} left</span></div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${Math.max(4, Math.min(100, ((FOUNDING_USER_LIMIT - seatsLeft) / FOUNDING_USER_LIMIT) * 100))}%` }} /></div>
+                    </div>
+                  ) : <p className="mt-1 text-xs text-muted-foreground">For the first {FOUNDING_USER_LIMIT} paying students · cancel any time</p>}
                 </>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">The introductory places have all been taken · cancel any time</p>
               )}
+              <ul className="mt-5 space-y-2.5 border-t border-border pt-5">{PLAN_FEATURES.core.map((line) => <li key={line} className="flex items-start gap-2.5 text-sm text-foreground"><span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent/15"><Check className="h-3 w-3 text-accent-ink" aria-hidden="true" /></span><span>{line}</span></li>)}</ul>
+              <Button className="mt-6 h-12 w-full rounded-xl bg-primary text-base font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.99]" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"} →</Button>
+            </div>
+            <div className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+              <span><span className="font-semibold text-foreground">Secured by Squad</span> · Card, bank transfer or USSD. Your card details are never stored by TrueFluency.</span>
             </div>
             {manage}
             {payments}
-            <section className="mt-4 rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold">Your studies, with more support</h2>
-              <ul className="mt-3 space-y-3">{PLAN_FEATURES.core.map((line) => <li key={line} className="flex items-start gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /><span>{line}</span></li>)}</ul>
-            </section>
-            <Button className="mt-5 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setStep("plans")}>{activePlan ? "Change or renew plan" : "Choose a plan"}</Button>
             <Button variant="outline" className="mt-3 h-12 w-full" onClick={() => navigate("support")}>Ask us about payment</Button>
             <Button variant="ghost" className="mt-2 w-full" onClick={() => setStep("plans")}>Compare plans</Button>
             {status && !live ? <p className="mt-2 text-center text-xs text-muted-foreground">Payments aren’t live yet. Nothing will be charged.</p> : null}
