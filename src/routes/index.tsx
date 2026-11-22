@@ -377,7 +377,7 @@ function Router() {
   // Each mock-flow screen sizes its own column and gutter.
   const flowScreen = examFocus || view === "mock-config" || view === "mock-result";
   const currentRootTab = rootTabFor(view);
-  const showVeriloButton = step === "dashboard" && !keyboardOpen && !["chatbot", "chat-history", "account", "settings", "mock-run", "mock-gen", "flashcards-review"].includes(view);
+  const showVeriloButton = step === "dashboard" && !keyboardOpen && ["home", "dashboard", "mock-tests", "library"].includes(view);
 
   return (
     <div data-app-viewport className="flex h-dvh min-h-0 flex-col overflow-hidden">

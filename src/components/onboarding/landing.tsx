@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/logo-mark";
 import { BrainCircuit, Calculator, FileText, LineChart, Sparkles } from "lucide-react";
 import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
 import { StudyShowcase } from "@/components/onboarding/study-showcase";
+import { PhoneShowcase } from "@/components/onboarding/phone-showcase";
 
 /**
  * Landing screen. Honesty contract: no exam-probability percentages and no
@@ -44,7 +45,7 @@ export function LandingScreen() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 pb-10 pt-6 md:py-12">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 pb-10 pt-6 md:py-12">
         <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex">
           <div className="flex min-w-0 items-center gap-2">
             <LogoMark className="h-8 w-8 shrink-0" />
@@ -123,6 +124,8 @@ export function LandingScreen() {
             </Button>
           </div>
         </section>
+
+        <PhoneShowcase />
 
         <StudyShowcase />
 

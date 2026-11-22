@@ -22,8 +22,6 @@ export function tabForView(view: AppView): TabKey {
     case "mock-result":
     case "test-history":
     case "attempt-review":
-    case "flashcards":
-    case "flashcards-review":
       return "mock-tests";
     case "library":
     case "course-detail":
@@ -45,9 +43,12 @@ export function tabForView(view: AppView): TabKey {
   }
 }
 
+export const ROOT_TAB_VIEWS = ["home", "dashboard", "mock-tests", "library", "account", "settings"] as const;
+
 /** Views that hide the tab bar so nobody navigates away mid-task. */
 export function hidesTabBar(view: AppView): boolean {
-  return view === "mock-run" || view === "mock-gen" || view === "attempt-review" || view === "flashcards-review" || view === "chatbot" || view === "chat-history";
+  // Only the four root destinations (and Settings, which renders inside Account) show the tab bar.
+  return !(ROOT_TAB_VIEWS as readonly AppView[]).includes(view);
 }
 
 /**

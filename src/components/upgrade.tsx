@@ -440,7 +440,7 @@ export function UpgradeScreen() {
             </dl>
 
             <p className="mt-4 rounded-xl bg-secondary p-3 text-xs leading-relaxed text-muted-foreground">
-              You pay on Squad’s secure page; we never see your card number. Your plan starts only after Squad confirms the payment.
+              Secured by Squad · Card · Bank Transfer · USSD. You pay on Squad’s secure page; we never see your card number. Your plan starts only after Squad confirms the payment.
               {autoRenew ? " If you delete your account, your plan is cancelled and your saved card is removed, so you are never charged again." : ""}
             </p>
             <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
