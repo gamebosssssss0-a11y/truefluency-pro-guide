@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { MessageCircle } from "lucide-react";
+import { AlertCircle, MessageCircle } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, SwipePreviewProvider, useProfile, type AppView } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
@@ -36,6 +36,7 @@ import { EditIdentityScreen } from "@/components/edit-identity";
 import { ThemeProvider } from "@/lib/theme";
 import { BottomTabBar, TopNavBar, hidesTabBar } from "@/components/tab-bar";
 import { cn } from "@/lib/utils";
+import { DialogPod } from "@/components/ui/dialog-pod";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -414,6 +415,7 @@ function Router() {
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
+            <DialogPod icon={AlertCircle} eyebrow="Exam in progress" tone="warn" />
             <AlertDialogTitle>Leave this test? Your answers stay.</AlertDialogTitle>
             <AlertDialogDescription>
               Your in-progress answers are saved on this device.
@@ -430,6 +432,7 @@ function Router() {
       <AlertDialog open={veriloIntroOpen} onOpenChange={(open) => { if (!open) dismissVeriloIntro(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
+            <DialogPod icon={MessageCircle} eyebrow="Your study companion" />
             <AlertDialogTitle>Meet Verilo</AlertDialogTitle>
             <AlertDialogDescription>
               Verilo is your dedicated AI chatbot, built to help you study from your own notes and materials.

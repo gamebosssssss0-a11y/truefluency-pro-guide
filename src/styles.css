@@ -1042,6 +1042,8 @@ details[open] > :not(summary) {
   --good: #166534;
   --warn: #854D0E;
   --bad: #991B1B;
+  --destructive: #991B1B;
+  --destructive-foreground: #FFFDF8;
   --chat-page: var(--tf-canvas);
   --chat-card: var(--tf-card);
   --chat-foreground: var(--tf-ink);
@@ -1096,6 +1098,8 @@ html.dark {
   --good: #86D8A8;
   --warn: #F2C27E;
   --bad: #FDA4AF;
+  --destructive: #FDA4AF;
+  --destructive-foreground: #101827;
   --chat-page: var(--tf-canvas);
   --chat-card: var(--tf-card);
   --chat-foreground: var(--tf-ink);

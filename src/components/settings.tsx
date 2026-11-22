@@ -11,8 +11,9 @@ import {
 import {
   User, Building2, BookOpen, ShieldAlert, PlusCircle, Layers, ChevronRight,
   LogOut, FolderOpen, Trash2, Loader2, Calculator, Target, ClipboardList,
-  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor, Compass,
+  RotateCcw, LifeBuoy, Moon, Sun, Pencil, Monitor, Compass, AlertTriangle, Check,
 } from "lucide-react";
+import { DialogPod } from "@/components/ui/dialog-pod";
 import { useTheme } from "@/lib/theme";
 import { HeaderLogo } from "@/components/brand";
 import {
@@ -348,12 +349,20 @@ export function AccountScreen() {
         <AlertDialog open={extensionOpen} onOpenChange={setExtensionOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Browser extension</AlertDialogTitle>
+              <DialogPod icon={Monitor} eyebrow="Chrome Web Store · In review" />
+              <AlertDialogTitle>TrueFluency Pro for Chrome &amp; Edge</AlertDialogTitle>
               <AlertDialogDescription>
-                The extension is not in the Chrome Web Store yet. When it is listed, you will download it from this screen.
+                Capture lecture slides, past question PDFs and portal notes from your browser straight into your study locker with one click. It is not listed yet; when it is, you will install it from this screen.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter><AlertDialogAction>Okay</AlertDialogAction></AlertDialogFooter>
+            <ul className="grid gap-2">
+              {["Instant one-click note capture", "Automatic course sorting"].map((item) => (
+                <li key={item} className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-foreground">
+                  <Check className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" /> {item}
+                </li>
+              ))}
+            </ul>
+            <AlertDialogFooter><AlertDialogAction className="w-full">Got it</AlertDialogAction></AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
@@ -532,19 +541,22 @@ export function AccountScreen() {
         </p>
 
         {/* Danger, deletes everything including files in storage */}
-        <h2 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-destructive">
-          Danger zone
-        </h2>
-        <Button variant="destructive" className="w-full" onClick={() => { setDeleteStep(1); setDeleteAllOpen(true); }}>
-          <Trash2 className="mr-2 h-4 w-4" /> Delete all my data
-        </Button>
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          Permanently deletes your uploaded past papers, slides, pasted notes, and profile. If you have a paid plan it is cancelled and your saved card is removed, so you are never charged again.
-        </p>
+        <section aria-labelledby="danger-zone-title" className="mt-8 rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4 sm:p-5 dark:bg-destructive/10">
+          <h2 id="danger-zone-title" className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-destructive">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /> Danger zone
+          </h2>
+          <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
+            Permanently deletes your uploaded past papers, slides, pasted notes, and profile. If you have a paid plan it is cancelled and your saved card is removed, so you are never charged again.
+          </p>
+          <Button variant="destructive" className="mt-4 min-h-11 w-full rounded-xl font-semibold shadow-md" onClick={() => { setDeleteStep(1); setDeleteAllOpen(true); }}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete all my data
+          </Button>
+        </section>
 
         <AlertDialog open={signOutOpen} onOpenChange={(o) => { if (!o && !signingOut) setSignOutOpen(false); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
+              <DialogPod icon={LogOut} eyebrow="Secure sign out" tone="neutral" />
               <AlertDialogTitle>Sign out of TrueFluency Pro?</AlertDialogTitle>
               <AlertDialogDescription>
                 We save your profile, courses, uploads, mock attempts and streak to your account
@@ -570,8 +582,9 @@ export function AccountScreen() {
           open={deleteAllOpen}
           onOpenChange={(o) => { if (!o && !deleting) closeDelete(); }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent className="before:via-destructive/50">
             <AlertDialogHeader>
+              <DialogPod icon={Trash2} eyebrow="Permanent & irreversible" tone="danger" />
               <AlertDialogTitle>
                 {deleteStep === 1 ? "Delete all my data" : "Last check, this is permanent"}
               </AlertDialogTitle>
@@ -582,15 +595,16 @@ export function AccountScreen() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>Keep my account</AlertDialogCancel>
               {deleteStep === 1 ? (
                 <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={(e) => {
                     e.preventDefault();
                     setDeleteStep(2);
                   }}
                 >
-                  Continue
+                  Proceed to delete
                 </AlertDialogAction>
               ) : (
                 <div className="w-full sm:min-w-64">
@@ -609,6 +623,7 @@ export function AccountScreen() {
         <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
+              <DialogPod icon={RotateCcw} eyebrow="Your files stay safe" tone="neutral" />
               <AlertDialogTitle>Reset profile</AlertDialogTitle>
               <AlertDialogDescription>
                 Reset your profile? This clears your faculty, department, level, confirmed courses, and streak. Your uploaded past papers, slides, and mock test history are kept — find your files under 'All my uploads'.

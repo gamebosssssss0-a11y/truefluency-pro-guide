@@ -5,7 +5,8 @@ import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type Co
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag, AlertCircle } from "lucide-react";
+import { DialogPod } from "@/components/ui/dialog-pod";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
 import { cn } from "@/lib/utils";
@@ -1573,7 +1574,8 @@ function SubmitConfirmSheet({ unanswered, onReview, onSubmit, onClose }: {
     <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent side="bottom" className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <SheetHeader className="text-left">
-          <SheetTitle>
+          <DialogPod icon={AlertCircle} eyebrow="Before you submit" tone="warn" />
+          <SheetTitle className="mt-3 font-display text-xl font-bold">
           {unanswered.length} question{unanswered.length > 1 ? "s" : ""} not answered
           </SheetTitle>
           <SheetDescription className="mt-1 text-base">
@@ -1587,8 +1589,8 @@ function SubmitConfirmSheet({ unanswered, onReview, onSubmit, onClose }: {
             </Button>
           ))}
         </div>
-        {unanswered.length ? <Button size="lg" className="mt-4 w-full" onClick={() => onReview(unanswered[0])}>Go to first unanswered</Button> : null}
-        <Button size="lg" variant="outline" className="mt-2 w-full" onClick={onSubmit}>Submit anyway</Button>
+        {unanswered.length ? <Button size="lg" className="mt-4 min-h-11 w-full rounded-xl" onClick={() => onReview(unanswered[0])}>Review unanswered</Button> : null}
+        <Button size="lg" variant="outline" className="mt-2 min-h-11 w-full rounded-xl" onClick={onSubmit}>Submit anyway</Button>
       </SheetContent>
     </Sheet>
   );

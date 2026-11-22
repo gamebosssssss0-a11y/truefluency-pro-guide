@@ -425,7 +425,7 @@ export function CgpaCalculatorScreen() {
 
   return (
     <div data-cgpa-form="calculator" className="study-utility-page min-h-screen">
-      <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-8 pt-6">
+      <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-[calc(4rem+env(safe-area-inset-bottom))] pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
           <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
@@ -903,14 +903,16 @@ function ResultBlock({
     <>
       <section
         aria-live="polite"
-        className="relative z-10 rounded-2xl border border-border bg-card p-4 text-foreground shadow-md"
+        data-cgpa-hero=""
+        className="relative z-10 overflow-hidden rounded-3xl border border-[var(--tf-gold-bright)]/35 bg-[var(--tf-navy)] p-5 text-[var(--tf-cream)] shadow-xl md:p-6"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--tf-gold-bright)_24%,transparent),transparent_70%)]" />
+        <div className="relative grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--tf-gold-bright)]">
               Estimated semester GPA
             </div>
-            <div className="mt-1 font-display text-3xl font-semibold leading-none">
+            <div className="mt-2 font-display text-4xl font-bold leading-none tracking-tight md:text-5xl">
               <span
                 key={result?.semesterGpa.toFixed(2) ?? "semester-empty"}
                 className="inline-block animate-in fade-in slide-in-from-bottom-1 duration-200"
@@ -918,15 +920,15 @@ function ResultBlock({
                 {result ? result.semesterGpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
+            <div className="mt-1 text-xs text-[var(--tf-cream)]/80">
               {result ? `${result.semesterUnits} units included` : "Add valid course results"}
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--tf-gold-bright)]">
               Updated cumulative CGPA
             </div>
-            <div className="mt-1 font-display text-3xl font-semibold leading-none">
+            <div className="mt-2 font-display text-4xl font-bold leading-none tracking-tight md:text-5xl">
               <span
                 key={result?.cumulativeCgpa.toFixed(2) ?? "cumulative-empty"}
                 className="inline-block animate-in fade-in slide-in-from-bottom-1 duration-200"
@@ -934,25 +936,25 @@ function ResultBlock({
                 {result ? result.cumulativeCgpa.toFixed(2) : "—"}
               </span>
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
+            <div className="mt-1 text-xs text-[var(--tf-cream)]/80">
               {result ? `${result.totalUnits} total units` : "Live preview"}
             </div>
           </div>
         </div>
 
         {result ? (
-          <div className="mt-3 border-t border-border pt-3">
+          <div className="mt-3 border-t border-[var(--tf-cream)]/15 pt-3">
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-semibold">{scale === "ui-5" ? classify(result.cumulativeCgpa) : "Classification varies by institution"}</span>
+              <span className="text-sm font-semibold text-[var(--tf-gold-bright)]">{scale === "ui-5" ? classify(result.cumulativeCgpa) : "Classification varies by institution"}</span>
               {scale !== "ui-5" ? (
-                <span className="text-right font-medium text-muted-foreground">Selected grading scale</span>
+                <span className="text-right font-medium text-[var(--tf-cream)]/80">Selected grading scale</span>
               ) : nextBand ? (
-                <span className="text-right font-medium text-muted-foreground">
+                <span className="text-right font-medium text-[var(--tf-cream)]/80">
                   {(nextBand.min - result.cumulativeCgpa).toFixed(2)} points to {nextBand.label} (
                   {nextBand.min.toFixed(2)})
                 </span>
               ) : (
-                <span className="text-right font-medium text-muted-foreground">
+                <span className="text-right font-medium text-[var(--tf-cream)]/80">
                   Within First Class ({CLASSIFICATION_BANDS.at(-1)?.min.toFixed(2)}–
                   {maxScale.toFixed(2)})
                 </span>
@@ -964,21 +966,21 @@ function ResultBlock({
               aria-valuemin={0}
               aria-valuemax={maxScale}
               aria-valuenow={result.cumulativeCgpa}
-              className="relative mt-2 h-2.5 overflow-hidden rounded-full"
+              className="relative mt-3 h-3 overflow-hidden rounded-full bg-[var(--tf-cream)]/10"
             >
               <div className="absolute inset-0 flex">
                 {CLASSIFICATION_BANDS.map((band, index) => (
                   <span
                     key={band.label}
                     className={
-                      "h-full border-r border-border last:border-r-0 " + [
-                        "bg-accent/40",
-                        "bg-accent/50",
-                        "bg-accent/60",
-                        "bg-accent/80",
-                        "bg-accent/55",
-                        "bg-accent/75",
-                        "bg-accent",
+                      "h-full border-r border-[var(--tf-navy)] last:border-r-0 " + [
+                        "bg-[var(--tf-gold-bright)]/20",
+                        "bg-[var(--tf-gold-bright)]/30",
+                        "bg-[var(--tf-gold-bright)]/40",
+                        "bg-[var(--tf-gold-bright)]/55",
+                        "bg-[var(--tf-gold-bright)]/70",
+                        "bg-[var(--tf-gold-bright)]/85",
+                        "bg-[var(--tf-gold-bright)]",
                       ][index]
                     }
                     style={{ width: `${((band.max - band.min) / maxScale) * 100}%` }}
@@ -986,19 +988,19 @@ function ResultBlock({
                 ))}
               </div>
               <span
-                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-foreground shadow-md ring-2 ring-background"
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--tf-navy)] bg-[var(--tf-cream)] shadow-[0_0_10px_color-mix(in_srgb,var(--tf-gold-bright)_70%,transparent)] ring-2 ring-[var(--tf-gold-bright)]"
                 style={{ left: `${position}%` }}
               />
             </div> : null}
             {result.validCourseCount < result.selectedCourseCount ? (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-[var(--tf-cream)]/80">
                 Preview uses {result.validCourseCount} of {result.selectedCourseCount} selected
                 courses with complete values.
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+          <p className="mt-3 border-t border-[var(--tf-cream)]/15 pt-3 text-xs text-[var(--tf-cream)]/80">
             Enter a valid result to see your classification and live preview.
           </p>
         )}

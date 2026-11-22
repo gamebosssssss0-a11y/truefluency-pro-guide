@@ -266,7 +266,7 @@ test("mock run provides an escape when saved questions are missing", async () =>
 test("submitting incomplete mocks uses an in-app sheet instead of a browser confirm", async () => {
   const flow = await read("../src/components/mock-test-flow.tsx");
   assert.match(flow, /questions\.length - answered > 0\)[\s\S]*?setConfirmOpen\(true\)/);
-  assert.match(flow, /Go to first unanswered[\s\S]*?Submit anyway/);
+  assert.match(flow, /Review unanswered[\s\S]*?Submit anyway/);
   assert.doesNotMatch(flow, /window\.confirm\(/);
 });
 
