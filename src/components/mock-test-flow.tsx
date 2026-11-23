@@ -5,7 +5,7 @@ import { useProfile, type MockAttempt, type UserCourse, type Difficulty, type Co
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag, AlertCircle } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quote, X, Lock, History, Calculator as CalcIcon, LayoutGrid, Flame, Snowflake, Flag, AlertCircle, Clock, FileText } from "lucide-react";
 import { DialogPod } from "@/components/ui/dialog-pod";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
@@ -422,13 +422,23 @@ export function MockGenerationScreen() {
           <HeaderLogo />
         </div>
         <div className="mb-8 text-center">
-          <MockGeneratingLoader className="mb-4" />
+          <div className="tf-synthesis-radar relative mx-auto mb-4 grid h-36 w-36 place-items-center" aria-hidden="true">
+            <span className="tf-radar-ring absolute inset-0 rounded-full border border-accent/25" />
+            <span className="tf-radar-ring tf-radar-ring-delay absolute inset-4 rounded-full border border-primary/20" />
+            <span className="grid h-20 w-20 place-items-center rounded-full border border-accent/30 bg-accent/10 shadow-lg">
+              <MockGeneratingLoader />
+            </span>
+          </div>
           <h1 className="font-display text-2xl font-semibold text-foreground">Preparing your mock</h1>
           <p className="mt-1 text-sm text-muted-foreground">{course?.code ? canonicalCourseCode(course.code) : ""} · {course?.name}</p>
         </div>
         <Progress value={pct} className="h-2" />
-        <p className="mt-3 text-center text-sm text-muted-foreground">
-          {readyLine ?? genSteps[statusIdx]}
+        <p className="mt-3 text-center text-sm text-muted-foreground" aria-live="polite">
+          {readyLine ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-ink">
+              <FileText className="h-3 w-3" aria-hidden="true" /> {readyLine}
+            </span>
+          ) : genSteps[statusIdx]}
         </p>
         <StageSteps
           steps={["Scanning notes and past papers", "Synthesizing exam-level questions", "Calibrating difficulty and rationale"]}
@@ -714,11 +724,21 @@ export function MockConfigScreen() {
           <BackButton onBack={back} />
         </div>
 
-        <h1 className="font-display text-3xl font-semibold text-foreground">Customize your test</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{canonicalCourseCode(course.code)} · {course.name}</p>
-        {defaults.toneLine ? (
-          <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
-        ) : null}
+        <section className="tf-studio-hero relative overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-ink">
+              {canonicalCourseCode(course.code)}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-sand/60 px-3 py-1 text-xs font-medium text-foreground">
+              <FileText className="h-3 w-3" aria-hidden="true" /> {materials?.length ?? 0} {materials?.length === 1 ? "file" : "files"}
+            </span>
+          </div>
+          <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Customize your test</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{course.name} · questions are drawn from the files you choose below.</p>
+          {defaults.toneLine ? (
+            <p className="mt-2 text-[12px] italic text-muted-foreground">{defaults.toneLine}</p>
+          ) : null}
+        </section>
 
         <div className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-4">
           {/* One of your files, or all of them: the questions come from what you pick here. */}
@@ -772,7 +792,13 @@ export function MockConfigScreen() {
           </div>
 
 
-          <ConfigSlider label="Duration" unit="minutes" value={minutes} min={15} max={75} step={5} onChange={setMinutes} />
+          <div>
+            <ConfigSlider label="Duration" unit="minutes" value={minutes} min={15} max={75} step={5} onChange={setMinutes} />
+            <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-sand/60 px-3 py-2 text-xs text-foreground">
+              <Clock className="h-3.5 w-3.5 shrink-0 text-accent-ink" aria-hidden="true" />
+              Pace: about {(minutes / Math.max(1, count)).toFixed(1)} minutes per question
+            </p>
+          </div>
 
           <fieldset>
             <legend className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Practice mode</legend>
@@ -804,10 +830,13 @@ export function MockConfigScreen() {
                 >
                   {option.key === "tutor" && tutorLocked ? (
                     <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-amber/15 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
-                      <Lock className="h-3 w-3 text-amber" aria-hidden="true" /> Core / Exam
+                      <Lock className="h-3 w-3 text-amber" aria-hidden="true" /> Prep / Mastery
                     </span>
                   ) : null}
-                  <span className="block text-sm font-semibold text-foreground">{option.title}</span>
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    {option.key === "tutor" ? <Sparkles className="h-4 w-4 text-accent-ink" aria-hidden="true" /> : <Clock className="h-4 w-4 text-accent-ink" aria-hidden="true" />}
+                    {option.title}
+                  </span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{option.detail}</span>
                 </button>
               ))}
@@ -924,10 +953,10 @@ export function MockConfigScreen() {
             ) : null}
           </div>
         ) : (
-          <Button size="lg" className="mt-5 h-auto w-full py-4" onClick={generate}>
+          <Button size="lg" className="mt-5 h-auto min-h-14 w-full rounded-2xl py-4 shadow-md transition-all active:scale-[0.99]" onClick={generate}>
             <Zap className="mr-2 h-4 w-4" />
             <span className="flex flex-col items-start leading-tight">
-              <span className="text-base font-semibold">Generate Mock Test</span>
+              <span className="text-base font-semibold">Generate {count}-Question Mock</span>
               <span className="text-xs font-normal opacity-90">
                 {count} questions · {minutes} min · {difficultyLabel}
                 {excluded.length > 0 ? ` · ${topicFocus.length} of ${ALL_TOPICS.length} topics` : ""}

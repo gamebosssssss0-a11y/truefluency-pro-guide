@@ -228,10 +228,11 @@ export function FlashcardsScreen() {
         <div className="mb-4 flex items-center gap-3"><BackButton onBack={returnToOrigin} /></div>
 
         {/* Header card: white, cream border, navy left edge */}
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border border-l-4 border-l-navy bg-card p-4">
-          <HeaderLogo className="shrink-0 rounded-lg bg-navy p-1.5 shadow-none hover:opacity-90" />
+        <div className="tf-studio-hero relative mb-5 flex items-center gap-3 overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm">
+          <HeaderLogo className="shrink-0 rounded-xl bg-navy p-2 shadow-none hover:opacity-90" />
           <div className="min-w-0 flex-1">
-            <h1 className="font-display text-xl font-semibold leading-tight text-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-accent-ink">Deck studio</p>
+            <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-foreground">
               Flashcards
             </h1>
             <p className="text-xs text-muted-foreground">
@@ -246,7 +247,7 @@ export function FlashcardsScreen() {
         </div>
 
         <div className="mb-8">
-          <label htmlFor="flashcards-course-filter" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--tf-sand-chip)]/80 dark:text-[var(--tf-dark-muted)]">
+          <label htmlFor="flashcards-course-filter" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Course
           </label>
           <select
@@ -277,24 +278,30 @@ export function FlashcardsScreen() {
         ) : decks.length > 0 ? (
           <div className="space-y-3">
             {decks.map((deck) => (
-              <div key={deck.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
-                <div className="min-w-0">
-                  <p className="truncate font-display text-base font-semibold text-foreground">{deckLabel(deck)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {displayCode(deck.course_code)} · {deck.card_count} cards
-                    {dueCounts[deck.id] !== undefined ? ` · ${dueCounts[deck.id]} due` : ""}
-                  </p>
+              <div key={deck.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-accent/40">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/10 text-accent-ink">
+                    <Layers className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="inline-flex rounded-full bg-sand px-2 py-0.5 text-[11px] font-semibold text-foreground">{displayCode(deck.course_code)}</span>
+                    <p className="mt-1 truncate font-display text-base font-semibold text-foreground">{deckLabel(deck)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {deck.card_count} cards
+                      {dueCounts[deck.id] !== undefined ? ` · ${dueCounts[deck.id]} due today` : ""}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(["due", "new", "cram"] as const).map((mode) => (
                     <button key={mode} type="button" onClick={() => {
                       sessionStorage.setItem("truefluency-flashcard-mode", mode);
                       navigate("flashcards-review", { courseCode: deck.course_code, deckId: deck.id });
-                    }} className={mode === "due"
+                    }} className={"min-h-11 " + (mode === "due"
                       ? "rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
                       : mode === "new"
                         ? "rounded-full border-2 border-accent px-3 py-1.5 text-xs font-semibold text-foreground"
-                        : "rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground"}>
+                        : "rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground")}>
                       {mode === "due" ? "Due" : mode === "new" ? "New" : "Cram"}
                     </button>
                   ))}
@@ -316,10 +323,15 @@ export function FlashcardsScreen() {
           </div>
         ) : (
           <div className="flex flex-col items-center text-center">
-            <div className="mb-4 grid h-20 w-20 place-items-center rounded-full bg-sand">
-              <Layers className="h-9 w-9 text-foreground" />
+            <div className="tf-synthesis-radar relative mb-4 grid h-28 w-28 place-items-center" aria-hidden="true">
+              <span className="absolute inset-0 rotate-[-8deg] rounded-2xl border border-border bg-sand/70" />
+              <span className="absolute inset-2 rotate-[6deg] rounded-2xl border border-accent/30 bg-accent/10" />
+              <span className="relative grid h-20 w-16 place-items-center rounded-xl border border-border bg-card shadow-md">
+                <Layers className="h-8 w-8 text-accent-ink" />
+              </span>
             </div>
-            <p className="mb-5 font-display text-2xl font-semibold text-foreground">No deck yet</p>
+            <p className="font-display text-2xl font-semibold text-foreground">No deck yet</p>
+            <p className="mb-5 mt-1 max-w-xs text-sm text-muted-foreground">Turn your notes into 15 review cards that come back right before you forget them.</p>
 
             {deckCapReached ? (
               <DeckCapBanner limit={deckLimit} onUpgrade={() => navigate("upgrade")} />

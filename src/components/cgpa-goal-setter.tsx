@@ -374,6 +374,34 @@ export function CgpaGoalSetterScreen() {
         </div>
 
         <h1 className="font-display text-3xl font-semibold text-foreground">CGPA goal setter</h1>
+        {(() => {
+          const cur = Number(currentCgpa);
+          const tgt = Number(targetCgpa);
+          const curOk = currentCgpa.trim() !== "" && Number.isFinite(cur) && cur >= 0 && cur <= 5;
+          const tgtOk = targetCgpa.trim() !== "" && Number.isFinite(tgt) && tgt >= 0 && tgt <= 5;
+          return (
+            <section aria-label="CGPA trajectory" className="tf-studio-hero mt-4 overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Current</p>
+                  <p className="font-display text-3xl font-bold tabular-nums text-foreground">{curOk ? cur.toFixed(2) : "—"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{curOk ? classify(cur) : "Enter below"}</p>
+                </div>
+                <span aria-hidden="true" className="mb-6 text-lg text-accent-ink">→</span>
+                <div className="min-w-0 text-right">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-accent-ink">Target</p>
+                  <p className="font-display text-3xl font-bold tabular-nums text-foreground">{tgtOk ? tgt.toFixed(2) : "—"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{tgtOk ? classify(tgt) : "Set a goal"}</p>
+                </div>
+              </div>
+              <div className="relative mt-4 h-2 rounded-full bg-sand" aria-hidden="true">
+                {curOk ? <span className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-500" style={{ width: `${(cur / 5) * 100}%` }} /> : null}
+                {tgtOk ? <span className="absolute -top-1 h-4 w-1 -translate-x-1/2 rounded-full bg-accent" style={{ left: `${(tgt / 5) * 100}%` }} /> : null}
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] tabular-nums text-muted-foreground" aria-hidden="true"><span>0.00</span><span>5.00</span></div>
+            </section>
+          );
+        })()}
         <p className="mt-1 text-sm text-muted-foreground">
           Enter your remaining credits, see the average GPA needed to reach your target, then preview
           a term-by-term plan before saving it.

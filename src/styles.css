@@ -1878,3 +1878,17 @@ html.dark .surface-wash {
 @media (prefers-reduced-motion: reduce) {
   .tf-streak-fire-animated, .tf-streak-ice-animated, .tf-streak-dormant-animated { animation: none; transform: none; }
 }
+
+/* Mock synthesis radar: two soft pulses around the generating orb. */
+@keyframes tf-radar-pulse {
+  0% { transform: scale(0.85); opacity: 0.9; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+.tf-radar-ring { animation: tf-radar-pulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+.tf-radar-ring-delay { animation-delay: 1.2s; }
+.tf-studio-hero {
+  background-image: radial-gradient(120% 80% at 100% 0%, color-mix(in oklab, var(--accent) 14%, transparent), transparent 60%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tf-radar-ring { animation: none; opacity: 0.5; }
+}

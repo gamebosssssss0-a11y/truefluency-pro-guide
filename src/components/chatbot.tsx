@@ -1371,11 +1371,16 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
             </LoadingStatus>
           ) : !isLoadingThread && messages.length === 0 ? (
             <div className="flex min-h-full w-full flex-col items-center justify-center px-4 text-center">
-              <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--tf-sand-chip)]" />
+              <div className="relative mb-4 grid h-20 w-20 place-items-center" aria-hidden="true">
+                <span className="tf-radar-ring absolute inset-0 rounded-full border border-accent/25" />
+                <span className="grid h-14 w-14 place-items-center rounded-full border border-accent/30 bg-accent/10 shadow-lg">
+                  <Sparkles className="h-6 w-6 text-accent-ink" />
+                </span>
+              </div>
+              <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-accent-ink">
                 Verilo
               </div>
-              <p className="text-xl font-semibold tracking-tight text-foreground">
+              <p className="font-display text-2xl font-semibold tracking-tight text-foreground">
                 {selected ? `Ask Verilo about ${placeholderCourse}` : "Start a study conversation"}
               </p>
               <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
@@ -1396,9 +1401,9 @@ export function ChatbotScreen({ embedded = false, pageAttachment: suppliedPageAt
                       type="button"
                       onClick={() => setDraft(card.value)}
                       disabled={isSending || isLoadingThread}
-                      className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left text-foreground transition-colors hover:border-primary/50 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                      className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-border bg-card p-3.5 text-left text-foreground shadow-sm transition-all hover:border-accent/50 hover:bg-sand/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
                     >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/10 text-accent-ink">
                         <StarterIcon aria-hidden="true" className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
