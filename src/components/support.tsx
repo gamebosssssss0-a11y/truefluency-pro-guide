@@ -1,3 +1,4 @@
+import { PolicyLinks } from "@/components/legal-policies-dialog";
 import { BackButton } from "@/components/ui/back-button";
 import { useMemo, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
@@ -152,6 +153,9 @@ export function SupportScreen() {
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Tell us about a payment or sign-in problem. Never send your PIN, OTP or password.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                <PolicyLinks />
               </p>
               {whatsappLink("Hello TrueFluency, I need help with payment or account access.") ? (
                 <Button asChild className="mt-4 h-auto min-h-11 w-full whitespace-normal">

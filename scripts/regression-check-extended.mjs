@@ -130,7 +130,9 @@ test("screen navigation resets nested scroll, chat resets on exit, and mobile co
   assert.doesNotMatch(calculator, /sticky top-0 z-20/);
   assert.match(goalSetter, /bottom-\[calc\(3\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
   assert.match(pdfViewer, /data-pdf-scroll/);
-  assert.match(pdfViewer, /className="min-w-0 flex-1 overflow-y-auto p-1"/);
+  assert.match(pdfViewer, /className="tf-pdf-desk min-w-0 flex-1 overflow-y-auto/);
+  assert.match(pdfViewer, /withCredentials: sameOrigin/);
+  assert.match(pdfViewer, /createPortal\(reader, document.body\)/);
   assert.doesNotMatch(dashboard, /FirstRunTourHost/);
   await assert.rejects(() => read("../public/reference-home.html"));
   await assert.rejects(() => read("../public/reference-home-light.html"));

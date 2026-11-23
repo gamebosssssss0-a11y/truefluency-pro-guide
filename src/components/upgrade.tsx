@@ -1,3 +1,4 @@
+import { PolicyLinks } from "@/components/legal-policies-dialog";
 import { BackButton } from "@/components/ui/back-button";
 import { PaymentVerifyingLoader } from "@/components/loading-state";
 import { ShieldCheck } from "lucide-react";
@@ -453,6 +454,9 @@ export function UpgradeScreen() {
               <Checkbox checked={agreed} disabled={!consentLine} onCheckedChange={(v) => setAgreed(v === true)} aria-label="I agree to the amounts and schedule" className="mt-0.5" />
               <span className="text-xs font-normal leading-relaxed">{consentLine ?? "Loading the exact terms…"}</span>
             </label>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Billed securely via Squad. Read our <PolicyLinks tabs={["refund", "privacy"]} />.
+            </p>
             {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
             <Button disabled={busy || !agreed || !consentLine || (status !== null && !live)} className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void pay()}>
               {busy ? "Opening Squad…" : status !== null && !live ? "Payments aren’t live yet" : !agreed ? "Tick the box above to continue" : `Pay ${formatNaira(price)} with Squad`}

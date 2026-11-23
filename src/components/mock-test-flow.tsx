@@ -9,6 +9,7 @@ import { Check, ChevronLeft, ChevronRight, Sparkles, Zap, Trophy, RotateCcw, Quo
 import { DialogPod } from "@/components/ui/dialog-pod";
 import { HeaderLogo } from "@/components/brand";
 import { AiGeneratedLabel, TopicPill } from "@/components/common";
+import { ScientificCalculatorSheet, clearCalculatorSession } from "@/components/calculator/scientific-calculator";
 import { cn } from "@/lib/utils";
 import { timelineDefaults } from "@/lib/personalization";
 import { listMaterialsForCourse, type CourseMaterial } from "@/lib/course-materials";
@@ -988,6 +989,8 @@ export function MockRunScreen() {
   const [now, setNow] = useState(Date.now());
   const [mapOpen, setMapOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
+  const calcSessionId = t ? (t.analyticsSessionId ?? String(t.startedAt)) : "none";
+  useEffect(() => () => clearCalculatorSession(calcSessionId), [calcSessionId]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [questionDirection, setQuestionDirection] = useState<"next" | "prev" | "none">("none");
   const submittedRef = useRef(false);
@@ -1472,23 +1475,34 @@ export function MockRunScreen() {
           </section>
         ) : null}
 
-        <div data-mock-nav="" className="relative -mx-4 mt-8 sm:-mx-6 border-t border-border bg-background pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          <div className={`${SCREEN} flex items-center gap-3 py-3`}>
-            <Button variant="outline" size="lg" onClick={() => move(-1)} disabled={idx === 0} className="flex-1">
-              <ChevronLeft className="mr-1 h-4 w-4" /> Prev
-            </Button>
-            {idx === questions.length - 1 ? (
-              <Button size="lg" onClick={submitWithWarning} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90" disabled={answered === 0}>
-                {mode === "tutor" ? "Finish practice" : `Submit (${answered}/${questions.length})`}
-              </Button>
-            ) : (
-              <Button size="lg" onClick={() => move(1)} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                {mode === "tutor" && t.answers[idx] !== null && t.answers[idx] !== undefined ? "Next question" : "Next"} <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            )}
-
+        <div aria-hidden="true" className="h-[calc(96px+env(safe-area-inset-bottom))]" />
+        <nav
+          data-mock-nav=""
+          aria-label="Question navigation"
+          className={cn(
+            "fixed inset-x-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-40 mx-auto flex h-16 max-w-md items-center justify-between gap-3 rounded-3xl border border-border bg-card/90 px-3 shadow-lg backdrop-blur-[16px] transition-all",
+            calcOpen ? "pointer-events-none translate-y-4 opacity-0 duration-200" : "translate-y-0 opacity-100 duration-300",
+          )}
+        >
+          <Button variant="outline" onClick={() => move(-1)} disabled={idx === 0} className="h-11 rounded-2xl px-3">
+            <ChevronLeft className="mr-1 h-4 w-4" /> Prev
+          </Button>
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <span className="truncate text-xs font-semibold tabular-nums text-foreground">Question {idx + 1} of {questions.length}</span>
+            <span className="h-1 w-full max-w-[120px] overflow-hidden rounded-full bg-secondary" aria-hidden="true">
+              <span className="block h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${((idx + 1) / Math.max(1, questions.length)) * 100}%` }} />
+            </span>
           </div>
-        </div>
+          {idx === questions.length - 1 ? (
+            <Button onClick={submitWithWarning} className="h-11 rounded-2xl bg-accent px-4 font-semibold text-accent-foreground hover:bg-accent/90" disabled={answered === 0}>
+              {mode === "tutor" ? "Finish" : `Submit (${answered}/${questions.length})`}
+            </Button>
+          ) : (
+            <Button onClick={() => move(1)} className="h-11 rounded-2xl bg-accent px-5 font-semibold text-accent-foreground hover:bg-accent/90">
+              Next <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          )}
+        </nav>
 
         {mapOpen ? (
           <QuestionMapSheet
@@ -1501,7 +1515,7 @@ export function MockRunScreen() {
           />
         ) : null}
 
-        {calcOpen ? <CalculatorSheet onClose={() => setCalcOpen(false)} /> : null}
+        {calcOpen ? <ScientificCalculatorSheet attemptId={calcSessionId} onClose={() => setCalcOpen(false)} /> : null}
         {confirmOpen ? (
           <SubmitConfirmSheet
             unanswered={t.answers.flatMap((answer, questionIndex) => answer === null || answer === undefined ? [questionIndex] : [])}
@@ -1591,117 +1605,6 @@ function SubmitConfirmSheet({ unanswered, onReview, onSubmit, onClose }: {
         </div>
         {unanswered.length ? <Button size="lg" className="mt-4 min-h-11 w-full rounded-xl" onClick={() => onReview(unanswered[0])}>Review unanswered</Button> : null}
         <Button size="lg" variant="outline" className="mt-2 min-h-11 w-full rounded-xl" onClick={onSubmit}>Submit anyway</Button>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-/** Basic CBT-style calculator. No scientific functions, never writes into A-D. */
-function CalculatorSheet({ onClose }: { onClose: () => void }) {
-  const [display, setDisplay] = useState("0");
-  const [acc, setAcc] = useState<number | null>(null);
-  const [op, setOp] = useState<string | null>(null);
-  const [fresh, setFresh] = useState(true);
-
-  const digit = (d: string) => {
-    setDisplay((cur) => {
-      if (fresh) return d === "." ? "0." : d;
-      if (d === "." && cur.includes(".")) return cur;
-      return cur === "0" && d !== "." ? d : cur + d;
-    });
-    setFresh(false);
-  };
-
-  const apply = (a: number, b: number, o: string) => {
-    if (o === "+") return a + b;
-    if (o === "-") return a - b;
-    if (o === "x") return a * b;
-    if (o === "/") return b === 0 ? NaN : a / b;
-    return b;
-  };
-
-  const chooseOp = (o: string) => {
-    const value = Number(display);
-    if (acc !== null && op && !fresh) {
-      const r = apply(acc, value, op);
-      setAcc(r);
-      setDisplay(String(Number.isFinite(r) ? Number(r.toFixed(8)) : "Error"));
-    } else {
-      setAcc(value);
-    }
-    setOp(o);
-    setFresh(true);
-  };
-
-  const equals = () => {
-    const value = Number(display);
-    if (acc === null || !op) return;
-    const r = apply(acc, value, op);
-    setDisplay(String(Number.isFinite(r) ? Number(r.toFixed(8)) : "Error"));
-    setAcc(null);
-    setOp(null);
-    setFresh(true);
-  };
-
-  const root = () => {
-    const value = Number(display);
-    setDisplay(value < 0 ? "Error" : String(Number(Math.sqrt(value).toFixed(8))));
-    setFresh(true);
-  };
-
-  const keys: { k: string; run: () => void; tone?: "op" | "eq" | "clear" }[] = [
-    { k: "CE", run: () => { setDisplay("0"); setFresh(true); }, tone: "clear" },
-    { k: "C", run: () => { setDisplay("0"); setAcc(null); setOp(null); setFresh(true); }, tone: "clear" },
-    { k: "√", run: root, tone: "op" },
-    { k: "÷", run: () => chooseOp("/"), tone: "op" },
-    { k: "7", run: () => digit("7") },
-    { k: "8", run: () => digit("8") },
-    { k: "9", run: () => digit("9") },
-    { k: "×", run: () => chooseOp("x"), tone: "op" },
-    { k: "4", run: () => digit("4") },
-    { k: "5", run: () => digit("5") },
-    { k: "6", run: () => digit("6") },
-    { k: "−", run: () => chooseOp("-"), tone: "op" },
-    { k: "1", run: () => digit("1") },
-    { k: "2", run: () => digit("2") },
-    { k: "3", run: () => digit("3") },
-    { k: "+", run: () => chooseOp("+"), tone: "op" },
-    { k: "0", run: () => digit("0") },
-    { k: ".", run: () => digit(".") },
-    { k: "=", run: equals, tone: "eq" },
-  ];
-
-  return (
-    <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <SheetContent side="bottom" className="mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <SheetHeader className="mb-2 text-left">
-          <SheetTitle className="text-sm">Calculator</SheetTitle>
-          <SheetDescription>Basic keys only. Results are never entered into your answers.</SheetDescription>
-        </SheetHeader>
-        <div className="mb-3 rounded-xl border border-border bg-background px-3 py-3 text-right font-display text-2xl font-semibold tabular-nums text-foreground">
-          {display}
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {keys.map((key) => (
-            <button
-              key={key.k}
-              type="button"
-              onClick={key.run}
-              className={cn(
-                "h-12 rounded-xl border text-sm font-semibold transition",
-                key.tone === "eq"
-                  ? "col-span-2 border-accent bg-accent text-accent-foreground"
-                  : key.tone === "op"
-                    ? "border-accent/40 bg-accent/10 text-accent"
-                    : key.tone === "clear"
-                      ? "border-border bg-muted text-muted-foreground"
-                      : "border-border bg-background text-foreground",
-              )}
-            >
-              {key.k}
-            </button>
-          ))}
-        </div>
       </SheetContent>
     </Sheet>
   );

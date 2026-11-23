@@ -8,7 +8,8 @@
  * with Back/Next; full screen stacks the pages in a continuous scroll.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, ZoomIn, ZoomOut, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Maximize2, Sparkles, Minimize2, ZoomIn, ZoomOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorCard } from "@/components/error-card";
@@ -58,6 +59,16 @@ function loadPdfjs(): Promise<PdfjsModule> {
     return mod;
   })();
   return pdfjsPromise;
+}
+
+export function isSameOrigin(url: string): boolean {
+  if (typeof window === "undefined") return false;
+  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  try {
+    return new URL(url, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
 }
 
 /** Last file opened in this session, so close-and-reopen is instant. */
@@ -183,10 +194,10 @@ function ScrollPage({
       style={active || (distance <= 8 && hasPainted) ? undefined : { height: pageHeight ?? estimatedPageHeight }}
     >
       {active || (distance <= 8 && hasPainted) ? (
-        <canvas ref={canvasRef} className="block max-w-full rounded-md bg-white shadow-sm" />
+        <canvas ref={canvasRef} className="tf-pdf-paper block max-w-full rounded-lg bg-white" />
       ) : (
         <div
-          className="rounded-md bg-white/60 shadow-sm"
+          className="tf-pdf-paper animate-pulse rounded-lg bg-card"
           style={{ width: boxWidth, height: pageHeight ?? estimatedPageHeight }}
         />
       )}
@@ -236,6 +247,8 @@ export function PdfViewer({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pageAspect, setPageAspect] = useState(Math.SQRT2);
   const [zoom, setZoom] = useState(1);
+  const [scannedNotice, setScannedNotice] = useState(false);
+  useEffect(() => { setScannedNotice(false); }, [page]);
 
   pageRef.current = page;
 
@@ -246,6 +259,7 @@ export function PdfViewer({
 
   const load = useCallback(() => {
     let alive = true;
+    const sameOrigin = isSameOrigin(url);
     const cacheController = new AbortController();
     setStatus("loading");
     setDoc(null);
@@ -266,7 +280,15 @@ export function PdfViewer({
         const task = pdfjs.getDocument(
           cached
             ? { data: new Uint8Array(cached.slice(0)) }
-            : { url, httpHeaders, withCredentials: true, disableAutoFetch: true, disableStream: false, rangeChunkSize: 524288 },
+            : {
+                url,
+                httpHeaders: sameOrigin ? httpHeaders : undefined,
+                // Cloudflare R2 presigned URLs answer with a wildcard origin, which browsers reject for credentialed requests.
+                withCredentials: sameOrigin,
+                disableAutoFetch: true,
+                disableStream: false,
+                rangeChunkSize: 524288,
+              },
         ) as unknown as LoadingTask;
         taskRef.current = task;
         const loaded = (await task.promise) as unknown as PdfDoc;
@@ -472,12 +494,8 @@ export function PdfViewer({
       const currentPage = await doc.getPage(currentPageNumber);
       const content = await currentPage.getTextContent?.();
       const text = (content?.items ?? []).map((item) => item.str ?? "").join(" ").replace(/\s+/g, " ").trim();
-      if (!text) {
-        toast.error("Couldn't read selectable text from this page.");
-        return;
-      }
-      if (text.length < 50) {
-        toast.error("This page has too little selectable text.");
+      if (!text || text.length < 50) {
+        setScannedNotice(true);
         return;
       }
       let previewUrl: string | undefined;
@@ -575,57 +593,45 @@ export function PdfViewer({
     );
   }
 
-  return (
+  const iconBtn =
+    "grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40";
+  const progress = total ? Math.round((page / total) * 100) : 0;
+
+  const reader = (
     <div
       data-swipe-lock=""
       className={
         expanded
-          ? "fixed inset-0 z-50 flex min-w-0 flex-col overflow-hidden bg-background"
+          ? "fixed inset-0 z-[60] flex min-w-0 flex-col overflow-hidden bg-background"
           : "flex h-full min-w-0 w-full max-w-full flex-col overflow-hidden bg-background"
       }
       style={expanded && explainPanelOpen ? { left: 16, right: 396, top: 16, bottom: 16, width: "auto", height: "auto" } : undefined}
     >
-
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
-          {fileName}
-        </span>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {status === "ready" ? `page ${page} / ${total}` : ""}
-        </span>
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-card/90 px-3 py-1.5 shadow-xs backdrop-blur-md">
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-ink">PDF · Handout</span>
+          <p className="mt-0.5 max-w-[180px] truncate text-xs font-medium text-foreground sm:max-w-xs sm:text-sm">{fileName}</p>
+        </div>
         {status === "ready" ? (
-          <div className="flex shrink-0 items-center gap-1">
-            <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 0.6} onClick={() => setZoom((v) => Math.max(0.6, Math.round((v - 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
+          <div className="hidden shrink-0 items-center rounded-full border border-border bg-background min-[420px]:flex">
+            <button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom <= 0.6} onClick={() => setZoom((v) => Math.max(0.6, Math.round((v - 0.2) * 10) / 10))} className={iconBtn}>
               <ZoomOut className="h-4 w-4" />
             </button>
-            <span className="min-w-10 text-center text-xs tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
-            <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= 2} onClick={() => setZoom((v) => Math.min(2, Math.round((v + 0.2) * 10) / 10))} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40">
+            <span className="min-w-10 text-center text-xs tabular-nums text-foreground">{Math.round(zoom * 100)}%</span>
+            <button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom >= 2} onClick={() => setZoom((v) => Math.min(2, Math.round((v + 0.2) * 10) / 10))} className={iconBtn}>
               <ZoomIn className="h-4 w-4" />
             </button>
           </div>
         ) : null}
-        <button
-          type="button"
-          aria-label={expanded ? "Exit full screen" : "Full screen"}
-          onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 rounded-md p-1 text-muted-foreground"
-        >
+        <button type="button" aria-label={expanded ? "Exit full screen" : "Full screen"} onClick={() => setExpanded((v) => !v)} className={iconBtn}>
           {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
         {onClose ? (
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={() => {
-              setExpanded(false);
-              onClose();
-            }}
-            className="shrink-0 rounded-md p-1 text-muted-foreground"
-          >
+          <button type="button" aria-label="Close" onClick={() => { setExpanded(false); onClose(); }} className={iconBtn}>
             <X className="h-4 w-4" />
           </button>
         ) : null}
-      </div>
+      </header>
 
       <div
         ref={wrapRef}
@@ -633,22 +639,20 @@ export function PdfViewer({
         data-screen-scroll
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="min-w-0 flex-1 overflow-y-auto p-1"
+        className="tf-pdf-desk min-w-0 flex-1 overflow-y-auto p-3 pb-[calc(96px+env(safe-area-inset-bottom))] transition-colors sm:p-6 sm:pb-[calc(96px+env(safe-area-inset-bottom))]"
         style={!expanded && status === "ready" ? { touchAction: "pan-y pinch-zoom" } : undefined}
       >
         {status === "loading" ? (
-          <div className="grid h-full place-content-center justify-items-center gap-2 px-6 text-center">
-            <Loader2 className="h-5 w-5 animate-spin text-accent" />
+          <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 pt-2" role="status" aria-label="Opening your file">
+            <div className="tf-pdf-paper w-full animate-pulse rounded-lg bg-card p-6" style={{ aspectRatio: "1 / 1.414" }}>
+              <div className="h-3 w-2/3 rounded bg-muted" />
+              <div className="mt-4 space-y-2">
+                {[92, 86, 95, 70, 88, 60].map((w, n) => <div key={n} className="h-2 rounded bg-muted" style={{ width: `${w}%` }} />)}
+              </div>
+            </div>
             <p className="text-sm font-medium text-foreground">Opening your file…</p>
             {onCancel ?? onClose ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-1 border-border text-foreground"
-                onClick={cancelLoad}
-              >
-                Cancel
-              </Button>
+              <Button size="sm" variant="outline" className="border-border text-foreground" onClick={cancelLoad}>Cancel</Button>
             ) : null}
           </div>
         ) : null}
@@ -668,78 +672,63 @@ export function PdfViewer({
             />
           ))
         ) : (
-          <canvas
-            ref={canvasRef}
-            className={
-              expanded ? "hidden" : "mx-auto block max-h-full max-w-full rounded-md bg-white shadow-sm"
-            }
-          />
+          <canvas ref={canvasRef} className={expanded || status !== "ready" ? "hidden" : "tf-pdf-paper mx-auto block max-w-full rounded-lg bg-white"} />
         )}
+
+        {scannedNotice ? (
+          <div role="status" className="mx-auto mt-3 max-w-md rounded-2xl border border-accent/30 bg-card p-4 text-sm text-foreground shadow-sm">
+            This page is a scanned image with no selectable text. Verilo can transcribe it for you.
+          </div>
+        ) : null}
       </div>
 
       {status === "ready" ? (
-        <div
-          className="grid min-w-0 grid-cols-[minmax(44px,1fr)_auto_minmax(44px,1fr)] gap-x-2 gap-y-2 border-t border-border px-3 py-2"
-          style={expanded ? { paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" } : undefined}
-        >
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            aria-label="Previous page"
-            data-page-nav=""
-            onPointerDown={() => { pageNavPointerRef.current = true; }}
-            className="h-11 w-full min-w-11 border-border text-foreground"
-            onClick={() => go(pageRef.current - 1)}
-            disabled={page <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <form
-            className="flex h-11 items-center gap-1"
-            onSubmit={(e) => {
-              e.preventDefault();
-              go(Number(pageInput) || pageRef.current);
-            }}
-          >
-            <Input
-              value={pageInput}
-              onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
-              onBlur={() => {
-                if (pageNavPointerRef.current) {
-                  pageNavPointerRef.current = false;
-                  setPageInput(String(pageRef.current));
-                  return;
-                }
-                const target = Number(pageInput) || pageRef.current;
-                if (target !== pageRef.current) go(target);
-              }}
-              inputMode="numeric"
-              aria-label="Go to page"
-              className="h-10 w-14 border-border bg-card text-center text-[12px] text-foreground"
-            />
-            <span className="whitespace-nowrap text-xs text-muted-foreground">/ {total}</span>
-          </form>
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            aria-label="Next page"
-            data-page-nav=""
-            onPointerDown={() => { pageNavPointerRef.current = true; }}
-            className="h-11 w-full min-w-11 border-border text-foreground"
-            onClick={() => go(pageRef.current + 1)}
-            disabled={page >= total}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="pointer-events-none absolute inset-x-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-sm flex-col items-center gap-2">
           {onExplain ? (
-            <Button size="sm" variant="outline" data-page-nav="" className="col-span-3 h-11 min-w-0 w-full border-border text-foreground" onClick={() => void explainCurrentPage()}>
-              <span className="truncate">Explain this page</span>
-            </Button>
+            <button
+              type="button"
+              data-page-nav=""
+              onClick={() => void explainCurrentPage()}
+              className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full border border-accent/30 bg-accent/15 px-4 text-xs font-semibold text-accent-ink shadow-sm backdrop-blur-md transition-colors hover:bg-accent/25"
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Ask Tutor about this page
+            </button>
           ) : null}
+          <div className="pointer-events-auto flex h-14 w-full items-center justify-between rounded-full border border-border/80 bg-card/90 px-2 shadow-lg backdrop-blur-xl">
+            <button type="button" aria-label="Previous page" data-page-nav="" onPointerDown={() => { pageNavPointerRef.current = true; }} onClick={() => go(pageRef.current - 1)} disabled={page <= 1} className={iconBtn}>
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <form
+              className="flex items-center gap-1 text-xs text-muted-foreground"
+              onSubmit={(e) => { e.preventDefault(); go(Number(pageInput) || pageRef.current); }}
+            >
+              <span>Page</span>
+              <Input
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
+                onBlur={() => {
+                  if (pageNavPointerRef.current) { pageNavPointerRef.current = false; setPageInput(String(pageRef.current)); return; }
+                  const target = Number(pageInput) || pageRef.current;
+                  if (target !== pageRef.current) go(target);
+                }}
+                inputMode="numeric"
+                aria-label="Go to page"
+                className="h-9 w-12 rounded-full border-border bg-background text-center text-xs tabular-nums text-foreground"
+              />
+              <span className="whitespace-nowrap tabular-nums">of {total} · {progress}%</span>
+            </form>
+            <button type="button" aria-label="Next page" data-page-nav="" onPointerDown={() => { pageNavPointerRef.current = true; }} onClick={() => go(pageRef.current + 1)} disabled={page >= total} className={iconBtn}>
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       ) : null}
+    </div>
+  );
+
+  return (
+    <div className="relative h-full min-w-0 w-full">
+      {expanded && typeof document !== "undefined" ? createPortal(reader, document.body) : reader}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { PolicyLinks } from "@/components/legal-policies-dialog";
 import { useRef } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
@@ -191,6 +192,10 @@ export function LandingScreen() {
             </p>
           </div>
         </details>
+        <footer className="mt-10 border-t border-border pt-6 text-center text-xs leading-relaxed text-muted-foreground">
+          <p>TrueFluency Pro · Built for University of Ibadan students</p>
+          <PolicyLinks className="mt-2 block" />
+        </footer>
       </div>
     </div>
   );
