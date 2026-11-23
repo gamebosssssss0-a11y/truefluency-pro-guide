@@ -1857,3 +1857,24 @@ html.dark .surface-wash {
 }
 @keyframes tf-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tf-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Animated streak glyphs and the Verilo welcome pod. */
+@keyframes tf-flame-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px color-mix(in oklab, var(--tf-gold-bright, #E0B458) 40%, transparent)); }
+  50% { transform: scale(1.08) rotate(1deg); filter: drop-shadow(0 0 12px color-mix(in oklab, var(--tf-gold-bright, #E0B458) 70%, transparent)); }
+}
+@keyframes tf-frost-shimmer {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgb(56 189 248 / 0.4)); }
+  50% { transform: scale(1.04); filter: drop-shadow(0 0 10px rgb(56 189 248 / 0.8)); }
+}
+@keyframes tf-spark-dormant {
+  0%, 100% { opacity: 0.6; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+.tf-streak-fire-animated { display: inline-block; animation: tf-flame-pulse 2.4s ease-in-out infinite; }
+.tf-streak-ice-animated { display: inline-block; animation: tf-frost-shimmer 3s ease-in-out infinite; }
+.tf-streak-dormant-animated { display: inline-block; animation: tf-spark-dormant 3.2s ease-in-out infinite; }
+.tf-verilo-pod { box-shadow: 0 0 24px color-mix(in oklab, var(--tf-gold-bright, #E0B458) 20%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .tf-streak-fire-animated, .tf-streak-ice-animated, .tf-streak-dormant-animated { animation: none; transform: none; }
+}

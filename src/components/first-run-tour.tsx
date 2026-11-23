@@ -1,35 +1,30 @@
 import { useEffect, useState } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
-import { Upload, ClipboardList, Layers, User, X } from "lucide-react";
+import { BookOpen, MessageCircle, ClipboardList, X } from "lucide-react";
 
-type Step = { icon: typeof Upload; title: string; line: string };
+type Step = { icon: typeof BookOpen; title: string; line: string };
 
 const STEPS: Step[] = [
   {
-    icon: Upload,
-    title: "1. Add your own material",
-    line: "Open My Files, pick a course and upload a past paper or your lecture notes.",
+    icon: BookOpen,
+    title: "1. Your course packs",
+    line: "Your registered courses live on Home. Use Add course or Upload notes to bring in lecture handouts and past questions.",
+  },
+  {
+    icon: MessageCircle,
+    title: "2. Ask Verilo",
+    line: "The round Verilo button at the bottom right opens Study Chat. Ask anything about your notes.",
   },
   {
     icon: ClipboardList,
-    title: "2. Practise on it",
-    line: "Tap Practice to sit a mock test built from the file you just added.",
-  },
-  {
-    icon: Layers,
-    title: "3. Revise the hard bits",
-    line: "Flashcards on Home turn the same file into quick cards you can flip, and Study Chat answers questions on it.",
-  },
-  {
-    icon: User,
-    title: "4. Everything else lives in Account",
-    line: "Your photo, your courses, your CGPA tools and help are all in Account.",
+    title: "3. Mock tests and CGPA",
+    line: "Practice builds timed mock exams from your files. Account holds your progress and CGPA tools.",
   },
 ];
 
 /**
- * A four-step walkthrough shown the first time someone lands on Home, and
+ * A three-step walkthrough shown the first time someone lands on Home, and
  * replayable from Account. It only explains the app; it changes nothing.
  */
 export function FirstRunTour({ onClose }: { onClose: () => void }) {
@@ -82,9 +77,8 @@ export function FirstRunTour({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * The tour is optional and opens only when the student asks for it from
- * Account. The request is session-scoped; tour completion remains in the
- * existing persisted profile flag.
+ * Opens once automatically on a first Home visit (after 2 seconds) and again
+ * whenever the student replays it from Account.
  */
 export function FirstRunTourHost() {
   const { profile, update, view } = useProfile();
@@ -92,18 +86,29 @@ export function FirstRunTourHost() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (view !== "home" || !onboardingDone || profile.tourSeen) return;
+    let requested = false;
+    let completed = false;
     try {
-      if (window.sessionStorage.getItem("truefluency-show-tour-on-home") === "1") setOpen(true);
+      requested = window.sessionStorage.getItem("truefluency-show-tour-on-home") === "1";
+      completed = window.localStorage.getItem("truefluency-tour-completed") !== null;
     } catch {
-      /* the optional tour is unavailable when session storage is blocked */
+      return; /* the optional tour is unavailable when storage is blocked */
     }
+    if (requested) { setOpen(true); return; }
+    if (completed) return;
+    // First visit to Home on this device: start the walkthrough after a short pause.
+    const t = window.setTimeout(() => setOpen(true), 2000);
+    return () => window.clearTimeout(t);
   }, [view, onboardingDone, profile.tourSeen]);
   if (!open || !onboardingDone || profile.tourSeen) return null;
   return (
     <FirstRunTour
       onClose={() => {
         setOpen(false);
-        try { window.sessionStorage.removeItem("truefluency-show-tour-on-home"); }
+        try {
+          window.sessionStorage.removeItem("truefluency-show-tour-on-home");
+          window.localStorage.setItem("truefluency-tour-completed", String(Date.now()));
+        }
         catch { /* the tour is still closed for this render */ }
         update({ tourSeen: true });
       }}

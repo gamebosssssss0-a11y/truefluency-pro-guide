@@ -7,7 +7,8 @@ import { ShieldCheck } from "lucide-react";
  * Squad whether the payment really happened before any plan is switched on. Nothing here changes a plan by itself.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
+import { startFreeTrialFn } from "@/lib/entitlements.functions";
 import { toast } from "sonner";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,36 @@ export function UpgradeScreen() {
   const [receiptRef, setReceiptRef] = useState<string | null>(null);
   const [problem, setProblem] = useState<{ open: boolean; ref: string | null }>({ open: false, ref: null });
   const returned = useRef<string | null>(readPaymentReturn());
+  const [isActivatingTrial, setIsActivatingTrial] = useState(false);
+  const canClaimTrial = access?.tier === "free" && access.trialClaimed === false;
+  const handleClaimTrial = async () => {
+    if (isActivatingTrial) return;
+    setIsActivatingTrial(true);
+    try {
+      await startFreeTrialFn();
+      toast.success("Your 7-day Prep trial is active!");
+      await refreshAccess().catch(() => undefined);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not activate your trial.");
+    } finally {
+      setIsActivatingTrial(false);
+    }
+  };
+  const trialCard = canClaimTrial ? (
+    <section aria-label="Free trial" className="mt-5 rounded-3xl border-2 border-accent/60 bg-card p-5 shadow-sm">
+      <span className="inline-flex rounded-full bg-accent/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-ink">TrueFluency Prep</span>
+      <h2 className="mt-2 font-display text-xl font-bold text-foreground">Try Prep free for 7 days</h2>
+      <Button
+        onClick={() => void handleClaimTrial()}
+        disabled={isActivatingTrial}
+        className="mt-4 h-12 w-full bg-accent font-semibold text-accent-foreground shadow-md hover:bg-accent/90"
+      >
+        {isActivatingTrial ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+        Start 7-Day Free Trial
+      </Button>
+      <p className="mt-2 text-center text-xs text-muted-foreground">No payment card required. Immediate full access for 7 days.</p>
+    </section>
+  ) : null;
 
   const loadStatus = useCallback(async () => {
     try {
@@ -299,6 +330,7 @@ export function UpgradeScreen() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink">A calmer way to prepare</p>
             <h1 className="mt-2 font-display text-3xl font-bold text-foreground">Full access to your next level.</h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Step-by-step Tutor guidance, more practice room and calmer exam preparation.</p>
+            {trialCard}
             <div className="relative mt-7 overflow-hidden rounded-3xl border-2 border-accent bg-card p-6 shadow-lg">
               <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-accent/15 blur-2xl" />
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-foreground"><Sparkles className="h-3 w-3" /> {foundingOpen ? "Introductory price" : "Prep"}</span>
@@ -374,6 +406,7 @@ export function UpgradeScreen() {
                 <Button className="mt-4 w-full" onClick={() => { setSelectedPlan(activePlan); setAgreed(false); setStep("review"); }}>Renew {planName(activePlan)}</Button>
               ) : null}
             </section>
+            {trialCard}
             <h2 className="mt-6 text-sm font-semibold text-foreground">Available plans</h2>
             <div className="mt-3 space-y-3">
               {(["core", "exam"] as BillingPlan[]).filter((plan) => plan !== activePlan).map((plan) => (

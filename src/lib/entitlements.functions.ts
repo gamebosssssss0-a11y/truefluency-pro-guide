@@ -54,3 +54,11 @@ export const consumeFeatureQuota = createServerFn({ method: "POST" })
     const { access: _access, ...verdict } = result as Record<string, unknown> & QuotaVerdict;
     return verdict as QuotaVerdict & { allowedQuestions?: number };
   });
+
+export const startFreeTrialFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { startTrial } = await import("@/lib/entitlements.server");
+    const { trialEndsAt } = await startTrial(context.userId);
+    return { success: true as const, trialEndsAt };
+  });

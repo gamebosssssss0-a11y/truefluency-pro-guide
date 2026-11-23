@@ -10,20 +10,36 @@ import { deriveSupabasePassword } from "@/lib/supabase-session";
 
 type Tab = "signup" | "login";
 
+const LAST_EMAIL_KEY = "truefluency-last-email";
+
+function readLastEmail(): string {
+  try { return localStorage.getItem(LAST_EMAIL_KEY) ?? ""; } catch { return ""; }
+}
+
+function rememberLastEmail(em: string) {
+  try { localStorage.setItem(LAST_EMAIL_KEY, em); } catch { /* best effort */ }
+}
+
 export function IdentityScreen() {
   const { profile, update, go } = useProfile();
+  // Only the email is remembered; passwords are left to the browser's own password manager.
+  const [savedEmail, setSavedEmail] = useState(readLastEmail);
   const [tab, setTab] = useState<Tab>(() => {
     try {
+      const hasLocalAccounts = profile.accounts && profile.accounts.length > 0;
       const returning = localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1";
       const requested = sessionStorage.getItem("truefluency-open-identity-auth") === "1";
-      return returning || requested ? "login" : "signup";
+      // If this device has ever signed in an account, prioritize Log In
+      if (readLastEmail() || hasLocalAccounts || returning || requested) return "login";
+      return "signup";
     } catch {
       return "signup";
     }
   });
   const [authOpen, setAuthOpen] = useState(() => {
     try {
-      return localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ||
+      return !!readLastEmail() ||
+        localStorage.getItem("truefluency-profile-v2:onboarding-pending") === "1" ||
         sessionStorage.getItem("truefluency-open-identity-auth") === "1";
     } catch {
       return false;
@@ -34,7 +50,7 @@ export function IdentityScreen() {
     catch { /* authentication remains available in the disclosure */ }
   }, []);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(savedEmail);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -83,6 +99,7 @@ export function IdentityScreen() {
         return;
       }
       setBusy(null);
+      rememberLastEmail(em);
       finish({ kind: "email", name: name.trim(), email: em }, rememberAccount(name.trim(), em));
     } catch (err) {
       console.error("[auth] sign-up failed", err);
@@ -108,6 +125,7 @@ export function IdentityScreen() {
         setBusy(null);
         return;
       }
+      rememberLastEmail(em);
       // The profile store keeps the app behind its sign-in screen until this
       // account's own cloud profile has been restored.
       setBusy(null);
@@ -159,7 +177,9 @@ export function IdentityScreen() {
   return (
     <AppShell
       title={authOpen ? (tab === "signup" ? "Create your account" : "Welcome back") : "Start studying"}
-      subtitle={authOpen ? "Sign in to sync your progress across devices." : "Continue as a guest now. Add an account later if you want to sync across devices."}
+      subtitle={authOpen
+        ? (tab === "login" && savedEmail ? "Sign in with your password or use Google to sync your study data." : "Sign in to sync your progress across devices.")
+        : "Continue as a guest now. Add an account later if you want to sync across devices."}
     >
       <button
         onClick={() => withDelay("guest", () => finish({ kind: "guest", name: "Guest" }))}
@@ -202,15 +222,18 @@ export function IdentityScreen() {
       </div>
 
       {tab === "signup" ? (
-        <form onSubmit={onSignup} className="space-y-3">
-          <Field label="Name">
-            <Input required autoFocus placeholder="Ada Okafor" value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
+        <form id="tf-auth-signup-form" onSubmit={onSignup} className="space-y-3" autoComplete="on">
+          <Field label="Full Name">
+            <Input id="tf-signup-name" name="name" type="text" required autoFocus autoComplete="name" placeholder="Ada Okafor" value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
           </Field>
-          <Field label="Email">
-            <Input required type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
+          <Field label="Email Address">
+            <Input id="tf-signup-email" name="email" type="email" inputMode="email" required autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username email" placeholder="you@student.ui.edu.ng" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
           </Field>
-          <PasswordField password={password} setPassword={setPassword} showPw={showPw} setShowPw={setShowPw} />
+          <PasswordField id="tf-signup-password" name="password" autoComplete="new-password" password={password} setPassword={setPassword} showPw={showPw} setShowPw={setShowPw} />
           <PasswordField
+            id="tf-signup-confirm"
+            name="confirm-password"
+            autoComplete="new-password"
             label="Confirm password"
             password={confirm}
             setPassword={setConfirm}
@@ -229,11 +252,23 @@ export function IdentityScreen() {
           <SwitchLine text="Already have an account?" cta="Log In" onClick={() => { setTab("login"); setError(null); }} />
         </form>
       ) : (
-        <form onSubmit={onLogin} className="space-y-3">
-          <Field label="Email">
-            <Input required autoFocus type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
+        <form id="tf-auth-login-form" onSubmit={onLogin} className="space-y-3" autoComplete="on">
+          {savedEmail && email === savedEmail ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/5 px-3 py-2">
+              <span className="min-w-0 truncate text-xs font-medium text-foreground">Welcome back, {savedEmail}</span>
+              <button
+                type="button"
+                onClick={() => { try { localStorage.removeItem(LAST_EMAIL_KEY); } catch { /* best effort */ } setSavedEmail(""); setEmail(""); setPassword(""); }}
+                className="min-h-11 shrink-0 text-xs font-semibold text-accent-ink underline-offset-2 hover:underline"
+              >
+                Switch account
+              </button>
+            </div>
+          ) : null}
+          <Field label="Email Address">
+            <Input id="tf-login-email" name="email" type="email" inputMode="email" required autoFocus={!savedEmail} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username email" placeholder="you@student.ui.edu.ng" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" />
           </Field>
-          <PasswordField password={password} setPassword={setPassword} showPw={showPw} setShowPw={setShowPw} />
+          <PasswordField id="tf-login-password" name="password" autoComplete="current-password" password={password} setPassword={setPassword} showPw={showPw} setShowPw={setShowPw} />
           <a href="/reset" className="block text-right text-xs font-semibold text-primary hover:underline">Forgot password?</a>
           {error ? <ErrorNote>{error}</ErrorNote> : null}
           <Button type="submit" className="h-12 w-full text-base" disabled={busy !== null}>
@@ -286,7 +321,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function PasswordField({ password, setPassword, showPw, setShowPw, label = "Password", hint }: {
+function PasswordField({ id, name, autoComplete, password, setPassword, showPw, setShowPw, label = "Password", hint }: {
+  id: string; name: string; autoComplete: "new-password" | "current-password";
   password: string; setPassword: (v: string) => void; showPw: boolean; setShowPw: (v: boolean) => void;
   label?: string; hint?: string | null;
 }) {
@@ -294,6 +330,9 @@ function PasswordField({ password, setPassword, showPw, setShowPw, label = "Pass
     <Field label={label}>
       <div className="relative">
         <Input
+          id={id}
+          name={name}
+          autoComplete={autoComplete}
           required
           type={showPw ? "text" : "password"}
           placeholder="At least 8 characters"

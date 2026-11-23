@@ -257,13 +257,16 @@ export function AccountScreen() {
       onClick: () => navigate("test-history"),
     },
     {
-      label: "Show me around again",
-      blurb: "Replay the short four-step tour of the app on Home.",
+      label: "Interactive App Walkthrough",
+      blurb: "Replay the 3-minute guide to courses, Verilo, and mock tests.",
       icon: Compass,
       surface: "row",
       onClick: () => {
         update({ tourSeen: false });
-        try { window.sessionStorage.setItem("truefluency-show-tour-on-home", "1"); }
+        try {
+          window.localStorage.removeItem("truefluency-tour-completed");
+          window.sessionStorage.setItem("truefluency-show-tour-on-home", "1");
+        }
         catch { /* the optional tour can be opened again later */ }
         navigate("home");
       },

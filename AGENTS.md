@@ -33,3 +33,5 @@
 - Landing showcase examples stay separate from live study state and are labelled as examples; public previews must not disclose student data or imply verified endorsements.
 
 - Support response timing is read from the shared support policy module; this keeps every display aligned with the owner-confirmed commitment.
+
+- An unclaimed 7-day trial is stored as epoch trial dates (columns are NOT NULL); only startTrial in entitlements.server.ts may set real dates, so the trial never starts before the student asks.

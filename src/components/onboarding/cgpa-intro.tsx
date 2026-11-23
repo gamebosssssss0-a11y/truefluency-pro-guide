@@ -9,16 +9,11 @@ import { Target, Calculator, TrendingUp } from "lucide-react";
  * nothing because both tools stay in the Account tab.
  */
 export function CgpaIntroScreen() {
-  const { go, navigate, update, profile } = useProfile();
+  const { go, navigate, update } = useProfile();
 
   const finish = (openGoalSetter: boolean) => {
     update({ cgpaIntroSeen: true });
-    // First trial ever on this account: show the one-time trial notice before
-    // Home. Returning trial/paid students already have the flag set.
-    if (!profile.trialNoticeSeen) {
-      go("trial-welcome");
-      return;
-    }
+    // The 7-day trial is claimed on demand from Plans, so setup goes straight to Home.
     go("dashboard");
     navigate(openGoalSetter ? "cgpa-goal" : "home");
   };

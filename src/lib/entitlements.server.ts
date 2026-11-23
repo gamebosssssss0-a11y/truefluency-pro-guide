@@ -107,7 +107,18 @@ function recordRefusal(userId: unknown, feature: GatedFeature, reason: string) {
   if (gate) noteGateHit(userId.trim(), gate);
 }
 
-/** Fetch the caller's subscription, creating a fresh 7-day trial on first use. */
+/**
+ * The schema keeps trial dates NOT NULL, so an unclaimed trial is stored as the epoch. A real trial always starts after
+ * this cut-off; anything at or before it means the student has never pressed "Start 7-Day Free Trial".
+ */
+export const UNCLAIMED_TRIAL_AT = "1970-01-01T00:00:00.000Z";
+export function isTrialClaimed(startedAt: string | null | undefined): boolean {
+  if (!startedAt) return false;
+  const t = new Date(startedAt).getTime();
+  return Number.isFinite(t) && t > Date.UTC(2000, 0, 1);
+}
+
+/** Fetch the caller's subscription, creating a Free row (trial not yet claimed) on first use. */
 async function ensureRow(userId: string): Promise<Row> {
   const db = await admin();
   const existing = await db
@@ -118,15 +129,13 @@ async function ensureRow(userId: string): Promise<Row> {
 
   if (existing.data) return existing.data as Row;
 
-  const now = new Date();
-  const ends = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
   const inserted = await db
     .from("subscriptions")
     .insert({
       user_id: userId,
-      tier: "trial",
-      trial_started_at: now.toISOString(),
-      trial_ends_at: ends.toISOString(),
+      tier: "free",
+      trial_started_at: UNCLAIMED_TRIAL_AT,
+      trial_ends_at: UNCLAIMED_TRIAL_AT,
     })
     .select("user_id, tier, trial_started_at, trial_ends_at, paid_until, paying_user_number")
     .single();
@@ -239,7 +248,8 @@ export async function resolveAccess(userId: string, usageDay = today()): Promise
   return {
     tier,
     fullAccess,
-    trialEndsAt: row.trial_ends_at,
+    trialEndsAt: isTrialClaimed(row.trial_started_at) ? row.trial_ends_at : null,
+    trialClaimed: isTrialClaimed(row.trial_started_at),
     paidUntil: row.paid_until,
     priceNaira: tier === "exam" ? EXAM_PRICE_NAIRA : corePrice,
     foundingPriceAvailable,
@@ -360,4 +370,26 @@ export async function consumeQuota(opts: {
       ? { allowedQuestions: Math.min(requested, access.maxQuestionsPerSet) }
       : {}),
   };
+}
+
+/** Claims the one 7-day trial on request. Refuses a second claim and never downgrades a paid plan. */
+export async function startTrial(userId: string): Promise<{ trialEndsAt: string }> {
+  const callerId = requireUserId(userId);
+  const row = await settleTier(await ensureRow(callerId));
+  if (isTrialClaimed(row.trial_started_at)) {
+    throw new Error("A 7-day free trial has already been claimed on this account.");
+  }
+  if (row.tier !== "free") throw new Error("Your account already has full access.");
+  const now = new Date();
+  const ends = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const db = await admin();
+  const { data, error } = await db
+    .from("subscriptions")
+    .update({ tier: "trial", trial_started_at: now.toISOString(), trial_ends_at: ends.toISOString() })
+    .eq("user_id", callerId)
+    .eq("tier", "free")
+    .eq("trial_started_at", row.trial_started_at)
+    .select("user_id");
+  if (error || !data || data.length === 0) throw new Error("Could not activate your trial.");
+  return { trialEndsAt: ends.toISOString() };
 }

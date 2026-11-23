@@ -646,6 +646,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (session) {
           storageOwnerIdRef.current = session.user.id;
           activeUserIdRef.current = session.user.id;
+          // Remember this device's last account (email only) so a later sign-in opens on Log In.
+          if (session.user.email) {
+            try { localStorage.setItem("truefluency-last-email", session.user.email.toLowerCase()); } catch { /* best effort */ }
+          }
           const cached = readAccountProfile(session.user.id, session.user.email ?? undefined);
           if (cached) setProfile(cached);
         } else {

@@ -115,6 +115,8 @@ export type AccessSummary = {
   tier: Tier;
   fullAccess: boolean;
   trialEndsAt: string | null;
+  /** True once the student has used their one 7-day trial. Missing on older responses = treat as claimed. */
+  trialClaimed?: boolean;
   paidUntil: string | null;
   /** Semester price this student would pay today, in naira. */
   priceNaira: number;

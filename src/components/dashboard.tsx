@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useProfileData } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronRight, Flame, Snowflake, Quote as QuoteIcon, Lightbulb, Calculator, Target,
-  Layers, GraduationCap, CircleDashed,
+  ChevronRight, Quote as QuoteIcon, Lightbulb, Calculator, Target,
+  Layers, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TopicPill } from "@/components/common";
@@ -34,13 +34,11 @@ const STREAK_LABEL: Record<StreakState, string> = {
 };
 
 function StreakGlyph({ state }: { state: StreakState }) {
-  const Icon = state === "none" ? CircleDashed : state === "frozen" ? Snowflake : Flame;
+  const glyph = state === "fire" ? "🔥" : state === "frozen" ? "🧊" : "✨";
+  const motion = state === "fire" ? "tf-streak-fire-animated text-2xl" : state === "frozen" ? "tf-streak-ice-animated text-2xl" : "tf-streak-dormant-animated text-xl opacity-80";
   return (
     <span role="img" aria-label={STREAK_LABEL[state]} className="grid h-10 w-10 shrink-0 place-items-center">
-      <Icon
-        aria-hidden="true"
-        className={state === "none" ? "h-5 w-5 text-muted-foreground" : state === "frozen" ? "h-5 w-5 text-doc-blue" : "h-5 w-5 fill-accent/15 text-accent-ink"}
-      />
+      <span aria-hidden="true" className={cn(motion, "select-none leading-none")}>{glyph}</span>
     </span>
   );
 }
@@ -408,16 +406,27 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
               <StreakGlyph state={streak.state} />
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-foreground">Current streak</div>
+              <div className="text-sm font-semibold text-foreground">
+                {streak.state === "none" ? "Start your streak" : streak.state === "frozen" ? `${streak.days}-day streak frozen` : `${streak.days}-day streak`}
+              </div>
               <div className="break-words text-xs leading-4 text-muted-foreground">
                 {streak.state === "frozen"
-                  ? "Frozen: you missed yesterday. Study today to keep your streak."
+                  ? "Yesterday was protected by your freeze. Complete 1 mock today to thaw!"
                   : streak.state === "none"
-                    ? "No streak yet. Practise or ask Verilo to start one."
+                    ? "Answer 1 question today to light your flame."
                     : activeToday
-                      ? "Qualified today."
-                      : `${profile.freezesAvailable} ${profile.freezesAvailable === 1 ? "freeze" : "freezes"} available`}
+                      ? "Studied today. Keep it going tomorrow!"
+                      : "Study today to keep it going."}
               </div>
+              {streak.state !== "frozen" ? (
+                <span className="mt-1 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {streak.state === "none"
+                    ? "1 freeze banked on first study day"
+                    : profile.freezesAvailable > 0
+                      ? `${profile.freezesAvailable} freeze ${profile.freezesAvailable === 1 ? "shield" : "shields"} available`
+                      : "0 freezes · +1 awarded at every 7-day milestone"}
+                </span>
+              ) : null}
             </div>
             <div className="text-right">
               <div className="font-display text-xl font-semibold text-accent-ink">

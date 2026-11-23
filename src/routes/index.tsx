@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AlertCircle, MessageCircle } from "lucide-react";
+import { AlertCircle, BookOpen, Bot, Calculator, MessageCircle, Target } from "lucide-react";
+import { TrialPrompt } from "@/components/trial-prompt";
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfileProvider, SwipePreviewProvider, useProfile, type AppView } from "@/lib/profile-store";
 import { ensureSupabaseSession } from "@/lib/supabase-session";
@@ -412,6 +413,7 @@ function Router() {
       ) : null}
       <BottomTabBar />
       {step === "dashboard" && view === "home" ? <DailyFeaturePrompt /> : null}
+      {step === "dashboard" && view === "home" ? <TrialPrompt /> : null}
       <AlertDialog open={leaveTestOpen} onOpenChange={setLeaveTestOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -430,16 +432,56 @@ function Router() {
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={veriloIntroOpen} onOpenChange={(open) => { if (!open) dismissVeriloIntro(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <DialogPod icon={MessageCircle} eyebrow="Your study companion" />
-            <AlertDialogTitle>Meet Verilo</AlertDialogTitle>
-            <AlertDialogDescription>
-              Verilo is your dedicated AI chatbot, built to help you study from your own notes and materials.
+        <AlertDialogContent className="max-w-md border-border bg-card p-6 shadow-2xl">
+          <AlertDialogHeader className="text-center sm:text-center">
+            <div className="tf-verilo-pod mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/40 bg-accent/10">
+              <Bot className="h-7 w-7 text-accent-ink" aria-hidden="true" />
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-ink">Autonomous Study Intelligence</p>
+            <AlertDialogTitle className="text-2xl font-bold tracking-tight text-foreground">Meet Verilo</AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Verilo is your personal university AI tutor, built to coach you from your uploaded course notes and past questions.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={dismissVeriloIntro}>Got it</AlertDialogAction>
+          <div className="my-5 space-y-2.5">
+        <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 text-left transition hover:border-accent/30">
+          <div className="mt-0.5 rounded-lg bg-accent/15 p-1.5 text-accent-ink">
+            <BookOpen className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div>
+            <h4 className="text-xs font-semibold text-foreground">Course-Grounded Answers</h4>
+            <p className="text-[11px] text-muted-foreground">Synthesizes lecture slides and departmental handouts without generic hallucinations.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 text-left transition hover:border-accent/30">
+          <div className="mt-0.5 rounded-lg bg-accent/15 p-1.5 text-accent-ink">
+            <Calculator className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div>
+            <h4 className="text-xs font-semibold text-foreground">Step-by-Step Problem Solving</h4>
+            <p className="text-[11px] text-muted-foreground">Breaks down complex calculations, physics equations, and science formulas step-by-step.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 text-left transition hover:border-accent/30">
+          <div className="mt-0.5 rounded-lg bg-accent/15 p-1.5 text-accent-ink">
+            <Target className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div>
+            <h4 className="text-xs font-semibold text-foreground">Active Mock Test Coaching</h4>
+            <p className="text-[11px] text-muted-foreground">In Tutor Mode, explains why an option is correct the moment you answer.</p>
+          </div>
+        </div>
+          </div>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={() => { dismissVeriloIntro(); navigate("chatbot"); }}
+              className="h-12 w-full bg-accent font-semibold text-accent-foreground shadow-md transition hover:bg-accent/90"
+            >
+              Start Studying with Verilo
+            </AlertDialogAction>
+            <button type="button" onClick={dismissVeriloIntro} className="h-11 w-full text-xs font-medium text-muted-foreground transition hover:text-foreground">
+              I'll explore first
+            </button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
