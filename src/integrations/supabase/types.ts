@@ -1878,6 +1878,13 @@ export type Database = {
         }[]
       }
       founding_seats_left: { Args: never; Returns: number }
+      get_maintenance_status: {
+        Args: never
+        Returns: {
+          maintenance_message: string
+          maintenance_mode: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
