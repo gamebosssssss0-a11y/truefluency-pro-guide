@@ -101,7 +101,7 @@ function moveToNextNumericField(event: KeyboardEvent<HTMLInputElement>) {
   fields[index + 1].focus();
 }
 
-export function CgpaCalculatorScreen() {
+export function CgpaCalculatorScreen({ onBack, backLabel = "Account" }: { onBack?: () => void; backLabel?: string } = {}) {
   const { profile, navigate, update } = useProfile();
   const saved = profile.cgpaActual;
 
@@ -428,7 +428,7 @@ export function CgpaCalculatorScreen() {
       <div data-cgpa-scroll className="mx-auto max-w-md px-5 pb-[calc(4rem+env(safe-area-inset-bottom))] pt-6">
         <div className="mb-4 flex items-center gap-2">
           <HeaderLogo />
-          <BackButton onBack={() => navigate("account")} /><span className="text-sm text-muted-foreground">Account</span>
+          <BackButton onBack={onBack ?? (() => navigate("account"))} /><span className="text-sm text-muted-foreground">{backLabel}</span>
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/40 bg-sand px-2 py-1 text-xs font-medium text-foreground">
             <ShieldCheck className="h-3 w-3" /> Select your grading scale
           </span>

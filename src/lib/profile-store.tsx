@@ -1219,3 +1219,37 @@ export function averageForCourse(p: Profile, code: string): number | null {
   if (!rel.length) return null;
   return Math.round(rel.reduce((sum, attempt) => sum + (Number.isFinite(attempt.score) ? attempt.score : 0), 0) / rel.length);
 }
+
+/**
+ * In-memory provider for public pages (e.g. /cgpa-calculator) that reuse app
+ * screens. It never touches auth, browser history or saved accounts; any app
+ * navigation sends the visitor to the full app at "/".
+ */
+export function StandaloneProfileProvider({ children, onExit }: { children: ReactNode; onExit: () => void }) {
+  const [profile, setProfile] = useState<Profile>(emptyProfile);
+  const [tutorSnapshot, setTutorSnapshot] = useState<TutorSnapshot | null>(null);
+  const update = useCallback((p: Partial<Profile>) => setProfile((prev) => ({ ...prev, ...p })), []);
+  const leave = useCallback(() => onExit(), [onExit]);
+  const profileData = useMemo<ProfileDataCtx>(() => ({
+    profile,
+    activeCourseCode: null,
+    activeAttemptId: null,
+    activeDeckId: null,
+    authPending: false,
+    hydrated: true,
+    update,
+    back: leave,
+    tutorSnapshot,
+    setTutorSnapshot,
+    recordStudyActivity: () => {},
+    go: leave,
+    navigate: leave,
+    resetSetup: () => setProfile(emptyProfile),
+  }), [profile, update, leave, tutorSnapshot]);
+  const navigation = useMemo<NavigationCtx>(() => ({ step: "dashboard", view: "cgpa", navigate: leave, go: leave }), [leave]);
+  return (
+    <ProfileDataContext.Provider value={profileData}>
+      <NavigationContext.Provider value={navigation}>{children}</NavigationContext.Provider>
+    </ProfileDataContext.Provider>
+  );
+}
