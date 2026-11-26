@@ -1,202 +1,181 @@
+import { useState } from "react";
+import { BookOpenCheck, Lightbulb, ShieldCheck } from "lucide-react";
 import { PolicyLinks } from "@/components/legal-policies-dialog";
-import { useRef } from "react";
 import { useProfile } from "@/lib/profile-store";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo-mark";
-import { BrainCircuit, Calculator, FileText, LineChart, Sparkles } from "lucide-react";
-import { PRICE_LINE, TRIAL_LINE } from "@/lib/pricing-copy";
-import { StudyShowcase } from "@/components/onboarding/study-showcase";
-import { PhoneShowcase } from "@/components/onboarding/phone-showcase";
+import { SUPPORT_RESPONSE_HOURS } from "@/lib/support-policy";
+import { CgpaGaugeArt, ExplanationArt, FlashcardArt, NotesToMockArt, SavedMockArt } from "@/components/landing/illustrations";
+import { SwipeCarousel, type Slide } from "@/components/landing/swipe-carousel";
+import { LANDING_PLANS, PlanSheet, type LandingPlan } from "@/components/landing/plan-sheet";
 
 /**
- * Landing screen. Honesty contract: no exam-probability percentages and no
- * claims about guaranteed questions. Topic strength is only ever described
- * qualitatively ("Strong in this upload" / "Appears moderately" /
- * "Mentioned briefly"), exactly as the app itself labels it.
+ * Public landing page. Honesty contract: no exam-probability percentages, no
+ * guaranteed questions, no invented testimonials, counts or discounts. Prices
+ * and limits come only from the shared entitlement constants.
  */
 
-const features = [
-  {
-    icon: BrainCircuit,
-    title: "Topics that stand out in your own upload",
-    body: "Upload a past paper or slides and see which topics your lecturer leans on, described in plain words, not fake percentages.",
-  },
-  {
-    icon: FileText,
-    title: "AI mock tests from your own material",
-    body: "Practice questions built from your course content, with adjustable difficulty and length instead of a generic question bank.",
-  },
-  {
-    icon: LineChart,
-    title: "Test history and progress tracking",
-    body: "Score trends across attempts, plus the topics that keep coming back as weak points so you know what to revisit.",
-  },
-  {
-    icon: Calculator,
-    title: "CGPA calculator and goal setter",
-    body: "Enter your real scores for your true CGPA and classification, then set a target and see the grades and study plan needed.",
-  },
+const VALUES = [
+  { icon: BookOpenCheck, title: "Your syllabus, not random questions", body: "Every question is built from the handouts and slides you upload." },
+  { icon: ShieldCheck, title: "Mocks that stay saved if you leave", body: "Step away mid-attempt and pick up where you stopped." },
+  { icon: Lightbulb, title: "Explanations that show why", body: "Review each answer with the reasoning, not just a tick or cross." },
 ];
 
-const FACULTIES = "Science, Clinical, Arts, Law, Technology, Social Sciences";
+const STEPS = [
+  { n: "01", title: "Upload your material", body: "PDFs, slides or photos of your notes." },
+  { n: "02", title: "Practise in timed or tutor mode", body: "Sit a timed mock, or learn step by step." },
+  { n: "03", title: "Review weak spots and track CGPA", body: "Revisit misses and plan toward your target class." },
+];
+
+const FEATURES: Slide[] = [
+  { id: "notes", art: <NotesToMockArt />, title: "Notes become real mocks", body: "Your handout turns into clean multiple-choice questions in minutes." },
+  { id: "why", art: <ExplanationArt />, title: "Clear structured explanations", body: "See the key concept and the reasoning behind every correct answer." },
+  { id: "saved", art: <SavedMockArt />, title: "Timed mocks that stay saved", body: "Exam-style timing, and your progress is kept if you step away." },
+  { id: "cards", art: <FlashcardArt />, title: "Instant active-recall flashcards", body: "Flip through key terms made from your own material." },
+  { id: "cgpa", art: <CgpaGaugeArt />, title: "Built-in UI CGPA tracker", body: "Calculated on the 5.00 scale, with First Class from 4.50." },
+];
+
+const PLAN_ORDER: LandingPlan[] = ["free", "core", "exam"];
 
 export function LandingScreen() {
   const { go } = useProfile();
-  const insideRef = useRef<HTMLDetailsElement | null>(null);
+  const [openPlan, setOpenPlan] = useState<LandingPlan | null>(null);
+  const start = () => go("disclaimer");
+  const scrollTo = (id: string) => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  };
+  const logIn = () => {
+    try { sessionStorage.setItem("truefluency-open-identity-auth", "1"); } catch { /* identity screen still offers sign-in */ }
+    go("identity");
+  };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 pb-10 pt-6 md:py-12">
-        <header className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex">
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-5">
           <div className="flex min-w-0 items-center gap-2">
             <LogoMark className="h-8 w-8 shrink-0" />
-            <span className="font-display text-base font-semibold text-foreground">
-              TrueFluency <span className="text-accent-ink">Pro</span>
-            </span>
+            <span className="truncate font-display text-base font-semibold">TrueFluency <span className="text-accent-ink">Pro</span></span>
           </div>
-          <nav aria-label="Landing sections" className="ml-auto hidden items-center gap-2 md:flex">
-            <Button asChild variant="ghost">
-              <a href="#study-examples">Study examples</a>
-            </Button>
-            <Button asChild variant="ghost">
-              <a href="#inside">What's inside</a>
-            </Button>
+          <nav aria-label="Landing sections" className="ml-auto hidden items-center gap-1 md:flex">
+            <Button variant="ghost" onClick={() => scrollTo("features")}>Features</Button>
+            <Button variant="ghost" onClick={() => scrollTo("plans")}>Plans</Button>
           </nav>
-          <Button
-            type="button"
-            onClick={() => {
-              try {
-                sessionStorage.setItem("truefluency-open-identity-auth", "1");
-              } catch {
-                /* the identity screen still offers account access */
-              }
-              go("identity");
-            }}
-            variant="ghost"
-            className="ml-auto h-auto min-h-11 max-w-32 whitespace-normal text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground sm:max-w-none"
-          >
-            Already have an account? Log in
-          </Button>
-        </header>
+          <Button variant="ghost" onClick={logIn} className="ml-auto min-h-11 md:ml-0">Log in</Button>
+        </div>
+      </header>
 
-        <section className="mx-auto w-full max-w-2xl">
-          <div className="mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-accent-ink" />
-            Every faculty, every department, 100L to final year
-          </div>
-          <h1 className="font-display text-[2rem] font-semibold leading-tight text-foreground">
-            Turn your UI slides and notes into practice exams.
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Upload a PDF, slides or photos of your notes, and get study topics and mock tests built
-            from your own lecturer's material.
-          </p>
-
-          <div className="mt-4 space-y-3">
-            <Button
-              size="lg"
-              className="h-12 min-h-[48px] w-full bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={() => go("disclaimer")}
-            >
-              Start 7-day free trial
-            </Button>
-            <div className="space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
-              <p>No card required up front.</p>
-              <p>No automatic debit.</p>
+      <main className="mx-auto w-full max-w-6xl px-5">
+        {/* 1 · Hero */}
+        <section className="grid items-center gap-8 pb-14 pt-10 md:grid-cols-12 md:pt-16">
+          <div className="md:col-span-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink">Built for University of Ibadan students</p>
+            <h1 className="mt-3 font-display text-[2.1rem] font-semibold leading-[1.1] tracking-tight md:text-5xl">Turn your lecture notes into exam-ready practice</h1>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">Upload PDFs or notes. Get timed mocks, clear explanations, and flashcards grounded in your own material.</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" className="h-12 rounded-xl px-6" onClick={start}>Start studying free</Button>
+              <Button size="lg" variant="outline" className="h-12 rounded-xl px-6" onClick={() => scrollTo("plans")}>See how plans work</Button>
             </div>
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full border-border bg-surface text-foreground"
-              onClick={() =>
-                (() => {
-                  if (!insideRef.current) return;
-                  insideRef.current.open = true;
-                  insideRef.current.scrollIntoView({
-                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-                      ? "auto"
-                      : "smooth",
-                    block: "start",
-                  });
-                })()
-              }
-            >
-              See what's inside
-            </Button>
+          </div>
+          <div className="md:col-span-6">
+            <div className="rounded-[24px] border border-border bg-card p-3 shadow-sm"><NotesToMockArt /></div>
           </div>
         </section>
 
-        <PhoneShowcase />
-
-        <StudyShowcase />
-
-        <div className="mx-auto mt-6 w-full max-w-2xl">
-          <details className="rounded-xl border border-border bg-card p-3">
-            <summary className="cursor-pointer text-center text-xs font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-              Trial and plan details
-            </summary>
-            <div className="mt-3 space-y-1 text-center text-xs leading-relaxed text-muted-foreground">
-              <p>{TRIAL_LINE}</p>
-              <p className="break-words">{PRICE_LINE}</p>
-              <p>Trial runs 7 days. Pay when you upgrade.</p>
-            </div>
-          </details>
-        </div>
-
-        <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
-          Built for University of Ibadan students across {FACULTIES}.
-        </p>
-
-        <details
-          id="inside"
-          ref={insideRef}
-          className="mt-10 scroll-mt-4 rounded-2xl border border-border bg-card p-4"
-        >
-          <summary className="cursor-pointer list-none font-display text-xl font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            What's inside
-          </summary>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-lg border border-border bg-surface p-4 shadow-sm"
-              >
-                <div className="mb-2 grid h-9 w-9 place-items-center rounded-xl bg-accent/10 text-accent-ink">
-                  <f.icon className="h-4 w-4" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+        {/* 2 · Core value */}
+        <section aria-labelledby="value-h" className="pb-14">
+          <h2 id="value-h" className="sr-only">Why TrueFluency Pro</h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            {VALUES.map((v) => (
+              <div key={v.title} className="rounded-[20px] border border-border bg-card p-5">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent/15 text-accent-ink"><v.icon className="h-5 w-5" /></div>
+                <h3 className="mt-4 font-display text-base font-semibold text-card-foreground">{v.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{v.body}</p>
               </div>
             ))}
           </div>
-        </details>
+        </section>
 
-        <details className="mt-10 rounded-2xl border border-border bg-card p-4">
-          <summary className="cursor-pointer font-semibold text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            Why TrueFluency is built for UI students
-          </summary>
-          <div className="mt-4 rounded-2xl border border-border bg-surface p-5 shadow-sm">
-            <h2 className="font-display text-lg font-semibold text-foreground">
-              Built for UI, across every faculty and department
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Most Nigerian exam prep tools cover one level or one department and stop there.
-              TrueFluency Pro was built by a UI student to work across Science, Clinical, Arts, Law,
-              Technology and Social Sciences, so it still fits when you move from 100L to 200L and
-              beyond.
-            </p>
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              To be clear with you: this is a study aid, not a replacement for lectures. It shows
-              you what your own material leans on, and it never promises which questions will
-              appear.
-            </p>
+        {/* 3 · How it works */}
+        <section aria-labelledby="how-h" className="pb-14">
+          <h2 id="how-h" className="font-display text-2xl font-semibold">How it works</h2>
+          <ol className="mt-6 grid gap-4 md:grid-cols-3">
+            {STEPS.map((s) => (
+              <li key={s.n} className="flex gap-4 border-t border-border pt-4 md:block">
+                <span className="font-display text-2xl font-semibold tabular-nums text-accent-ink">{s.n}</span>
+                <div className="md:mt-3">
+                  <h3 className="text-base font-semibold">{s.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{s.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* 4 · Feature carousel */}
+        <section id="features" aria-labelledby="feat-h" className="scroll-mt-20 pb-14">
+          <h2 id="feat-h" className="font-display text-2xl font-semibold">What you get</h2>
+          <p className="mt-1 mb-6 text-sm text-muted-foreground">Swipe through the five core tools.</p>
+          <SwipeCarousel slides={FEATURES} label="TrueFluency Pro features" layout="split" />
+        </section>
+
+        {/* Plans */}
+        <section id="plans" aria-labelledby="plans-h" className="scroll-mt-20 pb-14">
+          <h2 id="plans-h" className="font-display text-2xl font-semibold">Plans</h2>
+          <p className="mt-1 mb-6 text-sm text-muted-foreground">Tap a plan to see what’s inside.</p>
+          <div className="grid gap-4 md:grid-cols-3">
+            {PLAN_ORDER.map((p) => {
+              const info = LANDING_PLANS[p];
+              return (
+                <button key={p} type="button" onClick={() => setOpenPlan(p)} className="group rounded-[20px] border border-border bg-card p-5 text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="font-display text-lg font-semibold text-card-foreground">{info.name}</h3>
+                    <span className="font-display text-2xl font-semibold tabular-nums text-card-foreground">{info.price}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{info.priceNote}</p>
+                  <p className="mt-4 text-sm text-card-foreground">{info.summary}</p>
+                  <span className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-accent-ink underline-offset-4 group-hover:underline">See what’s inside →</span>
+                </button>
+              );
+            })}
           </div>
-        </details>
-        <footer className="mt-10 border-t border-border pt-6 text-center text-xs leading-relaxed text-muted-foreground">
-          <p>TrueFluency Pro · Built for University of Ibadan students</p>
-          <PolicyLinks className="mt-2 block" />
-        </footer>
-      </div>
+        </section>
+
+        {/* 5 · Academic fit */}
+        <section aria-labelledby="fit-h" className="pb-14">
+          <div className="grid gap-6 rounded-[24px] border border-border bg-card p-6 md:grid-cols-2 md:items-center md:p-10">
+            <div>
+              <h2 id="fit-h" className="font-display text-2xl font-semibold text-card-foreground">Made for how UI grades you</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">CGPA follows the University of Ibadan 5.00 scale (A = 5 … F = 0), with First Class from 4.50 to 5.00. Courses are organised by faculty, department and level, including GES, from 100 Level to final year.</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">It’s a study aid, not a replacement for lectures, and it never promises which questions will appear.</p>
+            </div>
+            <CgpaGaugeArt />
+          </div>
+        </section>
+      </main>
+
+      {/* 6 · Final CTA */}
+      <section className="bg-primary text-primary-foreground">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-5 px-5 py-14 md:flex-row md:items-center md:justify-between">
+          <h2 className="font-display text-2xl font-semibold">Start with the notes you already have.</h2>
+          <div>
+            <Button size="lg" variant="secondary" className="h-12 rounded-xl px-6" onClick={start}>Start studying free</Button>
+            <p className="mt-2 text-xs opacity-80">Free to start · Cancel anytime</p>
+          </div>
+        </div>
+      </section>
+
+      {/* 7 · Footer */}
+      <footer className="mx-auto w-full max-w-6xl px-5 py-8 text-xs text-muted-foreground">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2"><LogoMark className="h-6 w-6" /><span>TrueFluency Pro · University of Ibadan</span></div>
+          <PolicyLinks />
+        </div>
+        <p className="mt-3">Need help? Support replies within {SUPPORT_RESPONSE_HOURS} hours.</p>
+      </footer>
+
+      <PlanSheet plan={openPlan} onOpenChange={(o) => { if (!o) setOpenPlan(null); }} onContinue={() => { setOpenPlan(null); start(); }} />
     </div>
   );
 }

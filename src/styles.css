@@ -1892,3 +1892,16 @@ html.dark .surface-wash {
 @media (prefers-reduced-motion: reduce) {
   .tf-radar-ring { animation: none; opacity: 0.5; }
 }
+
+/* Landing illustrations: soft optional motion, off under reduced motion. */
+@keyframes tf-ill-flow { to { stroke-dashoffset: -18; } }
+@keyframes tf-ill-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes tf-ill-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes tf-ill-needle { from { transform: rotate(-60deg); } to { transform: rotate(0deg); } }
+.tf-ill-flow { animation: tf-ill-flow 1.6s linear infinite; }
+.tf-ill-pulse { animation: tf-ill-pulse 2.4s ease-in-out infinite; }
+.tf-ill-float { animation: tf-ill-float 4s ease-in-out infinite; }
+.tf-ill-needle { animation: tf-ill-needle 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .tf-ill-flow, .tf-ill-pulse, .tf-ill-float, .tf-ill-needle { animation: none; }
+}
