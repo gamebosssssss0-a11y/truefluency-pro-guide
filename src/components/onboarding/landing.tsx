@@ -1,3 +1,4 @@
+import { PlanStatusDiamond } from "@/components/plan-status-diamond";
 import { useState } from "react";
 import { BookOpenCheck, Lightbulb, ShieldCheck } from "lucide-react";
 import { PolicyLinks } from "@/components/legal-policies-dialog";
@@ -123,20 +124,27 @@ export function LandingScreen() {
         {/* Plans */}
         <section id="plans" aria-labelledby="plans-h" className="scroll-mt-20 pb-14">
           <h2 id="plans-h" className="font-display text-2xl font-semibold">Plans</h2>
-          <p className="mt-1 mb-6 text-sm text-muted-foreground">Tap a plan to see what’s inside.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Tap a plan to see what’s inside.</p>
+          <h3 className="mt-5 mb-4 text-sm font-semibold">Plans at a glance</h3>
           <div className="grid gap-4 md:grid-cols-3">
             {PLAN_ORDER.map((p) => {
               const info = LANDING_PLANS[p];
               return (
-                <button key={p} type="button" onClick={() => setOpenPlan(p)} className="group rounded-[20px] border border-border bg-card p-5 text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
+                <Button key={p} type="button" variant="ghost" onClick={() => setOpenPlan(p)} className="group block h-auto w-full whitespace-normal rounded-[20px] border border-border bg-card p-5 text-left font-normal transition-colors hover:border-accent hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
                   <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="font-display text-lg font-semibold text-card-foreground">{info.name}</h3>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display text-lg font-semibold text-card-foreground">{info.name}</h3>
+                        <PlanStatusDiamond tier={p} />
+                      </div>
+                      {p !== "free" ? <span aria-hidden="true" className={`tf-plan-accent tf-plan-accent--${p} mt-2 block h-0.5 w-8`} /> : null}
+                    </div>
                     <span className="font-display text-2xl font-semibold tabular-nums text-card-foreground">{info.price}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{info.priceNote}</p>
                   <p className="mt-4 text-sm text-card-foreground">{info.summary}</p>
                   <span className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-accent-ink underline-offset-4 group-hover:underline">See what’s inside →</span>
-                </button>
+                </Button>
               );
             })}
           </div>

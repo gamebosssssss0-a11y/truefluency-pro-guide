@@ -35,3 +35,10 @@
 - Support response timing is read from the shared support policy module; this keeps every display aligned with the owner-confirmed commitment.
 
 - An unclaimed 7-day trial is stored as epoch trial dates (columns are NOT NULL); only startTrial in entitlements.server.ts may set real dates, so the trial never starts before the student asks.
+
+## Plan presentation
+
+- Reuse the landing PlanSheet for in-app plan previews, pass current billing quotes at the caller, and enter paid review only after Continue; this preserves server pricing and explicit consent.
+- Render plan indicators at screen-owned Home/Account and public plan-card placements, never in HeaderLogo; this prevents diamonds leaking into every study screen.
+- Keep public plan previews on the sign-up path and Free previews non-billable; previewing never changes entitlements or cancels an active subscription.
+- Reduced-motion carousels swap one visible slide instantly while retaining dots, arrows and direction-locked swipes; shared sheet motion lives in global CSS so consumers cannot override geometry.

@@ -1,3 +1,4 @@
+import { PlanStatusDiamond } from "@/components/plan-status-diamond";
 import { BackButton } from "@/components/ui/back-button";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -307,9 +308,12 @@ export function AccountScreen() {
         <div className="surface-key-card mt-5 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-foreground">Your plan</span>
-            <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
-              {planLabel}
-            </span>
+            <div className="flex items-center gap-2">
+              <PlanStatusDiamond {...(access ? { tier: access.tier } : {})} />
+              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
+                {planLabel}
+              </span>
+            </div>
           </div>
           <p className="mt-2 break-words text-xs leading-relaxed text-muted-foreground">{PRICE_LINE}</p>
           <button

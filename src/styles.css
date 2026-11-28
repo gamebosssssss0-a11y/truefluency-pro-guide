@@ -1905,3 +1905,38 @@ html.dark .surface-wash {
 @media (prefers-reduced-motion: reduce) {
   .tf-ill-flow, .tf-ill-pulse, .tf-ill-float, .tf-ill-needle { animation: none; }
 }
+
+/* Scoped plan accents: keep the base brand unchanged. Dark-gold ink makes
+   the Prep outline legible on cream; solid Mastery stays distinct in grayscale. */
+:root {
+  --plan-prep-fill: #BEDAD4;
+  --plan-prep-stroke: var(--accent-on-sand);
+  --plan-prep-accent: #21807A;
+  --plan-mastery-fill: var(--tf-gold);
+  --plan-mastery-stroke: var(--tf-navy);
+  --plan-mastery-accent: var(--tf-navy);
+}
+.dark {
+  --plan-prep-fill: #21807A;
+  --plan-prep-stroke: var(--tf-gold);
+  --plan-mastery-stroke: var(--tf-gold);
+  --plan-mastery-accent: var(--tf-gold);
+}
+.tf-plan-diamond { width: 24px; height: 24px; }
+.tf-plan-diamond--core { fill: var(--plan-prep-fill); stroke: var(--plan-prep-stroke); }
+.tf-plan-diamond--exam { fill: var(--plan-mastery-fill); stroke: var(--plan-mastery-stroke); }
+.tf-plan-accent--core { background: var(--plan-prep-accent); }
+.tf-plan-accent--exam { background: var(--plan-mastery-accent); }
+.tf-responsive-sheet.tf-plan-sheet { overflow: hidden; }
+
+/* Reduced motion removes movement rather than shortening it to a fade. */
+@media (prefers-reduced-motion: reduce) {
+  .tf-responsive-sheet[data-state], .tf-sheet-overlay[data-state] {
+    animation: none;
+    transition: none;
+    translate: none;
+    opacity: 1;
+  }
+  .tf-swipe-carousel *, .tf-plan-sheet * { animation: none; transition: none; }
+  .tf-carousel-track { scroll-behavior: auto; overflow-x: hidden; }
+}

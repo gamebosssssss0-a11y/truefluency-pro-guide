@@ -29,3 +29,12 @@
 - [x] Polish Support using verified contacts, honest availability and the confirmed within-24-hours response time.
 - [x] Unify upgrade, mock-share, receipt and payment-problem sheets.
 - [x] Run existing checks and verify phone/desktop rendering; commit changes.
+
+# Plan previews and status polish
+
+- [ ] Reuse three-slide plan sheets before logged-in paid review; keep Free non-billable and preserve live quotes.
+- [ ] Add static accessible paid-plan diamonds only on Home, Account and landing plan cards.
+- [ ] Add landing plan accents without replacing existing cards or showcase.
+- [ ] Make plan/showcase carousels and shared sheets instant under reduced motion.
+- [ ] Verify phone-width layouts, contrast, regressions and authenticated review if a session is available.
+- [ ] Real physical-phone verification: unavailable in this environment; owner must check on a device.

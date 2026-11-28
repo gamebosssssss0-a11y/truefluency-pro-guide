@@ -1,3 +1,4 @@
+import { PlanSheet, type LandingPlan } from "@/components/landing/plan-sheet";
 import { PolicyLinks } from "@/components/legal-policies-dialog";
 import { BackButton } from "@/components/ui/back-button";
 import { PaymentVerifyingLoader } from "@/components/loading-state";
@@ -102,6 +103,7 @@ export function UpgradeScreen() {
   const { access, refresh: refreshAccess } = useEntitlement();
   const [step, setStep] = useState<Step>(() => (readPaymentReturn() ? "verifying" : "offer"));
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan>("core");
+  const [previewPlan, setPreviewPlan] = useState<LandingPlan | null>(null);
   const [autoRenew, setAutoRenew] = useState(true);
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -403,14 +405,17 @@ export function UpgradeScreen() {
                 </ul>
               ) : null}
               {activePlan && !status?.auto_renew ? (
-                <Button className="mt-4 w-full" onClick={() => { setSelectedPlan(activePlan); setAgreed(false); setStep("review"); }}>Renew {planName(activePlan)}</Button>
+                <Button className="mt-4 w-full" onClick={() => { setPreviewPlan(activePlan); }}>Renew {planName(activePlan)}</Button>
               ) : null}
             </section>
             {trialCard}
             <h2 className="mt-6 text-sm font-semibold text-foreground">Available plans</h2>
+            <Button variant="outline" className="mt-3 h-auto min-h-11 w-full justify-between p-4" onClick={() => setPreviewPlan("free")}>
+              <span>Free</span><span>{formatNaira(0)}</span>
+            </Button>
             <div className="mt-3 space-y-3">
               {(["core", "exam"] as BillingPlan[]).filter((plan) => plan !== activePlan).map((plan) => (
-                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setSelectedPlan(plan); setAgreed(false); setStep("review"); }} className={`relative w-full overflow-hidden rounded-3xl border-2 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${plan === "exam" ? "border-accent bg-primary text-primary-foreground" : "border-accent/50 bg-card"}`}>
+                <button key={plan} type="button" aria-pressed={selectedPlan === plan} onClick={() => { setPreviewPlan(plan); }} className={`relative w-full overflow-hidden rounded-3xl border-2 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${plan === "exam" ? "border-accent bg-primary text-primary-foreground" : "border-accent/50 bg-card"}`}>
                   <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${plan === "exam" ? "bg-accent text-accent-foreground" : "bg-accent/15 text-accent-ink"}`}>{plan === "exam" ? "Maximum power" : foundingOpen ? "Introductory price" : "Everyday study"}</span>
                   <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
                     <h2 className="font-display text-2xl font-bold">TrueFluency {planName(plan)}</h2>
@@ -511,7 +516,7 @@ export function UpgradeScreen() {
               {done?.autoRenew ? `The next automatic charge is ${formatNaira(done.nextAmount ?? coreThen)}${done.nextRenewalLabel ? ` on ${done.nextRenewalLabel}` : ""}, ${chargeTiming(done.renewalLeadDays)}, and you can stop it here whenever you like.` : "It won’t renew by itself."}
             </p>
             {status?.receipts?.[0] ? (
-              <Button variant="outline" className="mt-4 w-full" onClick={() => setReceiptRef(status.receipts![0].ref)}>
+              <Button variant="outline" className="mt-4 w-full" onClick={() => setReceiptRef(status?.receipts?.[0]?.ref ?? null)}>
                 View receipt{done?.receiptNo ? ` · ${done.receiptNo}` : ""}
               </Button>
             ) : null}
@@ -533,6 +538,22 @@ export function UpgradeScreen() {
         {step === "failed" ? <section className="py-10 text-center"><h1 className="font-display text-3xl font-bold">Payment not completed</h1><p className="mt-2 text-sm text-muted-foreground">No charge was made, or it was reversed by your bank. You can try again.</p><Button className="mt-6 w-full" onClick={() => setStep("review")}>Try again</Button><Button variant="outline" className="mt-2 w-full" onClick={() => setProblem({ open: true, ref: null })}>Report a payment problem</Button><Button variant="ghost" className="mt-1 w-full" onClick={() => navigate("support")}>Ask us about payment</Button></section> : null}
       </div>
 
+      <PlanSheet
+        plan={previewPlan}
+        audience="account"
+        price={previewPlan === "core" ? formatNaira(corePrice) : previewPlan === "exam" ? formatNaira(examPrice) : formatNaira(0)}
+        priceNote={previewPlan === "core" ? (corePrice < coreThen ? `first 30 days, then ${formatNaira(coreThen)} every 30 days` : "every 30 days") : previewPlan === "exam" ? "every 30 days" : "always"}
+        onOpenChange={(open) => { if (!open) setPreviewPlan(null); }}
+        onContinue={() => {
+          const plan = previewPlan;
+          setPreviewPlan(null);
+          if (!plan) return;
+          if (plan === "free") { navigate("home"); return; }
+          setSelectedPlan(plan);
+          setAgreed(false);
+          setStep("review");
+        }}
+      />
       <ReceiptSheet refCode={receiptRef} onOpenChange={(o) => { if (!o) setReceiptRef(null); }} onReport={(r) => { setReceiptRef(null); setProblem({ open: true, ref: r }); }} />
       <PaymentProblemSheet open={problem.open} onOpenChange={(o) => setProblem((p) => ({ ...p, open: o }))} receipts={status?.receipts ?? []} presetRef={problem.ref ?? ""} />
 

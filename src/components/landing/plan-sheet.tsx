@@ -40,25 +40,32 @@ const SLIDES: Record<LandingPlan, Slide[]> = {
   ],
 };
 
-export function PlanSheet({ plan, onOpenChange, onContinue }: { plan: LandingPlan | null; onOpenChange: (open: boolean) => void; onContinue: () => void }) {
+export function PlanSheet({ plan, onOpenChange, onContinue, audience = "public", price, priceNote }: {
+  plan: LandingPlan | null;
+  onOpenChange: (open: boolean) => void;
+  onContinue: () => void;
+  audience?: "public" | "account";
+  price?: string;
+  priceNote?: string;
+}) {
   const info = plan ? LANDING_PLANS[plan] : null;
   return (
     <Sheet open={plan !== null} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="flex max-h-[92dvh] flex-col">
+      <SheetContent side="bottom" className="tf-plan-sheet flex flex-col">
         {info && plan ? (
           <>
-            <SheetHeader className="text-left">
+            <SheetHeader className="shrink-0 text-left">
               <SheetTitle className="font-display">{info.name}</SheetTitle>
               <SheetDescription className="tabular-nums">
-                <span className="text-base font-semibold text-foreground">{info.price}</span> · {info.priceNote}
+                <span className="text-base font-semibold text-foreground">{price ?? info.price}</span> · {priceNote ?? info.priceNote}
               </SheetDescription>
             </SheetHeader>
             <div className="-mx-1 mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1">
-              <SwipeCarousel slides={SLIDES[plan]} label={`What ${info.name} includes`} />
+              <SwipeCarousel slides={SLIDES[plan]} key={plan} label={`What ${info.name} includes`} />
             </div>
             <div className="mt-4 border-t border-border pt-4 pb-[max(0px,env(safe-area-inset-bottom))]">
               <Button size="lg" className="h-12 w-full rounded-xl" onClick={onContinue}>Continue with {info.name}</Button>
-              <p className="mt-2 text-center text-xs text-muted-foreground">You’ll create your account first. No payment is taken here.</p>
+              <p className="mt-2 text-center text-xs text-muted-foreground">{audience === "public" ? "You’ll create your account first. No payment is taken here." : plan === "free" ? "Free needs no payment. Your current plan is unchanged." : "Review the price and payment terms next. Nothing is charged here."}</p>
             </div>
           </>
         ) : null}

@@ -1,3 +1,4 @@
+import { PlanStatusDiamond } from "@/components/plan-status-diamond";
 
 import { useEffect, useMemo, useState } from "react";
 import { useProfileData } from "@/lib/profile-store";
@@ -344,6 +345,7 @@ export function HomeScreen({ active = true }: { active?: boolean } = {}) {
         <div className="reference-hero mb-6">
           <div className="reference-hero__label mb-4 flex items-center gap-2">
             <HeaderLogo />
+            <PlanStatusDiamond {...(access ? { tier: access.tier } : {})} />
             <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Home
             </span>
